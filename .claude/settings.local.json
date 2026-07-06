@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git -C /mnt/c/Users/invisal/Desktop/Works/craftbox status --porcelain)",
+      "Bash(git -C /mnt/c/Users/invisal/Desktop/Works/craftbox ls-files)"
+    ]
+  }
+}

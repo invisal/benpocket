@@ -1,0 +1,59 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-editor-bg: #1e1e2e; /* Catppuccin Mocha Base */
+  --color-sidebar-bg: #181825; /* Catppuccin Mocha Mantle */
+  --color-activity-bg: #11111b; /* Catppuccin Mocha Crust */
+  --color-bottom-bg: #181825; /* Catppuccin Mocha Mantle */
+  --color-status-bg: #11111b; /* Catppuccin Mocha Crust */
+  --color-border-dark: #313244; /* Catppuccin Mocha Surface 0 */
+  --color-text-dim: #a6adc8; /* Catppuccin Mocha Subtext 0 */
+  --color-accent: #89b4fa; /* Catppuccin Mocha Blue */
+}
+
+/* Custom scrollbars matching the Catppuccin theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #181825;
+}
+::-webkit-scrollbar-thumb {
+  background: #313244;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #45475a;
+}
+
+/* Global overrides for full-screen desktop application */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Titlebar dragging configurations */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-nodrag {
+  -webkit-app-region: no-drag;
+}

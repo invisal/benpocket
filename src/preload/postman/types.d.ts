@@ -1,6 +1,7 @@
-// Shared IPC payload types for the API testing client (HTTP + WebSocket).
-// Lives under src/preload so it is picked up by both tsconfig.node.json
-// (src/preload/**/*) and tsconfig.web.json (src/preload/*.d.ts).
+// Shared IPC payload types for the Postman tool's API testing client (HTTP + WebSocket)
+// and its saved collections/environments. Lives under src/preload/postman so it is
+// picked up by both tsconfig.node.json (src/preload/**/*) and tsconfig.web.json
+// (src/preload/**/*.d.ts).
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
@@ -84,11 +85,19 @@ export interface SavedRequest {
   updatedAt: number;
 }
 
+export interface CollectionFolder {
+  id: string;
+  name: string;
+  folders: CollectionFolder[];
+  requests: SavedRequest[];
+}
+
 export interface Collection {
   id: string;
   name: string;
   createdAt: number;
   requests: SavedRequest[];
+  folders: CollectionFolder[];
 }
 
 export interface RenameCollectionPayload {
@@ -103,6 +112,8 @@ export interface DeleteCollectionPayload {
 export interface SaveRequestPayload {
   collectionId: string;
   request: SavedRequest;
+  /** Folder to place a *new* request in. Ignored when updating a request that already exists somewhere in the tree. Omit/null for the collection root. */
+  folderId?: string | null;
 }
 
 export interface RenameRequestPayload {
@@ -114,6 +125,38 @@ export interface RenameRequestPayload {
 export interface DeleteRequestPayload {
   collectionId: string;
   requestId: string;
+}
+
+export interface CreateFolderPayload {
+  collectionId: string;
+  /** Parent folder to nest the new folder under. Omit/null for the collection root. */
+  parentFolderId?: string | null;
+  name: string;
+}
+
+export interface RenameFolderPayload {
+  collectionId: string;
+  folderId: string;
+  name: string;
+}
+
+export interface DeleteFolderPayload {
+  collectionId: string;
+  folderId: string;
+}
+
+export interface MoveRequestPayload {
+  collectionId: string;
+  requestId: string;
+  /** Destination folder. Omit/null to move to the collection root. */
+  targetFolderId?: string | null;
+}
+
+export interface MoveFolderPayload {
+  collectionId: string;
+  folderId: string;
+  /** Destination parent folder. Omit/null to move to the collection root. */
+  targetParentFolderId?: string | null;
 }
 
 export interface ExportCollectionPayload {
@@ -131,6 +174,8 @@ export interface ImportCollectionResult {
   ok: boolean;
   canceled?: boolean;
   collection?: Collection;
+  /** Detected Postman schema version of the imported file, e.g. "2.1.0". "unknown" if it couldn't be determined. */
+  schemaVersion?: string;
   error?: string;
 }
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLayoutStore } from '../../store/layout.store';
 import { LensSidebar } from './sidebars/LensSidebar';
-import { PostmanSidebar } from './sidebars/PostmanSidebar';
+import { PostmanSidebar } from '../../../tools/postman/PostmanSidebar';
 import { ScreenStudioSidebar } from './sidebars/ScreenStudioSidebar';
 
 export const LeftPanel: React.FC = () => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Info, Trash2 } from 'lucide-react';
-import type { WsLogEntry } from '../../../../hooks/useApiClient';
+import type { WsLogEntry } from '../hooks/useWebSocket';
 
 function formatTime(timestamp: number): string {
   const d = new Date(timestamp);

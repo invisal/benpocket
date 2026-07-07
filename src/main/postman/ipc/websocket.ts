@@ -7,7 +7,7 @@ import type {
   WsDisconnectPayload,
   WsEvent,
   WsSendPayload
-} from '../../preload/postman.types';
+} from '../../../preload/postman/types';
 
 interface ManagedConnection {
   socket: WebSocket;

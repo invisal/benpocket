@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { AlertCircle, RefreshCw } from 'lucide-react';
-import type { HttpResponsePayload } from '../../../../../../preload/postman.types';
+import type { HttpResponsePayload } from '../../../../preload/postman/types';
 
 type ResponseTabValue = 'body' | 'headers';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
-import type { KeyValueRow } from '../../../../hooks/useApiClient';
+import type { KeyValueRow } from '../lib/keyValueRows';
 import { KeySuggestInput } from './KeySuggestInput';
 
 interface KeyValueEditorProps {

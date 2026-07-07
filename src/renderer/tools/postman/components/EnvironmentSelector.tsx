@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { ChevronDown, Globe, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useEnvironmentsStore } from '../../../../store/environments.store';
+import { useEnvironmentsStore } from '../store/environments.store';
 import { KeyValueEditor } from './KeyValueEditor';
-import { withTrailingRow, type KeyValueRow } from '../../../../hooks/useApiClient';
+import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
 
 const SAVE_DEBOUNCE_MS = 400;
 

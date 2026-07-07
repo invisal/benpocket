@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plug, PlugZap, RefreshCw, Send } from 'lucide-react';
-import type { WsStatus } from '../../../../hooks/useApiClient';
+import type { WsStatus } from '../hooks/useWebSocket';
 
 function statusMeta(status: WsStatus): { label: string; className: string } {
   switch (status) {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Environment, KeyValuePair } from '../../../preload/postman.types';
+import type { Environment, KeyValuePair } from '../../../../preload/postman/types';
 
 interface EnvironmentsState {
   environments: Environment[];

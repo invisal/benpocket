@@ -6,7 +6,8 @@ export interface Tab {
   title: string;
   type: 'lens' | 'postman' | 'screenstudio' | 'home';
   instanceId: string;
-  meta?: any;
+  /** Tool-specific tab seed data (e.g. PostmanTabSeed). Each tool narrows/casts this at its own read site. */
+  meta?: unknown;
 }
 
 export interface ActivityInstance {

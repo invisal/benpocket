@@ -1,7 +1,16 @@
 import { randomUUID } from 'crypto';
-import type { Collection, HttpBodyType, HttpMethod, KeyValuePair, SavedRequest } from '../preload/postman.types';
+import type {
+  Collection,
+  CollectionFolder,
+  HttpBodyType,
+  HttpMethod,
+  KeyValuePair,
+  SavedRequest
+} from '../../preload/postman/types';
 
-// --- Minimal Postman Collection v2.1 shapes (permissive; only the fields we read/write) ---
+// --- Minimal Postman Collection v2.0 / v2.1 shapes (permissive; only the fields we read/write) ---
+// Craftbox supports importing/exporting the Postman Collection Format v2.0.0 and v2.1.0.
+// Legacy Collection Format v1 (top-level "requests"/"folders" arrays, no "item" tree) is not supported.
 
 interface PostmanHeader {
   key: string;
@@ -122,18 +131,36 @@ function importBody(body: PostmanBody | undefined): { bodyType: HttpBodyType; bo
   }
 }
 
-/** Recursively flattens Postman folders into a flat request list, prefixing names with their folder path. */
-function flattenItems(items: PostmanItem[] | undefined, prefix: string): { name: string; request: PostmanRequest }[] {
-  const result: { name: string; request: PostmanRequest }[] = [];
+function toSavedRequest(name: string, request: PostmanRequest): SavedRequest {
+  const urlString = urlToString(request.url);
+  const { bodyType, body } = importBody(request.body);
+  return {
+    id: randomUUID(),
+    name,
+    method: normalizeMethod(request.method),
+    url: urlString,
+    headers: importHeaders(request.header),
+    params: toKeyValueRows(parseQueryParams(urlString)),
+    bodyType,
+    body,
+    updatedAt: Date.now()
+  };
+}
+
+/** Recursively converts a Postman `item` array into our nested requests/folders shape. A Postman item is a request if it has `request`, or a folder if it has a nested `item` array. */
+function importItems(items: PostmanItem[] | undefined): { requests: SavedRequest[]; folders: CollectionFolder[] } {
+  const requests: SavedRequest[] = [];
+  const folders: CollectionFolder[] = [];
   for (const item of items ?? []) {
     const name = item.name ?? 'Untitled';
     if (item.request) {
-      result.push({ name: prefix ? `${prefix} / ${name}` : name, request: item.request });
+      requests.push(toSavedRequest(name, item.request));
     } else if (item.item) {
-      result.push(...flattenItems(item.item, prefix ? `${prefix} / ${name}` : name));
+      const nested = importItems(item.item);
+      folders.push({ id: randomUUID(), name, requests: nested.requests, folders: nested.folders });
     }
   }
-  return result;
+  return { requests, folders };
 }
 
 export function isPostmanCollectionFile(data: unknown): data is PostmanCollectionFile {
@@ -142,30 +169,42 @@ export function isPostmanCollectionFile(data: unknown): data is PostmanCollectio
   return typeof record.info === 'object' && record.info !== null && Array.isArray(record.item);
 }
 
-/** Postman Collection v2.1 -> our internal Collection. Folders are flattened (our model has no nesting). */
-export function importPostmanCollection(file: PostmanCollectionFile): Collection {
-  const flat = flattenItems(file.item, '');
-  const requests: SavedRequest[] = flat.map(({ name, request }) => {
-    const urlString = urlToString(request.url);
-    const { bodyType, body } = importBody(request.body);
-    return {
-      id: randomUUID(),
-      name,
-      method: normalizeMethod(request.method),
-      url: urlString,
-      headers: importHeaders(request.header),
-      params: toKeyValueRows(parseQueryParams(urlString)),
-      bodyType,
-      body,
-      updatedAt: Date.now()
-    };
-  });
+/** Detects the legacy Postman Collection Format v1 shape (flat "requests"/"folders" arrays, no "item" tree). */
+export function isLegacyPostmanV1Collection(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const record = data as Record<string, unknown>;
+  if (Array.isArray(record.item)) return false;
+  return Array.isArray(record.requests) && Array.isArray(record.folders);
+}
+
+export type PostmanSchemaVersion = '2.0.0' | '2.1.0' | 'unknown';
+
+/** Best-effort detection of the collection's schema version from `info.schema`. */
+export function detectPostmanSchemaVersion(file: PostmanCollectionFile): PostmanSchemaVersion {
+  const schema = file.info?.schema ?? '';
+  if (/\/v2\.1\.0\//.test(schema)) return '2.1.0';
+  if (/\/v2\.0\.0\//.test(schema)) return '2.0.0';
+  return 'unknown';
+}
+
+export interface PostmanImportResult {
+  collection: Collection;
+  schemaVersion: PostmanSchemaVersion;
+}
+
+/** Postman Collection v2.0 / v2.1 -> our internal Collection, preserving folder nesting. */
+export function importPostmanCollection(file: PostmanCollectionFile): PostmanImportResult {
+  const { requests, folders } = importItems(file.item);
 
   return {
-    id: randomUUID(),
-    name: file.info?.name?.trim() || 'Imported Collection',
-    createdAt: Date.now(),
-    requests
+    collection: {
+      id: randomUUID(),
+      name: file.info?.name?.trim() || 'Imported Collection',
+      createdAt: Date.now(),
+      requests,
+      folders
+    },
+    schemaVersion: detectPostmanSchemaVersion(file)
   };
 }
 
@@ -202,6 +241,28 @@ function exportUrl(url: string): PostmanUrl {
   return { raw: url, host, path: pathParts.filter(Boolean), query };
 }
 
+function exportRequestItem(request: SavedRequest): PostmanItem {
+  return {
+    name: request.name,
+    request: {
+      method: request.method,
+      header: exportHeaders(request.headers),
+      body: exportBody(request.bodyType, request.body),
+      url: exportUrl(request.url)
+    }
+  };
+}
+
+/** Recursively converts our nested requests/folders shape into a Postman `item` array (folders first, then requests). */
+function exportItems(container: { requests: SavedRequest[]; folders: CollectionFolder[] }): PostmanItem[] {
+  const folderItems: PostmanItem[] = container.folders.map((folder) => ({
+    name: folder.name,
+    item: exportItems(folder)
+  }));
+  const requestItems: PostmanItem[] = container.requests.map(exportRequestItem);
+  return [...folderItems, ...requestItems];
+}
+
 export function exportCollectionToPostman(collection: Collection): PostmanCollectionFile {
   return {
     info: {
@@ -209,14 +270,6 @@ export function exportCollectionToPostman(collection: Collection): PostmanCollec
       name: collection.name,
       schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
     },
-    item: collection.requests.map((request) => ({
-      name: request.name,
-      request: {
-        method: request.method,
-        header: exportHeaders(request.headers),
-        body: exportBody(request.bodyType, request.body),
-        url: exportUrl(request.url)
-      }
-    }))
+    item: exportItems(collection)
   };
 }

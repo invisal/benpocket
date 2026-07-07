@@ -1,7 +1,7 @@
 import React from 'react';
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown, RefreshCw, Send } from 'lucide-react';
-import type { HttpMethod } from '../../../../../../preload/postman.types';
+import type { HttpMethod } from '../../../../preload/postman/types';
 
 const METHODS: { value: HttpMethod; className: string }[] = [
   { value: 'GET', className: 'text-emerald-400' },

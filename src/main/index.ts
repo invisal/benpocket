@@ -4,11 +4,11 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import * as fs from 'fs';
 import * as path from 'path';
-import { registerHttpHandlers } from './ipc/http';
-import { registerWebSocketHandlers, closeAllWebSocketConnections } from './ipc/websocket';
-import { registerCollectionHandlers } from './ipc/collections';
-import { registerCollectionTransferHandlers } from './ipc/collectionsTransfer';
-import { registerEnvironmentHandlers } from './ipc/environments';
+import { registerHttpHandlers } from './postman/ipc/http';
+import { registerWebSocketHandlers, closeAllWebSocketConnections } from './postman/ipc/websocket';
+import { registerCollectionHandlers } from './postman/ipc/collections';
+import { registerCollectionTransferHandlers } from './postman/ipc/collectionsTransfer';
+import { registerEnvironmentHandlers } from './postman/ipc/environments';
 
 function createWindow(): void {
   // Create the browser window.

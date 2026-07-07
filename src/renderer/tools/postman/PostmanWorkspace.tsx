@@ -1,14 +1,15 @@
 import React from 'react';
 import { Tabs } from '@base-ui/react/tabs';
-import { useLayoutStore } from '../../../store/layout.store';
-import { useApiClient, type ProtocolTab } from '../../../hooks/useApiClient';
-import { RequestComposer } from './postman/RequestComposer';
-import { RequestEditorPanel } from './postman/RequestEditorPanel';
-import { ResponseInspector } from './postman/ResponseInspector';
-import { WebSocketComposer } from './postman/WebSocketComposer';
-import { WebSocketLog } from './postman/WebSocketLog';
-import { SaveRequestPopover } from './postman/SaveRequestPopover';
-import { EnvironmentSelector } from './postman/EnvironmentSelector';
+import { useLayoutStore } from '../../src/store/layout.store';
+import { useApiClient, type ProtocolTab } from './hooks/useApiClient';
+import type { PostmanTabSeed } from './types';
+import { RequestComposer } from './components/RequestComposer';
+import { RequestEditorPanel } from './components/RequestEditorPanel';
+import { ResponseInspector } from './components/ResponseInspector';
+import { WebSocketComposer } from './components/WebSocketComposer';
+import { WebSocketLog } from './components/WebSocketLog';
+import { SaveRequestPopover } from './components/SaveRequestPopover';
+import { EnvironmentSelector } from './components/EnvironmentSelector';
 
 export const PostmanWorkspace: React.FC = () => {
   const activeTabId = useLayoutStore((s) => s.activeTabId);
@@ -22,6 +23,7 @@ const PostmanClient: React.FC<{ tabId: string }> = ({ tabId }) => {
   const client = useApiClient(tabId);
   const tab = useLayoutStore((s) => s.openTabs.find((t) => t.id === tabId));
   const renameTab = useLayoutStore((s) => s.renameTab);
+  const seed = tab?.meta as PostmanTabSeed | undefined;
 
   return (
     <div className="flex-1 flex flex-col gap-3 min-h-0">
@@ -62,6 +64,8 @@ const PostmanClient: React.FC<{ tabId: string }> = ({ tabId }) => {
                 bodyType={client.http.state.bodyType}
                 body={client.http.state.body}
                 binding={client.binding}
+                defaultCollectionId={seed?.defaultCollectionId}
+                defaultFolderId={seed?.defaultFolderId}
                 onSaved={(binding, name) => {
                   client.bindTo(binding);
                   renameTab(tabId, name);

@@ -7,7 +7,7 @@ import { BottomPanel } from './BottomPanel';
 import { RightPanel } from './RightPanel';
 import { StatusBar } from './StatusBar';
 import { useLayoutStore } from '../../store/layout.store';
-import { disposeApiClientTab } from '../../hooks/useApiClient';
+import { disposeApiClientTab } from '../../../tools/postman/hooks/useApiClient';
 import { useThemeStore } from '../../store/theme.store';
 
 export const AppShell: React.FC = () => {

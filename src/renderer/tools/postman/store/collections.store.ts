@@ -4,7 +4,7 @@ import type {
   ExportCollectionResult,
   ImportCollectionResult,
   SavedRequest
-} from '../../../preload/postman.types';
+} from '../../../../preload/postman/types';
 
 interface CollectionsState {
   collections: Collection[];
@@ -13,12 +13,17 @@ interface CollectionsState {
   createCollection: (name: string) => Promise<Collection>;
   renameCollection: (collectionId: string, name: string) => Promise<void>;
   deleteCollection: (collectionId: string) => Promise<void>;
-  saveRequest: (collectionId: string, request: SavedRequest) => Promise<void>;
+  saveRequest: (collectionId: string, request: SavedRequest, folderId?: string | null) => Promise<void>;
   renameRequest: (collectionId: string, requestId: string, name: string) => Promise<void>;
   deleteRequest: (collectionId: string, requestId: string) => Promise<void>;
+  createFolder: (collectionId: string, parentFolderId: string | null, name: string) => Promise<void>;
+  renameFolder: (collectionId: string, folderId: string, name: string) => Promise<void>;
+  deleteFolder: (collectionId: string, folderId: string) => Promise<void>;
+  moveRequest: (collectionId: string, requestId: string, targetFolderId: string | null) => Promise<void>;
+  moveFolder: (collectionId: string, folderId: string, targetParentFolderId: string | null) => Promise<void>;
   /** Prompts a save dialog and writes the collection as a Postman v2.1 file. */
   exportCollection: (collectionId: string) => Promise<ExportCollectionResult>;
-  /** Prompts an open dialog, parses a Postman v2.1 collection file, and adds it as a new collection. */
+  /** Prompts an open dialog, parses a Postman v2.0 or v2.1 collection file, and adds it as a new collection. */
   importCollection: () => Promise<ImportCollectionResult>;
 }
 
@@ -51,8 +56,8 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     await get().load();
   },
 
-  saveRequest: async (collectionId, request) => {
-    await window.api.collections.saveRequest({ collectionId, request });
+  saveRequest: async (collectionId, request, folderId) => {
+    await window.api.collections.saveRequest({ collectionId, request, folderId });
     await get().load();
   },
 
@@ -63,6 +68,31 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
 
   deleteRequest: async (collectionId, requestId) => {
     await window.api.collections.deleteRequest({ collectionId, requestId });
+    await get().load();
+  },
+
+  createFolder: async (collectionId, parentFolderId, name) => {
+    await window.api.collections.createFolder({ collectionId, parentFolderId, name });
+    await get().load();
+  },
+
+  renameFolder: async (collectionId, folderId, name) => {
+    await window.api.collections.renameFolder({ collectionId, folderId, name });
+    await get().load();
+  },
+
+  deleteFolder: async (collectionId, folderId) => {
+    await window.api.collections.deleteFolder({ collectionId, folderId });
+    await get().load();
+  },
+
+  moveRequest: async (collectionId, requestId, targetFolderId) => {
+    await window.api.collections.moveRequest({ collectionId, requestId, targetFolderId });
+    await get().load();
+  },
+
+  moveFolder: async (collectionId, folderId, targetParentFolderId) => {
+    await window.api.collections.moveFolder({ collectionId, folderId, targetParentFolderId });
     await get().load();
   },
 

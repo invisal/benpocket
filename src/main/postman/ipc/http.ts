@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import type { HttpRequestPayload, HttpResponsePayload, KeyValuePair } from '../../preload/postman.types';
+import type { HttpRequestPayload, HttpResponsePayload, KeyValuePair } from '../../../preload/postman/types';
 
 const DEFAULT_TIMEOUT_MS = 30000;
 

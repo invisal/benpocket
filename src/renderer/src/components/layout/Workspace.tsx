@@ -3,7 +3,7 @@ import { FileText, X } from 'lucide-react';
 import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { HomeTab } from './HomeTab';
 import { LensWorkspace } from './workspaces/LensWorkspace';
-import { PostmanWorkspace } from './workspaces/PostmanWorkspace';
+import { PostmanWorkspace } from '../../../tools/postman/PostmanWorkspace';
 import { ScreenStudioWorkspace } from './workspaces/ScreenStudioWorkspace';
 
 export const Workspace: React.FC = () => {

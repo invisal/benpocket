@@ -8,7 +8,7 @@ import type {
   RenameEnvironmentPayload,
   SaveEnvironmentVariablesPayload,
   WsAckResult
-} from '../../preload/postman.types';
+} from '../../../preload/postman/types';
 
 function storeFilePath(): string {
   return path.join(app.getPath('userData'), 'postman-environments.json');

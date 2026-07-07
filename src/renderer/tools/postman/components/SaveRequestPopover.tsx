@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Save } from 'lucide-react';
-import { useCollectionsStore } from '../../../../store/collections.store';
-import type { HttpBodyType, HttpMethod } from '../../../../../../preload/postman.types';
-import type { KeyValueRow, SavedBinding } from '../../../../hooks/useApiClient';
+import { useCollectionsStore } from '../store/collections.store';
+import type { HttpBodyType, HttpMethod } from '../../../../preload/postman/types';
+import type { KeyValueRow } from '../lib/keyValueRows';
+import type { SavedBinding } from '../types';
+import { findRequestInContainer, flattenFolderOptions } from '../lib/collectionTree';
 
 interface SaveRequestPopoverProps {
   tabTitle: string;
@@ -14,6 +16,9 @@ interface SaveRequestPopoverProps {
   bodyType: HttpBodyType;
   body: string;
   binding: SavedBinding | null;
+  /** Pre-select this collection/folder on first open, e.g. when the tab was opened via "new request in folder". Ignored once `binding` is set. */
+  defaultCollectionId?: string;
+  defaultFolderId?: string | null;
   onSaved: (binding: SavedBinding, name: string) => void;
 }
 
@@ -31,12 +36,15 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
   bodyType,
   body,
   binding,
+  defaultCollectionId,
+  defaultFolderId,
   onSaved
 }) => {
   const { collections, isLoaded, load, createCollection, saveRequest } = useCollectionsStore();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(tabTitle);
   const [collectionId, setCollectionId] = useState('');
+  const [folderId, setFolderId] = useState<string>('');
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -48,14 +56,28 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
   useEffect(() => {
     if (!open) return;
     const boundCollection = binding ? collections.find((c) => c.id === binding.collectionId) : undefined;
-    const boundRequest = boundCollection?.requests.find((r) => r.id === binding?.requestId);
+    const boundRequest = boundCollection && binding ? findRequestInContainer(boundCollection, binding.requestId) : undefined;
     setName(boundRequest?.name ?? tabTitle);
-    setCollectionId(boundCollection?.id ?? collections[0]?.id ?? '');
+    if (binding) {
+      setCollectionId(boundCollection?.id ?? collections[0]?.id ?? '');
+      setFolderId('');
+    } else {
+      const fallsBackTo = defaultCollectionId && collections.some((c) => c.id === defaultCollectionId);
+      setCollectionId(fallsBackTo ? defaultCollectionId! : (collections[0]?.id ?? ''));
+      setFolderId(fallsBackTo ? (defaultFolderId ?? '') : '');
+    }
     setIsCreatingCollection(collections.length === 0);
     setNewCollectionName('');
     // Only re-derive defaults each time the popover is (re)opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const isUpdatingExisting = !!binding && binding.collectionId === collectionId;
+  const selectedCollection = collections.find((c) => c.id === collectionId);
+  const folderOptions = useMemo(
+    () => (selectedCollection ? flattenFolderOptions(selectedCollection.folders) : []),
+    [selectedCollection]
+  );
 
   const handleConfirm = async (): Promise<void> => {
     const trimmedName = name.trim() || 'Untitled Request';
@@ -69,17 +91,21 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
       if (!targetCollectionId) return;
 
       const requestId = binding && binding.collectionId === targetCollectionId ? binding.requestId : makeRequestId();
-      await saveRequest(targetCollectionId, {
-        id: requestId,
-        name: trimmedName,
-        method,
-        url,
-        headers,
-        params,
-        bodyType,
-        body,
-        updatedAt: Date.now()
-      });
+      await saveRequest(
+        targetCollectionId,
+        {
+          id: requestId,
+          name: trimmedName,
+          method,
+          url,
+          headers,
+          params,
+          bodyType,
+          body,
+          updatedAt: Date.now()
+        },
+        folderId || null
+      );
       onSaved({ collectionId: targetCollectionId, requestId }, trimmedName);
       setOpen(false);
     } finally {
@@ -124,7 +150,10 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
               ) : (
                 <select
                   value={collectionId}
-                  onChange={(e) => setCollectionId(e.target.value)}
+                  onChange={(e) => {
+                    setCollectionId(e.target.value);
+                    setFolderId('');
+                  }}
                   className="bg-editor-bg border border-border-dark rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
                 >
                   {collections.map((c) => (
@@ -144,6 +173,24 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
                 </button>
               )}
             </label>
+
+            {!isCreatingCollection && !isUpdatingExisting && folderOptions.length > 0 && (
+              <label className="flex flex-col gap-1">
+                <span className="text-zinc-500">Folder</span>
+                <select
+                  value={folderId}
+                  onChange={(e) => setFolderId(e.target.value)}
+                  className="bg-editor-bg border border-border-dark rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
+                >
+                  <option value="">Collection Root</option>
+                  {folderOptions.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {'—'.repeat(f.depth)} {f.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             <div className="flex justify-end gap-2 mt-1">
               <Popover.Close className="px-3 py-1.5 text-zinc-400 hover:text-white text-xs cursor-pointer">

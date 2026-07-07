@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
-import type { HttpBodyType } from '../../../../../../preload/postman.types';
-import type { KeyValueRow } from '../../../../hooks/useApiClient';
+import type { HttpBodyType } from '../../../../preload/postman/types';
+import type { KeyValueRow } from '../lib/keyValueRows';
 import { KeyValueEditor } from './KeyValueEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 

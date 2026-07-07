@@ -8,15 +8,21 @@ import { RightPanel } from './RightPanel';
 import { StatusBar } from './StatusBar';
 import { useLayoutStore } from '../../store/layout.store';
 import { disposeApiClientTab } from '../../hooks/useApiClient';
+import { useThemeStore } from '../../store/theme.store';
 
 export const AppShell: React.FC = () => {
+  const theme = useThemeStore((state) => state.theme);
+
   // Disconnect sockets / drop cached request state for Postman tabs once
   // they're actually closed, so long-lived WebSocket connections don't leak.
   const knownPostmanTabIds = useRef<Set<string>>(new Set());
+
   useEffect(
     () =>
       useLayoutStore.subscribe((state) => {
-        const currentIds = new Set(state.openTabs.filter((t) => t.type === 'postman').map((t) => t.id));
+        const currentIds = new Set(
+          state.openTabs.filter((t) => t.type === 'postman').map((t) => t.id)
+        );
         for (const id of knownPostmanTabIds.current) {
           if (!currentIds.has(id)) disposeApiClientTab(id);
         }
@@ -24,6 +30,10 @@ export const AppShell: React.FC = () => {
       }),
     []
   );
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light');
+  }, [theme]);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-zinc-900 text-zinc-300 font-sans antialiased">

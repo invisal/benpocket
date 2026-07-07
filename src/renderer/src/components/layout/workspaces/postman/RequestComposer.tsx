@@ -77,8 +77,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
       />
       <button
         onClick={onSend}
-        disabled={isLoading || !url.trim()}
-        className="px-4 py-1.5 bg-accent/80 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
+        className="px-4 py-1.5 bg-accent/80 hover:bg-accent text-[#fff] text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
       >
         {isLoading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
         <span>Send</span>

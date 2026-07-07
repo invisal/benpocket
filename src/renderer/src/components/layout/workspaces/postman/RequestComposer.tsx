@@ -47,7 +47,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
       />
       <button
         onClick={onSend}
-        className="px-4 py-1.5 bg-accent/80 hover:bg-accent text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
+        className="px-4 py-1.5 bg-accent/80 hover:bg-accent text-[#fff] text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
       >
         {isPostmanLoading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
         <span>Send</span>

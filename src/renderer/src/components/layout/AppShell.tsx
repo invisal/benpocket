@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TitleBar } from './TitleBar';
 import { ActivityBar } from './ActivityBar';
 import { LeftPanel } from './LeftPanel';
@@ -6,8 +6,15 @@ import { Workspace } from './Workspace';
 import { BottomPanel } from './BottomPanel';
 import { RightPanel } from './RightPanel';
 import { StatusBar } from './StatusBar';
+import { useThemeStore } from '../../store/theme.store';
 
 export const AppShell: React.FC = () => {
+  const theme = useThemeStore((state) => state.theme);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light');
+  }, [theme]);
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-zinc-900 text-zinc-300 font-sans antialiased">
       {/* 1. TOP CUSTOM TITLE BAR */}

@@ -25,6 +25,7 @@
     "@base-ui/react": "^1.6.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "cnfast": "^0.0.8",
     "lucide-react": "^1.23.0",
     "zustand": "^5.0.14"
   },

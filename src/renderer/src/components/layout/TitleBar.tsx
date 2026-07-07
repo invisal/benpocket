@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Minus, Square, Copy } from 'lucide-react';
+import { X, Minus, Square, Copy, Sun, Moon } from 'lucide-react';
 import { useLayoutStore } from '../../store/layout.store';
+import { useThemeStore } from '../../store/theme.store';
 
 export const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -14,6 +15,8 @@ export const TitleBar: React.FC = () => {
     isBottomPanelOpen,
     toggleBottomPanel
   } = useLayoutStore();
+
+  const { theme, toggleTheme } = useThemeStore();
 
   const handleMinimize = () => {
     window.api?.minimize();
@@ -96,6 +99,15 @@ export const TitleBar: React.FC = () => {
               <path d="M14 2H2c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zM10 13H2V4h8v9zm4 0h-3V4h3v9z" />
             </svg>
           </button>
+
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            title="Toggle Light/Dark Theme"
+            className="w-8 h-6.5 rounded hover:bg-border-dark flex items-center justify-center transition-colors cursor-pointer border-none bg-transparent text-zinc-500 hover:text-zinc-200"
+          >
+            {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
+          </button>
         </div>
 
         {/* OS Specific Controls */}
@@ -115,7 +127,7 @@ export const TitleBar: React.FC = () => {
             </button>
             <button
               onClick={handleClose}
-              className="w-11 h-8 hover:bg-red-500/90 flex items-center justify-center transition-colors text-zinc-500 hover:text-white"
+              className="w-11 h-8 hover:bg-red-500/90 flex items-center justify-center transition-colors text-zinc-500 hover:text-[#fff]"
             >
               <X size={14} />
             </button>

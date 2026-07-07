@@ -75,7 +75,7 @@ export const RightPanel: React.FC = () => {
           placeholder="Ask Copilot..."
           className="flex-1 bg-editor-bg border border-border-dark rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-accent placeholder-zinc-650"
         />
-        <button className="p-1.5 bg-editor-bg hover:bg-accent rounded text-zinc-400 hover:text-white cursor-pointer transition-all">
+        <button className="p-1.5 bg-editor-bg hover:bg-accent rounded text-zinc-400 hover:text-[#fff] cursor-pointer transition-all">
           <Send size={12} />
         </button>
       </div>

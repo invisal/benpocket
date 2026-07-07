@@ -9,22 +9,60 @@
   --color-border-dark: #313244; /* Catppuccin Mocha Surface 0 */
   --color-text-dim: #a6adc8; /* Catppuccin Mocha Subtext 0 */
   --color-accent: #89b4fa; /* Catppuccin Mocha Blue */
+  --color-danger: #f38ba8; /* Catppuccin Mocha Red */
+  --color-surface: #45475a; /* Catppuccin Mocha Surface 1 */
+  --color-emphasis-text: #11111b; /* Catppuccin Mocha Crust — text on accent/danger fills */
+  --color-text-base: #cdd6f4; /* Catppuccin Mocha Text */
+  --color-scrollbar-track: #181825;
+  --color-scrollbar-thumb: #313244;
+  --color-scrollbar-thumb-hover: #45475a;
 }
 
-/* Custom scrollbars matching the Catppuccin theme */
+/* Light theme (Catppuccin Latte), toggled via a `.light` class on <html> */
+:root.light {
+  --color-editor-bg: #eff1f5; /* Catppuccin Latte Base */
+  --color-sidebar-bg: #e6e9ef; /* Catppuccin Latte Mantle */
+  --color-activity-bg: #dce0e8; /* Catppuccin Latte Crust */
+  --color-bottom-bg: #e6e9ef; /* Catppuccin Latte Mantle */
+  --color-status-bg: #dce0e8; /* Catppuccin Latte Crust */
+  --color-border-dark: #ccd0da; /* Catppuccin Latte Surface 0 */
+  --color-text-dim: #6c6f85; /* Catppuccin Latte Subtext 0 */
+  --color-accent: #1e66f5; /* Catppuccin Latte Blue */
+  --color-danger: #d20f39; /* Catppuccin Latte Red */
+  --color-surface: #bcc0cc; /* Catppuccin Latte Surface 1 */
+  --color-emphasis-text: #ffffff; /* Latte's accent/danger are saturated — need light text */
+  --color-text-base: #4c4f69; /* Catppuccin Latte Text */
+  --color-scrollbar-track: #e6e9ef;
+  --color-scrollbar-thumb: #ccd0da;
+  --color-scrollbar-thumb-hover: #bcc0cc;
+
+  /* Many components reach for raw zinc-* utilities as an ad hoc text/bg
+     hierarchy on top of the tokens above. Mirroring the scale (200<->800,
+     300<->700, 400<->600, 900<->100) keeps that hierarchy legible against
+     a light background without editing every call site. */
+  --color-zinc-200: #27272a;
+  --color-zinc-300: #3f3f46;
+  --color-zinc-400: #52525b;
+  --color-zinc-600: #a1a1aa;
+  --color-zinc-800: #e4e4e7;
+  --color-zinc-900: #f4f4f5;
+  --color-white: #18181b;
+}
+
+/* Custom scrollbars matching the active theme */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #181825;
+  background: var(--color-scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: #313244;
+  background: var(--color-scrollbar-thumb);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #45475a;
+  background: var(--color-scrollbar-thumb-hover);
 }
 
 /* Global overrides for full-screen desktop application */
@@ -34,8 +72,8 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #1e1e2e;
-  color: #cdd6f4;
+  background-color: var(--color-editor-bg);
+  color: var(--color-text-base);
   font-family:
     'Inter',
     -apple-system,
@@ -47,6 +85,12 @@ body,
     sans-serif;
   overflow: hidden;
   user-select: none;
+}
+
+body {
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 /* Titlebar dragging configurations */

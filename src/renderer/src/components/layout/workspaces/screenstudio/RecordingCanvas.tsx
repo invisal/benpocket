@@ -52,7 +52,7 @@ export const RecordingCanvas: React.FC<RecordingCanvasProps> = ({
           </span>
 
           {isRecording && (
-            <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-red-600 text-white rounded text-[9px] font-bold tracking-widest">
+            <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-red-600 text-[#fff] rounded text-[9px] font-bold tracking-widest">
               REC
             </div>
           )}
@@ -65,8 +65,8 @@ export const RecordingCanvas: React.FC<RecordingCanvasProps> = ({
           onClick={() => setIsRecording(!isRecording)}
           className={`px-6 py-1.5 text-xs font-semibold rounded cursor-pointer transition-all ${
             isRecording
-              ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/10'
-              : 'bg-accent/80 hover:bg-accent text-white'
+              ? 'bg-red-600 hover:bg-red-500 text-[#fff] shadow-lg shadow-red-900/10'
+              : 'bg-accent/80 hover:bg-accent text-[#fff]'
           }`}
         >
           {isRecording ? 'Stop Recording' : 'Start Studio Capture'}

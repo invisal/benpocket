@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FileText, X } from 'lucide-react';
-import { useLayoutStore } from '../../store/layout.store';
+import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { HomeTab } from './HomeTab';
 import { LensWorkspace } from './workspaces/LensWorkspace';
 import { PostmanWorkspace } from './workspaces/PostmanWorkspace';
 import { ScreenStudioWorkspace } from './workspaces/ScreenStudioWorkspace';
 
 export const Workspace: React.FC = () => {
-  const { openTabs, activeTabId, setActiveTabId, closeTab } = useLayoutStore();
+  const { openTabs, activeTabId, setActiveTabId, closeTab, renameTab } = useLayoutStore();
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const filteredTabs = openTabs.filter((t) => t.instanceId === activeInstanceId);
@@ -32,32 +32,16 @@ export const Workspace: React.FC = () => {
     <div className="flex-1 bg-editor-bg flex flex-col min-w-0 overflow-hidden">
       {/* Tab bar header */}
       <div className="flex h-9 bg-sidebar-bg border-b border-border-dark overflow-x-auto select-none shrink-0 scrollbar-none">
-        {filteredTabs.map((tab) => {
-          const isActive = tab.id === activeTabId;
-          return (
-            <div
-              key={tab.id}
-              onClick={() => setActiveTabId(tab.id)}
-              className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
-                isActive
-                  ? 'bg-editor-bg text-white border-t-2 border-t-accent'
-                  : 'bg-sidebar-bg text-zinc-550 hover:bg-editor-bg/40 hover:text-zinc-300'
-              }`}
-            >
-              <FileText size={12} className={isActive ? 'text-accent' : 'text-zinc-600'} />
-              <span className="truncate max-w-[120px]">{tab.title}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeTab(tab.id);
-                }}
-                className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-555 group-hover:text-zinc-400 hover:text-white"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          );
-        })}
+        {filteredTabs.map((tab) => (
+          <TabBarItem
+            key={tab.id}
+            tab={tab}
+            isActive={tab.id === activeTabId}
+            onActivate={() => setActiveTabId(tab.id)}
+            onClose={() => closeTab(tab.id)}
+            onRename={(title) => renameTab(tab.id, title)}
+          />
+        ))}
       </div>
 
       {/* Editor Content Area */}
@@ -66,6 +50,77 @@ export const Workspace: React.FC = () => {
         {activeTab.type === 'postman' && <PostmanWorkspace />}
         {activeTab.type === 'screenstudio' && <ScreenStudioWorkspace />}
       </div>
+    </div>
+  );
+};
+
+interface TabBarItemProps {
+  tab: Tab;
+  isActive: boolean;
+  onActivate: () => void;
+  onClose: () => void;
+  onRename: (title: string) => void;
+}
+
+const TabBarItem: React.FC<TabBarItemProps> = ({ tab, isActive, onActivate, onClose, onRename }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(tab.title);
+
+  const commitRename = (): void => {
+    const trimmed = draftTitle.trim();
+    if (trimmed && trimmed !== tab.title) onRename(trimmed);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-2 px-3 border-r border-border-dark text-xs shrink-0 bg-editor-bg text-white border-t-2 border-t-accent">
+        <FileText size={12} className="text-accent" />
+        <input
+          type="text"
+          autoFocus
+          value={draftTitle}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename();
+            if (e.key === 'Escape') {
+              setDraftTitle(tab.title);
+              setIsEditing(false);
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-transparent border-b border-accent outline-none w-24 text-white"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={onActivate}
+      onDoubleClick={() => {
+        setDraftTitle(tab.title);
+        setIsEditing(true);
+      }}
+      title="Double-click to rename"
+      className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
+        isActive
+          ? 'bg-editor-bg text-white border-t-2 border-t-accent'
+          : 'bg-sidebar-bg text-zinc-550 hover:bg-editor-bg/40 hover:text-zinc-300'
+      }`}
+    >
+      <FileText size={12} className={isActive ? 'text-accent' : 'text-zinc-600'} />
+      <span className="truncate max-w-30">{tab.title}</span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-555 group-hover:text-zinc-400 hover:text-white"
+      >
+        <X size={10} />
+      </button>
     </div>
   );
 };

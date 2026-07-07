@@ -1,55 +1,86 @@
 import React from 'react';
-import { RefreshCw, Send } from 'lucide-react';
+import { Select } from '@base-ui/react/select';
+import { Check, ChevronDown, RefreshCw, Send } from 'lucide-react';
+import type { HttpMethod } from '../../../../../../preload/postman.types';
+
+const METHODS: { value: HttpMethod; className: string }[] = [
+  { value: 'GET', className: 'text-emerald-400' },
+  { value: 'POST', className: 'text-amber-500' },
+  { value: 'PUT', className: 'text-sky-500' },
+  { value: 'PATCH', className: 'text-purple-400' },
+  { value: 'DELETE', className: 'text-red-500' },
+  { value: 'HEAD', className: 'text-zinc-400' },
+  { value: 'OPTIONS', className: 'text-zinc-400' }
+];
+
+function colorFor(method: string): string {
+  return METHODS.find((m) => m.value === method)?.className ?? 'text-zinc-300';
+}
 
 interface RequestComposerProps {
-  httpMethod: string;
-  setHttpMethod: (method: string) => void;
-  requestUrl: string;
-  setRequestUrl: (url: string) => void;
-  isPostmanLoading: boolean;
+  method: HttpMethod;
+  onMethodChange: (method: HttpMethod) => void;
+  url: string;
+  onUrlChange: (url: string) => void;
+  isLoading: boolean;
   onSend: () => void;
 }
 
 export const RequestComposer: React.FC<RequestComposerProps> = ({
-  httpMethod,
-  setHttpMethod,
-  requestUrl,
-  setRequestUrl,
-  isPostmanLoading,
+  method,
+  onMethodChange,
+  url,
+  onUrlChange,
+  isLoading,
   onSend
 }) => {
   return (
     <div className="flex gap-2 shrink-0">
-      <select
-        value={httpMethod}
-        onChange={(e) => setHttpMethod(e.target.value)}
-        className="bg-sidebar-bg border border-border-dark text-xs rounded px-3 py-1.5 focus:outline-none focus:border-accent text-emerald-400 font-extrabold cursor-pointer"
-      >
-        <option value="GET" className="text-emerald-500">
-          GET
-        </option>
-        <option value="POST" className="text-amber-500">
-          POST
-        </option>
-        <option value="PUT" className="text-sky-500">
-          PUT
-        </option>
-        <option value="DELETE" className="text-red-500">
-          DELETE
-        </option>
-      </select>
+      <Select.Root value={method} onValueChange={(value) => onMethodChange(value as HttpMethod)}>
+        <Select.Trigger
+          className={`flex items-center gap-1.5 bg-sidebar-bg border border-border-dark text-xs rounded px-3 py-1.5 focus:outline-none focus:border-accent font-extrabold cursor-pointer min-w-23 justify-between ${colorFor(method)}`}
+        >
+          <Select.Value />
+          <Select.Icon>
+            <ChevronDown size={12} className="text-zinc-500" />
+          </Select.Icon>
+        </Select.Trigger>
+        <Select.Portal>
+          <Select.Positioner sideOffset={4} className="z-50">
+            <Select.Popup className="bg-sidebar-bg border border-border-dark rounded-md shadow-xl py-1 text-xs min-w-27.5 outline-none">
+              {METHODS.map((m) => (
+                <Select.Item
+                  key={m.value}
+                  value={m.value}
+                  className={`flex items-center justify-between gap-2 px-3 py-1.5 cursor-pointer font-bold data-highlighted:bg-border-dark/60 outline-none ${m.className}`}
+                >
+                  <Select.ItemText>{m.value}</Select.ItemText>
+                  <Select.ItemIndicator>
+                    <Check size={12} />
+                  </Select.ItemIndicator>
+                </Select.Item>
+              ))}
+            </Select.Popup>
+          </Select.Positioner>
+        </Select.Portal>
+      </Select.Root>
+
       <input
         type="text"
-        placeholder="Enter API Endpoint..."
-        value={requestUrl}
-        onChange={(e) => setRequestUrl(e.target.value)}
+        placeholder="Enter request URL, e.g. https://api.example.com/v1/resource"
+        value={url}
+        onChange={(e) => onUrlChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onSend();
+        }}
         className="flex-1 bg-sidebar-bg border border-border-dark text-xs rounded px-3 py-1.5 focus:outline-none focus:border-accent text-zinc-200"
       />
       <button
         onClick={onSend}
-        className="px-4 py-1.5 bg-accent/80 hover:bg-accent text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
+        disabled={isLoading || !url.trim()}
+        className="px-4 py-1.5 bg-accent/80 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
       >
-        {isPostmanLoading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
+        {isLoading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
         <span>Send</span>
       </button>
     </div>

@@ -4,6 +4,11 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import * as fs from 'fs';
 import * as path from 'path';
+import { registerHttpHandlers } from './ipc/http';
+import { registerWebSocketHandlers, closeAllWebSocketConnections } from './ipc/websocket';
+import { registerCollectionHandlers } from './ipc/collections';
+import { registerCollectionTransferHandlers } from './ipc/collectionsTransfer';
+import { registerEnvironmentHandlers } from './ipc/environments';
 
 function createWindow(): void {
   // Create the browser window.
@@ -129,6 +134,15 @@ app.whenReady().then(() => {
     };
   });
 
+  // API testing client (REST + WebSocket) - all networking runs here in the
+  // main process to avoid renderer CORS restrictions and keep sockets alive
+  // across renderer tab switches / reloads.
+  registerHttpHandlers();
+  registerWebSocketHandlers();
+  registerCollectionHandlers();
+  registerCollectionTransferHandlers();
+  registerEnvironmentHandlers();
+
   createWindow();
 
   app.on('activate', function () {
@@ -142,6 +156,7 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  closeAllWebSocketConnections();
   if (process.platform !== 'darwin') {
     app.quit();
   }

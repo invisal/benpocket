@@ -1,0 +1,32 @@
+// Common HTTP request header names, offered as autocomplete suggestions
+// when composing headers in the REST client.
+export const COMMON_HTTP_HEADERS: string[] = [
+  'Accept',
+  'Accept-Charset',
+  'Accept-Encoding',
+  'Accept-Language',
+  'Authorization',
+  'Cache-Control',
+  'Connection',
+  'Content-Length',
+  'Content-Type',
+  'Cookie',
+  'DNT',
+  'Host',
+  'If-Match',
+  'If-Modified-Since',
+  'If-None-Match',
+  'Origin',
+  'Pragma',
+  'Range',
+  'Referer',
+  'Upgrade-Insecure-Requests',
+  'User-Agent',
+  'X-API-Key',
+  'X-Auth-Token',
+  'X-Correlation-Id',
+  'X-CSRF-Token',
+  'X-Forwarded-For',
+  'X-Request-Id',
+  'X-Requested-With'
+];

@@ -1,0 +1,165 @@
+import React, { useEffect, useState } from 'react';
+import { Popover } from '@base-ui/react/popover';
+import { Save } from 'lucide-react';
+import { useCollectionsStore } from '../../../../store/collections.store';
+import type { HttpBodyType, HttpMethod } from '../../../../../../preload/postman.types';
+import type { KeyValueRow, SavedBinding } from '../../../../hooks/useApiClient';
+
+interface SaveRequestPopoverProps {
+  tabTitle: string;
+  method: HttpMethod;
+  url: string;
+  headers: KeyValueRow[];
+  params: KeyValueRow[];
+  bodyType: HttpBodyType;
+  body: string;
+  binding: SavedBinding | null;
+  onSaved: (binding: SavedBinding, name: string) => void;
+}
+
+function makeRequestId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
+  tabTitle,
+  method,
+  url,
+  headers,
+  params,
+  bodyType,
+  body,
+  binding,
+  onSaved
+}) => {
+  const { collections, isLoaded, load, createCollection, saveRequest } = useCollectionsStore();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(tabTitle);
+  const [collectionId, setCollectionId] = useState('');
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded) load();
+  }, [isLoaded, load]);
+
+  useEffect(() => {
+    if (!open) return;
+    const boundCollection = binding ? collections.find((c) => c.id === binding.collectionId) : undefined;
+    const boundRequest = boundCollection?.requests.find((r) => r.id === binding?.requestId);
+    setName(boundRequest?.name ?? tabTitle);
+    setCollectionId(boundCollection?.id ?? collections[0]?.id ?? '');
+    setIsCreatingCollection(collections.length === 0);
+    setNewCollectionName('');
+    // Only re-derive defaults each time the popover is (re)opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handleConfirm = async (): Promise<void> => {
+    const trimmedName = name.trim() || 'Untitled Request';
+    setIsSaving(true);
+    try {
+      let targetCollectionId = collectionId;
+      if (isCreatingCollection) {
+        const created = await createCollection(newCollectionName.trim() || 'Untitled Collection');
+        targetCollectionId = created.id;
+      }
+      if (!targetCollectionId) return;
+
+      const requestId = binding && binding.collectionId === targetCollectionId ? binding.requestId : makeRequestId();
+      await saveRequest(targetCollectionId, {
+        id: requestId,
+        name: trimmedName,
+        method,
+        url,
+        headers,
+        params,
+        bodyType,
+        body,
+        updatedAt: Date.now()
+      });
+      onSaved({ collectionId: targetCollectionId, requestId }, trimmedName);
+      setOpen(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const canConfirm = name.trim().length > 0 && (isCreatingCollection ? newCollectionName.trim().length > 0 : collectionId);
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger className="px-3 py-1.5 bg-sidebar-bg border border-border-dark hover:border-accent text-zinc-300 hover:text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors">
+        <Save size={12} />
+        <span>Save</span>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner sideOffset={8} align="end" className="z-50">
+          <Popover.Popup className="bg-sidebar-bg border border-border-dark rounded-lg shadow-xl p-3 w-72 flex flex-col gap-3 text-xs outline-none">
+            <div className="font-bold text-zinc-300 uppercase tracking-wider text-[10px]">Save Request</div>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-zinc-500">Request name</span>
+              <input
+                type="text"
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-editor-bg border border-border-dark rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-zinc-500">Collection</span>
+              {isCreatingCollection ? (
+                <input
+                  type="text"
+                  placeholder="New collection name..."
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  className="bg-editor-bg border border-accent rounded px-2 py-1.5 text-zinc-200 focus:outline-none"
+                />
+              ) : (
+                <select
+                  value={collectionId}
+                  onChange={(e) => setCollectionId(e.target.value)}
+                  className="bg-editor-bg border border-border-dark rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
+                >
+                  {collections.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {collections.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingCollection((v) => !v)}
+                  className="self-start text-[10px] text-accent hover:underline cursor-pointer"
+                >
+                  {isCreatingCollection ? 'Choose existing collection' : '+ New collection'}
+                </button>
+              )}
+            </label>
+
+            <div className="flex justify-end gap-2 mt-1">
+              <Popover.Close className="px-3 py-1.5 text-zinc-400 hover:text-white text-xs cursor-pointer">
+                Cancel
+              </Popover.Close>
+              <button
+                onClick={handleConfirm}
+                disabled={!canConfirm || isSaving}
+                className="px-3 py-1.5 bg-accent/80 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-white rounded cursor-pointer font-semibold transition-colors"
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+};

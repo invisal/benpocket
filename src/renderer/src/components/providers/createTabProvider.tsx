@@ -174,9 +174,9 @@ export function createTabProvider<TTool extends Tool<string, any>>(tools: readon
           return (
             <div
               key={tab.id}
-              className={`absolute inset-0 ${
-                isTabActive ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
-              }`}
+              style={{
+                visibility: isTabActive ? 'inherit' : 'hidden'
+              }}
             >
               <TabOutlet tab={tab} />
             </div>

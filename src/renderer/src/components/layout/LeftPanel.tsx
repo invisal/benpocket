@@ -2,7 +2,7 @@ import React from 'react';
 import { useLayoutStore } from '../../store/layout.store';
 import { LensSidebar } from './sidebars/LensSidebar';
 import { PostmanSidebar } from '../../../tools/postman/PostmanSidebar';
-import { ScreenStudioSidebar } from './sidebars/ScreenStudioSidebar';
+import { ScreenStudioSidebar } from '../../../tools/screen-studio/sidebar/ScreenStudioSidebar';
 
 export const LeftPanel: React.FC = () => {
   const { leftPanelWidth, setLeftPanelWidth, activeActivity, isLeftPanelOpen } = useLayoutStore();

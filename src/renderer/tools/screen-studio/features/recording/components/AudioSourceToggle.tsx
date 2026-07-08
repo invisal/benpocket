@@ -15,27 +15,27 @@ export function AudioSourceToggle(): JSX.Element {
   const setAudio = useRecordingStore((state) => state.setAudio);
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={audio.microphoneEnabled}
-            onChange={(e) => setAudio({ microphoneEnabled: e.target.checked })}
-          />
-          Microphone
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={audio.systemAudioEnabled}
-            onChange={(e) => setAudio({ systemAudioEnabled: e.target.checked })}
-          />
-          System audio
-        </label>
-      </div>
+    <div className="flex flex-col gap-1.5">
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={audio.microphoneEnabled}
+          onChange={(e) => setAudio({ microphoneEnabled: e.target.checked })}
+          className="h-3.5 w-3.5 accent-accent"
+        />
+        Microphone
+      </label>
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={audio.systemAudioEnabled}
+          onChange={(e) => setAudio({ systemAudioEnabled: e.target.checked })}
+          className="h-3.5 w-3.5 accent-accent"
+        />
+        System audio
+      </label>
       {audio.systemAudioEnabled && isLikelyMac && (
-        <p className="text-xs text-white/40">
+        <p className="text-[11px] text-white/40">
           System audio capture is unreliable on macOS without a virtual audio driver -- this may
           record silence.
         </p>

@@ -1,28 +1,32 @@
-import type { ComponentType, JSX } from 'react'
-import { Circle, FolderOpen, Settings as SettingsIcon, Sliders } from 'lucide-react'
-import { useAppStore, type ScreenStudioRoute } from './app/app-store'
-import { cn } from './lib/utils'
-import { RecordSetupPage } from './workspace/record-setup/RecordSetupPage'
-import { EditorPage } from './workspace/editor/EditorPage'
-import { LibraryPage } from './workspace/library/LibraryPage'
-import { PresetsPage } from './workspace/presets/PresetsPage'
-import { SettingsPage } from './workspace/settings/SettingsPage'
-import { ExportButton } from './features/export/components/ExportButton'
+import type { ComponentType, JSX } from 'react';
+import { Circle, FolderOpen, Settings as SettingsIcon, Sliders } from 'lucide-react';
+import { useAppStore, type ScreenStudioRoute } from './app/app-store';
+import { cn } from './lib/utils';
+import { RecordSetupPage } from './workspace/record-setup/RecordSetupPage';
+import { EditorPage } from './workspace/editor/EditorPage';
+import { LibraryPage } from './workspace/library/LibraryPage';
+import { PresetsPage } from './workspace/presets/PresetsPage';
+import { SettingsPage } from './workspace/settings/SettingsPage';
+import { ExportButton } from './features/export/components/ExportButton';
 
 // `recording-hud` is intentionally excluded: it's rendered into its own
 // frameless always-on-top window (main/screen-studio/windows/recorder-bar-window.ts),
 // not navigated to inside the main workspace.
-const NAV_ITEMS: { route: ScreenStudioRoute; label: string; icon: ComponentType<{ size?: number }> }[] = [
+const NAV_ITEMS: {
+  route: ScreenStudioRoute;
+  label: string;
+  icon: ComponentType<{ size?: number }>;
+}[] = [
   { route: 'record-setup', label: 'Record', icon: Circle },
   { route: 'library', label: 'Library', icon: FolderOpen },
   { route: 'presets', label: 'Presets', icon: Sliders },
   { route: 'settings', label: 'Settings', icon: SettingsIcon }
-]
+];
 
 export function ScreenStudioApp(): JSX.Element {
-  const route = useAppStore((state) => state.route)
-  const setRoute = useAppStore((state) => state.setRoute)
-  const lastRecording = useAppStore((state) => state.lastRecording)
+  const route = useAppStore((state) => state.route);
+  const setRoute = useAppStore((state) => state.setRoute);
+  const lastRecording = useAppStore((state) => state.lastRecording);
 
   return (
     <div className="flex flex-1 flex-col min-h-0 bg-surface text-white/90">
@@ -67,5 +71,5 @@ export function ScreenStudioApp(): JSX.Element {
         {route === 'settings' && <SettingsPage />}
       </div>
     </div>
-  )
+  );
 }

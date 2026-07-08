@@ -1,5 +1,5 @@
 import { globalShortcut } from 'electron';
-import { DefaultShortcuts } from 'src/renderer/tools/screen-studio/types/shortcuts';
+import { DefaultShortcuts } from '@screen-studio/types/shortcuts';
 
 // TODO: load user-customized bindings from settings-store instead of
 // defaults, and wire each action to the appropriate controller (recording,

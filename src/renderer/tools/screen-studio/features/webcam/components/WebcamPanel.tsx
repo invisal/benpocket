@@ -33,26 +33,26 @@ export function WebcamPanel(): JSX.Element {
   } = useWebcamStore();
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <label className="flex items-center justify-between">
-        <span className="text-sm font-medium">Webcam overlay</span>
+        <span className="text-xs font-medium">Webcam overlay</span>
         <button
           onClick={toggleEnabled}
           className={cn(
-            'relative h-6 w-11 rounded-full transition-colors',
+            'relative h-5 w-9 rounded-full transition-colors',
             enabled ? 'bg-accent' : 'bg-white/15'
           )}
         >
           <span
             className={cn(
-              'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
-              enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform',
+              enabled ? 'translate-x-4.5' : 'translate-x-0.5'
             )}
           />
         </button>
       </label>
 
-      <div className={cn('flex flex-col gap-5', !enabled && 'pointer-events-none opacity-40')}>
+      <div className={cn('flex flex-col gap-4', !enabled && 'pointer-events-none opacity-40')}>
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">Shape</span>
           <div className="grid grid-cols-3 gap-2">
@@ -63,7 +63,7 @@ export function WebcamPanel(): JSX.Element {
                   key={option.id}
                   onClick={() => setShape(option.id)}
                   className={cn(
-                    'flex flex-col items-center gap-1 rounded-lg border py-2 text-xs font-medium transition-colors',
+                    'flex flex-col items-center gap-1 rounded-lg border py-1.5 text-xs font-medium transition-colors',
                     shape === option.id
                       ? 'border-accent bg-accent/10 text-accent'
                       : 'border-line text-white/60 hover:border-white/20'
@@ -95,14 +95,14 @@ export function WebcamPanel(): JSX.Element {
           <Slider value={size} min={80} max={360} step={4} onChange={setSize} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium uppercase tracking-wide text-white/40">X</span>
             <input
               type="number"
               value={Math.round(position.x)}
               onChange={(e) => setPosition({ ...position, x: Number(e.target.value) })}
-              className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-sm"
+              className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -111,7 +111,7 @@ export function WebcamPanel(): JSX.Element {
               type="number"
               value={Math.round(position.y)}
               onChange={(e) => setPosition({ ...position, y: Number(e.target.value) })}
-              className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-sm"
+              className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs"
             />
           </label>
         </div>

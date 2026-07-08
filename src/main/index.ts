@@ -9,6 +9,8 @@ import { registerWebSocketHandlers, closeAllWebSocketConnections } from './postm
 import { registerCollectionHandlers } from './postman/ipc/collections';
 import { registerCollectionTransferHandlers } from './postman/ipc/collectionsTransfer';
 import { registerEnvironmentHandlers } from './postman/ipc/environments';
+import { registerIpcHandlers as registerScreenStudioHandlers } from './screen-studio/ipc/register-handlers';
+import { applyContentSecurityPolicy } from './screen-studio/security/content-security-policy';
 
 function createWindow(): void {
   // Create the browser window.
@@ -50,6 +52,11 @@ function createWindow(): void {
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron');
+
+  // Replaces index.html's static CSP meta tag: needs to differ between dev
+  // (Vite HMR needs 'unsafe-eval' + a websocket connect-src) and production,
+  // and needs media-src blob: for ScreenStudio's recording preview.
+  applyContentSecurityPolicy();
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -142,6 +149,11 @@ app.whenReady().then(() => {
   registerCollectionHandlers();
   registerCollectionTransferHandlers();
   registerEnvironmentHandlers();
+
+  // Recording capture, project persistence, export, settings, window
+  // controls, screen-recording permissions, and export-path dialogs for the
+  // ScreenStudio tool (src/main/screen-studio/ipc/*-handlers.ts).
+  registerScreenStudioHandlers();
 
   createWindow();
 

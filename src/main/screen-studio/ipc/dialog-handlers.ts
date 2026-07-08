@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
-import type { ExportFormat } from 'src/renderer/tools/screen-studio/types/export';
+import type { ExportFormat } from '@screen-studio/types/export';
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(

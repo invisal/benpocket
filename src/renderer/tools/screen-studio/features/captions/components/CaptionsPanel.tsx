@@ -15,20 +15,20 @@ export function CaptionsPanel(): JSX.Element {
   const { enabled, segments, toggleEnabled, setSegments } = useCaptionsStore();
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <label className="flex items-center justify-between">
-        <span className="text-sm font-medium">Show captions</span>
+        <span className="text-xs font-medium">Show captions</span>
         <button
           onClick={toggleEnabled}
           className={cn(
-            'relative h-6 w-11 rounded-full transition-colors',
+            'relative h-5 w-9 rounded-full transition-colors',
             enabled ? 'bg-accent' : 'bg-white/15'
           )}
         >
           <span
             className={cn(
-              'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
-              enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform',
+              enabled ? 'translate-x-4.5' : 'translate-x-0.5'
             )}
           />
         </button>
@@ -39,9 +39,9 @@ export function CaptionsPanel(): JSX.Element {
           variant="secondary"
           disabled
           title="On-device transcription model isn't bundled yet"
-          className="flex items-center justify-center gap-1.5"
+          className="flex items-center justify-center gap-1.5 py-1.5 text-xs"
         >
-          <Sparkles size={14} /> Auto-generate from audio (coming soon)
+          <Sparkles size={13} /> Auto-generate from audio (coming soon)
         </Button>
 
         {segments.length === 0 ? (
@@ -54,7 +54,7 @@ export function CaptionsPanel(): JSX.Element {
             {segments.map((segment) => (
               <div
                 key={segment.id}
-                className="flex items-start gap-2 rounded-lg border border-line p-2 text-xs"
+                className="flex items-start gap-2 rounded-lg border border-line p-1.5 text-xs"
               >
                 <span className="mt-0.5 shrink-0 font-mono text-white/40">
                   {formatTime(segment.startMs)}

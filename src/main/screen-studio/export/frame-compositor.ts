@@ -10,9 +10,9 @@ import type {
   Project,
   BackgroundSettings,
   Annotation
-} from 'src/renderer/tools/screen-studio/types/project';
-import type { WebcamOptions } from 'src/renderer/tools/screen-studio/types/recording';
-import type { ZoomKeyframe } from 'src/renderer/tools/screen-studio/types/timeline';
+} from '@screen-studio/types/project';
+import type { WebcamOptions } from '@screen-studio/types/recording';
+import type { ZoomKeyframe } from '@screen-studio/types/timeline';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
 

@@ -6,21 +6,10 @@ import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
-import { ExportSidePanel } from '../../features/export/components/ExportSidePanel';
 import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail, type EditorTool } from './EditorToolRail';
 import { EditorToolPanel } from './EditorToolPanel';
-
-function formatBytes(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 export function EditorPage(): JSX.Element {
   const lastRecording = useAppStore((state) => state.lastRecording);
@@ -36,7 +25,7 @@ export function EditorPage(): JSX.Element {
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [cropToolActive, setCropToolActive] = useState(false);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
-  const [activeTool, setActiveTool] = useState<EditorTool | null>(null);
+  const [activeTool, setActiveTool] = useState<EditorTool | null>('background');
   const [timelineZoom, setTimelineZoom] = useState(1);
   const [sourceResolution, setSourceResolution] = useState<{
     width: number;
@@ -44,8 +33,6 @@ export function EditorPage(): JSX.Element {
   } | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  const keptDurationMs = segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0);
 
   // Default the crop tool's selection to the first clip once segments exist,
   // and drop the selection if that clip gets deleted/reordered away.
@@ -99,9 +86,9 @@ export function EditorPage(): JSX.Element {
   }
 
   return (
-    <div className="flex flex-1">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-4 border-b border-line p-6">
+    <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* <div className="flex shrink-0 items-center gap-4 border-b border-line p-6">
           <div>
             <h1 className="text-xl font-semibold">Edit Recording</h1>
             <p className="text-sm text-white/40">
@@ -116,7 +103,7 @@ export function EditorPage(): JSX.Element {
             />
             <StatBadge label="Size" value={formatBytes(lastRecording.sizeBytes)} />
           </div>
-        </div>
+        </div> */}
 
         <PreviewStage
           videoRef={videoRef}
@@ -135,7 +122,7 @@ export function EditorPage(): JSX.Element {
         />
 
         {selectedSegment?.crop && (
-          <p className="px-6 pb-1 text-xs text-white/40">
+          <p className="shrink-0 px-6 pb-1 text-xs text-white/40">
             Crop: {Math.round(selectedSegment.crop.width * 100)}% ×{' '}
             {Math.round(selectedSegment.crop.height * 100)}% of frame for this clip -- applied at
             export.
@@ -165,22 +152,6 @@ export function EditorPage(): JSX.Element {
         onSelect={(tool) => setActiveTool((current) => (current === tool ? null : tool))}
       />
       {activeTool && <EditorToolPanel tool={activeTool} currentTimeMs={currentTimeMs} />}
-
-      {/* <ExportSidePanel
-        originalSizeBytes={lastRecording.sizeBytes}
-        durationSeconds={keptDurationMs / 1000}
-        sourceVideoPath={lastRecording.filePath}
-        segments={segments.map((s) => ({ range: s.range, crop: s.crop }))}
-      /> */}
-    </div>
-  );
-}
-
-function StatBadge({ label, value }: { label: string; value: string }): JSX.Element {
-  return (
-    <div className="rounded-lg border border-line bg-surface-raised px-3 py-1.5 text-center">
-      <p className="text-[10px] uppercase tracking-wide text-white/30">{label}</p>
-      <p className="font-mono text-sm font-semibold">{value}</p>
     </div>
   );
 }

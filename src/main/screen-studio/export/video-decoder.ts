@@ -1,6 +1,6 @@
 import { Transform, type TransformCallback } from 'stream';
 import ffmpeg, { type FfmpegCommand } from 'fluent-ffmpeg';
-import type { CropRect, TimeRange } from 'src/renderer/tools/screen-studio/types/timeline';
+import type { CropRect, TimeRange } from '@screen-studio/types/timeline';
 import './ffmpeg-config';
 
 export interface DecodedFrame {

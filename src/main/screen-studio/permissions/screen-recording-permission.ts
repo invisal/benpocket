@@ -1,5 +1,5 @@
 import { shell, systemPreferences } from 'electron';
-import type { ScreenRecordingStatus } from 'src/renderer/tools/screen-studio/types/permissions';
+import type { ScreenRecordingStatus } from '@screen-studio/types/permissions';
 
 // Screen Recording permission is a macOS-only gate (System Settings ->
 // Privacy & Security -> Screen Recording). Without it, desktopCapturer still

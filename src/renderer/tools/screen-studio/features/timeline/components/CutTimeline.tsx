@@ -113,7 +113,7 @@ export function CutTimeline({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-line bg-surface-raised px-4 py-3">
+    <div className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface-raised px-4 py-3">
       <div className="flex items-center gap-3 text-xs text-white/50">
         <span className="flex items-center gap-1.5">
           <Scissors size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}

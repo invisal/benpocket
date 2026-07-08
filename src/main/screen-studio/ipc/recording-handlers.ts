@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
-import type { RecordingRequest } from 'src/renderer/tools/screen-studio/types/recording';
+import type { RecordingRequest } from '@screen-studio/types/recording';
 import { listCaptureSources } from '../capture/screen-source-provider';
 import { recordingController } from '../capture/recording-controller';
 

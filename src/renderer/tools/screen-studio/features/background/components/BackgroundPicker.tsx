@@ -67,7 +67,7 @@ export function BackgroundPicker(): JSX.Element {
   const gradient = kind === 'gradient' ? parseGradientValue(value) : null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">
           Background
@@ -111,7 +111,7 @@ export function BackgroundPicker(): JSX.Element {
       )}
 
       {kind === 'gradient' && gradient && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">
             Gradient
           </span>
@@ -138,7 +138,7 @@ export function BackgroundPicker(): JSX.Element {
               onChange={(e) =>
                 setValue(`${gradient.angleDeg}|${e.target.value}|${gradient.color2}`)
               }
-              className="h-8 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+              className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
             />
             <input
               type="color"
@@ -146,7 +146,7 @@ export function BackgroundPicker(): JSX.Element {
               onChange={(e) =>
                 setValue(`${gradient.angleDeg}|${gradient.color1}|${e.target.value}`)
               }
-              className="h-8 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+              className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -163,7 +163,7 @@ export function BackgroundPicker(): JSX.Element {
       )}
 
       {kind === 'color' && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">Color</span>
           <div className="grid grid-cols-8 gap-2">
             {COLOR_SWATCHES.map((color) => (
@@ -179,13 +179,13 @@ export function BackgroundPicker(): JSX.Element {
             type="color"
             value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#0f0f12'}
             onChange={(e) => setValue(e.target.value)}
-            className="h-9 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+            className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
           />
         </div>
       )}
 
       {kind === 'image' && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">Image</span>
           {value && (
             <div className="aspect-video overflow-hidden rounded-lg border border-line">
@@ -205,7 +205,7 @@ export function BackgroundPicker(): JSX.Element {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 border-t border-line pt-4">
+      <div className="flex flex-col gap-2 border-t border-line pt-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">
             Background blur

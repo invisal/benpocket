@@ -3,11 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <title>Electron</title>
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
-    />
+    <!-- The actual CSP is set per-response from the main process (see
+    main/screen-studio/security/content-security-policy.ts) so it can differ
+    between dev (needs 'unsafe-eval' + a websocket connect-src for HMR) and
+    production, and so it can allow blob:/data: media the static tag can't
+    express dynamically. A meta tag here would combine restrictively with
+    that header and block things it's meant to allow. -->
   </head>
 
   <body>

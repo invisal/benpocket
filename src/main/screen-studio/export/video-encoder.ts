@@ -1,7 +1,7 @@
 import { PassThrough, type Writable } from 'stream';
 import ffmpeg, { type FfmpegCommand } from 'fluent-ffmpeg';
-import type { ExportCodec, ExportFormat } from 'src/renderer/tools/screen-studio/types/export';
-import type { TimeRange } from 'src/renderer/tools/screen-studio/types/timeline';
+import type { ExportCodec, ExportFormat } from '@screen-studio/types/export';
+import type { TimeRange } from '@screen-studio/types/timeline';
 import './ffmpeg-config';
 
 let encoderNamesCache: Set<string> | null = null;

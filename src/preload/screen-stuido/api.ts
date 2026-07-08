@@ -4,14 +4,14 @@ import type {
   CaptureSource,
   RecordingRequest,
   RecordingSession
-} from 'src/renderer/tools/screen-studio/types/recording';
-import type { Project } from 'src/renderer/tools/screen-studio/types/project';
+} from '@screen-studio/types/recording';
+import type { Project } from '@screen-studio/types/project';
 import type {
   ExportFormat,
   ExportOptions,
   ExportProgress
-} from 'src/renderer/tools/screen-studio/types/export';
-import type { ScreenRecordingStatus } from 'src/renderer/tools/screen-studio/types/permissions';
+} from '@screen-studio/types/export';
+import type { ScreenRecordingStatus } from '@screen-studio/types/permissions';
 
 export const screenStudioApi = {
   recording: {

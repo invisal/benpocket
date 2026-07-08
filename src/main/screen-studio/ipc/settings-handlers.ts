@@ -1,11 +1,11 @@
 import { ipcMain } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
-import { settingsStore } from '../store/settings-store';
+import { settingsStore, type AppSettings } from '../store/settings-store';
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle(IpcChannels.GetSettings, () => settingsStore.store);
-  ipcMain.handle(IpcChannels.SetSettings, (_event, patch: Record<string, unknown>) => {
-    settingsStore.set(patch);
+  ipcMain.handle(IpcChannels.SetSettings, (_event, patch: Partial<AppSettings>) => {
+    settingsStore.set({ ...settingsStore.store, ...patch });
     return settingsStore.store;
   });
 }

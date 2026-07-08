@@ -25,7 +25,7 @@ export function ZoomKeyframeEditor({ currentTimeMs }: ZoomKeyframeEditorProps): 
   const sorted = [...keyframes].sort((a, b) => a.atMs - b.atMs);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">Zoom mode</span>
         <div className="grid grid-cols-2 gap-2">
@@ -34,7 +34,7 @@ export function ZoomKeyframeEditor({ currentTimeMs }: ZoomKeyframeEditorProps): 
               key={option}
               onClick={() => setMode(option)}
               className={cn(
-                'rounded-lg border py-2 text-xs font-medium capitalize transition-colors',
+                'rounded-lg border py-1.5 text-xs font-medium capitalize transition-colors',
                 mode === option
                   ? 'border-accent bg-accent/10 text-accent'
                   : 'border-line text-white/60 hover:border-white/20'
@@ -54,15 +54,15 @@ export function ZoomKeyframeEditor({ currentTimeMs }: ZoomKeyframeEditorProps): 
       <Button
         variant="secondary"
         onClick={() => addKeyframe(currentTimeMs)}
-        className="flex items-center justify-center gap-1.5"
+        className="flex items-center justify-center gap-1.5 py-1.5 text-xs"
       >
-        <Plus size={14} /> Add keyframe at {formatTime(currentTimeMs)}
+        <Plus size={13} /> Add keyframe at {formatTime(currentTimeMs)}
       </Button>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {sorted.length === 0 && <p className="text-xs text-white/40">No zoom keyframes yet.</p>}
         {sorted.map((kf) => (
-          <div key={kf.id} className="flex flex-col gap-2 rounded-lg border border-line p-3">
+          <div key={kf.id} className="flex flex-col gap-2 rounded-lg border border-line p-2.5">
             <div className="flex items-center justify-between">
               <span className="font-mono text-xs text-white/70">{formatTime(kf.atMs)}</span>
               <button

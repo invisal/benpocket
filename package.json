@@ -28,7 +28,7 @@
     "@fix-webm-duration/fix": "^1.0.1",
     "canvas": "^3.2.3",
     "cnfast": "^0.0.8",
-    "electron-store": "^11.0.2",
+    "electron-store": "^8.2.0",
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
     "fluent-ffmpeg": "^2.1.3",

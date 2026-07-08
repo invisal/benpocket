@@ -1,7 +1,7 @@
 import Store from 'electron-store';
-import { DefaultShortcuts } from 'src/renderer/tools/screen-studio/types/shortcuts';
+import { DefaultShortcuts } from '@screen-studio/types/shortcuts';
 
-interface AppSettings {
+export interface AppSettings {
   shortcuts: typeof DefaultShortcuts;
   defaultExportFormat: 'mp4' | 'gif';
 }

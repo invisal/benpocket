@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import { dirname } from 'path';
 import type { FfmpegCommand } from 'fluent-ffmpeg';
-import type { ExportOptions, ExportProgress } from 'src/renderer/tools/screen-studio/types/export';
+import type { ExportOptions, ExportProgress } from '@screen-studio/types/export';
 import { probeSource } from './video-probe';
 import { decodeFrames, resolveCropRect } from './video-decoder';
 import { FrameCompositor } from './frame-compositor';

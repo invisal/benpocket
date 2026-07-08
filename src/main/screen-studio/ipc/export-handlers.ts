@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
-import type { ExportOptions } from 'src/renderer/tools/screen-studio/types/export';
+import type { ExportOptions } from '@screen-studio/types/export';
 import { exportManager } from '../export/export-manager';
 
 export function registerExportHandlers(): void {

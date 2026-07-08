@@ -1,7 +1,7 @@
 import type {
   RecordingRequest,
   RecordingSession
-} from 'src/renderer/tools/screen-studio/types/recording';
+} from '@screen-studio/types/recording';
 
 // Orchestrates a recording session: video capture (via renderer-side
 // getUserMedia/getDisplayMedia against the chosen source), mic/system audio

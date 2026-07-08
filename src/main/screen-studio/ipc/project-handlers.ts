@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
-import type { Project } from 'src/renderer/tools/screen-studio/types/project';
+import type { Project } from '@screen-studio/types/project';
 
 // TODO: back this with real file I/O (read/write project JSON + media assets)
 export function registerProjectHandlers(): void {

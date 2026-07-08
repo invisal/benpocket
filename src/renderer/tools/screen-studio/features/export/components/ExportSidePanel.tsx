@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
-import { useState } from 'react';
 import { Check } from 'lucide-react';
-import type { ExportSegment } from '@screen-studio/types/export';
+import { useAppStore } from '../../../app/app-store';
+import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { useExportStore } from '../store/export-store';
+import { useExportAction } from '../hooks/useExportAction';
 import { estimateExportSize } from '../engine/estimate-size';
-import { buildExportProject } from '../lib/build-export-project';
 import {
   CODEC_OPTIONS,
   EXPORT_PRESETS,
@@ -20,20 +20,14 @@ function formatMb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-interface ExportSidePanelProps {
-  originalSizeBytes: number;
-  durationSeconds: number;
-  sourceVideoPath: string | null;
-  segments: ExportSegment[];
-}
-
-export function ExportSidePanel({
-  originalSizeBytes,
-  durationSeconds,
-  sourceVideoPath,
-  segments
-}: ExportSidePanelProps): JSX.Element {
+export function ExportSidePanel(): JSX.Element {
   const store = useExportStore();
+  const originalSizeBytes = useAppStore((state) => state.lastRecording?.sizeBytes ?? 0);
+  const segments = useTimelineStore(
+    (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
+  );
+  const durationSeconds =
+    segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0) / 1000;
 
   const estimate = estimateExportSize({
     originalSizeBytes,
@@ -45,22 +39,22 @@ export function ExportSidePanel({
   });
 
   return (
-    <aside className="flex w-[360px] shrink-0 flex-col gap-6 overflow-y-auto border-l border-line bg-surface-sunken p-5">
+    <aside className="flex w-75 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface-sunken p-4">
       {/* Estimated output */}
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">
             Estimated output
           </span>
           {estimate.reductionPercent > 0 && (
-            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
+            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
               −{estimate.reductionPercent}%
             </span>
           )}
         </div>
 
         <div>
-          <p className="font-mono text-3xl font-bold">{formatMb(estimate.estimatedBytes)}</p>
+          <p className="font-mono text-2xl font-bold">{formatMb(estimate.estimatedBytes)}</p>
           <p className="text-xs text-white/40">
             from {formatMb(originalSizeBytes)} · {Math.round(durationSeconds)}s
           </p>
@@ -91,17 +85,17 @@ export function ExportSidePanel({
                 key={preset.id}
                 onClick={() => store.setPreset(preset.id)}
                 className={cn(
-                  'relative rounded-xl border p-3 text-left transition-colors',
+                  'relative rounded-lg border p-2.5 text-left transition-colors',
                   isSelected ? 'border-accent bg-accent/10' : 'border-line hover:border-white/20'
                 )}
               >
                 {isSelected && (
-                  <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-surface">
-                    <Check size={11} strokeWidth={3} />
+                  <span className="absolute right-1.5 top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-surface">
+                    <Check size={10} strokeWidth={3} />
                   </span>
                 )}
-                <p className="text-sm font-medium">{preset.label}</p>
-                <p className="text-xs text-white/40">{preset.description}</p>
+                <p className="text-xs font-medium">{preset.label}</p>
+                <p className="text-[11px] text-white/40">{preset.description}</p>
               </button>
             );
           })}
@@ -117,7 +111,7 @@ export function ExportSidePanel({
               key={option.id}
               onClick={() => store.setFormat(option.id)}
               className={cn(
-                'rounded-lg border py-1.5 text-sm font-medium transition-colors',
+                'rounded-lg border py-1.5 text-xs font-medium transition-colors',
                 store.format === option.id
                   ? 'border-accent text-accent'
                   : 'border-line text-white/60 hover:border-white/20'
@@ -141,14 +135,14 @@ export function ExportSidePanel({
               key={option.id}
               onClick={() => store.setCodec(option.id)}
               className={cn(
-                'rounded-lg border py-2 text-center transition-colors',
+                'rounded-lg border py-1.5 text-center transition-colors',
                 store.codec === option.id
                   ? 'border-accent bg-accent/10 text-accent'
                   : 'border-line text-white/70 hover:border-white/20'
               )}
             >
-              <p className="text-sm font-medium">{option.label}</p>
-              <p className="text-[11px] opacity-70">{option.description}</p>
+              <p className="text-xs font-medium">{option.label}</p>
+              <p className="text-[10px] opacity-70">{option.description}</p>
             </button>
           ))}
         </div>
@@ -179,7 +173,7 @@ export function ExportSidePanel({
       </section>
 
       {/* Resolution / Frame rate */}
-      <section className="grid grid-cols-2 gap-3">
+      <section className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">
             Resolution
@@ -190,7 +184,7 @@ export function ExportSidePanel({
               const [width, height] = e.target.value.split('x').map(Number);
               store.setResolution({ width, height });
             }}
-            className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-sm"
+            className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs"
           >
             {RESOLUTION_OPTIONS.map((option) => (
               <option key={option.label} value={`${option.width}x${option.height}`}>
@@ -206,7 +200,7 @@ export function ExportSidePanel({
           <select
             value={store.frameRate}
             onChange={(e) => store.setFrameRate(Number(e.target.value))}
-            className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-sm"
+            className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs"
           >
             {FRAME_RATE_OPTIONS.map((fps) => (
               <option key={fps} value={fps}>
@@ -217,73 +211,13 @@ export function ExportSidePanel({
         </div>
       </section>
 
-      <ExportAction sourceVideoPath={sourceVideoPath} segments={segments} />
+      <ExportAction />
     </aside>
   );
 }
 
-function ExportAction({
-  sourceVideoPath,
-  segments
-}: {
-  sourceVideoPath: string | null;
-  segments: ExportSegment[];
-}): JSX.Element {
-  const store = useExportStore();
-  const [status, setStatus] = useState<'idle' | 'exporting' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<{ percent: number; stage: string } | null>(null);
-
-  async function handleExport(): Promise<void> {
-    if (!sourceVideoPath) {
-      setStatus('error');
-      setError('Recording is still being saved. Try again in a moment.');
-      return;
-    }
-    if (segments.length === 0 || segments.some((s) => s.range.endMs <= s.range.startMs)) {
-      setStatus('error');
-      setError('Nothing to export -- cut out every clip on the timeline.');
-      return;
-    }
-
-    const outputPath = await window.screenStudio.dialog.showSaveExportPath(
-      `export.${store.format}`,
-      store.format
-    );
-    if (!outputPath) return;
-
-    setStatus('exporting');
-    setError(null);
-    setProgress({ percent: 0, stage: 'rendering' });
-
-    const unsubscribe = window.screenStudio.export.onProgress((p) => {
-      setProgress({ percent: p.percent, stage: p.stage });
-      if (p.stage === 'error' && p.error) setError(p.error);
-    });
-
-    try {
-      const durationMs = segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0);
-      await window.screenStudio.export.start({
-        format: store.format,
-        codec: store.codec,
-        aspectRatio: store.aspectRatio,
-        resolution: store.resolution,
-        frameRate: store.frameRate,
-        quality: store.quality,
-        outputPath,
-        sourceVideoPath,
-        segments,
-        project: buildExportProject(sourceVideoPath, durationMs)
-      });
-      setStatus('idle');
-      setProgress(null);
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      unsubscribe();
-    }
-  }
+function ExportAction(): JSX.Element {
+  const { status, error, progress, handleExport } = useExportAction();
 
   return (
     <div className="mt-auto flex flex-col gap-2 border-t border-line pt-4">
@@ -296,7 +230,7 @@ function ExportAction({
       <Button
         onClick={handleExport}
         disabled={status === 'exporting'}
-        className="w-full justify-center"
+        className="w-full justify-center py-1.5 text-xs"
       >
         {status === 'exporting' ? 'Exporting…' : 'Export'}
       </Button>
@@ -306,7 +240,7 @@ function ExportAction({
 
 function Stat({ label, value }: { label: string; value: string }): JSX.Element {
   return (
-    <div className="rounded-lg bg-white/5 px-2 py-1.5">
+    <div className="rounded-lg bg-white/5 px-2 py-1">
       <p className="text-[10px] uppercase tracking-wide text-white/30">{label}</p>
       <p className="font-mono text-xs text-white/80">{value}</p>
     </div>

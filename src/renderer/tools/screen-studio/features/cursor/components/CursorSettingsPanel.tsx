@@ -21,7 +21,7 @@ export function CursorSettingsPanel(): JSX.Element {
     useCursorStore();
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">
           Cursor theme
@@ -32,7 +32,7 @@ export function CursorSettingsPanel(): JSX.Element {
               key={option.id}
               onClick={() => setTheme(option.id)}
               className={cn(
-                'rounded-lg border py-2 text-xs font-medium transition-colors',
+                'rounded-lg border py-1.5 text-xs font-medium transition-colors',
                 theme === option.id
                   ? 'border-accent bg-accent/10 text-accent'
                   : 'border-line text-white/60 hover:border-white/20'
@@ -75,7 +75,7 @@ export function CursorSettingsPanel(): JSX.Element {
               key={option.id}
               onClick={() => setClickEffect(option.id)}
               className={cn(
-                'rounded-lg border py-2 text-xs font-medium transition-colors',
+                'rounded-lg border py-1.5 text-xs font-medium transition-colors',
                 clickEffect === option.id
                   ? 'border-accent bg-accent/10 text-accent'
                   : 'border-line text-white/60 hover:border-white/20'

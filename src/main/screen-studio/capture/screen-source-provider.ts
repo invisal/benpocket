@@ -1,5 +1,5 @@
 import { desktopCapturer } from 'electron';
-import type { CaptureSource } from 'src/renderer/tools/screen-studio/types/recording';
+import type { CaptureSource } from '@screen-studio/types/recording';
 
 export async function listCaptureSources(): Promise<CaptureSource[]> {
   const sources = await desktopCapturer.getSources({

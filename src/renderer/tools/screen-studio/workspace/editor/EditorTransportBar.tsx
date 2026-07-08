@@ -54,7 +54,7 @@ export function EditorTransportBar({
   }
 
   return (
-    <div className="flex items-center gap-3 px-6 pb-3 text-white/70">
+    <div className="flex shrink-0 items-center gap-3 px-6 pb-3 text-white/70">
       <div className="relative">
         <select
           value={aspectRatio}

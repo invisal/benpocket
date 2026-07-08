@@ -97,7 +97,7 @@ export function PreviewStage({
   return (
     <div
       ref={stageRef}
-      className="relative m-6 flex flex-1 overflow-hidden rounded-xl"
+      className="relative isolate m-6 flex flex-1 overflow-hidden rounded-xl"
       style={{ padding: `${background.padding}%` }}
     >
       <div className="absolute inset-0 -z-10" style={backgroundLayerStyle(background)} />

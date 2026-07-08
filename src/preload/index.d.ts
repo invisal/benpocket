@@ -1,5 +1,6 @@
 import { ElectronAPI } from '@electron-toolkit/preload';
 import type { ScreenStudioApi } from './api';
+import type { PostmanBridge } from './postman/api';
 
 declare global {
   interface Window {
@@ -19,6 +20,6 @@ declare global {
           children?: Array<any>;
         } | null;
       } | null>;
-    };
+    } & PostmanBridge;
   }
 }

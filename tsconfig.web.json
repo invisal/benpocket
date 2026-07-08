@@ -1,4 +1,14 @@
 {
+  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+  "include": [
+    "src/renderer/src/env.d.ts",
+    "src/renderer/src/**/*",
+    "src/renderer/src/**/*.tsx",
+    "src/renderer/tools/**/*",
+    "src/preload/**/*.d.ts",
+    "src/shared/**/*",
+    "src/renderer/tools/screen-studio/**/*"
+  ],
   "compilerOptions": {
     "target": "ES2022",
     "lib": [
@@ -29,8 +39,4 @@
       ]
     }
   },
-  "include": [
-    "src/renderer/src/**/*",
-    "src/shared/**/*",
-    "src/renderer/tools/screen-studio/**/*"]
 }

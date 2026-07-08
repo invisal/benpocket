@@ -1,11 +1,13 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface Tab {
   id: string;
   title: string;
   type: 'lens' | 'postman' | 'screenstudio' | 'home';
   instanceId: string;
-  meta?: any;
+  /** Tool-specific tab seed data (e.g. PostmanTabSeed). Each tool narrows/casts this at its own read site. */
+  meta?: unknown;
 }
 
 export interface ActivityInstance {
@@ -49,6 +51,7 @@ interface LayoutState {
   openTab: (tab: Tab) => void;
   closeTab: (id: string) => void;
   setActiveTabId: (id: string | null) => void;
+  renameTab: (id: string, title: string) => void;
 
   // Lens K8s Actions per instance
   setLensInstanceCluster: (instanceId: string, cluster: string) => void;
@@ -64,7 +67,9 @@ interface LayoutState {
   setActiveInstanceId: (id: string | 'home') => void;
 }
 
-export const useLayoutStore = create<LayoutState>((set) => ({
+export const useLayoutStore = create<LayoutState>()(
+  persist(
+    (set) => ({
   activeActivity: null,
   isLeftPanelOpen: true,
   leftPanelWidth: 260,
@@ -124,6 +129,11 @@ export const useLayoutStore = create<LayoutState>((set) => ({
     }),
 
   setActiveTabId: (id) => set({ activeTabId: id }),
+
+  renameTab: (id, title) =>
+    set((state) => ({
+      openTabs: state.openTabs.map((t) => (t.id === id ? { ...t, title } : t))
+    })),
 
   setLensInstanceCluster: (instanceId, cluster) =>
     set((state) => ({
@@ -260,4 +270,16 @@ export const useLayoutStore = create<LayoutState>((set) => ({
         isLeftPanelOpen: id !== 'home' ? true : state.isLeftPanelOpen
       };
     })
-}));
+    }),
+    {
+      name: 'craftbox-layout',
+      partialize: (state) => ({
+        openTabs: state.openTabs,
+        activeTabId: state.activeTabId,
+        activeInstances: state.activeInstances,
+        activeInstanceId: state.activeInstanceId,
+        activeActivity: state.activeActivity
+      })
+    }
+  )
+);

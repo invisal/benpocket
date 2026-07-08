@@ -15,6 +15,9 @@
   --color-surface-3: #1a1a20; /* elevation 2 — hover on surface-2, selected on surface */
   --color-surface-4: #26262e; /* elevation 3 — selected on surface-2 */
   --color-border: var(--color-surface-4); /* hairline border against bg-surface */
+  --color-surface-raised: var(--color-surface-2); /* screen-studio: elevated panel on bg-surface */
+  --color-surface-sunken: var(--color-activity-bg); /* screen-studio: recessed side panel */
+  --color-line: var(--color-border-dark); /* screen-studio: hairline border */
   --color-emphasis-text: #11111b; /* Catppuccin Mocha Crust — text on accent/danger fills */
   --color-text-base: #cdd6f4; /* Catppuccin Mocha Text */
   --color-scrollbar-track: #181825;
@@ -38,6 +41,9 @@
   --color-surface-3: #e3e3e9; /* elevation 2 — hover on surface-2, selected on surface */
   --color-surface-4: #d0d0d9; /* elevation 3 — selected on surface-2 */
   --color-border: var(--color-surface-4); /* hairline border against bg-surface */
+  --color-surface-raised: var(--color-surface-2); /* screen-studio: elevated panel on bg-surface */
+  --color-surface-sunken: var(--color-activity-bg); /* screen-studio: recessed side panel */
+  --color-line: var(--color-border-dark); /* screen-studio: hairline border */
   --color-emphasis-text: #ffffff; /* Latte's accent/danger are saturated — need light text */
   --color-text-base: #4c4f69; /* Catppuccin Latte Text */
   --color-scrollbar-track: #e6e9ef;

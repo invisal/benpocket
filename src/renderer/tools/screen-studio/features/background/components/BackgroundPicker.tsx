@@ -1,0 +1,232 @@
+import type { JSX } from 'react';
+import { useRef } from 'react';
+import { WALLPAPER_PRESETS, cssGradient } from '@shared/wallpaper-presets';
+import { useBackgroundStore } from '../store/background-store';
+import { Slider } from '../../../components/ui/slider';
+import { Button } from '../../../components/ui/button';
+import { cn } from '../../../lib/utils';
+
+const GRADIENT_PRESETS: { angleDeg: number; colors: [string, string] }[] = [
+  { angleDeg: 135, colors: ['#22c55e', '#0ea5e9'] },
+  { angleDeg: 135, colors: ['#f97316', '#ec4899'] },
+  { angleDeg: 135, colors: ['#8b5cf6', '#ec4899'] },
+  { angleDeg: 135, colors: ['#0ea5e9', '#6366f1'] },
+  { angleDeg: 135, colors: ['#111827', '#374151'] }
+];
+
+const COLOR_SWATCHES = [
+  '#0f0f12',
+  '#111827',
+  '#1f2937',
+  '#052e2b',
+  '#1e1b4b',
+  '#3f0f1a',
+  '#0c4a6e',
+  '#ffffff'
+];
+
+const TABS: { id: 'wallpaper' | 'gradient' | 'color' | 'image'; label: string }[] = [
+  { id: 'wallpaper', label: 'Wallpaper' },
+  { id: 'gradient', label: 'Gradient' },
+  { id: 'color', label: 'Color' },
+  { id: 'image', label: 'Image' }
+];
+
+function swatchClass(isSelected: boolean): string {
+  return cn(
+    'aspect-square rounded-lg ring-2 ring-offset-2 ring-offset-surface-sunken transition-all',
+    isSelected ? 'ring-white/80' : 'ring-transparent hover:ring-white/40'
+  );
+}
+
+/** Parses/serializes the "angleDeg|color1|color2" `value` shape used for kind='gradient'. */
+function parseGradientValue(value: string): { angleDeg: number; color1: string; color2: string } {
+  const [angleDeg = '135', color1 = '#22c55e', color2 = '#0ea5e9'] = value.split('|');
+  return { angleDeg: Number(angleDeg) || 135, color1, color2 };
+}
+
+export function BackgroundPicker(): JSX.Element {
+  const { kind, value, padding, blur, setKind, setValue, setPadding, setBlur } =
+    useBackgroundStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>): void {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setValue(reader.result);
+        setKind('image');
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }
+
+  const gradient = kind === 'gradient' ? parseGradientValue(value) : null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          Background
+        </span>
+        <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setKind(tab.id)}
+              className={cn(
+                'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
+                kind === tab.id
+                  ? 'bg-surface-raised text-white'
+                  : 'text-white/50 hover:text-white/80'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {kind === 'wallpaper' && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            Wallpaper
+          </span>
+          <div className="grid grid-cols-4 gap-2">
+            {WALLPAPER_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => setValue(preset.id)}
+                title={preset.label}
+                aria-label={preset.label}
+                className={swatchClass(value === preset.id)}
+                style={{ background: cssGradient(preset) }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {kind === 'gradient' && gradient && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            Gradient
+          </span>
+          <div className="grid grid-cols-5 gap-2">
+            {GRADIENT_PRESETS.map((preset, i) => {
+              const presetValue = `${preset.angleDeg}|${preset.colors[0]}|${preset.colors[1]}`;
+              return (
+                <button
+                  key={i}
+                  onClick={() => setValue(presetValue)}
+                  className={swatchClass(value === presetValue)}
+                  style={{
+                    background: `linear-gradient(${preset.angleDeg}deg, ${preset.colors[0]}, ${preset.colors[1]})`
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={gradient.color1}
+              onChange={(e) =>
+                setValue(`${gradient.angleDeg}|${e.target.value}|${gradient.color2}`)
+              }
+              className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+            />
+            <input
+              type="color"
+              value={gradient.color2}
+              onChange={(e) =>
+                setValue(`${gradient.angleDeg}|${gradient.color1}|${e.target.value}`)
+              }
+              className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] text-white/40">Angle · {gradient.angleDeg}°</span>
+            <Slider
+              value={gradient.angleDeg}
+              min={0}
+              max={359}
+              step={1}
+              onChange={(angleDeg) => setValue(`${angleDeg}|${gradient.color1}|${gradient.color2}`)}
+            />
+          </div>
+        </div>
+      )}
+
+      {kind === 'color' && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Color</span>
+          <div className="grid grid-cols-8 gap-2">
+            {COLOR_SWATCHES.map((color) => (
+              <button
+                key={color}
+                onClick={() => setValue(color)}
+                className={cn(swatchClass(value === color), 'border border-white/10')}
+                style={{ background: color }}
+              />
+            ))}
+          </div>
+          <input
+            type="color"
+            value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#0f0f12'}
+            onChange={(e) => setValue(e.target.value)}
+            className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+          />
+        </div>
+      )}
+
+      {kind === 'image' && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Image</span>
+          {value && (
+            <div className="aspect-video overflow-hidden rounded-lg border border-line">
+              <img src={value} alt="Background" className="h-full w-full object-cover" />
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+            Choose image…
+          </Button>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 border-t border-line pt-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            Background blur
+          </span>
+          <span className="text-xs text-white/50">{blur}px</span>
+        </div>
+        <Slider value={blur} min={0} max={20} step={1} onChange={setBlur} />
+        {kind !== 'image' && (
+          <p className="text-[11px] text-white/30">
+            Only affects Image backgrounds -- gradients have nothing to blur.
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Padding</span>
+          <span className="text-xs text-white/50">{padding}%</span>
+        </div>
+        <Slider value={padding} min={0} max={30} step={1} onChange={setPadding} />
+      </div>
+    </div>
+  );
+}

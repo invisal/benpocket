@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
+import { screenStudioApi } from './screen-stuido/api';
 import { postmanApi } from './postman/api';
 
 // Custom APIs for renderer
@@ -9,7 +10,6 @@ const api = {
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
   openDirectory: () => ipcRenderer.invoke('open-directory'),
-
   ...postmanApi
 };
 
@@ -20,6 +20,7 @@ if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI);
     contextBridge.exposeInMainWorld('api', api);
+    contextBridge.exposeInMainWorld('screenStudio', screenStudioApi);
   } catch (error) {
     console.error(error);
   }
@@ -28,4 +29,6 @@ if (process.contextIsolated) {
   window.electron = electronAPI;
   // @ts-ignore (define in dts)
   window.api = api;
+  // @ts-ignore (define in dts)
+  window.screenStudio = screenStudioApi;
 }

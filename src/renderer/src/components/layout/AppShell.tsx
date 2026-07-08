@@ -1,14 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { TitleBar } from './TitleBar';
 import { ActivityBar } from './ActivityBar';
-import { LeftPanel } from './LeftPanel';
-import { Workspace } from './Workspace';
-import { BottomPanel } from './BottomPanel';
 import { RightPanel } from './RightPanel';
 import { StatusBar } from './StatusBar';
 import { useLayoutStore } from '../../store/layout.store';
 import { disposeApiClientTab } from '../../../tools/postman/hooks/useApiClient';
 import { useThemeStore } from '../../store/theme.store';
+import { ToolTabContents } from '../providers/ToolProvider';
 
 export const AppShell: React.FC = () => {
   const theme = useThemeStore((state) => state.theme);
@@ -46,12 +44,11 @@ export const AppShell: React.FC = () => {
         <ActivityBar />
 
         {/* Collapsible Left Side: Submenu Menus */}
-        <LeftPanel />
+        {/* <LeftPanel /> */}
 
         {/* Center: Editor Workspace & Bottom Panel split */}
-        <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          <Workspace />
-          <BottomPanel />
+        <div className="flex-1 min-h-0 min-w-0 relative">
+          <ToolTabContents />
         </div>
 
         {/* Collapsible Right Side: AI Assistant Panel */}

@@ -1,15 +1,9 @@
-import { registerTool, ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { PostmanWorkspace } from './PostmanWorkspace';
 
 interface Props {}
 
-// eslint-disable-next-line react-refresh/only-export-components, no-empty-pattern
-function Main({}: ToolComponentProps<Props>) {
-  return <div />;
+// eslint-disable-next-line no-empty-pattern
+export function HttpClientMain({}: ToolComponentProps<Props>) {
+  return <PostmanWorkspace />;
 }
-
-export const httpTool = registerTool({
-  name: 'http-client',
-  component: Main,
-  generateName: () => 'HTTP Client',
-  label: ''
-});

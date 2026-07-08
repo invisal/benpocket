@@ -3,7 +3,7 @@ import { AppShell } from './components/layout/AppShell';
 import { ToolTabItem, ToolTabProvider } from './components/providers/ToolProvider';
 
 function createInitialTabs(): ToolTabItem[] {
-  return [{ type: 'http-client', payload: {}, title: 'Home', subtitle: '', id: 'home' }];
+  return [{ type: 'home', payload: {}, title: 'Home', subtitle: '', id: 'home' }];
 }
 
 function App(): React.JSX.Element {

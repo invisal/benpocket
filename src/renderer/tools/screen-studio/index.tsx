@@ -1,15 +1,9 @@
-import { registerTool, ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ScreenStudioApp } from './ScreenStudioApp';
 
 interface Props {}
 
-// eslint-disable-next-line react-refresh/only-export-components, no-empty-pattern
-function Main({}: ToolComponentProps<Props>) {
-  return <div />;
+// eslint-disable-next-line no-empty-pattern
+export function ScreenRecordMain({}: ToolComponentProps<Props>) {
+  return <ScreenStudioApp />;
 }
-
-export const screenRecordTool = registerTool({
-  name: 'screen-record',
-  component: Main,
-  generateName: () => 'Screen Recorder',
-  label: ''
-});

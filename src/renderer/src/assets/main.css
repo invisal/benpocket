@@ -14,6 +14,7 @@
   --color-surface-2: #101014; /* elevation 1 — hover on surface */
   --color-surface-3: #1a1a20; /* elevation 2 — hover on surface-2, selected on surface */
   --color-surface-4: #26262e; /* elevation 3 — selected on surface-2 */
+  --color-surface-5: #313139; /* elevation 4 — selected on surface-3 */
   --color-border: var(--color-surface-4); /* hairline border against bg-surface */
   --color-surface-raised: var(--color-surface-2); /* screen-studio: elevated panel on bg-surface */
   --color-surface-sunken: var(--color-activity-bg); /* screen-studio: recessed side panel */
@@ -40,6 +41,7 @@
   --color-surface-2: #f2f2f5; /* elevation 1 — hover on surface */
   --color-surface-3: #e3e3e9; /* elevation 2 — hover on surface-2, selected on surface */
   --color-surface-4: #d0d0d9; /* elevation 3 — selected on surface-2 */
+  --color-surface-5: #bfbfc9; /* elevation 4 — selected on surface-3 */
   --color-border: var(--color-surface-4); /* hairline border against bg-surface */
   --color-surface-raised: var(--color-surface-2); /* screen-studio: elevated panel on bg-surface */
   --color-surface-sunken: var(--color-activity-bg); /* screen-studio: recessed side panel */

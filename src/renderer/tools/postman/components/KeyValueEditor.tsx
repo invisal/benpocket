@@ -1,7 +1,9 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import type { KeyValueRow } from '../lib/keyValueRows';
+import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { KeySuggestInput } from './KeySuggestInput';
+import { VariableSuggestInput } from './VariableSuggestInput';
 
 interface KeyValueEditorProps {
   rows: KeyValueRow[];
@@ -21,6 +23,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
   valuePlaceholder = 'Value',
   keySuggestions
 }) => {
+  const variables = useActiveEnvironmentVariables();
   const isLastRow = (id: string): boolean => rows[rows.length - 1]?.id === id;
   const keyInputClassName = (enabled: boolean): string =>
     `bg-editor-bg border border-border-dark text-xs rounded px-2 py-1 focus:outline-none focus:border-accent w-full ${
@@ -61,12 +64,12 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
               className={keyInputClassName(row.enabled)}
             />
           )}
-          <input
-            type="text"
+          <VariableSuggestInput
             value={row.value}
+            onChange={(value) => onUpdate(row.id, { value })}
+            variables={variables}
             placeholder={valuePlaceholder}
-            onChange={(e) => onUpdate(row.id, { value: e.target.value })}
-            className={`bg-editor-bg border border-border-dark text-xs rounded px-2 py-1 focus:outline-none focus:border-accent ${
+            className={`w-full bg-editor-bg border border-border-dark text-xs rounded px-2 py-1 focus:outline-none focus:border-accent ${
               row.enabled ? 'text-zinc-200' : 'text-zinc-600'
             }`}
           />

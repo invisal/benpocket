@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import type { HttpBodyType } from '../../../../preload/postman/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
+import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { KeyValueEditor } from './KeyValueEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
+import { BodyEditor } from './BodyEditor';
 
 type RequestTabValue = 'params' | 'headers' | 'body';
 
@@ -40,6 +42,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   onBodyChange
 }) => {
   const [activeTab, setActiveTab] = useState<RequestTabValue>('params');
+  const variables = useActiveEnvironmentVariables();
 
   const activeParamCount = params.filter((p) => p.enabled && p.key.trim()).length;
   const activeHeaderCount = headers.filter((h) => h.enabled && h.key.trim()).length;
@@ -113,12 +116,12 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           ))}
         </div>
         {bodyType !== 'none' && (
-          <textarea
+          <BodyEditor
             value={body}
-            onChange={(e) => onBodyChange(e.target.value)}
+            onChange={onBodyChange}
+            bodyType={bodyType}
+            variables={variables}
             placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
-            spellCheck={false}
-            className="h-32 bg-editor-bg border border-border-dark rounded px-3 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-accent resize-y"
           />
         )}
       </Tabs.Panel>

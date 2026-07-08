@@ -2,6 +2,8 @@ import React from 'react';
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown, RefreshCw, Send } from 'lucide-react';
 import type { HttpMethod } from '../../../../preload/postman/types';
+import { useActiveEnvironmentVariables } from '../store/environments.store';
+import { VariableSuggestInput } from './VariableSuggestInput';
 
 const METHODS: { value: HttpMethod; className: string }[] = [
   { value: 'GET', className: 'text-emerald-400' },
@@ -34,6 +36,8 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
   isLoading,
   onSend
 }) => {
+  const variables = useActiveEnvironmentVariables();
+
   return (
     <div className="flex gap-2 shrink-0">
       <Select.Root value={method} onValueChange={(value) => onMethodChange(value as HttpMethod)}>
@@ -65,16 +69,16 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
         </Select.Portal>
       </Select.Root>
 
-      <input
-        type="text"
-        placeholder="Enter request URL, e.g. https://api.example.com/v1/resource"
-        value={url}
-        onChange={(e) => onUrlChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onSend();
-        }}
-        className="flex-1 bg-sidebar-bg border border-border-dark text-xs rounded px-3 py-1.5 focus:outline-none focus:border-accent text-zinc-200"
-      />
+      <div className="flex-1">
+        <VariableSuggestInput
+          value={url}
+          onChange={onUrlChange}
+          variables={variables}
+          onEnter={onSend}
+          placeholder="Enter request URL, e.g. https://api.example.com/v1/resource"
+          className="w-full bg-sidebar-bg border border-border-dark text-xs rounded px-3 py-1.5 focus:outline-none focus:border-accent text-zinc-200"
+        />
+      </div>
       <button
         onClick={onSend}
         className="px-4 py-1.5 bg-accent/80 hover:bg-accent text-[#fff] text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"

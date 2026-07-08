@@ -67,3 +67,12 @@ export function getActiveEnvironmentVariables(): KeyValuePair[] {
   const state = useEnvironmentsStore.getState();
   return state.environments.find((e) => e.id === state.activeEnvironmentId)?.variables ?? [];
 }
+
+const EMPTY_VARIABLES: KeyValuePair[] = [];
+
+/** Reactive hook version of {@link getActiveEnvironmentVariables}, for live-updating UI like `{{variable}}` autocomplete. */
+export function useActiveEnvironmentVariables(): KeyValuePair[] {
+  return useEnvironmentsStore(
+    (state) => state.environments.find((e) => e.id === state.activeEnvironmentId)?.variables ?? EMPTY_VARIABLES
+  );
+}

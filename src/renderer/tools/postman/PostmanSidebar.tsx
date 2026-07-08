@@ -19,7 +19,32 @@ import { useLayoutStore } from '../../src/store/layout.store';
 import { useCollectionsStore } from './store/collections.store';
 import type { Collection, CollectionFolder, SavedRequest } from '../../../preload/postman/types';
 import type { PostmanTabSeed } from './types';
-import { collectAllFolderIds, countRequestsRecursive, flattenFolderOptions } from './lib/collectionTree';
+import {
+  collectAllFolderIds,
+  countRequestsRecursive,
+  findFolderById,
+  flattenFolderOptions,
+  isFolderOrDescendant
+} from './lib/collectionTree';
+
+/** Custom MIME type carrying the drag payload for sidebar folder/request drag & drop. */
+const DRAG_MIME_TYPE = 'application/x-craftbox-postman-item';
+
+interface DragPayload {
+  kind: 'request' | 'folder';
+  id: string;
+  collectionId: string;
+}
+
+function readDragPayload(dataTransfer: DataTransfer): DragPayload | null {
+  const raw = dataTransfer.getData(DRAG_MIME_TYPE);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as DragPayload;
+  } catch {
+    return null;
+  }
+}
 
 function makeTabId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return `postman-req-${crypto.randomUUID()}`;
@@ -182,6 +207,10 @@ export const PostmanSidebar: React.FC = () => {
     );
   };
 
+  const handleInvalidDrop = (text: string): void => {
+    setStatusMessage({ type: 'error', text });
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -288,6 +317,7 @@ export const PostmanSidebar: React.FC = () => {
               onRenameFolder={(folderId, name) => renameFolder(collection.id, folderId, name)}
               onDeleteFolder={(folderId) => deleteFolder(collection.id, folderId)}
               onMoveFolder={(folderId, targetParentFolderId) => moveFolder(collection.id, folderId, targetParentFolderId)}
+              onInvalidDrop={handleInvalidDrop}
             />
           ))}
         </div>
@@ -372,6 +402,7 @@ interface CollectionItemProps {
   onRenameFolder: (folderId: string, name: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
+  onInvalidDrop: (message: string) => void;
 }
 
 const CollectionItem: React.FC<CollectionItemProps> = ({
@@ -391,12 +422,41 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
-  onMoveFolder
+  onMoveFolder,
+  onInvalidDrop
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(collection.name);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [draftFolderName, setDraftFolderName] = useState('');
+  const [isRootDropTarget, setIsRootDropTarget] = useState(false);
+
+  const handleRootDragOver = (e: React.DragEvent): void => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME_TYPE)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setIsRootDropTarget(true);
+  };
+
+  const handleRootDragLeave = (e: React.DragEvent): void => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsRootDropTarget(false);
+  };
+
+  const handleRootDrop = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsRootDropTarget(false);
+    const payload = readDragPayload(e.dataTransfer);
+    if (!payload) return;
+    if (payload.collectionId !== collection.id) {
+      onInvalidDrop('Items can only be moved within the same collection.');
+      return;
+    }
+    if (payload.kind === 'request') onMoveRequest(payload.id, null);
+    else onMoveFolder(payload.id, null);
+  };
 
   const commitRename = (): void => {
     setIsRenaming(false);
@@ -420,7 +480,15 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-1 group px-1 py-1 rounded hover:bg-editor-bg/60">
+      <div
+        onDragOver={handleRootDragOver}
+        onDragLeave={handleRootDragLeave}
+        onDrop={handleRootDrop}
+        title="Drop here to move to collection root"
+        className={`flex items-center gap-1 group px-1 py-1 rounded hover:bg-editor-bg/60 ${
+          isRootDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''
+        }`}
+      >
         <button onClick={onToggle} className="text-zinc-500 hover:text-white cursor-pointer shrink-0">
           {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
@@ -499,7 +567,12 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
       </div>
 
       {isExpanded && (
-        <div className="flex flex-col gap-0.5 pl-4">
+        <div
+          onDragOver={handleRootDragOver}
+          onDragLeave={handleRootDragLeave}
+          onDrop={handleRootDrop}
+          className={`flex flex-col gap-0.5 pl-4 rounded ${isRootDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''}`}
+        >
           {isCreatingFolder && (
             <input
               type="text"
@@ -531,6 +604,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               expanded={expanded}
               onToggle={onToggleFolder}
               rootFolders={collection.folders}
+              collectionId={collection.id}
               onOpenRequest={onOpenRequest}
               onRenameRequest={onRenameRequest}
               onDeleteRequest={onDeleteRequest}
@@ -540,6 +614,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               onMoveFolder={onMoveFolder}
+              onInvalidDrop={onInvalidDrop}
             />
           ))}
 
@@ -547,6 +622,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
             <RequestItem
               key={request.id}
               request={request}
+              collectionId={collection.id}
               onOpen={() => onOpenRequest(request)}
               onRename={(name) => onRenameRequest(request.id, name)}
               onDelete={() => onDeleteRequest(request.id)}
@@ -573,6 +649,7 @@ interface FolderItemProps {
   expanded: Set<string>;
   onToggle: (folderId: string) => void;
   rootFolders: CollectionFolder[];
+  collectionId: string;
   onOpenRequest: (request: SavedRequest) => void;
   onRenameRequest: (requestId: string, name: string) => void;
   onDeleteRequest: (requestId: string) => void;
@@ -582,6 +659,7 @@ interface FolderItemProps {
   onRenameFolder: (folderId: string, name: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
+  onInvalidDrop: (message: string) => void;
 }
 
 const FolderItem: React.FC<FolderItemProps> = ({
@@ -590,6 +668,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
   expanded,
   onToggle,
   rootFolders,
+  collectionId,
   onOpenRequest,
   onRenameRequest,
   onDeleteRequest,
@@ -598,12 +677,15 @@ const FolderItem: React.FC<FolderItemProps> = ({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
-  onMoveFolder
+  onMoveFolder,
+  onInvalidDrop
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(folder.name);
   const [isCreatingSubfolder, setIsCreatingSubfolder] = useState(false);
   const [draftSubfolderName, setDraftSubfolderName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
 
   const isExpanded = expanded.has(folder.id);
   const indent = depth * 12;
@@ -626,12 +708,66 @@ const FolderItem: React.FC<FolderItemProps> = ({
     if (name) onCreateFolder(folder.id, name);
   };
 
+  const handleDragStart = (e: React.DragEvent): void => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = 'move';
+    const payload: DragPayload = { kind: 'folder', id: folder.id, collectionId };
+    e.dataTransfer.setData(DRAG_MIME_TYPE, JSON.stringify(payload));
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = (): void => setIsDragging(false);
+
+  const handleDragOver = (e: React.DragEvent): void => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME_TYPE)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDropTarget(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent): void => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDropTarget(false);
+  };
+
+  const handleDrop = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropTarget(false);
+    const payload = readDragPayload(e.dataTransfer);
+    if (!payload) return;
+    if (payload.collectionId !== collectionId) {
+      onInvalidDrop('Items can only be moved within the same collection.');
+      return;
+    }
+    if (payload.kind === 'request') {
+      onMoveRequest(payload.id, folder.id);
+      return;
+    }
+    if (payload.id === folder.id) return;
+    const draggedFolder = findFolderById(rootFolders, payload.id);
+    if (draggedFolder && isFolderOrDescendant(draggedFolder, folder.id)) {
+      onInvalidDrop("Can't move a folder into itself or one of its own subfolders.");
+      return;
+    }
+    onMoveFolder(payload.id, folder.id);
+  };
+
   return (
     <div className="flex flex-col">
       <div
         onClick={() => onToggle(folder.id)}
+        draggable
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         style={{ paddingLeft: indent }}
-        className="flex items-center gap-1 group px-1 py-1 rounded hover:bg-editor-bg/60 cursor-pointer"
+        className={`flex items-center gap-1 group px-1 py-1 rounded hover:bg-editor-bg/60 cursor-grab active:cursor-grabbing ${
+          isDragging ? 'opacity-40' : ''
+        } ${isDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''}`}
       >
         <span className="text-zinc-500 hover:text-white shrink-0">
           {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -749,7 +885,12 @@ const FolderItem: React.FC<FolderItemProps> = ({
       )}
 
       {isExpanded && (
-        <div className="flex flex-col gap-0.5">
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`flex flex-col gap-0.5 rounded ${isDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''}`}
+        >
           {folder.folders.length === 0 && sortedRequests.length === 0 && !isCreatingSubfolder && (
             <div className="text-[10px] text-zinc-650 italic px-1 py-0.5" style={{ paddingLeft: indent + 16 }}>
               Empty folder.
@@ -764,6 +905,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               expanded={expanded}
               onToggle={onToggle}
               rootFolders={rootFolders}
+              collectionId={collectionId}
               onOpenRequest={onOpenRequest}
               onRenameRequest={onRenameRequest}
               onDeleteRequest={onDeleteRequest}
@@ -773,6 +915,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               onMoveFolder={onMoveFolder}
+              onInvalidDrop={onInvalidDrop}
             />
           ))}
 
@@ -781,6 +924,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               key={request.id}
               request={request}
               indent={depth + 1}
+              collectionId={collectionId}
               onOpen={() => onOpenRequest(request)}
               onRename={(name) => onRenameRequest(request.id, name)}
               onDelete={() => onDeleteRequest(request.id)}
@@ -802,16 +946,36 @@ const FolderItem: React.FC<FolderItemProps> = ({
 interface RequestItemProps {
   request: SavedRequest;
   indent?: number;
+  collectionId: string;
   onOpen: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
   moveAction?: React.ReactNode;
 }
 
-const RequestItem: React.FC<RequestItemProps> = ({ request, indent = 0, onOpen, onRename, onDelete, moveAction }) => {
+const RequestItem: React.FC<RequestItemProps> = ({
+  request,
+  indent = 0,
+  collectionId,
+  onOpen,
+  onRename,
+  onDelete,
+  moveAction
+}) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(request.name);
+  const [isDragging, setIsDragging] = useState(false);
   const style = { marginLeft: indent * 12 };
+
+  const handleDragStart = (e: React.DragEvent): void => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = 'move';
+    const payload: DragPayload = { kind: 'request', id: request.id, collectionId };
+    e.dataTransfer.setData(DRAG_MIME_TYPE, JSON.stringify(payload));
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = (): void => setIsDragging(false);
 
   const commitRename = (): void => {
     setIsRenaming(false);
@@ -852,9 +1016,14 @@ const RequestItem: React.FC<RequestItemProps> = ({ request, indent = 0, onOpen, 
         setDraftName(request.name);
         setIsRenaming(true);
       }}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       title={request.url}
       style={style}
-      className="flex items-center gap-2 p-1.5 bg-editor-bg/40 hover:bg-editor-bg rounded text-xs cursor-pointer border border-transparent hover:border-border-dark transition-all group"
+      className={`flex items-center gap-2 p-1.5 bg-editor-bg/40 hover:bg-editor-bg rounded text-xs cursor-grab active:cursor-grabbing border border-transparent hover:border-border-dark transition-all group ${
+        isDragging ? 'opacity-40' : ''
+      }`}
     >
       <span className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}>
         {request.method}

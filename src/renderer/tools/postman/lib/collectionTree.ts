@@ -19,6 +19,15 @@ export function collectAllFolderIds(container: RequestContainer): string[] {
   return container.folders.flatMap((f) => [f.id, ...collectAllFolderIds(f)]);
 }
 
+export function findFolderById(folders: CollectionFolder[], id: string): CollectionFolder | undefined {
+  for (const folder of folders) {
+    if (folder.id === id) return folder;
+    const found = findFolderById(folder.folders, id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export function findRequestInContainer(container: RequestContainer, requestId: string): SavedRequest | undefined {
   const direct = container.requests.find((r) => r.id === requestId);
   if (direct) return direct;

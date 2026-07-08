@@ -31,7 +31,7 @@ export const LeftPanel: React.FC = () => {
   return (
     <div
       style={{ width: `${leftPanelWidth}px` }}
-      className="relative bg-sidebar-bg border-r border-border-dark flex flex-col h-full select-none shrink-0"
+      className="relative bg-surface-2 border-r border-border-dark flex flex-col h-full select-none shrink-0"
     >
       {/* Dynamic Content */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-4">

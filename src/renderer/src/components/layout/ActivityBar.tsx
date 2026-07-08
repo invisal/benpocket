@@ -13,7 +13,7 @@ export const ActivityBar: React.FC = () => {
   };
 
   return (
-    <div className="w-12 bg-activity-bg border-r border-border-dark flex flex-col justify-between items-center py-2 select-none z-30 shrink-0">
+    <div className="w-12 bg-surface-3 border-r border-border-dark flex flex-col justify-between items-center py-2 select-none z-30 shrink-0">
       {/* Top Section: Home & Dynamic Instances */}
       <div className="flex flex-col items-center w-full">
         {/* Persistent Home Icon */}

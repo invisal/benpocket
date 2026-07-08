@@ -45,7 +45,7 @@ export const Workspace: React.FC = () => {
       </div>
 
       {/* Editor Content Area */}
-      <div className="flex-1 overflow-auto p-4 flex flex-col min-h-0">
+      <div className="flex-1 overflow-auto p-4 flex flex-col min-h-0 bg-surface">
         {activeTab.type === 'lens' && <LensWorkspace />}
         {activeTab.type === 'postman' && <PostmanWorkspace />}
         {activeTab.type === 'screenstudio' && <ScreenStudioWorkspace />}
@@ -62,7 +62,13 @@ interface TabBarItemProps {
   onRename: (title: string) => void;
 }
 
-const TabBarItem: React.FC<TabBarItemProps> = ({ tab, isActive, onActivate, onClose, onRename }) => {
+const TabBarItem: React.FC<TabBarItemProps> = ({
+  tab,
+  isActive,
+  onActivate,
+  onClose,
+  onRename
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(tab.title);
 

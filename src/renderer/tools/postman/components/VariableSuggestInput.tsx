@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom';
 import type { KeyValuePair } from '../../../../preload/postman/types';
 import { findOpenToken, insertVariable, type OpenToken } from '../lib/variableToken';
+import { Input } from '@renderer/components/ui/Input';
 
 interface VariableSuggestInputProps {
   value: string;
@@ -29,7 +30,6 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   onChange,
   variables,
   placeholder,
-  className,
   onEnter
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +37,10 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [rect, setRect] = useState<DropdownRect | null>(null);
 
-  const names = useMemo(() => Array.from(new Set(variables.map((v) => v.key.trim()).filter(Boolean))), [variables]);
+  const names = useMemo(
+    () => Array.from(new Set(variables.map((v) => v.key.trim()).filter(Boolean))),
+    [variables]
+  );
 
   const filtered = useMemo(() => {
     if (!token) return [];
@@ -87,7 +90,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
 
   return (
     <div className="relative">
-      <input
+      <Input
         ref={inputRef}
         type="text"
         value={value}
@@ -128,7 +131,6 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
           }
           if (e.key === 'Enter') onEnter?.();
         }}
-        className={className}
         autoComplete="off"
         spellCheck={false}
       />
@@ -147,7 +149,9 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
                   selectSuggestion(name);
                 }}
                 className={`px-2.5 py-1 text-xs font-mono cursor-pointer ${
-                  index === highlightedIndex ? 'bg-accent/20 text-accent' : 'text-zinc-300 hover:bg-border-dark/60'
+                  index === highlightedIndex
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-zinc-300 hover:bg-border-dark/60'
                 }`}
               >
                 {'{{'}

@@ -43,13 +43,13 @@ const variantClasses: Record<ButtonVariant, string> = {
     'active:translate-y-[1px]',
     raisedShadowActive
   ),
-  secondary: cn(
+  outline: cn(
     'border border-border-dark bg-surface text-text-base',
-    'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),inset_0_-2px_0_0_rgba(0,0,0,0.2)]',
+    'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),inset_0_-1px_0_0_rgba(0,0,0,0.2)]',
     'hover:brightness-[1.1]',
     'active:translate-y-[1px] active:shadow-[inset_0_2px_3px_0_rgba(0,0,0,0.3)]'
   ),
-  outline: cn(
+  secondary: cn(
     'border border-border-dark bg-sidebar-bg text-text-base',
     'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),inset_0_-1px_0_0_rgba(0,0,0,0.25)]',
     'hover:bg-border-dark/40',

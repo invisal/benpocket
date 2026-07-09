@@ -10,10 +10,15 @@ import { EDITOR_TOOLS, type EditorTool } from './EditorToolRail';
 interface EditorToolPanelProps {
   tool: EditorTool;
   currentTimeMs: number;
+  sourceResolution: { width: number; height: number } | null;
 }
 
 /** Renders whichever tool's settings the EditorToolRail has selected. */
-export function EditorToolPanel({ tool, currentTimeMs }: EditorToolPanelProps): JSX.Element {
+export function EditorToolPanel({
+  tool,
+  currentTimeMs,
+  sourceResolution
+}: EditorToolPanelProps): JSX.Element {
   if (tool === 'export') return <ExportSidePanel />;
 
   const label = EDITOR_TOOLS.find((t) => t.id === tool)?.label ?? '';
@@ -25,7 +30,9 @@ export function EditorToolPanel({ tool, currentTimeMs }: EditorToolPanelProps): 
       {tool === 'cursor' && <CursorSettingsPanel />}
       {tool === 'webcam' && <WebcamPanel />}
       {tool === 'captions' && <CaptionsPanel />}
-      {tool === 'zoom' && <ZoomKeyframeEditor currentTimeMs={currentTimeMs} />}
+      {tool === 'zoom' && (
+        <ZoomKeyframeEditor currentTimeMs={currentTimeMs} sourceResolution={sourceResolution} />
+      )}
     </aside>
   );
 }

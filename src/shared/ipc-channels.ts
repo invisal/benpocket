@@ -9,6 +9,7 @@ export const IpcChannels = {
   StartCursorTracking: 'cursor:start-tracking',
   StopCursorTracking: 'cursor:stop-tracking',
   CursorPositionSample: 'cursor:position-sample',
+  CursorClickSample: 'cursor:click-sample',
   OpenProject: 'project:open',
   SaveProject: 'project:save',
   ExportVideo: 'export:start',

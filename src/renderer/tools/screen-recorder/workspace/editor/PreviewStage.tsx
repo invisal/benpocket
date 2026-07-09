@@ -1,15 +1,18 @@
 import type { JSX } from 'react';
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Play } from 'lucide-react';
 import { useBackgroundStore } from '../../features/background/store/background-store';
 import { backgroundLayerStyle } from '../../features/background/lib/background-css';
 import { useWebcamStore } from '../../features/webcam/store/webcam-store';
 import { useCaptionsStore } from '../../features/captions/store/captions-store';
-// import { useCursorStore } from '../../features/cursor/store/cursor-store';
-// import { useAppStore } from '../../app/app-store';
+import { useZoomStore } from '../../features/zoom/store/zoom-store';
+import { useCursorStore } from '../../features/cursor/store/cursor-store';
+import { useAppStore } from '../../app/app-store';
 import { CropOverlay } from '../../features/crop/components/CropOverlay';
 // import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
+import { resolveZoom } from '@shared/zoom-resolve';
+import { smoothCursorPath } from '@shared/cursor-path';
 import { mediaErrorMessage } from '../../lib/media';
 import { cn } from '../../lib/utils';
 
@@ -56,10 +59,43 @@ export function PreviewStage({
   const webcam = useWebcamStore();
   const captionSegments = useCaptionsStore((s) => s.segments);
   const captionsEnabled = useCaptionsStore((s) => s.enabled);
+  const zoomKeyframes = useZoomStore((s) => s.keyframes);
+  const armedKeyframeId = useZoomStore((s) => s.armedKeyframeId);
+  const updateKeyframe = useZoomStore((s) => s.updateKeyframe);
+  const disarmPositioning = useZoomStore((s) => s.disarmPositioning);
   // const cursor = useCursorStore();
-  // const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
+  const cursorSmoothing = useCursorStore((s) => s.smoothing);
+  const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
+  // Same smoothing pass the export compositor applies (see
+  // FrameCompositor.create), so 'auto-cursor' zoom keyframes and the export
+  // follow the identical (smoothed) trajectory.
+  const smoothedCursorPath = useMemo(
+    () => smoothCursorPath(rawCursorPath, cursorSmoothing),
+    [rawCursorPath, cursorSmoothing]
+  );
+
+  // `currentTimeMs` only updates on the video's `timeupdate` event, which
+  // browsers fire just a few times a second -- fine for captions/timeline
+  // sync, but far too coarse for a smooth zoom: driving the transform off it
+  // produced a visible step-then-jump (and, combined with the transition
+  // below re-triggering on every irregular update, occasional flicker).
+  // Polling the video element directly every animation frame gives a true
+  // ~60fps clock for the zoom to track instead.
+  const [zoomTimeMs, setZoomTimeMs] = useState(currentTimeMs);
+  useEffect(() => {
+    let rafId: number;
+    const tick = (): void => {
+      const video = videoRef.current;
+      if (video) setZoomTimeMs(video.currentTime * 1000);
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const videoWrapperRef = useRef<HTMLDivElement>(null);
   // const [stageWidthPx, setStageWidthPx] = useState(0);
 
   // useEffect(() => {
@@ -80,6 +116,31 @@ export function PreviewStage({
   const activeCaption = captionsEnabled
     ? captionSegments.find((s) => currentTimeMs >= s.startMs && currentTimeMs <= s.endMs)
     : undefined;
+
+  // Same resolveZoom() as the export compositor, so scrubbing shows exactly
+  // what will get baked into the export. Uses the rAF-driven zoomTimeMs
+  // (see above), not the coarser currentTimeMs prop, so it updates smoothly.
+  const {
+    depth: zoomDepth,
+    focal: zoomFocal,
+    shift: zoomShift
+  } = useMemo(
+    () => resolveZoom(zoomTimeMs, zoomKeyframes, smoothedCursorPath),
+    [zoomTimeMs, zoomKeyframes, smoothedCursorPath]
+  );
+  // Where the focal point actually ends up on screen right now (it migrates
+  // toward center as the zoom deepens, see zoom-resolve.ts) -- for the marker.
+  const zoomFocalScreenX = zoomFocal.x + zoomShift.x;
+  const zoomFocalScreenY = zoomFocal.y + zoomShift.y;
+
+  function handlePreviewClick(event: React.MouseEvent<HTMLDivElement>): void {
+    if (!armedKeyframeId) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    updateKeyframe(armedKeyframeId, { position: { x, y } });
+    disarmPositioning();
+  }
 
   function startWebcamDrag(event: React.PointerEvent): void {
     event.preventDefault();
@@ -134,18 +195,36 @@ export function PreviewStage({
       </span>
 
       <div className="relative flex flex-1 items-center justify-center">
-        <div className="relative max-h-full max-w-full overflow-hidden rounded-lg shadow-2xl shadow-black/50">
+        <div
+          ref={videoWrapperRef}
+          onClick={handlePreviewClick}
+          className={cn(
+            'relative max-h-full max-w-full overflow-hidden rounded-lg shadow-2xl shadow-black/50',
+            armedKeyframeId && 'cursor-crosshair'
+          )}
+        >
           <video
             ref={videoRef}
             key={previewUrl}
             src={previewUrl}
             className="max-h-full max-w-full"
+            style={{
+              transform: `translate(${zoomShift.x * 100}%, ${zoomShift.y * 100}%) scale(${zoomDepth})`,
+              transformOrigin: `${zoomFocal.x * 100}% ${zoomFocal.y * 100}%`
+            }}
             onLoadedMetadata={onLoadedMetadata}
             onPlay={onPlay}
             onPause={onPause}
             onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime * 1000)}
             onError={(e) => onError(mediaErrorMessage(e.currentTarget.error))}
           />
+
+          {zoomDepth > 1.01 && (
+            <div
+              className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent shadow-[0_0_0_2px_rgba(0,0,0,0.5)]"
+              style={{ left: `${zoomFocalScreenX * 100}%`, top: `${zoomFocalScreenY * 100}%` }}
+            />
+          )}
 
           {cropToolActive && sourceResolution && selectedSegmentId && (
             <CropOverlay

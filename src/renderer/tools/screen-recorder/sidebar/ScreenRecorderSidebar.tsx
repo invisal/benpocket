@@ -14,6 +14,8 @@ import {
   startCursorCapture,
   type CursorCaptureHandle
 } from '../features/cursor/engine/cursor-capture';
+import { generateAutoZoomKeyframes } from '../features/zoom/engine/auto-zoom-engine';
+import { useZoomStore } from '../features/zoom/store/zoom-store';
 
 export const ScreenRecorderSidebar: React.FC = () => {
   const { openTab } = useToolTabs();
@@ -26,6 +28,9 @@ export const ScreenRecorderSidebar: React.FC = () => {
   const setLastRecording = useAppStore((state) => state.setLastRecording);
 
   const [error, setError] = useState<string | null>(null);
+  const [liveCounts, setLiveCounts] = useState<{ cursorCount: number; clickCount: number } | null>(
+    null
+  );
   const captureRef = useRef<CaptureHandle | null>(null);
   const cursorCaptureRef = useRef<CursorCaptureHandle | null>(null);
 
@@ -39,14 +44,17 @@ export const ScreenRecorderSidebar: React.FC = () => {
       return;
     }
     setError(null);
+    setLiveCounts({ cursorCount: 0, clickCount: 0 });
     try {
       captureRef.current = await startCapture({ source: selectedSource, audio });
       // Uses the recorder's *actual* startedAt (not a pre-call guess) so
       // cursor samples line up exactly with the video's own t=0.
       cursorCaptureRef.current = await startCursorCapture(
         selectedSource,
-        captureRef.current.startedAt
+        captureRef.current.startedAt,
+        setLiveCounts
       );
+      if (!cursorCaptureRef.current) setLiveCounts(null);
       setIsRecording(true);
     } catch (err) {
       // Most likely cause: the user denied the (rare, OS-level) permission
@@ -63,8 +71,18 @@ export const ScreenRecorderSidebar: React.FC = () => {
     const blob = await capture.stop();
     captureRef.current = null;
 
-    const cursorPath = (await cursorCaptureRef.current?.stop()) ?? [];
+    const { cursorPath, clickPath } = (await cursorCaptureRef.current?.stop()) ?? {
+      cursorPath: [],
+      clickPath: []
+    };
     cursorCaptureRef.current = null;
+
+    // Fresh recording -> whatever zoom keyframes existed belonged to the
+    // previous one and no longer mean anything on this timeline. Re-seed
+    // from this recording's real clicks when in auto mode, otherwise just
+    // clear them for the user to place manually.
+    const zoomStore = useZoomStore.getState();
+    zoomStore.setKeyframes(zoomStore.mode === 'auto' ? generateAutoZoomKeyframes(clickPath) : []);
 
     const previewUrl = URL.createObjectURL(blob);
     const extension = fileExtensionForBlob(blob);
@@ -83,7 +101,8 @@ export const ScreenRecorderSidebar: React.FC = () => {
       filePath,
       sizeBytes: blob.size,
       createdAt: Date.now(),
-      cursorPath
+      cursorPath,
+      clickPath
     });
     setRoute('editor');
   }
@@ -122,6 +141,19 @@ export const ScreenRecorderSidebar: React.FC = () => {
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
+
+      {liveCounts && (isRecording || liveCounts.cursorCount > 0 || liveCounts.clickCount > 0) && (
+        <p
+          className={`text-[10px] ${
+            liveCounts.cursorCount > 0 ? 'text-emerald-400/70' : 'text-amber-400/70'
+          }`}
+        >
+          {isRecording ? 'Tracking: ' : 'Tracked '}
+          {liveCounts.cursorCount} cursor point{liveCounts.cursorCount === 1 ? '' : 's'},{' '}
+          {liveCounts.clickCount} click{liveCounts.clickCount === 1 ? '' : 's'}
+          {isRecording && liveCounts.cursorCount === 0 ? ' -- move your mouse to test' : ''}
+        </p>
+      )}
 
       <div className="mt-1 border-t border-border-dark pt-3">
         {isRecording ? (

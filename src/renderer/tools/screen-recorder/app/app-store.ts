@@ -11,6 +11,8 @@ interface LastRecording {
   createdAt: number;
   /** Recorded system-cursor samples, source-timeline `atMs`. Empty for window captures. */
   cursorPath: CursorPathPoint[];
+  /** Recorded real mousedown events (see click-tracker.ts), same convention as cursorPath. */
+  clickPath: CursorPathPoint[];
 }
 
 interface AppStoreState {

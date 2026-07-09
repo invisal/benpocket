@@ -32,21 +32,49 @@ export function SourcePicker(): JSX.Element {
   }
 
   return (
-    <div className="grid grid-cols-4 gap-3">
-      {sources.map((source) => (
-        <button
-          key={source.id}
-          onClick={() => setSelectedSource(source)}
-          className={`rounded-xl border p-2 text-left ${
-            selectedSource?.id === source.id
-              ? 'border-accent bg-surface-raised'
-              : 'border-white/10 bg-surface-raised hover:border-accent/60'
-          }`}
-        >
-          <img src={source.thumbnailDataUrl} alt={source.name} className="rounded-lg" />
-          <p className="mt-1 truncate text-xs">{source.name}</p>
-        </button>
-      ))}
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-4 gap-3">
+        {sources.map((source) => (
+          <button
+            key={source.id}
+            onClick={() => setSelectedSource(source)}
+            className={`rounded-xl border p-2 text-left ${
+              selectedSource?.id === source.id
+                ? 'border-accent bg-surface-raised'
+                : 'border-white/10 bg-surface-raised hover:border-accent/60'
+            }`}
+          >
+            <img src={source.thumbnailDataUrl} alt={source.name} className="rounded-lg" />
+            <p className="mt-1 truncate text-xs">{source.name}</p>
+            {/* Cursor tracking only works for 'screen' sources with resolved
+                bounds -- shown here so a bad pick/pairing is obvious without
+                needing devtools. See screen-source-provider.ts. */}
+            <p
+              className={`mt-0.5 truncate text-[10px] ${
+                source.type === 'screen' && source.displayBounds
+                  ? 'text-emerald-400/70'
+                  : 'text-white/30'
+              }`}
+            >
+              {source.type === 'window'
+                ? 'window -- no cursor tracking'
+                : source.displayBounds
+                  ? 'screen -- cursor tracking ok'
+                  : 'screen -- bounds unresolved!'}
+            </p>
+          </button>
+        ))}
+      </div>
+
+      {selectedSource && (
+        <p className="text-[10px] text-white/30">
+          Selected: {selectedSource.name} ({selectedSource.type}
+          {selectedSource.type === 'screen'
+            ? `, bounds: ${selectedSource.displayBounds ? JSON.stringify(selectedSource.displayBounds) : 'none'}`
+            : ''}
+          )
+        </p>
+      )}
     </div>
   );
 }

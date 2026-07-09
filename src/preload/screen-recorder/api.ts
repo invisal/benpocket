@@ -29,6 +29,11 @@ export const screenRecorderApi = {
       const listener = (_event: unknown, sample: CursorPathPoint): void => callback(sample);
       ipcRenderer.on(IpcChannels.CursorPositionSample, listener);
       return () => ipcRenderer.removeListener(IpcChannels.CursorPositionSample, listener);
+    },
+    onClickSample: (callback: (sample: CursorPathPoint) => void): (() => void) => {
+      const listener = (_event: unknown, sample: CursorPathPoint): void => callback(sample);
+      ipcRenderer.on(IpcChannels.CursorClickSample, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CursorClickSample, listener);
     }
   },
   project: {

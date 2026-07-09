@@ -13,12 +13,12 @@ import type {
   CursorSettings
 } from '@screen-recorder/types/project';
 import type { WebcamOptions } from '@screen-recorder/types/recording';
-import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
 import { smoothCursorPath, sampleCursorPath } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
+import { resolveZoom } from '@shared/zoom-resolve';
 
 export interface InnerRect {
   x: number;
@@ -48,40 +48,6 @@ export function computeInnerRect(
     width: Math.round(width),
     height: Math.round(height)
   };
-}
-
-function ease(t: number, easing: ZoomKeyframe['easing']): number {
-  switch (easing) {
-    case 'linear':
-      return t;
-    case 'ease-in':
-      return t * t;
-    case 'ease-out':
-      return 1 - (1 - t) * (1 - t);
-    case 'ease-in-out':
-      return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-  }
-}
-
-/**
- * `'auto-cursor'` keyframes still fall back to a fixed center point.
- * TODO: now that a real cursor path is recorded (project.cursorPath), make
- * this follow it instead.
- */
-function resolveZoom(
-  atMs: number,
-  keyframes: ZoomKeyframe[]
-): { depth: number; focal: { x: number; y: number } } {
-  const active = keyframes.find((k) => atMs >= k.atMs && atMs <= k.atMs + k.durationMs);
-  if (!active) return { depth: 1, focal: { x: 0.5, y: 0.5 } };
-
-  const progress = active.durationMs > 0 ? (atMs - active.atMs) / active.durationMs : 1;
-  const envelope =
-    progress < 0.5 ? ease(progress * 2, active.easing) : ease((1 - progress) * 2, active.easing);
-  const depth = 1 + (active.depth - 1) * envelope;
-  const focal = active.position === 'auto-cursor' ? { x: 0.5, y: 0.5 } : active.position;
-
-  return { depth, focal };
 }
 
 /**
@@ -456,13 +422,23 @@ export class FrameCompositor {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     drawBackground(ctx, outputWidth, outputHeight, project.background, this.backgroundImage);
 
-    const { depth, focal } = resolveZoom(atMs, project.zoomKeyframes);
+    const { depth, focal, shift } = resolveZoom(
+      atMs,
+      project.zoomKeyframes,
+      this.smoothedCursorPath
+    );
     const focalPx = {
       x: innerRect.x + focal.x * innerRect.width,
       y: innerRect.y + focal.y * innerRect.height
     };
 
     ctx.save();
+    // `shift` recenters the focal point toward the middle of the frame as
+    // the zoom deepens -- applied as a flat translate *outside* the
+    // focal-anchored scale below, so it just carries the whole (already
+    // correctly zoomed) scene to the recentered position rather than
+    // affecting the scale math itself.
+    ctx.translate(shift.x * innerRect.width, shift.y * innerRect.height);
     ctx.translate(focalPx.x, focalPx.y);
     ctx.scale(depth, depth);
     ctx.translate(-focalPx.x, -focalPx.y);

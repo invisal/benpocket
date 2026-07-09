@@ -3,10 +3,9 @@ import { ScreenRecordingPermissionBanner } from '../../features/recording/compon
 import { SourcePicker } from '../../features/recording/components/SourcePicker';
 
 // Audio/webcam controls and the Start/Stop Recording button live in the
-// app's persistent ScreenRecorderSidebar (src/renderer/src/components/layout/
-// sidebars/ScreenRecorderSidebar.tsx) instead of here, so they stay reachable
-// (and a recording stays controllable) no matter which ScreenRecorder page is
-// showing.
+// persistent ScreenRecorderSidebar (rendered by ScreenRecorderApp) instead of
+// here, so they stay reachable (and a recording stays controllable) no matter
+// which ScreenRecorder page is showing.
 export function RecordSetupPage(): JSX.Element {
   return (
     <div className="flex flex-1 flex-col gap-6 p-8">

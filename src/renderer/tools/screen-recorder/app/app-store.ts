@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CursorPathPoint } from '@screen-studio/types/project';
+import type { CursorPathPoint } from '@screen-recorder/types/project';
 
 export type ScreenRecorderRoute =
   'record-setup' | 'recording-hud' | 'editor' | 'library' | 'presets' | 'settings';

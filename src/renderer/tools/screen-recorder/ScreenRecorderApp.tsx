@@ -8,6 +8,7 @@ import { LibraryPage } from './workspace/library/LibraryPage';
 import { PresetsPage } from './workspace/presets/PresetsPage';
 import { SettingsPage } from './workspace/settings/SettingsPage';
 import { ExportButton } from './features/export/components/ExportButton';
+import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 
 // `recording-hud` is intentionally excluded: it's rendered into its own
 // frameless always-on-top window (main/screen-recorder/windows/recorder-bar-window.ts),
@@ -63,12 +64,18 @@ export function ScreenRecorderApp(): JSX.Element {
         <ExportButton />
       </nav>
 
-      <div className="flex min-h-0 flex-1 overflow-auto">
-        {route === 'record-setup' && <RecordSetupPage />}
-        {route === 'editor' && <EditorPage />}
-        {route === 'library' && <LibraryPage />}
-        {route === 'presets' && <PresetsPage />}
-        {route === 'settings' && <SettingsPage />}
+      <div className="flex min-h-0 flex-1">
+        <div className="w-64 shrink-0 overflow-y-auto border-r border-line p-3">
+          <ScreenRecorderSidebar />
+        </div>
+
+        <div className="flex min-h-0 flex-1 overflow-auto">
+          {route === 'record-setup' && <RecordSetupPage />}
+          {route === 'editor' && <EditorPage />}
+          {route === 'library' && <LibraryPage />}
+          {route === 'presets' && <PresetsPage />}
+          {route === 'settings' && <SettingsPage />}
+        </div>
       </div>
     </div>
   );

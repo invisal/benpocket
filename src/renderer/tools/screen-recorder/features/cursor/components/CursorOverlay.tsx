@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useMemo } from 'react';
-import type { CursorSettings, CursorPathPoint } from '@screen-studio/types/project';
+import type { CursorSettings, CursorPathPoint } from '@screen-recorder/types/project';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { smoothCursorPath, sampleCursorPath } from '../engine/cursor-smoothing-engine';

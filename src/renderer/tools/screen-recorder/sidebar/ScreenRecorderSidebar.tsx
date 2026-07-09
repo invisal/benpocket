@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Play, Plus } from 'lucide-react';
-import { useLayoutStore } from '../../../src/store/layout.store';
+import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { useAppStore } from '../app/app-store';
 import { useRecordingStore } from '../features/recording/store/recording-store';
 import { AudioSourceToggle } from '../features/recording/components/AudioSourceToggle';
@@ -16,7 +16,7 @@ import {
 } from '../features/cursor/engine/cursor-capture';
 
 export const ScreenRecorderSidebar: React.FC = () => {
-  const { openTab, activeInstanceId } = useLayoutStore();
+  const { openTab } = useToolTabs();
   const selectedSource = useRecordingStore((state) => state.selectedSource);
   const audio = useRecordingStore((state) => state.audio);
   const route = useAppStore((state) => state.route);
@@ -30,13 +30,7 @@ export const ScreenRecorderSidebar: React.FC = () => {
   const cursorCaptureRef = useRef<CursorCaptureHandle | null>(null);
 
   function handleNewScreenRecorderSession(): void {
-    const sessionId = `screenrecorder-session-${Date.now()}`;
-    openTab({
-      id: sessionId,
-      title: 'Screen Recording',
-      type: 'screenrecorder',
-      instanceId: activeInstanceId
-    });
+    openTab('screen-recorder', {}, { title: 'Screen Recording' });
   }
 
   async function handleStart(): Promise<void> {

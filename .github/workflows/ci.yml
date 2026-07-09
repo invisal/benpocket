@@ -25,7 +25,7 @@ jobs:
       - name: Install libuiohook build dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxtst-dev libxinerama-dev libxkbfile-dev libxrandr-dev libxt-dev libxkbcommon-dev libxxf86misc-dev
+          sudo apt-get install -y libx11-dev libxtst-dev libxrandr-dev libxt-dev
 
       - run: npm ci
 
@@ -57,7 +57,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxtst-dev libxinerama-dev libxkbfile-dev libxrandr-dev libxt-dev libxkbcommon-dev libxxf86misc-dev
+          sudo apt-get install -y libx11-dev libxtst-dev libxrandr-dev libxt-dev
 
       - run: npm ci
 

@@ -7,3 +7,5 @@ interface Props {}
 export function HttpClientMain({}: ToolComponentProps<Props>) {
   return <HttpClientWorkspace />;
 }
+
+export default HttpClientMain;

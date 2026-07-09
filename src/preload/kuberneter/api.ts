@@ -13,10 +13,8 @@ export interface KuberneterApi {
 }
 
 export const kuberneterApi: KuberneterApi = {
-  listContexts: (kubeconfigPath) =>
-    ipcRenderer.invoke('kuberneter:list-contexts', kubeconfigPath),
-  selectKubeconfigFile: () =>
-    ipcRenderer.invoke('kuberneter:select-kubeconfig-file'),
+  listContexts: (kubeconfigPath) => ipcRenderer.invoke('kuberneter:list-contexts', kubeconfigPath),
+  selectKubeconfigFile: () => ipcRenderer.invoke('kuberneter:select-kubeconfig-file'),
   saveKubeconfig: (content, filename) =>
     ipcRenderer.invoke('kuberneter:save-kubeconfig', content, filename),
   getResources: (kubeconfigPath, contextName, resource, namespace) =>

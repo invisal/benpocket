@@ -17,7 +17,13 @@ export const ActivityBar: React.FC = () => {
       case 'screen-recorder':
         return <VideoIcon size={16} />;
       case 'kuberneter':
-        return <img src={kuberneterIcon} className="size-5 select-none pointer-events-none" alt="Kuberneter" />;
+        return (
+          <img
+            src={kuberneterIcon}
+            className="size-5 select-none pointer-events-none"
+            alt="Kuberneter"
+          />
+        );
       default:
         return <GlobeIcon size={16} />;
     }
@@ -32,7 +38,9 @@ export const ActivityBar: React.FC = () => {
               <button
                 className={cn(
                   'size-9 flex justify-center items-center rounded-lg cursor-pointer transition-colors',
-                  tab.id === activeTabId ? 'bg-surface-5 text-white' : 'hover:bg-surface-4 text-zinc-400'
+                  tab.id === activeTabId
+                    ? 'bg-surface-5 text-white'
+                    : 'hover:bg-surface-4 text-zinc-400'
                 )}
                 onClick={() => selectTab(tab.id)}
               >

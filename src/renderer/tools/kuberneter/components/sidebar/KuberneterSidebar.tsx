@@ -172,7 +172,8 @@ export const KuberneterSidebar: React.FC = () => {
           Disconnected
         </span>
         <p className="text-[10px] text-zinc-600 leading-relaxed max-w-[180px]">
-          Please open the Kuberneter Home tab and connect to a cluster context to enable sidebar navigation.
+          Please open the Kuberneter Home tab and connect to a cluster context to enable sidebar
+          navigation.
         </p>
       </div>
     );
@@ -211,7 +212,9 @@ export const KuberneterSidebar: React.FC = () => {
 
             // Filter subItems if search is active
             const matchingSubs = cat.subItems
-              ? cat.subItems.filter((sub) => !searchTerm || isMatch(sub.label) || isMatch(cat.label))
+              ? cat.subItems.filter(
+                  (sub) => !searchTerm || isMatch(sub.label) || isMatch(cat.label)
+                )
               : [];
 
             // Skip rendering if search is active and neither parent nor subItems match
@@ -234,8 +237,8 @@ export const KuberneterSidebar: React.FC = () => {
                     isActive
                       ? 'bg-border-dark text-white font-semibold'
                       : isHighlighted
-                      ? 'text-accent font-semibold bg-accent/5'
-                      : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
+                        ? 'text-accent font-semibold bg-accent/5'
+                        : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
                   }`}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -256,8 +259,8 @@ export const KuberneterSidebar: React.FC = () => {
                     isSubActive
                       ? 'text-white font-medium'
                       : isParentHighlighted
-                      ? 'text-accent font-semibold bg-accent/5'
-                      : 'text-zinc-400 hover:text-zinc-200'
+                        ? 'text-accent font-semibold bg-accent/5'
+                        : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -284,8 +287,8 @@ export const KuberneterSidebar: React.FC = () => {
                             isActive
                               ? 'bg-border-dark/60 text-accent font-semibold'
                               : isSubHighlighted
-                              ? 'text-accent font-semibold bg-accent/5'
-                              : 'text-zinc-500 hover:text-zinc-300'
+                                ? 'text-accent font-semibold bg-accent/5'
+                                : 'text-zinc-500 hover:text-zinc-300'
                           }`}
                         >
                           {highlightText(sub.label, searchTerm)}

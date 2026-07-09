@@ -16,7 +16,6 @@ interface PodsTableProps {
 export const PodsTable: React.FC<PodsTableProps> = ({ podsData, kuberneterSelectedNamespace }) => {
   const [selectedPod, setSelectedPod] = useState<PodRow | null>(null);
 
-
   return (
     <div className="flex-1 flex gap-4 min-h-0">
       {/* Table Container */}

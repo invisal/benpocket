@@ -7,3 +7,5 @@ interface Props {}
 export function ScreenRecordMain({}: ToolComponentProps<Props>) {
   return <ScreenRecorderApp />;
 }
+
+export default ScreenRecordMain;

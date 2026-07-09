@@ -161,7 +161,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
 
   return (
     <div className="flex-1 flex flex-col gap-4 min-h-0">
-
       {isLoading && (
         <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
           <Loader2 className="size-6 text-accent animate-spin" />

@@ -300,7 +300,9 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
                               }`}
                             />
                             <div className="truncate pr-2">
-                              <span className="text-xs font-semibold">{highlightText(ctx.name, searchTerm)}</span>
+                              <span className="text-xs font-semibold">
+                                {highlightText(ctx.name, searchTerm)}
+                              </span>
                               <span className="text-[9px] text-zinc-500 pl-2 font-mono truncate">
                                 {highlightText(ctx.server || ctx.cluster, searchTerm)}
                               </span>

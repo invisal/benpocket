@@ -62,7 +62,8 @@ export const RightPanel: React.FC = () => {
         <div className="flex flex-col gap-1 max-w-[85%] self-start bg-editor-bg border border-border-dark p-2 rounded-r-lg rounded-tl-lg text-zinc-300">
           <span>
             Excellent request! I am helping you craft the layouts using Tailwind v4, React, and
-            Electron right now. Let me know if you need to open local folder systems using Kuberneter.
+            Electron right now. Let me know if you need to open local folder systems using
+            Kuberneter.
           </span>
           <span className="text-[9px] text-zinc-500 text-right">10:05 PM</span>
         </div>

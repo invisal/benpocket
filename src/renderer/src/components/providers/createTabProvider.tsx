@@ -1,14 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  Activity,
-  ComponentType,
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-  useState
-} from 'react';
+import { Activity, ComponentType, lazy, ReactNode, Suspense } from 'react';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface ToolComponentProps<Payload> {
   id: string;
@@ -19,7 +12,10 @@ export interface ToolComponentProps<Payload> {
 interface Tool<Name extends string = string, Payload = unknown> {
   name: Name;
   label: string;
-  component: ComponentType<ToolComponentProps<Payload>>;
+  /** Dynamic import of the tool's entry module, keyed off its own file rather than an
+   * eagerly-imported reference, so the registry doesn't statically depend on -- and
+   * therefore doesn't get HMR-invalidated by -- a tool's implementation files. */
+  loadComponent: () => Promise<{ default: ComponentType<ToolComponentProps<Payload>> }>;
   generateName: (payload: Payload) => string;
 }
 
@@ -43,7 +39,7 @@ type TabShape<TTool> =
 type Tab<TTool extends Tool<string, any>> = BaseTab & TabShape<TTool>;
 type TabType<TTool extends Tool<string, any>> = Tab<TTool>['type'];
 
-interface TabContextValue<TTool extends Tool<string, any>> {
+interface TabsState<TTool extends Tool<string, any>> {
   tabs: Tab<TTool>[];
   activeTabId: string | undefined;
   openTab: <T extends TabType<TTool>>(
@@ -56,113 +52,97 @@ interface TabContextValue<TTool extends Tool<string, any>> {
   renameTab: (id: string, title: string) => void;
 }
 
-interface State<TTool extends Tool<string, unknown>> {
-  tabs: Tab<TTool>[];
-  activeTabId: string | undefined;
-}
-
 /**
- * Builds an isolated tab system (context + provider + hook) for one region of the
- * UI (e.g. the sidebar). Each call produces its own state tree and its own React
- * context, so independent tab regions never see or affect each other's tabs.
+ * Builds a Zustand-backed tab system for one region of the UI (e.g. the top-level
+ * tool switcher). The store lives outside the React tree, so unlike a Context-based
+ * implementation, Fast Refresh reloading a tool's own module doesn't tear down a
+ * Provider and reset every open tab -- state also persists to localStorage so a
+ * full page reload restores exactly what was open.
  */
-export function createTabProvider<TTool extends Tool<string, any>>(tools: readonly TTool[]) {
+export function createTabProvider<TTool extends Tool<string, any>>(
+  tools: readonly TTool[],
+  options: { storageKey: string; initialTabs?: () => Tab<TTool>[] }
+) {
   const toolsByName = Object.fromEntries(tools.map((tool) => [tool.name, tool])) as Record<
     TabType<TTool>,
     TTool
   >;
 
-  const TabContext = createContext<TabContextValue<TTool> | undefined>(undefined);
+  // Created once per tool at registry setup so identity is stable across renders --
+  // `lazy()` remounts and re-fetches its component whenever it's handed a new reference.
+  const lazyComponentByName = Object.fromEntries(
+    tools.map((tool) => [tool.name, lazy(tool.loadComponent)])
+  ) as unknown as Record<TabType<TTool>, ComponentType<ToolComponentProps<unknown>>>;
 
-  function useTabs(): TabContextValue<TTool> {
-    const ctx = useContext(TabContext);
-    if (!ctx) {
-      throw new Error('useTabs must be used within its matching <TabProvider>');
-    }
-    return ctx;
-  }
+  const initialTabs = options.initialTabs?.() ?? [];
 
-  function TabProvider({
-    children,
-    initialTabs
-  }: {
-    children: ReactNode;
-    initialTabs?: () => Tab<TTool>[];
-  }) {
-    const [state, setState] = useState<State<TTool>>(() => {
-      const tabs = initialTabs?.() ?? [];
-      return { tabs, activeTabId: tabs[0]?.id };
-    });
+  const useTabsStore = create<TabsState<TTool>>()(
+    persist(
+      (set, get) => ({
+        tabs: initialTabs,
+        activeTabId: initialTabs[0]?.id,
 
-    // Implemented loosely (payload: unknown) because TS cannot unify a generic
-    // function type against TabContextValue['openTab'] across a discriminated
-    // union; the single cast below restores the precise per-`type` signature
-    // for callers.
-    const openTab = useCallback(
-      (type: TabType<TTool>, payload: unknown, options?: { title?: string; subtitle?: string }) => {
-        const id = crypto.randomUUID();
-
-        setState((prev) => {
+        // Implemented loosely (type/payload untyped) because TS cannot unify a generic
+        // function body against TabsState['openTab'] across a discriminated union; the
+        // cast below restores the precise per-`type` signature for callers.
+        openTab: ((
+          type: TabType<TTool>,
+          payload: unknown,
+          opts?: { title?: string; subtitle?: string }
+        ) => {
+          const id = crypto.randomUUID();
           const tool = toolsByName[type];
-          const count = prev.tabs.filter((t) => t.type === type).length + 1;
-          const title = options?.title ?? `${tool.generateName(payload as never)} ${count}`;
-          const tab = { id, title, subtitle: options?.subtitle, type, payload } as Tab<TTool>;
-          return { tabs: [...prev.tabs, tab], activeTabId: id };
-        });
+          const count = get().tabs.filter((t) => t.type === type).length + 1;
+          const title = opts?.title ?? `${tool.generateName(payload as never)} ${count}`;
+          const tab = { id, title, subtitle: opts?.subtitle, type, payload } as Tab<TTool>;
+          set((prev) => ({ tabs: [...prev.tabs, tab], activeTabId: id }));
+          return id;
+        }) as TabsState<TTool>['openTab'],
 
-        return id;
-      },
-      []
-    ) as TabContextValue<TTool>['openTab'];
+        closeTab: (id) => {
+          set((prev) => {
+            const idx = prev.tabs.findIndex((t) => t.id === id);
+            if (idx === -1) return prev;
 
-    const closeTab = useCallback((id: string) => {
-      setState((prev) => {
-        const idx = prev.tabs.findIndex((t) => t.id === id);
-        if (idx === -1) return prev;
+            const tabs = prev.tabs.filter((t) => t.id !== id);
+            const activeTabId =
+              prev.activeTabId !== id ? prev.activeTabId : tabs[Math.min(idx, tabs.length - 1)]?.id;
 
-        const tabs = prev.tabs.filter((t) => t.id !== id);
-        const activeTabId =
-          prev.activeTabId !== id ? prev.activeTabId : tabs[Math.min(idx, tabs.length - 1)]?.id;
+            return { tabs, activeTabId };
+          });
+        },
 
-        return { tabs, activeTabId };
-      });
-    }, []);
+        selectTab: (id) => set({ activeTabId: id }),
 
-    const selectTab = useCallback((id: string) => {
-      setState((prev) => ({ ...prev, activeTabId: id }));
-    }, []);
-
-    const renameTab = useCallback((id: string, title: string) => {
-      setState((prev) => ({
-        ...prev,
-        tabs: prev.tabs.map((t) => (t.id === id ? { ...t, title } : t))
-      }));
-    }, []);
-
-    const value = useMemo<TabContextValue<TTool>>(
-      () => ({
-        tabs: state.tabs,
-        activeTabId: state.activeTabId,
-        openTab,
-        closeTab,
-        selectTab,
-        renameTab
+        renameTab: (id, title) =>
+          set((prev) => ({
+            tabs: prev.tabs.map((t) => (t.id === id ? { ...t, title } : t))
+          }))
       }),
-      [state, openTab, closeTab, selectTab, renameTab]
-    );
+      {
+        name: options.storageKey,
+        partialize: (state) => ({ tabs: state.tabs, activeTabId: state.activeTabId })
+      }
+    )
+  );
 
-    return <TabContext.Provider value={value}>{children}</TabContext.Provider>;
+  function useTabs(): TabsState<TTool> {
+    return useTabsStore();
   }
 
-  function TabOutlet({ tab }: { tab: Tab<TTool> }) {
-    const { activeTabId } = useTabs();
-    const tool = toolsByName[tab.type];
-    const Component = tool.component as ComponentType<ToolComponentProps<unknown>>;
-    return <Component id={tab.id} payload={tab.payload} isTabActive={tab.id === activeTabId} />;
+  function ToolOutlet({ tab }: { tab: Tab<TTool> }) {
+    const activeTabId = useTabsStore((s) => s.activeTabId);
+    const Component = lazyComponentByName[tab.type];
+    return (
+      <Suspense fallback={null}>
+        <Component id={tab.id} payload={tab.payload} isTabActive={tab.id === activeTabId} />
+      </Suspense>
+    );
   }
 
   function TabSwitcher({ emptyState }: { emptyState?: ReactNode }) {
-    const { tabs, activeTabId } = useTabs();
+    const tabs = useTabsStore((s) => s.tabs);
+    const activeTabId = useTabsStore((s) => s.activeTabId);
 
     if (tabs.length === 0) {
       return emptyState ?? null;
@@ -175,7 +155,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(tools: readon
           return (
             <Activity key={tab.id} mode={isTabActive ? 'visible' : 'hidden'}>
               <div key={tab.id} className="flex h-full w-full flex-col">
-                <TabOutlet tab={tab} />
+                <ToolOutlet tab={tab} />
               </div>
             </Activity>
           );
@@ -184,5 +164,5 @@ export function createTabProvider<TTool extends Tool<string, any>>(tools: readon
     );
   }
 
-  return { TabContext, TabProvider, useTabs, TabOutlet, TabSwitcher, toolsByName };
+  return { useTabs, TabSwitcher, toolsByName };
 }

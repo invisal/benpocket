@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, Minus, Square, Copy, Sun, Moon } from 'lucide-react';
 import { useLayoutStore } from '../../store/layout.store';
 import { useThemeStore } from '../../store/theme.store';
+import { useToolTabs } from '../providers/ToolProvider';
+import { KubeTitleBar } from '../../../tools/kuberneter/components/kubeTitleBar';
 
 export const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -13,10 +15,21 @@ export const TitleBar: React.FC = () => {
     isRightPanelOpen,
     toggleRightPanel,
     isBottomPanelOpen,
-    toggleBottomPanel
+    toggleBottomPanel,
+    kuberneterInstanceCluster
   } = useLayoutStore();
 
   const { theme, toggleTheme } = useThemeStore();
+
+  const { activeTabId: activeToolTabId, tabs: toolTabs } = useToolTabs();
+  const activeToolTab = toolTabs.find((t) => t.id === activeToolTabId);
+  const isKuberneterActive = activeToolTab?.type === 'kuberneter';
+
+  const currentInstanceId = isKuberneterActive
+    ? (activeToolTab?.payload as { instanceId?: string })?.instanceId || ''
+    : '';
+
+  const cluster = currentInstanceId ? kuberneterInstanceCluster[currentInstanceId] || '' : '';
 
   const handleMinimize = () => {
     window.api?.minimize();
@@ -54,7 +67,11 @@ export const TitleBar: React.FC = () => {
 
       {/* Middle: Workspace Title / Search Bar */}
       <div className="flex-1 max-w-sm mx-auto h-5 bg-editor-bg border border-border-dark rounded flex items-center justify-center text-zinc-500 text-[10px] titlebar-nodrag hover:bg-sidebar-bg/60 cursor-pointer transition-colors">
-        <span>craftbox (Workspace) - Kuberneter Search</span>
+        {isKuberneterActive && cluster ? (
+          <KubeTitleBar />
+        ) : (
+          <span>craftbox (Workspace) - Search</span>
+        )}
       </div>
 
       {/* Right side: Layout toggles and OS window controls */}

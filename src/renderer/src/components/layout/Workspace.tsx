@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, X } from 'lucide-react';
+import { FileText, X, Home } from 'lucide-react';
 import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { HomeTab } from './HomeTab';
-import { KuberneterWorkspace } from '../../../tools/kuberneter/KuberneterWorkspace';
+import { KuberneterWorkspace } from '../../../tools/kuberneter/components/workspace/KuberneterWorkspace';
 import { PostmanWorkspace } from '../../../tools/postman/PostmanWorkspace';
 import { ScreenRecorderWorkspace } from './workspaces/ScreenRecorderWorkspace';
 
@@ -46,7 +46,11 @@ export const Workspace: React.FC = () => {
 
       {/* Editor Content Area */}
       <div className="flex-1 overflow-auto p-4 flex flex-col min-h-0 bg-surface">
-        {activeTab.type === 'kuberneter' && <KuberneterWorkspace />}
+        {activeTab.type === 'kuberneter' && (
+          <KuberneterWorkspace
+            resource={(activeTab.meta as { resource?: string })?.resource || 'overview'}
+          />
+        )}
         {activeTab.type === 'postman' && <PostmanWorkspace />}
         {activeTab.type === 'screenrecorder' && <ScreenRecorderWorkspace />}
       </div>
@@ -72,11 +76,29 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(tab.title);
 
+  const isHome = (tab.meta as { resource?: string })?.resource === 'home';
+
   const commitRename = (): void => {
     const trimmed = draftTitle.trim();
     if (trimmed && trimmed !== tab.title) onRename(trimmed);
     setIsEditing(false);
   };
+
+  if (isHome) {
+    return (
+      <div
+        onClick={onActivate}
+        className={`flex items-center justify-center w-10 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 ${
+          isActive
+            ? 'bg-editor-bg text-white border-t-2 border-t-accent'
+            : 'bg-sidebar-bg text-zinc-550 hover:bg-editor-bg/40 hover:text-zinc-300'
+        }`}
+        title="Kuberneter Connection Settings"
+      >
+        <Home size={14} className={isActive ? 'text-accent' : 'text-zinc-600'} />
+      </div>
+    );
+  }
 
   if (isEditing) {
     return (
@@ -113,7 +135,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
       className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
         isActive
           ? 'bg-editor-bg text-white border-t-2 border-t-accent'
-          : 'bg-sidebar-bg text-zinc-550 hover:bg-editor-bg/40 hover:text-zinc-300'
+          : 'bg-sidebar-bg text-zinc-555 hover:bg-editor-bg/40 hover:text-zinc-300'
       }`}
     >
       <FileText size={12} className={isActive ? 'text-accent' : 'text-zinc-600'} />

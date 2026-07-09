@@ -1,5 +1,6 @@
 import { HttpClientMain } from './../../../tools/postman';
 import { HomeMain } from './../../../tools/home';
+import { KuberneterMain } from './../../../tools/kuberneter';
 import { createTabProvider, registerTool } from './createTabProvider';
 import { ScreenRecordMain } from '@screen-recorder/index';
 
@@ -24,7 +25,14 @@ const screenRecordTool = registerTool({
   label: ''
 });
 
-const tools = createTabProvider([homeTool, httpClientTool, screenRecordTool]);
+const kuberneterTool = registerTool({
+  name: 'kuberneter' as const,
+  component: KuberneterMain,
+  generateName: (_payload: { instanceId: string }) => `Kuberneter`,
+  label: ''
+});
+
+const tools = createTabProvider([homeTool, httpClientTool, screenRecordTool, kuberneterTool]);
 
 export const ToolTabProvider = tools.TabProvider;
 export const useToolTabs = tools.useTabs;

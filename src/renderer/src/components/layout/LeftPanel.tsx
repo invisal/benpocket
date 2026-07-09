@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLayoutStore } from '../../store/layout.store';
-import { KuberneterSidebar } from '../../../tools/kuberneter/KuberneterSidebar';
+import { KuberneterSidebar } from '../../../tools/kuberneter/components/sidebar/KuberneterSidebar';
 import { PostmanSidebar } from '../../../tools/postman/PostmanSidebar';
 import { ScreenRecorderSidebar } from '../../../tools/screen-recorder/sidebar/ScreenRecorderSidebar';
 

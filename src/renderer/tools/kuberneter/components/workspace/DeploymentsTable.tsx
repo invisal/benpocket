@@ -9,12 +9,12 @@ interface DeploymentsTableProps {
     available: number;
     age: string;
   }>;
-  lensSelectedNamespace: string;
+  kuberneterSelectedNamespace: string;
 }
 
 export const DeploymentsTable: React.FC<DeploymentsTableProps> = ({
   deploysData,
-  lensSelectedNamespace
+  kuberneterSelectedNamespace
 }) => {
   return (
     <div className="bg-sidebar-bg border border-border-dark rounded-lg overflow-hidden select-none">
@@ -33,7 +33,9 @@ export const DeploymentsTable: React.FC<DeploymentsTableProps> = ({
           <tbody className="divide-y divide-border-dark/60 text-zinc-300">
             {deploysData
               .filter(
-                (d) => lensSelectedNamespace === 'All Namespaces' || d.ns === lensSelectedNamespace
+                (d) =>
+                  kuberneterSelectedNamespace === 'All Namespaces' ||
+                  d.ns === kuberneterSelectedNamespace
               )
               .map((deploy, i) => (
                 <tr key={i} className="hover:bg-editor-bg/40 transition-colors">

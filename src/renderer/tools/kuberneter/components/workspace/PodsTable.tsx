@@ -10,11 +10,12 @@ interface PodRow {
 
 interface PodsTableProps {
   podsData: PodRow[];
-  lensSelectedNamespace: string;
+  kuberneterSelectedNamespace: string;
 }
 
-export const PodsTable: React.FC<PodsTableProps> = ({ podsData, lensSelectedNamespace }) => {
+export const PodsTable: React.FC<PodsTableProps> = ({ podsData, kuberneterSelectedNamespace }) => {
   const [selectedPod, setSelectedPod] = useState<PodRow | null>(null);
+
 
   return (
     <div className="flex-1 flex gap-4 min-h-0">
@@ -35,7 +36,8 @@ export const PodsTable: React.FC<PodsTableProps> = ({ podsData, lensSelectedName
               {podsData
                 .filter(
                   (p) =>
-                    lensSelectedNamespace === 'All Namespaces' || p.ns === lensSelectedNamespace
+                    kuberneterSelectedNamespace === 'All Namespaces' ||
+                    p.ns === kuberneterSelectedNamespace
                 )
                 .map((pod, i) => (
                   <tr

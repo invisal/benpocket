@@ -9,12 +9,12 @@ interface ServicesTableProps {
     ports: string;
     age: string;
   }>;
-  lensSelectedNamespace: string;
+  kuberneterSelectedNamespace: string;
 }
 
 export const ServicesTable: React.FC<ServicesTableProps> = ({
   servicesData,
-  lensSelectedNamespace
+  kuberneterSelectedNamespace
 }) => {
   return (
     <div className="bg-sidebar-bg border border-border-dark rounded-lg overflow-hidden select-none">
@@ -33,12 +33,14 @@ export const ServicesTable: React.FC<ServicesTableProps> = ({
           <tbody className="divide-y divide-border-dark/60 text-zinc-300">
             {servicesData
               .filter(
-                (s) => lensSelectedNamespace === 'All Namespaces' || s.ns === lensSelectedNamespace
+                (s) =>
+                  kuberneterSelectedNamespace === 'All Namespaces' ||
+                  s.ns === kuberneterSelectedNamespace
               )
               .map((svc, i) => (
                 <tr key={i} className="hover:bg-editor-bg/40 transition-colors">
                   <td className="p-3 font-mono font-semibold text-zinc-200">{svc.name}</td>
-                  <td className="p-3 font-mono text-[10px] text-zinc-500">{svc.ns}</td>
+                  <td className="p-3 font-mono text-[10px] text-zinc-550">{svc.ns}</td>
                   <td className="p-3">{svc.type}</td>
                   <td className="p-3 font-mono text-zinc-400">{svc.clusterIp}</td>
                   <td className="p-3 font-mono text-accent">{svc.ports}</td>

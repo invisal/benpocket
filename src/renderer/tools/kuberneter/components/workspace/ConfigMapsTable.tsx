@@ -7,12 +7,12 @@ interface ConfigMapsTableProps {
     keys: number;
     age: string;
   }>;
-  lensSelectedNamespace: string;
+  kuberneterSelectedNamespace: string;
 }
 
 export const ConfigMapsTable: React.FC<ConfigMapsTableProps> = ({
   configMapsData,
-  lensSelectedNamespace
+  kuberneterSelectedNamespace
 }) => {
   return (
     <div className="bg-sidebar-bg border border-border-dark rounded-lg overflow-hidden select-none">
@@ -29,12 +29,14 @@ export const ConfigMapsTable: React.FC<ConfigMapsTableProps> = ({
           <tbody className="divide-y divide-border-dark/60 text-zinc-300">
             {configMapsData
               .filter(
-                (c) => lensSelectedNamespace === 'All Namespaces' || c.ns === lensSelectedNamespace
+                (c) =>
+                  kuberneterSelectedNamespace === 'All Namespaces' ||
+                  c.ns === kuberneterSelectedNamespace
               )
               .map((cm, i) => (
                 <tr key={i} className="hover:bg-editor-bg/40 transition-colors">
                   <td className="p-3 font-mono text-zinc-200">{cm.name}</td>
-                  <td className="p-3 font-mono text-[10px] text-zinc-500">{cm.ns}</td>
+                  <td className="p-3 font-mono text-[10px] text-zinc-550">{cm.ns}</td>
                   <td className="p-3 text-center font-mono font-bold text-accent">{cm.keys}</td>
                   <td className="p-3 text-zinc-500">{cm.age}</td>
                 </tr>

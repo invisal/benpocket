@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
 import { screenRecorderApi } from './screen-recorder/api';
+import { kuberneterApi } from './kuberneter/api';
 import { postmanApi } from './http-client/api';
 
 // Custom APIs for renderer
@@ -21,6 +22,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI);
     contextBridge.exposeInMainWorld('api', api);
     contextBridge.exposeInMainWorld('screenRecorder', screenRecorderApi);
+    contextBridge.exposeInMainWorld('kuberneter', kuberneterApi);
   } catch (error) {
     console.error(error);
   }
@@ -31,4 +33,6 @@ if (process.contextIsolated) {
   window.api = api;
   // @ts-ignore (define in dts)
   window.screenRecorder = screenRecorderApi;
+  // @ts-ignore (define in dts)
+  window.kuberneter = kuberneterApi;
 }

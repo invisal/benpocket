@@ -2,6 +2,7 @@ import { ToolComponentProps } from '@renderer/components/providers/createTabProv
 import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { Button } from '@renderer/components/ui/Button';
 import { GlobeIcon } from 'lucide-react';
+import { useLayoutStore } from '@renderer/store/layout.store';
 
 interface Props {}
 
@@ -23,7 +24,11 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         <ToolItem
           name="Kubernetes"
           description="Deploy, inspect, and monitor Kubernetes workloads, pods, deployments, and nodes in real-time."
-          onClick={() => openTab('http-client', {})}
+          onClick={() => {
+            const instanceId = `kuberneter-${Date.now()}`;
+            useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
+            openTab('kuberneter', { instanceId });
+          }}
         />
         <ToolItem
           name="HTTP Request"

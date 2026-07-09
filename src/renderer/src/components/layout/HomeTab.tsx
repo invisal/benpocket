@@ -2,13 +2,14 @@ import React from 'react';
 import { useLayoutStore } from '../../store/layout.store';
 import { Monitor, Send, Video } from 'lucide-react';
 import { Button } from '../ui/Button';
+import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
 
 export const HomeTab: React.FC = () => {
   const addActivityInstance = useLayoutStore((s) => s.addActivityInstance);
 
   const apps = [
     {
-      id: 'lens' as const,
+      id: 'kuberneter' as const,
       name: 'Kubernetes',
       description:
         'Deploy, inspect, and monitor Kubernetes workloads, pods, deployments, and nodes in real-time.',
@@ -59,7 +60,15 @@ export const HomeTab: React.FC = () => {
               onClick={() => addActivityInstance(tool.id)}
             >
               <span className="size-12 rounded bg-surface-2 inline-flex items-center justify-center">
-                <tool.icon size={18} />
+                {tool.id === 'kuberneter' ? (
+                  <img
+                    src={kuberneterIcon}
+                    className="size-5 select-none pointer-events-none"
+                    alt="Kubernetes"
+                  />
+                ) : (
+                  <tool.icon size={18} />
+                )}
               </span>
               <p className="flex flex-col text-sm justify-center">
                 <span className="font-medium">{tool.name}</span>

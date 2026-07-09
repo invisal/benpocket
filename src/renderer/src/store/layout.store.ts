@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export interface Tab {
   id: string;
   title: string;
-  type: 'lens' | 'postman' | 'screenrecorder' | 'home';
+  type: 'kuberneter' | 'postman' | 'screenrecorder' | 'home';
   instanceId: string;
   /** Tool-specific tab seed data (e.g. PostmanTabSeed). Each tool narrows/casts this at its own read site. */
   meta?: unknown;
@@ -12,12 +12,19 @@ export interface Tab {
 
 export interface ActivityInstance {
   id: string;
-  type: 'lens' | 'postman' | 'screenrecorder';
+  type: 'kuberneter' | 'postman' | 'screenrecorder';
   title: string;
 }
 
+export interface RecentConnection {
+  contextName: string;
+  configPath: string;
+  server?: string;
+  timestamp: number;
+}
+
 interface LayoutState {
-  activeActivity: 'lens' | 'postman' | 'screenrecorder' | null;
+  activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null;
   isLeftPanelOpen: boolean;
   leftPanelWidth: number;
   isRightPanelOpen: boolean;
@@ -32,12 +39,20 @@ interface LayoutState {
   activeInstanceId: string | 'home';
 
   // Per-instance K8s config states
-  lensInstanceCluster: Record<string, string>;
-  lensInstanceNamespace: Record<string, string>;
-  lensInstanceResource: Record<
-    string,
-    'overview' | 'pods' | 'deployments' | 'services' | 'configmaps'
-  >;
+  kuberneterInstanceCluster: Record<string, string>;
+  kuberneterInstanceNamespace: Record<string, string>;
+  kuberneterInstanceResource: Record<string, string>;
+  kuberneterInstanceConfigPath: Record<string, string>;
+  setKuberneterInstanceConfigPath: (instanceId: string, path: string) => void;
+
+  // Managed kubeconfigs list (persisted)
+  kuberneterKubeconfigs: string[];
+  addKuberneterKubeconfig: (filePath: string) => void;
+  removeKuberneterKubeconfig: (filePath: string) => void;
+
+  // Recent connections history (persisted)
+  kuberneterRecentConnections: RecentConnection[];
+  addKuberneterRecentConnection: (contextName: string, configPath: string, server?: string) => void;
 
   // Layout Toggle Actions
   toggleLeftPanel: () => void;
@@ -53,16 +68,17 @@ interface LayoutState {
   setActiveTabId: (id: string | null) => void;
   renameTab: (id: string, title: string) => void;
 
-  // Lens K8s Actions per instance
-  setLensInstanceCluster: (instanceId: string, cluster: string) => void;
-  setLensInstanceNamespace: (instanceId: string, ns: string) => void;
-  setLensInstanceResource: (
-    instanceId: string,
-    resource: 'overview' | 'pods' | 'deployments' | 'services' | 'configmaps'
-  ) => void;
+  // Kuberneter K8s Actions per instance
+  setKuberneterInstanceCluster: (instanceId: string, cluster: string) => void;
+  setKuberneterInstanceNamespace: (instanceId: string, ns: string) => void;
+  setKuberneterInstanceResource: (instanceId: string, resource: string) => void;
 
   // Instance Lifecycle Actions
-  addActivityInstance: (type: 'lens' | 'postman' | 'screenrecorder') => void;
+  addActivityInstance: (
+    type: 'kuberneter' | 'postman' | 'screenrecorder',
+    customId?: string,
+    KuberneteContext?: { cluster: string; configPath: string; namespace?: string }
+  ) => void;
   closeActivityInstance: (id: string) => void;
   setActiveInstanceId: (id: string | 'home') => void;
 }
@@ -83,9 +99,12 @@ export const useLayoutStore = create<LayoutState>()(
       activeInstances: [],
       activeInstanceId: 'home',
 
-      lensInstanceCluster: {},
-      lensInstanceNamespace: {},
-      lensInstanceResource: {},
+      kuberneterInstanceCluster: {},
+      kuberneterInstanceNamespace: {},
+      kuberneterInstanceResource: {},
+      kuberneterInstanceConfigPath: {},
+      kuberneterKubeconfigs: [],
+      kuberneterRecentConnections: [],
 
       toggleLeftPanel: () => set((state) => ({ isLeftPanelOpen: !state.isLeftPanelOpen })),
       setLeftPanelWidth: (width) => set({ leftPanelWidth: Math.max(150, Math.min(width, 600)) }),
@@ -136,27 +155,65 @@ export const useLayoutStore = create<LayoutState>()(
           openTabs: state.openTabs.map((t) => (t.id === id ? { ...t, title } : t))
         })),
 
-      setLensInstanceCluster: (instanceId, cluster) =>
+      setKuberneterInstanceCluster: (instanceId, cluster) =>
         set((state) => ({
-          lensInstanceCluster: { ...state.lensInstanceCluster, [instanceId]: cluster }
+          kuberneterInstanceCluster: { ...state.kuberneterInstanceCluster, [instanceId]: cluster }
         })),
 
-      setLensInstanceNamespace: (instanceId, ns) =>
+      setKuberneterInstanceNamespace: (instanceId, ns) =>
         set((state) => ({
-          lensInstanceNamespace: { ...state.lensInstanceNamespace, [instanceId]: ns }
+          kuberneterInstanceNamespace: { ...state.kuberneterInstanceNamespace, [instanceId]: ns }
         })),
 
-      setLensInstanceResource: (instanceId, resource) =>
+      setKuberneterInstanceResource: (instanceId, resource) =>
         set((state) => ({
-          lensInstanceResource: { ...state.lensInstanceResource, [instanceId]: resource }
+          kuberneterInstanceResource: {
+            ...state.kuberneterInstanceResource,
+            [instanceId]: resource
+          }
         })),
 
-      addActivityInstance: (type) =>
+      setKuberneterInstanceConfigPath: (instanceId, path) =>
+        set((state) => ({
+          kuberneterInstanceConfigPath: {
+            ...state.kuberneterInstanceConfigPath,
+            [instanceId]: path
+          }
+        })),
+
+      addKuberneterKubeconfig: (filePath) =>
         set((state) => {
-          const instanceId = `${type}-${Date.now()}`;
+          if (state.kuberneterKubeconfigs.includes(filePath)) return state;
+          return { kuberneterKubeconfigs: [...state.kuberneterKubeconfigs, filePath] };
+        }),
+
+      removeKuberneterKubeconfig: (filePath) =>
+        set((state) => ({
+          kuberneterKubeconfigs: state.kuberneterKubeconfigs.filter((p) => p !== filePath)
+        })),
+
+      addKuberneterRecentConnection: (contextName, configPath, server) =>
+        set((state) => {
+          const filtered = state.kuberneterRecentConnections.filter(
+            (c) => !(c.contextName === contextName && c.configPath === configPath)
+          );
+          const newRecent: RecentConnection = {
+            contextName,
+            configPath,
+            server,
+            timestamp: Date.now()
+          };
+          return {
+            kuberneterRecentConnections: [newRecent, ...filtered].slice(0, 10)
+          };
+        }),
+
+      addActivityInstance: (type, customId, context) =>
+        set((state) => {
+          const instanceId = customId || `${type}-${Date.now()}`;
           const typeCount = state.activeInstances.filter((i) => i.type === type).length + 1;
           const appNames = {
-            lens: 'Lens K8s',
+            kuberneter: 'Kuberneter',
             postman: 'HTTP Client',
             screenrecorder: 'ScreenRecorder'
           };
@@ -171,9 +228,9 @@ export const useLayoutStore = create<LayoutState>()(
           // Create a default tab for the newly spawned instance
           let defaultTabId = '';
           let defaultTabTitle = '';
-          if (type === 'lens') {
-            defaultTabId = `lens-k8s-dashboard-${instanceId}`;
-            defaultTabTitle = 'K8s Overview';
+          if (type === 'kuberneter') {
+            defaultTabId = `kuberneter-home-${instanceId}`;
+            defaultTabTitle = 'Home';
           } else if (type === 'postman') {
             defaultTabId = `postman-req-${instanceId}`;
             defaultTabTitle = 'New API Request';
@@ -186,7 +243,8 @@ export const useLayoutStore = create<LayoutState>()(
             id: defaultTabId,
             title: defaultTabTitle,
             type,
-            instanceId
+            instanceId,
+            ...(type === 'kuberneter' ? { meta: { resource: 'home' } } : {})
           };
 
           return {
@@ -196,13 +254,23 @@ export const useLayoutStore = create<LayoutState>()(
             openTabs: [...state.openTabs, defaultTab],
             activeTabId: defaultTabId,
             isLeftPanelOpen: true,
-            // Pre-populate K8s defaults for Lens instance
-            lensInstanceCluster: { ...state.lensInstanceCluster, [instanceId]: 'minikube' },
-            lensInstanceNamespace: {
-              ...state.lensInstanceNamespace,
-              [instanceId]: 'All Namespaces'
+            // Pre-populate K8s defaults for Kuberneter instance
+            kuberneterInstanceCluster: {
+              ...state.kuberneterInstanceCluster,
+              [instanceId]: context?.cluster || ''
             },
-            lensInstanceResource: { ...state.lensInstanceResource, [instanceId]: 'overview' }
+            kuberneterInstanceConfigPath: {
+              ...state.kuberneterInstanceConfigPath,
+              [instanceId]: context?.configPath || 'default'
+            },
+            kuberneterInstanceNamespace: {
+              ...state.kuberneterInstanceNamespace,
+              [instanceId]: context?.namespace || 'All Namespaces'
+            },
+            kuberneterInstanceResource: {
+              ...state.kuberneterInstanceResource,
+              [instanceId]: context?.cluster ? 'overview' : 'home'
+            }
           };
         }),
 
@@ -213,7 +281,7 @@ export const useLayoutStore = create<LayoutState>()(
           const filteredTabs = state.openTabs.filter((t) => t.instanceId !== id);
 
           let nextInstanceId: string | 'home' = 'home';
-          let nextActivity: 'lens' | 'postman' | 'screenrecorder' | null = null;
+          let nextActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null = null;
           let nextActiveTabId: string | null = null;
 
           if (state.activeInstanceId === id) {
@@ -252,7 +320,7 @@ export const useLayoutStore = create<LayoutState>()(
             return { isLeftPanelOpen: !state.isLeftPanelOpen };
           }
 
-          let activeActivity: 'lens' | 'postman' | 'screenrecorder' | null = null;
+          let activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null = null;
           let nextActiveTabId: string | null = null;
 
           if (id !== 'home') {
@@ -282,7 +350,13 @@ export const useLayoutStore = create<LayoutState>()(
         activeTabId: state.activeTabId,
         activeInstances: state.activeInstances,
         activeInstanceId: state.activeInstanceId,
-        activeActivity: state.activeActivity
+        activeActivity: state.activeActivity,
+        kuberneterKubeconfigs: state.kuberneterKubeconfigs,
+        kuberneterInstanceCluster: state.kuberneterInstanceCluster,
+        kuberneterInstanceNamespace: state.kuberneterInstanceNamespace,
+        kuberneterInstanceResource: state.kuberneterInstanceResource,
+        kuberneterInstanceConfigPath: state.kuberneterInstanceConfigPath,
+        kuberneterRecentConnections: state.kuberneterRecentConnections
       })
     }
   )

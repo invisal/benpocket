@@ -3,7 +3,7 @@ import { FileText, X } from 'lucide-react';
 import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { HomeTab } from './HomeTab';
 import { LensWorkspace } from './workspaces/LensWorkspace';
-import { PostmanWorkspace } from '../../../tools/postman/PostmanWorkspace';
+import { HttpClientWorkspace } from '../../../tools/http-client/HttpClientWorkspace';
 import { ScreenRecorderWorkspace } from './workspaces/ScreenRecorderWorkspace';
 
 export const Workspace: React.FC = () => {
@@ -47,7 +47,7 @@ export const Workspace: React.FC = () => {
       {/* Editor Content Area */}
       <div className="flex-1 overflow-auto p-4 flex flex-col min-h-0 bg-surface">
         {activeTab.type === 'lens' && <LensWorkspace />}
-        {activeTab.type === 'postman' && <PostmanWorkspace />}
+        {activeTab.type === 'postman' && <HttpClientWorkspace />}
         {activeTab.type === 'screenrecorder' && <ScreenRecorderWorkspace />}
       </div>
     </div>

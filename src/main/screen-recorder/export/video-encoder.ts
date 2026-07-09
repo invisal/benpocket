@@ -32,7 +32,6 @@ export async function resolveVideoEncoder(
   codec: ExportCodec
 ): Promise<string> {
   if (format === 'webm') {
-    // eslint-disable-next-line no-console
     console.warn(`webm export always uses VP9; ignoring requested codec "${codec}"`);
     return 'libvpx-vp9';
   }

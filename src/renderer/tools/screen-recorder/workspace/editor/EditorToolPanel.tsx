@@ -5,7 +5,7 @@ import { WebcamPanel } from '../../features/webcam/components/WebcamPanel';
 import { CaptionsPanel } from '../../features/captions/components/CaptionsPanel';
 import { ZoomKeyframeEditor } from '../../features/zoom/components/ZoomKeyframeEditor';
 import { ExportSidePanel } from '../../features/export/components/ExportSidePanel';
-import { EDITOR_TOOLS, type EditorTool } from './EditorToolRail';
+import { EDITOR_TOOLS, type EditorTool } from './editorTools';
 
 interface EditorToolPanelProps {
   tool: EditorTool;

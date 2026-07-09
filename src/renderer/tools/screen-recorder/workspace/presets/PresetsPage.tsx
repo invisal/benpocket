@@ -17,7 +17,7 @@ export function PresetsPage(): JSX.Element {
       <div>
         <h1 className="text-xl font-semibold">Presets</h1>
         <p className="text-sm text-white/40">
-          Pick a default for Export, or fine-tune settings there and it'll show up as Custom.
+          Pick a default for Export, or fine-tune settings there and it&apos;ll show up as Custom.
         </p>
       </div>
 

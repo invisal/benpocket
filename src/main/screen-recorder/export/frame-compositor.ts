@@ -6,11 +6,7 @@ import {
   type CanvasRenderingContext2D,
   type Image
 } from 'canvas';
-import type {
-  Project,
-  BackgroundSettings,
-  Annotation
-} from '@screen-recorder/types/project';
+import type { Project, BackgroundSettings, Annotation } from '@screen-recorder/types/project';
 import type { WebcamOptions } from '@screen-recorder/types/recording';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';

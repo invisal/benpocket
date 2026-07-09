@@ -2,12 +2,19 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useLayoutStore } from '../../store/layout.store';
 
+type BottomPanelTab = 'terminal' | 'output' | 'problems' | 'debug';
+
+const TABS: { id: BottomPanelTab; label: string }[] = [
+  { id: 'problems', label: 'Problems (0)' },
+  { id: 'output', label: 'Output' },
+  { id: 'debug', label: 'Debug Console' },
+  { id: 'terminal', label: 'Terminal' }
+];
+
 export const BottomPanel: React.FC = () => {
   const { bottomPanelHeight, setBottomPanelHeight, isBottomPanelOpen, toggleBottomPanel } =
     useLayoutStore();
-  const [activeTab, setActiveTab] = useState<'terminal' | 'output' | 'problems' | 'debug'>(
-    'terminal'
-  );
+  const [activeTab, setActiveTab] = useState<BottomPanelTab>('terminal');
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -45,15 +52,10 @@ export const BottomPanel: React.FC = () => {
       {/* Header / Tabs */}
       <div className="flex items-center justify-between px-3 border-b border-border-dark h-9 shrink-0">
         <div className="flex items-center gap-4 text-xs font-semibold">
-          {[
-            { id: 'problems', label: 'Problems (0)' },
-            { id: 'output', label: 'Output' },
-            { id: 'debug', label: 'Debug Console' },
-            { id: 'terminal', label: 'Terminal' }
-          ].map((tab) => (
+          {TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`py-1.5 border-b-2 cursor-pointer transition-all ${
                 activeTab === tab.id
                   ? 'border-accent text-accent font-bold'

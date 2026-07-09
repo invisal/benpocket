@@ -121,7 +121,9 @@ export const ScreenRecorderSidebar: React.FC = () => {
           <button
             onClick={handleStart}
             disabled={!selectedSource || route !== 'record-setup'}
-            title={route !== 'record-setup' ? 'Go to New Recording to start a recording' : undefined}
+            title={
+              route !== 'record-setup' ? 'Go to New Recording to start a recording' : undefined
+            }
             className="flex w-full items-center justify-center gap-1.5 rounded py-1.5 text-xs font-medium text-white bg-accent hover:brightness-110 cursor-pointer transition-all disabled:pointer-events-none disabled:opacity-40"
           >
             Start Recording

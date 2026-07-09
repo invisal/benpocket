@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { CropRect } from '@screen-recorder/types/timeline';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { cn } from '../../../lib/utils';
@@ -99,7 +99,10 @@ export function CropOverlay({
     startRect: CropRect;
   } | null>(null);
 
-  const effectiveRect: CropRect = rect ?? { x: 0.1, y: 0.1, width: 0.8, height: 0.8 };
+  const effectiveRect: CropRect = useMemo(
+    () => rect ?? { x: 0.1, y: 0.1, width: 0.8, height: 0.8 },
+    [rect]
+  );
   const ratio = ASPECT_OPTIONS.find((o) => o.id === aspect)?.ratio ?? null;
 
   const handlePointerMove = useCallback(
@@ -159,21 +162,23 @@ export function CropOverlay({
     window.removeEventListener('pointermove', handlePointerMove);
   }, [handlePointerMove]);
 
-  const startDragging =
+  const startDragging = useCallback(
     (mode: Corner | 'move') =>
-    (event: React.PointerEvent): void => {
-      event.preventDefault();
-      event.stopPropagation();
-      dragState.current = {
-        mode,
-        startClientX: event.clientX,
-        startClientY: event.clientY,
-        startRect: effectiveRect
-      };
-      if (!rect) setRect(effectiveRect);
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', stopDragging, { once: true });
-    };
+      (event: React.PointerEvent): void => {
+        event.preventDefault();
+        event.stopPropagation();
+        dragState.current = {
+          mode,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startRect: effectiveRect
+        };
+        if (!rect) setRect(effectiveRect);
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', stopDragging, { once: true });
+      },
+    [effectiveRect, rect, setRect, handlePointerMove, stopDragging]
+  );
 
   function selectAspect(id: CropAspectId): void {
     setAspect(id);

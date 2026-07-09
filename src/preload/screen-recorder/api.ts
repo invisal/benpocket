@@ -6,11 +6,7 @@ import type {
   RecordingSession
 } from '@screen-recorder/types/recording';
 import type { Project } from '@screen-recorder/types/project';
-import type {
-  ExportFormat,
-  ExportOptions,
-  ExportProgress
-} from '@screen-recorder/types/export';
+import type { ExportFormat, ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
 
 export const screenRecorderApi = {

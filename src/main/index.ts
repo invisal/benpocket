@@ -4,11 +4,14 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import * as fs from 'fs';
 import * as path from 'path';
-import { registerHttpHandlers } from './postman/ipc/http';
-import { registerWebSocketHandlers, closeAllWebSocketConnections } from './postman/ipc/websocket';
-import { registerCollectionHandlers } from './postman/ipc/collections';
-import { registerCollectionTransferHandlers } from './postman/ipc/collectionsTransfer';
-import { registerEnvironmentHandlers } from './postman/ipc/environments';
+import { registerHttpHandlers } from './http-client/ipc/http';
+import {
+  registerWebSocketHandlers,
+  closeAllWebSocketConnections
+} from './http-client/ipc/websocket';
+import { registerCollectionHandlers } from './http-client/ipc/collections';
+import { registerCollectionTransferHandlers } from './http-client/ipc/collectionsTransfer';
+import { registerEnvironmentHandlers } from './http-client/ipc/environments';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
 
@@ -103,7 +106,14 @@ app.whenReady().then(() => {
 
     const dirPath = result.filePaths[0];
 
-    async function buildTree(currentPath: string, depth = 0): Promise<any> {
+    interface FileTreeNode {
+      name: string;
+      path: string;
+      isDirectory: boolean;
+      children?: FileTreeNode[];
+    }
+
+    async function buildTree(currentPath: string, depth = 0): Promise<FileTreeNode | null> {
       if (depth > 3) return null; // Prevent deep recursion
       try {
         const name = path.basename(currentPath);
@@ -119,7 +129,7 @@ app.whenReady().then(() => {
             name,
             path: currentPath,
             isDirectory: true,
-            children: children.filter(Boolean)
+            children: children.filter((child): child is FileTreeNode => child !== null)
           };
         } else {
           return {

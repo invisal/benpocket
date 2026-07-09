@@ -11,6 +11,7 @@ export interface CursorSample {
 // synthesize ZoomKeyframes that follow the cursor smoothly (position:
 // 'auto-cursor' keyframes are resolved against the live cursor path at
 // render time rather than a fixed point).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function generateAutoZoomKeyframes(_cursorSamples: CursorSample[]): ZoomKeyframe[] {
   return [];
 }

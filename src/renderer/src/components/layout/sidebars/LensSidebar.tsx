@@ -1,6 +1,8 @@
 import React from 'react';
 import { useLayoutStore } from '../../../store/layout.store';
 
+type LensResource = 'overview' | 'pods' | 'deployments' | 'services' | 'configmaps';
+
 export const LensSidebar: React.FC = () => {
   const {
     openTab,
@@ -63,14 +65,16 @@ export const LensSidebar: React.FC = () => {
           <div className="mt-2 px-1 text-[9px] font-bold text-zinc-550 uppercase tracking-wider">
             Workloads
           </div>
-          {[
-            { id: 'pods', label: 'Pods', icon: '📦' },
-            { id: 'deployments', label: 'Deployments', icon: '🚀' }
-          ].map((res) => (
+          {(
+            [
+              { id: 'pods', label: 'Pods', icon: '📦' },
+              { id: 'deployments', label: 'Deployments', icon: '🚀' }
+            ] satisfies { id: LensResource; label: string; icon: string }[]
+          ).map((res) => (
             <button
               key={res.id}
               onClick={() => {
-                setLensInstanceResource(activeInstanceId, res.id as any);
+                setLensInstanceResource(activeInstanceId, res.id);
                 openTab({
                   id: `lens-k8s-${res.id}-${activeInstanceId}`,
                   title: `K8s ${res.label}`,
@@ -93,11 +97,17 @@ export const LensSidebar: React.FC = () => {
           <div className="mt-2 px-1 text-[9px] font-bold text-zinc-550 uppercase tracking-wider">
             Network
           </div>
-          {[{ id: 'services', label: 'Services', icon: '🔌' }].map((res) => (
+          {(
+            [{ id: 'services', label: 'Services', icon: '🔌' }] satisfies {
+              id: LensResource;
+              label: string;
+              icon: string;
+            }[]
+          ).map((res) => (
             <button
               key={res.id}
               onClick={() => {
-                setLensInstanceResource(activeInstanceId, res.id as any);
+                setLensInstanceResource(activeInstanceId, res.id);
                 openTab({
                   id: `lens-k8s-${res.id}-${activeInstanceId}`,
                   title: `K8s ${res.label}`,
@@ -120,11 +130,17 @@ export const LensSidebar: React.FC = () => {
           <div className="mt-2 px-1 text-[9px] font-bold text-zinc-550 uppercase tracking-wider">
             Configuration
           </div>
-          {[{ id: 'configmaps', label: 'ConfigMaps', icon: '⚙️' }].map((res) => (
+          {(
+            [{ id: 'configmaps', label: 'ConfigMaps', icon: '⚙️' }] satisfies {
+              id: LensResource;
+              label: string;
+              icon: string;
+            }[]
+          ).map((res) => (
             <button
               key={res.id}
               onClick={() => {
-                setLensInstanceResource(activeInstanceId, res.id as any);
+                setLensInstanceResource(activeInstanceId, res.id);
                 openTab({
                   id: `lens-k8s-${res.id}-${activeInstanceId}`,
                   title: `K8s ${res.label}`,

@@ -1,4 +1,4 @@
-import { HttpClientMain } from './../../../tools/postman';
+import { HttpClientMain } from './../../../tools/http-client';
 import { HomeMain } from './../../../tools/home';
 import { createTabProvider, registerTool } from './createTabProvider';
 import { ScreenRecordMain } from '@screen-recorder/index';

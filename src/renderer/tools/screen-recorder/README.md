@@ -60,15 +60,15 @@ hooks/useStore.ts          Dead scaffold — see "Known gaps", do not use
 
 Renderer code talks to the main process through `window.screenRecorder` (exposed by `src/preload/screen-recorder/api.ts`). Handlers live in `src/main/screen-recorder/ipc/*-handlers.ts` and are all registered together via `registerIpcHandlers()` (`ipc/register-handlers.ts`), which is called from `src/main/index.ts`'s `app.whenReady()` alongside Postman's handlers — ScreenRecorder does **not** get its own `BrowserWindow`; it shares CraftBox's single main window (see "Known gaps" for the unused standalone-window scaffolding).
 
-| `window.screenRecorder.*` | Backed by |
-|---|---|
-| `recording.*` | `capture/screen-source-provider.ts`, `capture/recording-controller.ts` |
-| `project.*` | `ipc/project-handlers.ts` (open/save — currently stubs, no real persistence) |
-| `export.*` | `export/export-manager.ts` → `frame-compositor.ts` / `video-encoder.ts` / `video-decoder.ts` (ffmpeg-backed) |
-| `settings.*` | `store/settings-store.ts` (electron-store; pinned to `^8.x` — v9+ is ESM-only and breaks under electron-vite's CJS main bundle) |
-| `window.*` | generic minimize/maximize/close, forwarded from `ipc/window-handlers.ts` |
-| `permissions.*` | `permissions/screen-recording-permission.ts` (macOS screen-recording permission check) |
-| `dialog.*` | `ipc/dialog-handlers.ts` (native save-file dialog for export) |
+| `window.screenRecorder.*` | Backed by                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `recording.*`             | `capture/screen-source-provider.ts`, `capture/recording-controller.ts`                                                          |
+| `project.*`               | `ipc/project-handlers.ts` (open/save — currently stubs, no real persistence)                                                    |
+| `export.*`                | `export/export-manager.ts` → `frame-compositor.ts` / `video-encoder.ts` / `video-decoder.ts` (ffmpeg-backed)                    |
+| `settings.*`              | `store/settings-store.ts` (electron-store; pinned to `^8.x` — v9+ is ESM-only and breaks under electron-vite's CJS main bundle) |
+| `window.*`                | generic minimize/maximize/close, forwarded from `ipc/window-handlers.ts`                                                        |
+| `permissions.*`           | `permissions/screen-recording-permission.ts` (macOS screen-recording permission check)                                          |
+| `dialog.*`                | `ipc/dialog-handlers.ts` (native save-file dialog for export)                                                                   |
 
 The actual capture (`getUserMedia` + `MediaRecorder`) happens in the **renderer** (`features/recording/engine/capture-engine.ts`) since those are browser APIs with no main-process equivalent; the main process only persists the finished blob and drives export.
 

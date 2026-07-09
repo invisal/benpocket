@@ -27,7 +27,7 @@ export function ScreenRecordingPermissionBanner(): JSX.Element | null {
         <p className="text-xs text-amber-200/70">
           Without it, macOS lets the recording start but every frame comes out solid black. Grant it
           in System Settings, then <strong>fully quit and reopen ScreenRecorder</strong> -- Electron
-          won't pick up the change while it's still running.
+          won&apos;t pick up the change while it&apos;s still running.
         </p>
         <div>
           <Button

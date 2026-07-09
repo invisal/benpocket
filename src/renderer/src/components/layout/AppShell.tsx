@@ -1,33 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { TitleBar } from './TitleBar';
 import { ActivityBar } from './ActivityBar';
 import { RightPanel } from './RightPanel';
 import { StatusBar } from './StatusBar';
-import { useLayoutStore } from '../../store/layout.store';
-import { disposeApiClientTab } from '../../../tools/postman/hooks/useApiClient';
 import { useThemeStore } from '../../store/theme.store';
 import { ToolTabContents } from '../providers/ToolProvider';
 
 export const AppShell: React.FC = () => {
   const theme = useThemeStore((state) => state.theme);
-
-  // Disconnect sockets / drop cached request state for Postman tabs once
-  // they're actually closed, so long-lived WebSocket connections don't leak.
-  const knownPostmanTabIds = useRef<Set<string>>(new Set());
-
-  useEffect(
-    () =>
-      useLayoutStore.subscribe((state) => {
-        const currentIds = new Set(
-          state.openTabs.filter((t) => t.type === 'postman').map((t) => t.id)
-        );
-        for (const id of knownPostmanTabIds.current) {
-          if (!currentIds.has(id)) disposeApiClientTab(id);
-        }
-        knownPostmanTabIds.current = currentIds;
-      }),
-    []
-  );
 
   useEffect(() => {
     document.documentElement.classList.toggle('light', theme === 'light');

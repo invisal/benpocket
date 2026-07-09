@@ -1,7 +1,4 @@
-import type {
-  RecordingRequest,
-  RecordingSession
-} from '@screen-recorder/types/recording';
+import type { RecordingRequest, RecordingSession } from '@screen-recorder/types/recording';
 
 // Orchestrates a recording session: video capture (via renderer-side
 // getUserMedia/getDisplayMedia against the chosen source), mic/system audio

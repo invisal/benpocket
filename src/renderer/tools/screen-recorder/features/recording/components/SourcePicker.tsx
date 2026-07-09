@@ -3,20 +3,22 @@ import { useEffect, useState } from 'react';
 import type { CaptureSource } from '@screen-recorder/types/recording';
 import { useRecordingStore } from '../store/recording-store';
 
+// Should only be missing if the preload script failed to load -- see
+// main/windows/main-window.ts's preload-error listener for the corresponding
+// main-process log.
+const PRELOAD_MISSING_ERROR =
+  'Recording API unavailable (preload script did not load). Check the console.';
+
 export function SourcePicker(): JSX.Element {
   const [sources, setSources] = useState<CaptureSource[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    window.screenRecorder ? null : PRELOAD_MISSING_ERROR
+  );
   const selectedSource = useRecordingStore((state) => state.selectedSource);
   const setSelectedSource = useRecordingStore((state) => state.setSelectedSource);
 
   useEffect(() => {
-    if (!window.screenRecorder) {
-      // Should only happen if the preload script failed to load -- see
-      // main/windows/main-window.ts's preload-error listener for the
-      // corresponding main-process log.
-      setError('Recording API unavailable (preload script did not load). Check the console.');
-      return;
-    }
+    if (!window.screenRecorder) return;
     window.screenRecorder.recording
       .getCaptureSources()
       .then((next) => {

@@ -8,8 +8,9 @@ import {
 } from '../../features/timeline/store/timeline-store';
 import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
-import { EditorToolRail, type EditorTool } from './EditorToolRail';
+import { EditorToolRail } from './EditorToolRail';
 import { EditorToolPanel } from './EditorToolPanel';
+import type { EditorTool } from './editorTools';
 
 export function EditorPage(): JSX.Element {
   const lastRecording = useAppStore((state) => state.lastRecording);
@@ -35,17 +36,18 @@ export function EditorPage(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Default the crop tool's selection to the first clip once segments exist,
-  // and drop the selection if that clip gets deleted/reordered away.
-  useEffect(() => {
+  // and drop the selection if that clip gets deleted/reordered away. Adjusted
+  // directly during render (rather than in an effect), guarded by the
+  // `segments` array reference so it only reacts to genuine list changes.
+  const [prevSegments, setPrevSegments] = useState(segments);
+  if (segments !== prevSegments) {
+    setPrevSegments(segments);
     if (segments.length === 0) {
       setSelectedSegmentId(null);
-      return;
-    }
-    if (!segments.some((s) => s.id === selectedSegmentId)) {
+    } else if (!segments.some((s) => s.id === selectedSegmentId)) {
       setSelectedSegmentId(segments[0].id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments]);
+  }
 
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) ?? null;
 

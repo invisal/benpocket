@@ -48,13 +48,13 @@ export const ClusterOverview: React.FC = () => {
             <div className="flex items-start gap-2 p-2.5 bg-red-950/20 border border-red-950/30 rounded text-xs text-red-400">
               <span className="font-bold">❌</span>
               <span>
-                Pod 'payment-processor-78d46dbb4d-f9s22' restarted 2 times in the last 15m.
+                Pod `payment-processor-78d46dbb4d-f9s22` restarted 2 times in the last 15m.
               </span>
             </div>
             <div className="flex items-start gap-2 p-2.5 bg-amber-950/20 border border-amber-950/30 rounded text-xs text-amber-400">
               <span className="font-bold">⚠️</span>
               <span>
-                CPU throttling warning on namespace 'ingress-nginx' (ingress controller limits).
+                CPU throttling warning on namespace `ingress-nginx` (ingress controller limits).
               </span>
             </div>
           </div>

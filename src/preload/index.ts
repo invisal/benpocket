@@ -3,6 +3,7 @@ import { electronAPI } from '@electron-toolkit/preload';
 import { screenRecorderApi } from './screen-recorder/api';
 import { kuberneterApi } from './kuberneter/api';
 import { postmanApi } from './http-client/api';
+import { fileExplorerApi } from './file-explorer/api';
 
 // Custom APIs for renderer
 const api = {
@@ -23,6 +24,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('api', api);
     contextBridge.exposeInMainWorld('screenRecorder', screenRecorderApi);
     contextBridge.exposeInMainWorld('kuberneter', kuberneterApi);
+    contextBridge.exposeInMainWorld('fileExplorer', fileExplorerApi);
   } catch (error) {
     console.error(error);
   }
@@ -35,4 +37,6 @@ if (process.contextIsolated) {
   window.screenRecorder = screenRecorderApi;
   // @ts-ignore (define in dts)
   window.kuberneter = kuberneterApi;
+  // @ts-ignore (define in dts)
+  window.fileExplorer = fileExplorerApi;
 }

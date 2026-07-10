@@ -1,6 +1,6 @@
 import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { useToolTabs } from '@renderer/components/providers/ToolProvider';
-import { GlobeIcon, PlusIcon } from 'lucide-react';
+import { Folder, GlobeIcon, PlusIcon } from 'lucide-react';
 import { useLayoutStore } from '@renderer/store/layout.store';
 import { ReactNode } from 'react';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
@@ -41,6 +41,11 @@ export function HomeMain({}: ToolComponentProps<Props>) {
           name="Screen Recorder"
           icon={<GlobeIcon size={16} />}
           onClick={() => openTab('screen-recorder', {})}
+        />
+        <ToolItem
+          name="File Explorer"
+          icon={<Folder size={16} />}
+          onClick={() => openTab('file-explorer', {})}
         />
       </div>
 

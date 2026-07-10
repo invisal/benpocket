@@ -15,6 +15,7 @@ import { registerEnvironmentHandlers } from './http-client/ipc/environments';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
 import { registerKuberneterHandlers } from './kuberneter';
+import { registerFileExplorerHandlers } from './file-explorer';
 
 function createWindow(): void {
   // Create the browser window.
@@ -168,6 +169,9 @@ app.whenReady().then(() => {
 
   // Kuberneter contexts selection and live resources query handlers
   registerKuberneterHandlers();
+
+  // File Explorer tool: directory listing, native file icons, open-with-default-app
+  registerFileExplorerHandlers();
 
   createWindow();
 

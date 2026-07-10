@@ -3,6 +3,7 @@ import type { ScreenRecorderApi } from './screen-recorder/api';
 import type { PostmanBridge } from './postman/api';
 import type { KuberneterApi } from './kuberneter/api';
 import type { PostmanBridge } from './http-client/api';
+import type { FileExplorerApi } from './file-explorer/api';
 
 interface FileTreeNode {
   name: string;
@@ -16,6 +17,7 @@ declare global {
     electron: ElectronAPI;
     screenRecorder: ScreenRecorderApi;
     kuberneter: KuberneterApi;
+    fileExplorer: FileExplorerApi;
     api: {
       platform: string;
       minimize: () => void;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useToolTabs } from '../providers/ToolProvider';
-import { GlobeIcon, HomeIcon, PlusIcon, VideoIcon } from 'lucide-react';
+import { FolderOpen, GlobeIcon, HomeIcon, PlusIcon, VideoIcon } from 'lucide-react';
 import cn from 'cnfast';
 import { ContextMenu } from '../ui/ContextMenu';
 import { ToolDialog } from '../dialog/ToolDialog';
@@ -26,6 +26,8 @@ export const ActivityBar: React.FC = () => {
             alt="Kuberneter"
           />
         );
+      case 'file-explorer':
+        return <FolderOpen size={16} />;
       default:
         return <GlobeIcon size={16} />;
     }

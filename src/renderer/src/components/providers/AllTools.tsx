@@ -28,4 +28,17 @@ const kuberneterTool = registerTool({
   label: ''
 });
 
-export const allTools = [homeTool, httpClientTool, screenRecordTool, kuberneterTool];
+const fileExplorerTool = registerTool({
+  name: 'file-explorer' as const,
+  loadComponent: () => import('./../../../tools/file-explorer'),
+  generateName: () => 'File Explorer',
+  label: ''
+});
+
+export const allTools = [
+  homeTool,
+  httpClientTool,
+  screenRecordTool,
+  kuberneterTool,
+  fileExplorerTool
+];

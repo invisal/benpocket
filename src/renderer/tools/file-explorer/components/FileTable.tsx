@@ -7,6 +7,7 @@ import {
   ColumnSizingState
 } from '@tanstack/react-table';
 import { ListView } from '@renderer/components/ui/ListView';
+import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { columns, compareEntries, extensionKey, FileEntry, FileRow } from './columns';
 
 interface FileTableProps {
@@ -64,19 +65,49 @@ export function FileTable({ entries, onNavigate }: FileTableProps) {
     getSortedRowModel: getSortedRowModel()
   });
 
+  const activateEntry = (entry: FileEntry) => {
+    if (entry.isDirectory) {
+      onNavigate(entry.path);
+    } else {
+      window.fileExplorer.openPath(entry.path);
+    }
+  };
+
   return (
     <ListView
       table={table}
       getRowId={(entry) => entry.path}
       selectedIds={selectedPaths}
       onSelectionChange={setSelectedPaths}
-      onRowDoubleClick={(entry) => {
-        if (entry.isDirectory) {
-          onNavigate(entry.path);
-        } else {
-          window.fileExplorer.openPath(entry.path);
-        }
-      }}
+      onRowDoubleClick={activateEntry}
+      renderContextMenu={({ row, selectedRows }) => (
+        <>
+          {selectedRows.length <= 1 && (
+            <ContextMenu.Item onClick={() => activateEntry(row)}>
+              {row.isDirectory ? 'Open Folder' : 'Open'}
+            </ContextMenu.Item>
+          )}
+          <ContextMenu.Item
+            onClick={() => {
+              const paths = selectedRows.length > 1 ? selectedRows.map((r) => r.path) : [row.path];
+              navigator.clipboard.writeText(paths.join('\n'));
+            }}
+          >
+            Copy Path
+          </ContextMenu.Item>
+          <ContextMenu.Separator />
+          <ContextMenu.Item
+            className="text-red-400 data-[highlighted]:text-red-300"
+            onClick={() => {
+              // Dummy action: no delete IPC exists yet, this is a placeholder.
+              const count = Math.max(selectedRows.length, 1);
+              console.log(`Delete requested for ${count} item(s)`);
+            }}
+          >
+            Delete {selectedRows.length > 1 ? `${selectedRows.length} items` : ''}
+          </ContextMenu.Item>
+        </>
+      )}
       emptyState={
         <div className="flex-1 flex items-center justify-center text-text-dim text-xs">
           This folder is empty

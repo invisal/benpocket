@@ -18,7 +18,7 @@ export function ContextMenuContent({
       >
         <ContextMenuPrimitive.Popup
           className={cn(
-            'max-h-[min(24rem,var(--available-height))] min-w-[10rem] overflow-y-auto rounded-md border border-border-dark bg-surface p-1 text-text-base shadow-lg',
+            'max-h-[min(24rem,var(--available-height))] min-w-[10rem] overflow-y-auto rounded-md border border-border-dark bg-surface p-1 text-text-base shadow-lg outline-none',
             'origin-[var(--transform-origin)] transition-[transform,opacity]',
             'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
             'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',

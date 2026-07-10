@@ -1,6 +1,12 @@
-import { KeyboardEvent, MouseEvent, ReactNode, useMemo, useRef, useState } from 'react';
+import { Fragment, KeyboardEvent, MouseEvent, ReactNode, useMemo, useRef, useState } from 'react';
 import { flexRender, Table } from '@tanstack/react-table';
 import { cn } from 'cnfast';
+import { ContextMenu } from './ContextMenu';
+
+interface ListViewContextMenuArgs<TData> {
+  row: TData;
+  selectedRows: TData[];
+}
 
 interface ListViewProps<TData> {
   table: Table<TData>;
@@ -9,6 +15,7 @@ interface ListViewProps<TData> {
   onSelectionChange: (ids: Set<string>) => void;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
+  renderContextMenu?: (args: ListViewContextMenuArgs<TData>) => ReactNode;
   emptyState?: ReactNode;
 }
 
@@ -19,6 +26,7 @@ export function ListView<TData>({
   onSelectionChange,
   onRowClick,
   onRowDoubleClick,
+  renderContextMenu,
   emptyState
 }: ListViewProps<TData>) {
   const rows = table.getRowModel().rows;
@@ -36,6 +44,11 @@ export function ListView<TData>({
     }
     return rows[0] ? getRowId(rows[0].original) : null;
   }, [focusedId, rows, selectedIds, getRowId]);
+
+  const selectedRows = useMemo(
+    () => rows.filter((r) => selectedIds.has(getRowId(r.original))).map((r) => r.original),
+    [rows, selectedIds, getRowId]
+  );
 
   if (rows.length === 0 && emptyState) {
     return <>{emptyState}</>;
@@ -85,6 +98,15 @@ export function ListView<TData>({
     }
     setFocusedId(id);
     onRowClick?.(entry);
+  };
+
+  const handleRowContextMenu = (id: string) => {
+    containerRef.current?.focus();
+    if (!selectedIds.has(id)) {
+      onSelectionChange(new Set([id]));
+      anchorIdRef.current = id;
+    }
+    setFocusedId(id);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -186,9 +208,8 @@ export function ListView<TData>({
           const id = getRowId(entry);
           const isSelected = selectedIds.has(id);
           const isFocusedRow = id === effectiveFocusedId;
-          return (
+          const rowElement = (
             <div
-              key={id}
               ref={(el) => {
                 if (el) rowRefs.current.set(id, el);
                 else rowRefs.current.delete(id);
@@ -198,6 +219,7 @@ export function ListView<TData>({
               style={{ display: 'grid', gridTemplateColumns }}
               onClick={(e) => handleRowClick(entry, id, e)}
               onDoubleClick={() => onRowDoubleClick?.(entry)}
+              onContextMenu={() => handleRowContextMenu(id)}
               className={cn(
                 'hover:bg-surface-2 cursor-pointer select-none outline-none',
                 isSelected && 'bg-surface-3',
@@ -210,6 +232,22 @@ export function ListView<TData>({
                 </div>
               ))}
             </div>
+          );
+
+          if (!renderContextMenu) {
+            return <Fragment key={id}>{rowElement}</Fragment>;
+          }
+
+          return (
+            <ContextMenu.Root key={id}>
+              <ContextMenu.Trigger render={rowElement} />
+              <ContextMenu.Content>
+                {renderContextMenu({
+                  row: entry,
+                  selectedRows: isSelected ? selectedRows : [entry]
+                })}
+              </ContextMenu.Content>
+            </ContextMenu.Root>
           );
         })}
       </div>

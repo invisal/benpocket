@@ -17,11 +17,11 @@ interface FileTableProps {
 export function FileTable({ entries, onNavigate }: FileTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [iconByKey, setIconByKey] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setSelectedPath(null);
+    setSelectedPaths(new Set());
     setIconByKey({});
 
     const uniqueFiles = new Map<string, FileEntry>();
@@ -68,8 +68,8 @@ export function FileTable({ entries, onNavigate }: FileTableProps) {
     <ListView
       table={table}
       getRowId={(entry) => entry.path}
-      isRowSelected={(entry) => selectedPath === entry.path}
-      onRowClick={(entry) => setSelectedPath(entry.path)}
+      selectedIds={selectedPaths}
+      onSelectionChange={setSelectedPaths}
       onRowDoubleClick={(entry) => {
         if (entry.isDirectory) {
           onNavigate(entry.path);

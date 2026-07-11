@@ -7,11 +7,13 @@ function SourceGrid({
   sources,
   selectedSource,
   onSelectSource,
+  onCaptureSource,
   emptyMessage
 }: {
   sources: CaptureSource[];
   selectedSource: CaptureSource | null;
   onSelectSource: (source: CaptureSource) => void;
+  onCaptureSource?: (source: CaptureSource) => void;
   emptyMessage: string;
 }): JSX.Element {
   if (sources.length === 0) {
@@ -27,6 +29,7 @@ function SourceGrid({
             key={source.id}
             type="button"
             onClick={() => onSelectSource(source)}
+            onDoubleClick={() => onCaptureSource?.(source)}
             className={cn(
               'flex w-[10.5rem] flex-col rounded-lg border p-1.5 text-left transition-colors',
               selected
@@ -53,6 +56,7 @@ interface SourcePickerPanelsProps {
   windows: CaptureSource[];
   selectedSource: CaptureSource | null;
   onSelectSource: (source: CaptureSource | null) => void;
+  onCaptureSource?: (source: CaptureSource) => void;
 }
 
 export function SourcePickerPanels({
@@ -60,7 +64,8 @@ export function SourcePickerPanels({
   screens,
   windows,
   selectedSource,
-  onSelectSource
+  onSelectSource,
+  onCaptureSource
 }: SourcePickerPanelsProps): JSX.Element {
   const sources = activeTab === 'screen' ? screens : windows;
   const emptyMessage = activeTab === 'screen' ? 'No displays found.' : 'No windows found.';
@@ -70,6 +75,7 @@ export function SourcePickerPanels({
       sources={sources}
       selectedSource={selectedSource}
       onSelectSource={onSelectSource}
+      onCaptureSource={onCaptureSource}
       emptyMessage={emptyMessage}
     />
   );

@@ -121,9 +121,10 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     }
   };
 
-  const runCapture = async (): Promise<void> => {
-    if (!usesOsPicker && !selectedSource) return;
+  const runCapture = async (source = selectedSource): Promise<void> => {
+    if (!usesOsPicker && !source) return;
 
+    setSelectedSource(source);
     setCaptureMode('source');
     setPhase('capturing');
     setPreviewDataUrl(null);
@@ -132,11 +133,16 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     try {
       const blob = usesOsPicker
         ? await captureFromSystemPicker()
-        : await captureFromSource(selectedSource!);
+        : await captureFromSource(source!);
       await finishCapture(blob);
     } catch {
       setPhase('idle');
     }
+  };
+
+  const handleSourceDoubleClick = (source: CaptureSource): void => {
+    if (loading || phase !== 'idle') return;
+    void runCapture(source);
   };
 
   const handleCaptureAgain = (): void => {
@@ -249,6 +255,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
                   windows={windows}
                   selectedSource={selectedSource}
                   onSelectSource={setSelectedSource}
+                  onCaptureSource={handleSourceDoubleClick}
                 />
               )}
             </div>

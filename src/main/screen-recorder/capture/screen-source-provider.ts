@@ -1,12 +1,10 @@
 import { desktopCapturer, screen } from 'electron';
 import type { CaptureSource } from '@screen-recorder/types/recording';
 
-export async function listCaptureSources(options?: {
-  skipThumbnails?: boolean;
-}): Promise<CaptureSource[]> {
+export async function listCaptureSources(): Promise<CaptureSource[]> {
   const sources = await desktopCapturer.getSources({
     types: ['screen', 'window'],
-    thumbnailSize: options?.skipThumbnails ? { width: 0, height: 0 } : { width: 320, height: 180 }
+    thumbnailSize: { width: 320, height: 180 }
   });
 
   // `source.display_id` corresponds directly to `Display.id` from the Screen
@@ -25,7 +23,7 @@ export async function listCaptureSources(options?: {
         id: source.id,
         name: source.name,
         type,
-        thumbnailDataUrl: options?.skipThumbnails ? '' : source.thumbnail.toDataURL()
+        thumbnailDataUrl: source.thumbnail.toDataURL()
       };
     }
 
@@ -38,7 +36,7 @@ export async function listCaptureSources(options?: {
       id: source.id,
       name: source.name,
       type,
-      thumbnailDataUrl: options?.skipThumbnails ? '' : source.thumbnail.toDataURL(),
+      thumbnailDataUrl: source.thumbnail.toDataURL(),
       displayId: display ? String(display.id) : undefined,
       displayBounds: display?.bounds
     };

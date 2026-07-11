@@ -9,9 +9,7 @@ import { cursorTracker, type CursorTrackerBounds } from '../capture/cursor-track
 import { clickTracker } from '../capture/click-tracker';
 
 export function registerRecordingHandlers(): void {
-  ipcMain.handle(IpcChannels.GetCaptureSources, (_event, options?: { skipThumbnails?: boolean }) =>
-    listCaptureSources(options)
-  );
+  ipcMain.handle(IpcChannels.GetCaptureSources, () => listCaptureSources());
 
   ipcMain.handle(
     IpcChannels.StartCursorTracking,

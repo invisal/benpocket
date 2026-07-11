@@ -16,7 +16,6 @@ export const IpcChannels = {
   ExportProgress: 'export:progress',
   ShowSaveExportDialog: 'dialog:show-save-export',
   SaveScreenshot: 'screenshot:save',
-  CaptureScreenshot: 'screenshot:capture',
   GetSettings: 'settings:get',
   SetSettings: 'settings:set',
   RegisterShortcut: 'shortcuts:register',

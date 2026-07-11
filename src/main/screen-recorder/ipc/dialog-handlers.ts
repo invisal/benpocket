@@ -3,7 +3,6 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
 import type { ExportFormat } from '@screen-recorder/types/export';
-import { captureSourcePng, type ScreenshotCaptureRequest } from '../capture/screenshot-capture';
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(
@@ -19,11 +18,6 @@ export function registerDialogHandlers(): void {
         : await dialog.showSaveDialog(options);
       return canceled || !filePath ? null : filePath;
     }
-  );
-
-  ipcMain.handle(
-    IpcChannels.CaptureScreenshot,
-    async (_event, request: ScreenshotCaptureRequest): Promise<Buffer> => captureSourcePng(request)
   );
 
   ipcMain.handle(

@@ -27,7 +27,7 @@ const MIN_CAPTION_DURATION_MS = 300;
  * (start/end shift together, duration preserved -- see usePillDrag), or
  * drag either edge to trim just that side (see useEdgeResize).
  */
-export function CaptionTrack(): JSX.Element {
+export function CaptionTrack(): JSX.Element | null {
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
@@ -46,7 +46,8 @@ export function CaptionTrack(): JSX.Element {
   const trackHeightPx =
     Math.max(1, laneCount(laned)) * LANE_HEIGHT_PX +
     Math.max(0, laneCount(laned) - 1) * LANE_GAP_PX;
-  if (laned.length === 0) return <div />;
+  // See ZoomTrack.tsx for why this is `null`, not an empty placeholder div.
+  if (laned.length === 0) return null;
   return (
     <div className="flex shrink-0 items-center py-1">
       <div ref={containerRef} className="relative flex-1" style={{ height: trackHeightPx }}>

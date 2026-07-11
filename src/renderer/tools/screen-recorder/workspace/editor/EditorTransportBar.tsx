@@ -23,6 +23,13 @@ const ASPECT_LABELS: Record<AspectRatio, string> = {
   '4:3': 'Standard 4:3'
 };
 
+function formatTime(ms: number): string {
+  const totalSeconds = Math.max(0, ms) / 1000;
+  const m = Math.floor(totalSeconds / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 interface EditorTransportBarProps {
   videoRef: RefObject<HTMLVideoElement | null>;
   isPlaying: boolean;
@@ -30,6 +37,10 @@ interface EditorTransportBarProps {
   onToggleCrop: () => void;
   onSplitSelected: () => void;
   canSplitSelected: boolean;
+  /** Current playback position, ms, source-relative -- for the "0:12 / 1:34" readout. */
+  currentTimeMs: number;
+  /** Full source duration, ms -- 0 before metadata loads (readout just shows "0:00" for the total then). */
+  durationMs: number;
 }
 
 export function EditorTransportBar({
@@ -38,7 +49,9 @@ export function EditorTransportBar({
   cropToolActive,
   onToggleCrop,
   onSplitSelected,
-  canSplitSelected
+  canSplitSelected,
+  currentTimeMs,
+  durationMs
 }: EditorTransportBarProps): JSX.Element {
   const aspectRatio = useExportStore((s) => s.aspectRatio);
   const setAspectRatio = useExportStore((s) => s.setAspectRatio);
@@ -108,6 +121,10 @@ export function EditorTransportBar({
           <SkipForward size={15} />
         </button>
       </div>
+
+      <span className="font-mono text-xs tabular-nums text-white/50">
+        {formatTime(currentTimeMs)} / {formatTime(durationMs)}
+      </span>
 
       <button
         onClick={onSplitSelected}

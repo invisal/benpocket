@@ -12,7 +12,7 @@ import { cn } from '../../../lib/utils';
  * clip (drives the Clip tool panel's Speed section), or drag it (pill or
  * spacer alike) to reorder the underlying clip, same as CutTimeline's row.
  */
-export function SpeedTrack(): JSX.Element {
+export function SpeedTrack(): JSX.Element | null {
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
@@ -23,46 +23,46 @@ export function SpeedTrack(): JSX.Element {
   const totalDurationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const clampedTotal = totalDurationMs > 0 ? totalDurationMs : 1;
   const hasAny = segments.some((s) => s.speed !== 1);
+  // See ZoomTrack.tsx for why this is `null`, not an empty placeholder div.
+  if (!hasAny) return null;
 
   return (
     <div className="flex h-9 shrink-0 items-center">
-      {hasAny && (
-        <div className="flex h-7 flex-1 items-center gap-0.5">
-          {segments.map((segment, index) => {
-            const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
-            if (segment.speed === 1) {
-              return (
-                <div
-                  key={segment.id}
-                  {...getDragHandlers(index)}
-                  className={cn(
-                    'h-full cursor-grab',
-                    dragOverIndex === index && 'ring-2 ring-accent'
-                  )}
-                  style={{ width: `${widthPercent}%` }}
-                />
-              );
-            }
+      <div className="flex h-7 flex-1 items-center gap-0.5">
+        {segments.map((segment, index) => {
+          const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
+          if (segment.speed === 1) {
             return (
-              <button
+              <div
                 key={segment.id}
                 {...getDragHandlers(index)}
-                onClick={() => setSelectedSegmentId(segment.id)}
-                title={`${segment.speed}x -- drag to reorder`}
-                style={{ width: `${widthPercent}%` }}
                 className={cn(
-                  'flex h-7 min-w-9 cursor-grab items-center justify-center gap-1 rounded-full border border-amber-500/50 bg-amber-700/30 px-1.5 text-amber-100 hover:bg-amber-700/45 active:cursor-grabbing',
-                  selectedSegmentId === segment.id && 'ring-2 ring-white/70',
+                  'h-full cursor-grab',
                   dragOverIndex === index && 'ring-2 ring-accent'
                 )}
-              >
-                <Gauge size={10} className="shrink-0" />
-                <span className="truncate text-[10px] font-medium">{segment.speed}×</span>
-              </button>
+                style={{ width: `${widthPercent}%` }}
+              />
             );
-          })}
-        </div>
-      )}
+          }
+          return (
+            <button
+              key={segment.id}
+              {...getDragHandlers(index)}
+              onClick={() => setSelectedSegmentId(segment.id)}
+              title={`${segment.speed}x -- drag to reorder`}
+              style={{ width: `${widthPercent}%` }}
+              className={cn(
+                'flex h-7 min-w-9 cursor-grab items-center justify-center gap-1 rounded-full border border-amber-500/50 bg-amber-700/30 px-1.5 text-amber-100 hover:bg-amber-700/45 active:cursor-grabbing',
+                selectedSegmentId === segment.id && 'ring-2 ring-white/70',
+                dragOverIndex === index && 'ring-2 ring-accent'
+              )}
+            >
+              <Gauge size={10} className="shrink-0" />
+              <span className="truncate text-[10px] font-medium">{segment.speed}×</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

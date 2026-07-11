@@ -43,7 +43,7 @@ function clamp(value: number, min: number, max: number): number {
  * out via `assignLanes` instead, so overlapping ones stack into extra rows
  * and the track grows tall enough to fit them all legibly.
  */
-export function ZoomTrack(): JSX.Element {
+export function ZoomTrack(): JSX.Element | null {
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
@@ -66,7 +66,11 @@ export function ZoomTrack(): JSX.Element {
   const trackHeightPx =
     Math.max(1, laneCount(laned)) * LANE_HEIGHT_PX +
     Math.max(0, laneCount(laned) - 1) * LANE_GAP_PX;
-  if (laned.length === 0) return <div />;
+  // Not even an empty placeholder div -- the parent track stack is a
+  // `flex-col gap-1.5`, and that gap still reserves space around a rendered
+  // child even if the child itself is 0-height, so an empty track would
+  // otherwise leave a visible blank strip.
+  if (laned.length === 0) return null;
   return (
     <div className="flex shrink-0 items-center py-1">
       <div ref={containerRef} className="relative flex-1" style={{ height: trackHeightPx }}>

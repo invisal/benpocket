@@ -35,9 +35,9 @@ function pickMajorTickIntervalMs(totalDurationMs: number): number {
 
 // Sized to comfortably fit the ruler+clip row plus the Zoom/Caption/Speed/Crop
 // pill tracks beneath it without squishing (each track is a fixed h-9, `shrink-0`).
-const DEFAULT_PANEL_HEIGHT_PX = 340;
-const MIN_PANEL_HEIGHT_PX = 260;
-const MAX_PANEL_HEIGHT_PX = 560;
+const DEFAULT_PANEL_HEIGHT_PX = 180;
+const MIN_PANEL_HEIGHT_PX = 150;
+const MAX_PANEL_HEIGHT_PX = 300;
 
 interface PanelResize {
   startClientY: number;

@@ -12,7 +12,7 @@ interface BackgroundStoreState extends BackgroundSettings {
 export const useBackgroundStore = create<BackgroundStoreState>((set) => ({
   kind: 'wallpaper',
   value: WALLPAPER_PRESETS[0].id,
-  padding: 8,
+  padding: 2,
   blur: 0,
   setKind: (kind) => set({ kind }),
   setValue: (value) => set({ value }),

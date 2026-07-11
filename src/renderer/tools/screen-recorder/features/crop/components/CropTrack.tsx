@@ -12,7 +12,7 @@ import { cn } from '../../../lib/utils';
  * reads/writes (`TimelineSegment.crop`) -- or drag it (pill or spacer alike)
  * to reorder the underlying clip, same as CutTimeline's row.
  */
-export function CropTrack(): JSX.Element {
+export function CropTrack(): JSX.Element | null {
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
@@ -23,48 +23,48 @@ export function CropTrack(): JSX.Element {
   const totalDurationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const clampedTotal = totalDurationMs > 0 ? totalDurationMs : 1;
   const hasAny = segments.some((s) => s.crop !== null);
+  // See ZoomTrack.tsx for why this is `null`, not an empty placeholder div.
+  if (!hasAny) return null;
 
   return (
     <div className="flex h-9 shrink-0 items-center">
-      {hasAny && (
-        <div className="flex h-7 flex-1 items-center gap-0.5">
-          {segments.map((segment, index) => {
-            const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
-            if (!segment.crop) {
-              return (
-                <div
-                  key={segment.id}
-                  {...getDragHandlers(index)}
-                  className={cn(
-                    'h-full cursor-grab',
-                    dragOverIndex === index && 'ring-2 ring-accent'
-                  )}
-                  style={{ width: `${widthPercent}%` }}
-                />
-              );
-            }
+      <div className="flex h-7 flex-1 items-center gap-0.5">
+        {segments.map((segment, index) => {
+          const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
+          if (!segment.crop) {
             return (
-              <button
+              <div
                 key={segment.id}
                 {...getDragHandlers(index)}
-                onClick={() => setSelectedSegmentId(segment.id)}
-                title={`${Math.round(segment.crop.width * 100)}% × ${Math.round(segment.crop.height * 100)}% -- drag to reorder`}
-                style={{ width: `${widthPercent}%` }}
                 className={cn(
-                  'flex h-7 min-w-9 cursor-grab items-center justify-center gap-1 rounded-full border border-sky-500/50 bg-sky-700/30 px-1.5 text-sky-100 hover:bg-sky-700/45 active:cursor-grabbing',
-                  selectedSegmentId === segment.id && 'ring-2 ring-white/70',
+                  'h-full cursor-grab',
                   dragOverIndex === index && 'ring-2 ring-accent'
                 )}
-              >
-                <Crop size={10} className="shrink-0" />
-                <span className="truncate text-[10px] font-medium">
-                  {Math.round(segment.crop.width * 100)}%
-                </span>
-              </button>
+                style={{ width: `${widthPercent}%` }}
+              />
             );
-          })}
-        </div>
-      )}
+          }
+          return (
+            <button
+              key={segment.id}
+              {...getDragHandlers(index)}
+              onClick={() => setSelectedSegmentId(segment.id)}
+              title={`${Math.round(segment.crop.width * 100)}% × ${Math.round(segment.crop.height * 100)}% -- drag to reorder`}
+              style={{ width: `${widthPercent}%` }}
+              className={cn(
+                'flex h-7 min-w-9 cursor-grab items-center justify-center gap-1 rounded-full border border-sky-500/50 bg-sky-700/30 px-1.5 text-sky-100 hover:bg-sky-700/45 active:cursor-grabbing',
+                selectedSegmentId === segment.id && 'ring-2 ring-white/70',
+                dragOverIndex === index && 'ring-2 ring-accent'
+              )}
+            >
+              <Crop size={10} className="shrink-0" />
+              <span className="truncate text-[10px] font-medium">
+                {Math.round(segment.crop.width * 100)}%
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

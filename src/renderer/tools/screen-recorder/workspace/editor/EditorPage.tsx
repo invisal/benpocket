@@ -152,6 +152,8 @@ export function EditorPage(): JSX.Element {
           onToggleCrop={() => setCropToolActive((v) => !v)}
           onSplitSelected={handleSplitSelected}
           canSplitSelected={Boolean(selectedSegment)}
+          currentTimeMs={currentTimeMs}
+          durationMs={duration * 1000}
         />
       </div>
 

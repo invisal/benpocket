@@ -1,7 +1,7 @@
 import { PassThrough, type Writable } from 'stream';
 import ffmpeg, { type FfmpegCommand } from 'fluent-ffmpeg';
 import type { ExportCodec, ExportFormat } from '@screen-recorder/types/export';
-import type { TimeRange } from '@screen-recorder/types/timeline';
+import type { ClipSpeed, TimeRange } from '@screen-recorder/types/timeline';
 import './ffmpeg-config';
 
 let encoderNamesCache: Set<string> | null = null;
@@ -53,35 +53,41 @@ function qualityToSettings(quality: number): { crf: number; preset: string } {
   return { crf: 0, preset: 'veryslow' };
 }
 
+interface AudioSegment {
+  range: TimeRange;
+  speed: ClipSpeed;
+}
+
 /**
  * Builds the `-filter_complex` chain that extracts each kept segment's audio
  * and concatenates them in order. A single ffmpeg input can only be seeked
  * to one range, but `atrim` operates on presentation timestamps and can be
  * applied to the *same* decoded input multiple times, so the whole audio
  * track is decoded once and carved up here instead of re-seeking per
- * segment. Returns the filter strings plus the label to map in `-map`.
+ * segment. Each segment's own speed is applied via `atempo` (valid for
+ * 0.5-2.0 in a single instance, which covers the full `ClipSpeed` range with
+ * no chaining) so sped-up/slowed audio stays in sync with the video's own
+ * `setpts` rescaling in video-decoder.ts. Returns the filter strings plus
+ * the label to map in `-map`.
  */
 function buildAudioConcatFilter(
-  segments: TimeRange[],
+  segments: AudioSegment[],
   audioInputIndex: number
 ): { filters: string[]; outLabel: string } {
+  const trimFilter = ({ range: { startMs, endMs }, speed }: AudioSegment, label: string) => {
+    const tempo = speed !== 1 ? `,atempo=${speed}` : '';
+    return `[${audioInputIndex}:a]atrim=start=${startMs / 1000}:end=${endMs / 1000},asetpts=PTS-STARTPTS${tempo}[${label}]`;
+  };
+
   if (segments.length === 1) {
-    const [{ startMs, endMs }] = segments;
-    return {
-      filters: [
-        `[${audioInputIndex}:a]atrim=start=${startMs / 1000}:end=${endMs / 1000},asetpts=PTS-STARTPTS[aout]`
-      ],
-      outLabel: '[aout]'
-    };
+    return { filters: [trimFilter(segments[0], 'aout')], outLabel: '[aout]' };
   }
 
   const filters: string[] = [];
   const labels: string[] = [];
-  segments.forEach(({ startMs, endMs }, i) => {
+  segments.forEach((segment, i) => {
     const label = `a${i}`;
-    filters.push(
-      `[${audioInputIndex}:a]atrim=start=${startMs / 1000}:end=${endMs / 1000},asetpts=PTS-STARTPTS[${label}]`
-    );
+    filters.push(trimFilter(segment, label));
     labels.push(`[${label}]`);
   });
   filters.push(`${labels.join('')}concat=n=${segments.length}:v=0:a=1[aout]`);
@@ -98,8 +104,8 @@ export interface CreateEncoderOptions {
   frameRate: number;
   quality: number;
   sourceVideoPath: string;
-  /** Ordered kept ranges (ms, source-relative) -- see ExportOptions.segments. */
-  segments: TimeRange[];
+  /** Ordered kept ranges + speed (ms, source-relative) -- see ExportOptions.segments. */
+  segments: AudioSegment[];
   /** From video-probe.ts's probeSource -- skips audio entirely when false. */
   hasAudio: boolean;
 }

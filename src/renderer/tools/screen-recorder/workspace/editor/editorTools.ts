@@ -1,6 +1,7 @@
 import {
   Captions,
   Download,
+  Gauge,
   Image,
   MousePointer2,
   Video,
@@ -8,7 +9,8 @@ import {
   type LucideIcon
 } from 'lucide-react';
 
-export type EditorTool = 'background' | 'cursor' | 'webcam' | 'captions' | 'zoom' | 'export';
+export type EditorTool =
+  'background' | 'cursor' | 'webcam' | 'captions' | 'zoom' | 'clip' | 'export';
 
 export const EDITOR_TOOLS: { id: EditorTool; label: string; icon: LucideIcon }[] = [
   { id: 'background', label: 'Background', icon: Image },
@@ -16,5 +18,6 @@ export const EDITOR_TOOLS: { id: EditorTool; label: string; icon: LucideIcon }[]
   { id: 'webcam', label: 'Webcam', icon: Video },
   { id: 'captions', label: 'Captions', icon: Captions },
   { id: 'zoom', label: 'Zoom', icon: ZoomIn },
+  { id: 'clip', label: 'Clip', icon: Gauge },
   { id: 'export', label: 'Export', icon: Download }
 ];

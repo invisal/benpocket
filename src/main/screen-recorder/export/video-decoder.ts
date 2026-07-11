@@ -1,6 +1,6 @@
 import { Transform, type TransformCallback } from 'stream';
 import ffmpeg, { type FfmpegCommand } from 'fluent-ffmpeg';
-import type { CropRect, TimeRange } from '@screen-recorder/types/timeline';
+import type { ClipSpeed, CropRect, TimeRange } from '@screen-recorder/types/timeline';
 import './ffmpeg-config';
 
 export interface DecodedFrame {
@@ -80,6 +80,8 @@ export interface DecodeFramesOptions {
   frameRate: number;
   /** Applied before scale/pad, in source pixel coordinates. */
   cropRect?: PixelCropRect;
+  /** Playback rate for this clip; `setpts=PTS/speed` rescales output timing. */
+  speed: ClipSpeed;
   /**
    * `DecodedFrame.index` continues from here instead of restarting at 0 --
    * export-manager.ts calls this once per kept segment, and frame indices
@@ -101,13 +103,18 @@ export interface DecodeFramesResult {
  * opaque, fixed-size rectangle.
  */
 export function decodeFrames(opts: DecodeFramesOptions): DecodeFramesResult {
-  const { sourcePath, trimRange, width, height, frameRate, cropRect, startFrameIndex } = opts;
+  const { sourcePath, trimRange, width, height, frameRate, cropRect, speed, startFrameIndex } =
+    opts;
   const startSec = trimRange.startMs / 1000;
   const durationSec = (trimRange.endMs - trimRange.startMs) / 1000;
 
   const filters: string[] = [];
   if (cropRect) {
     filters.push(`crop=${cropRect.width}:${cropRect.height}:${cropRect.x}:${cropRect.y}`);
+  }
+  // Must land before `fps=`, which resamples off presentation timestamps.
+  if (speed !== 1) {
+    filters.push(`setpts=PTS/${speed}`);
   }
   filters.push(
     `fps=${frameRate}`,
@@ -117,7 +124,11 @@ export function decodeFrames(opts: DecodeFramesOptions): DecodeFramesResult {
 
   const command = ffmpeg(sourcePath)
     .seekInput(startSec)
-    .duration(durationSec)
+    // `-t` here must be an *input* option: `.duration()` sets it on the
+    // output, which is measured on post-filter timestamps -- once `setpts`
+    // rescales those, an output-side `-t` would bound the wrong timeline
+    // (reading too much source for speed>1, truncating for speed<1).
+    .inputOptions(['-t', String(durationSec)])
     .videoFilters(filters.join(','))
     .outputFormat('rawvideo')
     .outputOptions(['-pix_fmt', 'rgba']);

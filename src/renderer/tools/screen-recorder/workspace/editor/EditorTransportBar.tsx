@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import { useExportStore } from '../../features/export/store/export-store';
+import { useTimelineStore } from '../../features/timeline/store/timeline-store';
 import { cn } from '../../lib/utils';
 
 const ASPECT_LABELS: Record<AspectRatio, string> = {
@@ -29,8 +30,6 @@ interface EditorTransportBarProps {
   onToggleCrop: () => void;
   onSplitSelected: () => void;
   canSplitSelected: boolean;
-  timelineZoom: number;
-  onTimelineZoomChange: (zoom: number) => void;
 }
 
 export function EditorTransportBar({
@@ -39,12 +38,12 @@ export function EditorTransportBar({
   cropToolActive,
   onToggleCrop,
   onSplitSelected,
-  canSplitSelected,
-  timelineZoom,
-  onTimelineZoomChange
+  canSplitSelected
 }: EditorTransportBarProps): JSX.Element {
   const aspectRatio = useExportStore((s) => s.aspectRatio);
   const setAspectRatio = useExportStore((s) => s.setAspectRatio);
+  const timelineZoom = useTimelineStore((s) => s.timelineZoom);
+  const setTimelineZoom = useTimelineStore((s) => s.setTimelineZoom);
 
   function togglePlay(): void {
     const video = videoRef.current;
@@ -121,7 +120,7 @@ export function EditorTransportBar({
 
       <div className="ml-auto flex items-center gap-2">
         <button
-          onClick={() => onTimelineZoomChange(Math.max(1, timelineZoom - 0.5))}
+          onClick={() => setTimelineZoom(Math.max(1, timelineZoom - 0.5))}
           className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-white/10"
         >
           <Minus size={13} />
@@ -132,11 +131,11 @@ export function EditorTransportBar({
           max={4}
           step={0.5}
           value={timelineZoom}
-          onChange={(e) => onTimelineZoomChange(Number(e.target.value))}
+          onChange={(e) => setTimelineZoom(Number(e.target.value))}
           className="w-24 accent-accent"
         />
         <button
-          onClick={() => onTimelineZoomChange(Math.min(4, timelineZoom + 0.5))}
+          onClick={() => setTimelineZoom(Math.min(4, timelineZoom + 0.5))}
           className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-white/10"
         >
           <Plus size={13} />

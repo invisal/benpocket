@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { Check } from 'lucide-react';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useExportStore } from '../store/export-store';
 import { useExportAction } from '../hooks/useExportAction';
 import { estimateExportSize } from '../engine/estimate-size';
@@ -27,7 +28,7 @@ export function ExportSidePanel(): JSX.Element {
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
   const durationSeconds =
-    segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0) / 1000;
+    segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0) / 1000;
 
   const estimate = estimateExportSize({
     originalSizeBytes,

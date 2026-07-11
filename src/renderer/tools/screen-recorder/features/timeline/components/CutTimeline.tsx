@@ -3,6 +3,11 @@ import { useCallback, useRef, useState } from 'react';
 import { Clapperboard, Scissors, Trash2 } from 'lucide-react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import { useTimelineStore } from '../store/timeline-store';
+import {
+  getSegmentOutputDurationMs,
+  outputMsToSourceMs,
+  sourceMsToOutputMs
+} from '../lib/segment-duration';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
 import { cn } from '../../../lib/utils';
 
@@ -13,6 +18,19 @@ function formatTime(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// "Nice" tick spacings to choose from so the ruler never gets cluttered
+// regardless of recording length or zoom.
+const NICE_TICK_INTERVALS_SEC = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800];
+const TARGET_MAJOR_TICK_COUNT = 8;
+
+function pickMajorTickIntervalMs(totalDurationMs: number): number {
+  const totalSec = totalDurationMs / 1000;
+  const interval =
+    NICE_TICK_INTERVALS_SEC.find((sec) => totalSec / sec <= TARGET_MAJOR_TICK_COUNT) ??
+    NICE_TICK_INTERVALS_SEC[NICE_TICK_INTERVALS_SEC.length - 1];
+  return interval * 1000;
+}
+
 interface DragResize {
   segmentId: string;
   edge: 'start' | 'end';
@@ -21,12 +39,13 @@ interface DragResize {
   pxPerMs: number;
 }
 
-interface CutTimelineProps {
-  /** Currently selected clip (drives the per-clip CropOverlay in EditorPage). */
-  selectedSegmentId?: string | null;
-  onSelectSegment?: (segmentId: string) => void;
-  /** Horizontal scale (1-4x) driven by EditorTransportBar's timeline zoom slider. */
-  zoom?: number;
+const DEFAULT_PANEL_HEIGHT_PX = 224;
+const MIN_PANEL_HEIGHT_PX = 140;
+const MAX_PANEL_HEIGHT_PX = 480;
+
+interface PanelResize {
+  startClientY: number;
+  startHeightPx: number;
 }
 
 /**
@@ -35,6 +54,11 @@ interface CutTimelineProps {
  * removing the middle of a recording visibly closes the gap -- "ripple"
  * editing, same idea as any NLE timeline.
  *
+ * Takes no props -- selection and zoom live in the timeline store (not
+ * component state) so this can be rendered independently of EditorPage,
+ * e.g. as a full-width strip in ScreenRecorderApp that isn't nested under
+ * (and therefore isn't squeezed by) the screen-recorder tool's sidebar.
+ *
  * Interactions:
  *  - Click a clip to select it (crop applies to whichever clip is selected).
  *  - Double-click a clip to split it there.
@@ -42,14 +66,15 @@ interface CutTimelineProps {
  *  - Drag a clip's left/right edge to trim its in/out point.
  *  - Trash icon ripple-deletes a clip (disabled once only one is left).
  */
-export function CutTimeline({
-  selectedSegmentId,
-  onSelectSegment,
-  zoom = 1
-}: CutTimelineProps): JSX.Element {
+export function CutTimeline(): JSX.Element {
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === 'video-1')?.segments ?? []
   );
+  const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
+  const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
+  const zoom = useTimelineStore((s) => s.timelineZoom);
+  const playheadMs = useTimelineStore((s) => s.playheadMs);
+  const requestSeek = useTimelineStore((s) => s.requestSeek);
   const splitAt = useTimelineStore((s) => s.splitAt);
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
   const reorderSegments = useTimelineStore((s) => s.reorderSegments);
@@ -58,9 +83,70 @@ export function CutTimeline({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
   const resizeRef = useRef<DragResize | null>(null);
+  const trackAreaRef = useRef<HTMLDivElement>(null);
+  const playheadDraggingRef = useRef(false);
 
-  const totalDurationMs = segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0);
+  // Panel height is self-managed (not lifted to EditorPage) so the timeline
+  // is an independently resizable strip spanning the full editor width.
+  const [panelHeightPx, setPanelHeightPx] = useState(DEFAULT_PANEL_HEIGHT_PX);
+  const panelResizeRef = useRef<PanelResize | null>(null);
+
+  const totalDurationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const clampedTotal = totalDurationMs > 0 ? totalDurationMs : 1;
+
+  // `playheadMs` is source-relative (same space as the `<video>` element and
+  // each segment's own `range`), but this track is laid out in ripple/output
+  // order -- map it through the kept segments to find where to draw it.
+  // `null` while scrubbing through a cut-out gap (the preview still plays
+  // the raw source continuously; see PreviewStage), so the playhead just
+  // isn't shown until playback re-enters a kept segment.
+  const outputPlayheadMs = sourceMsToOutputMs(segments, playheadMs);
+
+  const majorTickIntervalMs = pickMajorTickIntervalMs(totalDurationMs);
+  const minorTickIntervalMs = majorTickIntervalMs / 3;
+  const tickCount = totalDurationMs > 0 ? Math.floor(totalDurationMs / minorTickIntervalMs) + 1 : 0;
+  const ticks = Array.from({ length: tickCount }, (_, i) => ({
+    atMs: i * minorTickIntervalMs,
+    major: i % 3 === 0
+  }));
+
+  const seekFromClientX = useCallback(
+    (clientX: number) => {
+      const el = trackAreaRef.current;
+      if (!el || segments.length === 0) return;
+      const rect = el.getBoundingClientRect();
+      const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const sourceMs = outputMsToSourceMs(segments, fraction * clampedTotal);
+      if (sourceMs !== null) requestSeek(sourceMs);
+    },
+    [segments, clampedTotal, requestSeek]
+  );
+
+  const handlePlayheadDragMove = useCallback(
+    (event: PointerEvent) => {
+      if (!playheadDraggingRef.current) return;
+      seekFromClientX(event.clientX);
+    },
+    [seekFromClientX]
+  );
+
+  const stopPlayheadDrag = useCallback(() => {
+    playheadDraggingRef.current = false;
+    window.removeEventListener('pointermove', handlePlayheadDragMove);
+  }, [handlePlayheadDragMove]);
+
+  function startPlayheadDrag(event: React.PointerEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    playheadDraggingRef.current = true;
+    seekFromClientX(event.clientX);
+    window.addEventListener('pointermove', handlePlayheadDragMove);
+    window.addEventListener('pointerup', stopPlayheadDrag, { once: true });
+  }
+
+  function handleRulerClick(event: React.MouseEvent<HTMLDivElement>): void {
+    seekFromClientX(event.clientX);
+  }
 
   const handleResizeMove = useCallback(
     (event: PointerEvent) => {
@@ -98,6 +184,31 @@ export function CutTimeline({
     };
   }
 
+  const handlePanelResizeMove = useCallback((event: PointerEvent) => {
+    const drag = panelResizeRef.current;
+    if (!drag) return;
+    // The panel is pinned to the bottom of the editor, so dragging the top
+    // edge upward (clientY decreasing) should grow it.
+    const deltaPx = drag.startClientY - event.clientY;
+    const next = Math.min(
+      MAX_PANEL_HEIGHT_PX,
+      Math.max(MIN_PANEL_HEIGHT_PX, drag.startHeightPx + deltaPx)
+    );
+    setPanelHeightPx(next);
+  }, []);
+
+  const stopPanelResize = useCallback(() => {
+    panelResizeRef.current = null;
+    window.removeEventListener('pointermove', handlePanelResizeMove);
+  }, [handlePanelResizeMove]);
+
+  function startPanelResize(event: React.PointerEvent): void {
+    event.preventDefault();
+    panelResizeRef.current = { startClientY: event.clientY, startHeightPx: panelHeightPx };
+    window.addEventListener('pointermove', handlePanelResizeMove);
+    window.addEventListener('pointerup', stopPanelResize, { once: true });
+  }
+
   function handleDoubleClick(
     segment: TimelineSegment,
     index: number,
@@ -107,103 +218,156 @@ export function CutTimeline({
     const fraction = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
     const outputStart = segments
       .slice(0, index)
-      .reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0);
-    const durationMs = segment.range.endMs - segment.range.startMs;
-    splitAt(outputStart + fraction * durationMs);
+      .reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
+    const outputDurationMs = getSegmentOutputDurationMs(segment);
+    splitAt(outputStart + fraction * outputDurationMs);
   }
 
   return (
-    <div className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface-raised px-4 py-3">
-      <div className="flex items-center gap-3 text-xs text-white/50">
-        <span className="flex items-center gap-1.5">
-          <Scissors size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
-        </span>
-        <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
-          {formatTime(totalDurationMs)} total
-        </span>
-        <span className="ml-auto text-white/30">
-          Click to select · double-click to split · drag to reorder or trim
-        </span>
-      </div>
+    <div
+      className="flex w-full shrink-0 flex-col border-t border-line bg-surface-raised"
+      style={{ height: panelHeightPx }}
+    >
+      <div
+        onPointerDown={startPanelResize}
+        title="Drag to resize the timeline"
+        className="h-1.5 shrink-0 cursor-row-resize bg-transparent hover:bg-accent/70"
+      />
 
-      <div className="overflow-x-auto">
-        <div className="flex h-16 gap-0.5" style={{ width: `${zoom * 100}%`, minWidth: '100%' }}>
-          {segments.map((segment, index) => {
-            const widthPercent =
-              ((segment.range.endMs - segment.range.startMs) / clampedTotal) * 100;
-            const isSelected = selectedSegmentId === segment.id;
-            return (
-              <div
-                key={segment.id}
-                draggable
-                onDragStart={(e) => {
-                  dragIndexRef.current = index;
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOverIndex(index);
-                }}
-                onDragLeave={() =>
-                  setDragOverIndex((current) => (current === index ? null : current))
-                }
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const from = dragIndexRef.current;
-                  setDragOverIndex(null);
-                  dragIndexRef.current = null;
-                  if (from === null) return;
-                  reorderSegments(from, index);
-                }}
-                onClick={() => onSelectSegment?.(segment.id)}
-                onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
-                className={cn(
-                  'group relative flex min-w-[36px] cursor-grab flex-col items-center justify-center gap-0.5 rounded-md border border-amber-400/30 bg-amber-400/15 active:cursor-grabbing',
-                  dragOverIndex === index && 'ring-2 ring-accent',
-                  dragOverIndex !== index && isSelected && 'ring-2 ring-white/70'
-                )}
-                style={{ width: `${widthPercent}%` }}
-              >
-                <div className="pointer-events-none flex flex-col items-center gap-0.5 text-amber-200/90">
-                  <Clapperboard size={13} />
-                  <span className="truncate px-1 text-[10px] font-medium">
-                    {formatTime(segment.range.endMs - segment.range.startMs)}
-                  </span>
-                  <span className="text-[9px] text-amber-200/50">{segment.speed}x</span>
-                </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
+        <div className="flex shrink-0 items-center gap-3 text-xs text-white/50">
+          <span className="flex items-center gap-1.5">
+            <Scissors size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
+          </span>
+          <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
+            {formatTime(totalDurationMs)} total
+          </span>
+          <span className="ml-auto text-white/30">
+            Click to select · double-click to split · drag to reorder, trim, or scrub
+          </span>
+        </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteSegment(segment.id);
-                  }}
-                  disabled={segments.length <= 1}
-                  className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
+        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
+          <div
+            ref={trackAreaRef}
+            className="relative flex h-full flex-col"
+            style={{ width: `${zoom * 100}%`, minWidth: '100%' }}
+          >
+            <div
+              onClick={handleRulerClick}
+              title="Click to scrub"
+              className="relative h-5 shrink-0 cursor-pointer select-none"
+            >
+              {ticks.map(({ atMs, major }) => (
+                <div
+                  key={atMs}
+                  className="pointer-events-none absolute top-0"
+                  style={{ left: `${(atMs / clampedTotal) * 100}%` }}
                 >
-                  <Trash2 size={11} />
-                </button>
+                  <div className={cn('w-px bg-white/25', major ? 'h-2' : 'h-1')} />
+                  {major && (
+                    <span className="absolute left-0 top-2 -translate-x-1/2 whitespace-nowrap text-[9px] text-white/40">
+                      {formatTime(atMs)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
 
+            <div className="flex flex-1 gap-0.5 pt-1 mt-2">
+              {segments.map((segment, index) => {
+                const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
+                const isSelected = selectedSegmentId === segment.id;
+                return (
+                  <div
+                    key={segment.id}
+                    draggable
+                    onDragStart={(e) => {
+                      dragIndexRef.current = index;
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverIndex(index);
+                    }}
+                    onDragLeave={() =>
+                      setDragOverIndex((current) => (current === index ? null : current))
+                    }
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = dragIndexRef.current;
+                      setDragOverIndex(null);
+                      dragIndexRef.current = null;
+                      if (from === null) return;
+                      reorderSegments(from, index);
+                    }}
+                    onClick={() => setSelectedSegmentId(segment.id)}
+                    onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
+                    className={cn(
+                      'group relative flex min-w-[36px] max-h-16 h-14 cursor-grab flex-col items-center justify-center gap-0.5 rounded-md border border-amber-400/30 bg-amber-400/15 active:cursor-grabbing',
+                      dragOverIndex === index && 'ring-2 ring-accent',
+                      dragOverIndex !== index && isSelected && 'ring-2 ring-white/70'
+                    )}
+                    style={{ width: `${widthPercent}%` }}
+                  >
+                    <div className="pointer-events-none flex flex-col items-center gap-0.5 text-amber-200/90">
+                      <Clapperboard size={13} />
+                      <span className="truncate px-1 text-[10px] font-medium">
+                        {formatTime(getSegmentOutputDurationMs(segment))}
+                      </span>
+                      <span className="text-[9px] text-amber-200/50">{segment.speed}x</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSegment(segment.id);
+                      }}
+                      disabled={segments.length <= 1}
+                      className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+
+                    <div
+                      onPointerDown={(e) => {
+                        const width =
+                          e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                        startResize(segment, 'start', width)(e);
+                      }}
+                      className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-accent/0 hover:bg-accent/70"
+                    />
+                    <div
+                      onPointerDown={(e) => {
+                        const width =
+                          e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                        startResize(segment, 'end', width)(e);
+                      }}
+                      className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-accent/0 hover:bg-accent/70"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {outputPlayheadMs !== null && (
+              <div
+                className="pointer-events-none absolute inset-y-0 z-10"
+                style={{ left: `${(outputPlayheadMs / clampedTotal) * 100}%` }}
+              >
+                <div className="absolute inset-y-0 left-0 w-px bg-accent" />
                 <div
-                  onPointerDown={(e) => {
-                    const width = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                    startResize(segment, 'start', width)(e);
-                  }}
-                  className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-accent/0 hover:bg-accent/70"
-                />
-                <div
-                  onPointerDown={(e) => {
-                    const width = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                    startResize(segment, 'end', width)(e);
-                  }}
-                  className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-accent/0 hover:bg-accent/70"
+                  onPointerDown={startPlayheadDrag}
+                  title="Drag to scrub"
+                  className="pointer-events-auto absolute -left-1.5 top-0 h-3 w-3 cursor-ew-resize rounded-full border-2 border-surface-raised bg-accent shadow"
                 />
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
-      </div>
 
-      <ZoomTrack />
+        <ZoomTrack />
+      </div>
     </div>
   );
 }

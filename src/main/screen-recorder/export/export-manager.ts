@@ -38,7 +38,7 @@ function writeFrame(stdin: NodeJS.WritableStream, buffer: Buffer): Promise<void>
 }
 
 function totalFramesFor(segments: ExportOptions['segments'], frameRate: number): number {
-  const totalMs = segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0);
+  const totalMs = segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs) / s.speed, 0);
   return Math.max(1, Math.round((totalMs / 1000) * frameRate));
 }
 
@@ -89,7 +89,7 @@ class ExportManager {
         frameRate: options.frameRate,
         quality: options.quality,
         sourceVideoPath: options.sourceVideoPath,
-        segments: options.segments.map((s) => s.range),
+        segments: options.segments.map((s) => ({ range: s.range, speed: s.speed })),
         hasAudio: sourceMeta.hasAudio
       });
       encoderCommand = encoder.command;
@@ -133,6 +133,7 @@ class ExportManager {
           height: innerRect.height,
           frameRate: options.frameRate,
           cropRect: segmentCropRect,
+          speed: segment.speed,
           startFrameIndex: frameIndex
         });
         decoderCommands.push(decoder);

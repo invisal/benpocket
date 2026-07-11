@@ -1,11 +1,11 @@
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../app/app-store';
-import { CutTimeline } from '../../features/timeline/components/CutTimeline';
 import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
+import { getSegmentOutputDurationMs } from '../../features/timeline/lib/segment-duration';
 import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
@@ -20,14 +20,20 @@ export function EditorPage(): JSX.Element {
   );
   const initializeFromDuration = useTimelineStore((s) => s.initializeFromDuration);
   const splitAt = useTimelineStore((s) => s.splitAt);
+  // Selection lives in the timeline store (not local state) so it's shared
+  // with CutTimeline, which is rendered independently in ScreenRecorderApp
+  // rather than nested inside this page -- see CutTimeline.tsx.
+  const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
+  const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
+  const setPlayhead = useTimelineStore((s) => s.setPlayhead);
+  const seekRequestMs = useTimelineStore((s) => s.seekRequestMs);
+  const clearSeekRequest = useTimelineStore((s) => s.clearSeekRequest);
 
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [cropToolActive, setCropToolActive] = useState(false);
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<EditorTool | null>('background');
-  const [timelineZoom, setTimelineZoom] = useState(1);
   const [sourceResolution, setSourceResolution] = useState<{
     width: number;
     height: number;
@@ -36,20 +42,33 @@ export function EditorPage(): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Default the crop tool's selection to the first clip once segments exist,
-  // and drop the selection if that clip gets deleted/reordered away. Adjusted
-  // directly during render (rather than in an effect), guarded by the
-  // `segments` array reference so it only reacts to genuine list changes.
-  const [prevSegments, setPrevSegments] = useState(segments);
-  if (segments !== prevSegments) {
-    setPrevSegments(segments);
+  // and drop the selection if that clip gets deleted/reordered away.
+  useEffect(() => {
     if (segments.length === 0) {
-      setSelectedSegmentId(null);
+      if (selectedSegmentId !== null) setSelectedSegmentId(null);
     } else if (!segments.some((s) => s.id === selectedSegmentId)) {
       setSelectedSegmentId(segments[0].id);
     }
-  }
+  }, [segments, selectedSegmentId, setSelectedSegmentId]);
 
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) ?? null;
+
+  // Keep the store's playhead (read by CutTimeline's ruler) in sync with
+  // actual playback position, reported at native `timeupdate` frequency.
+  useEffect(() => {
+    setPlayhead(currentTimeMs);
+  }, [currentTimeMs, setPlayhead]);
+
+  // CutTimeline can't reach `videoRef` directly (it's rendered independently
+  // in ScreenRecorderApp), so it posts a one-shot seek request instead of
+  // seeking the video itself -- apply it here and clear it so it doesn't
+  // reapply on every render or fight the video's own `timeupdate` reports.
+  useEffect(() => {
+    if (seekRequestMs === null) return;
+    const video = videoRef.current;
+    if (video) video.currentTime = seekRequestMs / 1000;
+    clearSeekRequest();
+  }, [seekRequestMs, clearSeekRequest]);
 
   // Re-initialize the cut timeline whenever a *different* recording loads.
   // Guarded on previewUrl so scrubbing/metadata re-fires don't wipe cuts the
@@ -82,9 +101,9 @@ export function EditorPage(): JSX.Element {
     const index = segments.findIndex((s) => s.id === selectedSegment.id);
     const outputStart = segments
       .slice(0, index)
-      .reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0);
-    const durationMs = selectedSegment.range.endMs - selectedSegment.range.startMs;
-    splitAt(outputStart + durationMs / 2);
+      .reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
+    const outputDurationMs = getSegmentOutputDurationMs(selectedSegment);
+    splitAt(outputStart + outputDurationMs / 2);
   }
 
   return (
@@ -138,14 +157,6 @@ export function EditorPage(): JSX.Element {
           onToggleCrop={() => setCropToolActive((v) => !v)}
           onSplitSelected={handleSplitSelected}
           canSplitSelected={Boolean(selectedSegment)}
-          timelineZoom={timelineZoom}
-          onTimelineZoomChange={setTimelineZoom}
-        />
-
-        <CutTimeline
-          selectedSegmentId={selectedSegmentId}
-          onSelectSegment={setSelectedSegmentId}
-          zoom={timelineZoom}
         />
       </div>
 
@@ -158,6 +169,7 @@ export function EditorPage(): JSX.Element {
           tool={activeTool}
           currentTimeMs={currentTimeMs}
           sourceResolution={sourceResolution}
+          selectedSegment={selectedSegment}
         />
       )}
     </div>

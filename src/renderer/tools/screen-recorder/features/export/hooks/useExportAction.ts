@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useExportStore } from '../store/export-store';
 import { buildExportProject } from '../lib/build-export-project';
 
@@ -65,7 +66,7 @@ export function useExportAction(): UseExportActionResult {
     });
 
     try {
-      const durationMs = segments.reduce((sum, s) => sum + (s.range.endMs - s.range.startMs), 0);
+      const durationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
       await window.screenRecorder.export.start({
         format: store.format,
         codec: store.codec,
@@ -75,7 +76,7 @@ export function useExportAction(): UseExportActionResult {
         quality: store.quality,
         outputPath,
         sourceVideoPath,
-        segments: segments.map((s) => ({ range: s.range, crop: s.crop })),
+        segments: segments.map((s) => ({ range: s.range, crop: s.crop, speed: s.speed })),
         project: buildExportProject(sourceVideoPath, durationMs)
       });
       setStatus('idle');

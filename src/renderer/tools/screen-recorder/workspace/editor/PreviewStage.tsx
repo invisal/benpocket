@@ -7,6 +7,10 @@ import { useWebcamStore } from '../../features/webcam/store/webcam-store';
 import { useCaptionsStore } from '../../features/captions/store/captions-store';
 import { useZoomStore } from '../../features/zoom/store/zoom-store';
 import { useCursorStore } from '../../features/cursor/store/cursor-store';
+import {
+  useTimelineStore,
+  PRIMARY_VIDEO_TRACK_ID
+} from '../../features/timeline/store/timeline-store';
 import { useAppStore } from '../../app/app-store';
 import { CropOverlay } from '../../features/crop/components/CropOverlay';
 // import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
@@ -74,19 +78,42 @@ export function PreviewStage({
     [rawCursorPath, cursorSmoothing]
   );
 
+  // Preview plays the raw source continuously rather than ripple-editing cut
+  // segments (same WYSIWYG-by-overlay approach already used for crop), but
+  // it should still play each clip back at its own authored speed. Kept in a
+  // ref (not read directly in the tick loop below) since that effect has an
+  // empty dep array and would otherwise close over a stale `segments`.
+  const segments = useTimelineStore(
+    (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
+  );
+  const segmentsRef = useRef(segments);
+  useEffect(() => {
+    segmentsRef.current = segments;
+  }, [segments]);
+
   // `currentTimeMs` only updates on the video's `timeupdate` event, which
   // browsers fire just a few times a second -- fine for captions/timeline
   // sync, but far too coarse for a smooth zoom: driving the transform off it
   // produced a visible step-then-jump (and, combined with the transition
   // below re-triggering on every irregular update, occasional flicker).
   // Polling the video element directly every animation frame gives a true
-  // ~60fps clock for the zoom to track instead.
+  // ~60fps clock for the zoom to track instead. Also drives the live
+  // playbackRate so scrubbing/playing through a sped-up or slowed-down clip
+  // sounds/looks right in the editor, not just in the export.
   const [zoomTimeMs, setZoomTimeMs] = useState(currentTimeMs);
   useEffect(() => {
     let rafId: number;
     const tick = (): void => {
       const video = videoRef.current;
-      if (video) setZoomTimeMs(video.currentTime * 1000);
+      if (video) {
+        const sourceMs = video.currentTime * 1000;
+        setZoomTimeMs(sourceMs);
+        const activeSegment = segmentsRef.current.find(
+          (s) => sourceMs >= s.range.startMs && sourceMs < s.range.endMs
+        );
+        const targetRate = activeSegment?.speed ?? 1;
+        if (video.playbackRate !== targetRate) video.playbackRate = targetRate;
+      }
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);

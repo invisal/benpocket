@@ -12,11 +12,25 @@ export function registerWindowHandlers(): void {
     windowFromEvent(event)?.minimize();
   });
 
+  ipcMain.handle(IpcChannels.WindowHide, (event) => {
+    windowFromEvent(event)?.hide();
+  });
+
   ipcMain.handle(IpcChannels.WindowRestore, (event) => {
     const win = windowFromEvent(event);
     if (!win) return;
     if (win.isMinimized()) win.restore();
     win.show();
+
+    // GNOME/Wayland blocks background apps from stealing focus and shows an
+    // "app is ready" notification instead — briefly pin on top so show() lands.
+    if (process.platform === 'linux') {
+      win.setAlwaysOnTop(true, 'screen-saver');
+      win.focus();
+      win.setAlwaysOnTop(false);
+      return;
+    }
+
     win.focus();
   });
 

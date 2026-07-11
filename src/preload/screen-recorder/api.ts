@@ -58,6 +58,7 @@ export const screenRecorderApi = {
   },
   window: {
     minimize: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowMinimize),
+    hide: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowHide),
     restore: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowRestore),
     toggleMaximize: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowToggleMaximize),
     close: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowClose),

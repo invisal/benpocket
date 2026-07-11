@@ -1,6 +1,6 @@
 const CAPTURE_TIMEOUT_MS = 15_000;
-// ponytail: fixed delay for WM minimize animation before grabbing a monitor frame
-const MINIMIZE_SETTLE_MS = 400;
+// ponytail: fixed delay for WM hide animation before grabbing a monitor frame
+const HIDE_SETTLE_MS = 400;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -24,11 +24,11 @@ function isMonitorCapture(stream: MediaStream): boolean {
   return width >= screenW * 0.9 && height >= screenH * 0.9;
 }
 
-async function minimizeApp(): Promise<void> {
-  await window.screenRecorder?.window.minimize();
+async function hideApp(): Promise<void> {
+  await window.screenRecorder?.window.hide();
 }
 
-async function restoreApp(): Promise<void> {
+async function showApp(): Promise<void> {
   await window.screenRecorder?.window.restore();
 }
 
@@ -133,17 +133,17 @@ async function openDisplayMediaStream(): Promise<MediaStream> {
 /** Opens the OS capture picker, then grabs one PNG frame from the chosen source. */
 export async function captureFromSystemPicker(): Promise<Blob> {
   const stream = await openDisplayMediaStream();
-  const hideApp = isMonitorCapture(stream);
+  const shouldHideApp = isMonitorCapture(stream);
 
-  if (hideApp) {
-    await minimizeApp();
-    await delay(MINIMIZE_SETTLE_MS);
+  if (shouldHideApp) {
+    await hideApp();
+    await delay(HIDE_SETTLE_MS);
   }
 
   try {
     return await grabPngFromStream(stream);
   } finally {
-    if (hideApp) await restoreApp();
+    if (shouldHideApp) await showApp();
   }
 }
 

@@ -22,6 +22,7 @@ export const IpcChannels = {
   RegisterShortcut: 'shortcuts:register',
   UnregisterShortcut: 'shortcuts:unregister',
   WindowMinimize: 'window:minimize',
+  WindowHide: 'window:hide',
   WindowRestore: 'window:restore',
   WindowToggleMaximize: 'window:toggle-maximize',
   WindowClose: 'window:close',

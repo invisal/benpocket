@@ -24,6 +24,15 @@ export interface SidebarSections {
   locations: SidebarItem[];
 }
 
+export type ReadFileContentResponse =
+  | { content: string }
+  | { error: 'too-large'; maxBytes: number }
+  | { error: 'unsupported-extension' }
+  | { error: string };
+
+const PREVIEWABLE_EXTENSIONS = new Set(['txt', 'md', 'json', 'ini']);
+const MAX_PREVIEW_FILE_BYTES = 5 * 1024 * 1024;
+
 const iconCache = new Map<string, string>();
 
 function pathExists(target: string): boolean {
@@ -165,6 +174,30 @@ export function registerFileExplorerHandlers(): void {
     async (_, targetPath: string): Promise<{ success: true } | { error: string }> => {
       const errorMessage = await shell.openPath(targetPath);
       return errorMessage ? { error: errorMessage } : { success: true };
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:read-file-content',
+    async (_, filePath: string): Promise<ReadFileContentResponse> => {
+      const extension = path.extname(filePath).replace(/^\./, '').toLowerCase();
+      if (!PREVIEWABLE_EXTENSIONS.has(extension)) {
+        return { error: 'unsupported-extension' };
+      }
+
+      try {
+        const stats = await fs.promises.stat(filePath);
+        if (stats.isDirectory()) return { error: 'Cannot preview a folder' };
+        if (stats.size > MAX_PREVIEW_FILE_BYTES) {
+          return { error: 'too-large', maxBytes: MAX_PREVIEW_FILE_BYTES };
+        }
+
+        const content = await fs.promises.readFile(filePath, 'utf-8');
+        return { content };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: message };
+      }
     }
   );
 }

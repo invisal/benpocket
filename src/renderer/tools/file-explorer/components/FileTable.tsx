@@ -19,9 +19,10 @@ const DIRECT_OPEN_EXTENSIONS = new Set(['pdf', 'xlsx', 'docx']);
 interface FileTableProps {
   entries: FileEntry[];
   onNavigate: (path: string) => void;
+  onSelectionChange?: (selected: FileEntry[]) => void;
 }
 
-export function FileTable({ entries, onNavigate }: FileTableProps) {
+export function FileTable({ entries, onNavigate, onSelectionChange }: FileTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
@@ -59,6 +60,10 @@ export function FileTable({ entries, onNavigate }: FileTableProps) {
         .map((entry) => ({ ...entry, iconDataUrl: iconByKey[extensionKey(entry)] })),
     [entries, iconByKey]
   );
+
+  useEffect(() => {
+    onSelectionChange?.(entries.filter((entry) => selectedPaths.has(entry.path)));
+  }, [selectedPaths, entries, onSelectionChange]);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table memoizes its own return value; not a React Compiler concern
   const table = useReactTable({

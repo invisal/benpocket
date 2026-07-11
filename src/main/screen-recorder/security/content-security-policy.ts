@@ -7,7 +7,7 @@ import { app, session } from 'electron';
 // lets us keep production locked down while dev actually works.
 //
 // img-src needs 'data:' because capture source thumbnails are data URLs
-// (see main/capture/screen-source-provider.ts) and Screen Capture preview
+// (see main/screen-recorder/capture/screen-source-provider.ts) and Screen Capture preview
 // may use blob: or data: URLs. media-src needs 'blob:' because recorded
 // video preview uses an in-memory Blob URL (see
 // features/recording/engine/capture-engine.ts) rather than writing to disk

@@ -31,11 +31,16 @@ There is **no** `@screen-capture/*` path alias. Imports use relative paths or sh
 
 ```
 index.tsx                      Main UI — phase state machine + action handlers
-components/SourcePicker.tsx    Thumbnail grid for screen/window sources
+components/SourcePicker.tsx    Thumbnail grid for screen/window sources (in-app picker)
 lib/use-capture-sources.ts     Loads sources via IPC, tab state, default selection
-lib/capture-frame.ts           getUserMedia → single PNG frame (renderer-side grab)
+lib/capture-frame.ts           captureFromSource / captureFromSystemPicker → PNG
 README.md                      This file
 ```
+
+Shared with main/preload (not under this directory):
+
+- `src/shared/uses-os-capture-picker.ts` — Wayland detection (`window.api.usesOsCapturePicker`)
+- `src/main/screen-recorder/security/display-media-handler.ts` — portal routing for `getDisplayMedia`
 
 ## UI flow (`index.tsx`)
 
@@ -53,23 +58,14 @@ On success, a **native OS notification** is shown (see below). Permission issues
 
 ## Source loading (`lib/use-capture-sources.ts`)
 
-1. `window.screenRecorder.recording.getCaptureSources()` on mount
+Skipped when `window.api.usesOsCapturePicker` is true (Linux Wayland). Otherwise on mount:
+
+1. `window.screenRecorder.recording.getCaptureSources()`
 2. Split into `screens` and `windows` by `source.type`
 3. Default tab: **Entire Screen** when displays exist, otherwise **Window**
 4. Auto-select the first source on the active tab
 
-Thumbnails come from `main/capture/screen-source-provider.ts` (`desktopCapturer.getSources`).
-
-## Source loading (`lib/use-capture-sources.ts`)
-
-Skipped when `usesOsCapturePicker` is true. Otherwise:
-
-1. `window.screenRecorder.recording.getCaptureSources()` on mount
-2. Split into `screens` and `windows` by `source.type`
-3. Default tab: **Entire Screen** when displays exist, otherwise **Window**
-4. Auto-select the first source on the active tab
-
-Thumbnails come from `main/capture/screen-source-provider.ts` (`desktopCapturer.getSources`).
+Thumbnails come from `main/screen-recorder/capture/screen-source-provider.ts` (`desktopCapturer.getSources`).
 
 ## Capture pipeline (`lib/capture-frame.ts`)
 
@@ -165,29 +161,29 @@ IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:
 
 Registered once in `src/main/index.ts`:
 
-| Module                                | Scope                                      | Screen Capture usage                             |
-| ------------------------------------- | ------------------------------------------ | ------------------------------------------------ |
-| `security/content-security-policy.ts` | Whole app CSP                              | `img-src` includes `data:` for picker thumbnails |
-| `security/display-media-handler.ts`   | `getDisplayMedia` on Linux Wayland         | Routes capture to PipeWire portal picker         |
-| `ipc/window-handlers.ts`              | All tools using title bar / hide / restore | Hide/restore for full-screen capture             |
-| `capture/screen-source-provider.ts`   | Shared with Screen Recorder source picker  | Lists screens/windows for the thumbnail grid     |
+| Module                                                | Scope                                      | Screen Capture usage                             |
+| ----------------------------------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| `screen-recorder/security/content-security-policy.ts` | Whole app CSP                              | `img-src` includes `data:` for picker thumbnails |
+| `screen-recorder/security/display-media-handler.ts`   | `getDisplayMedia` on Linux Wayland         | Routes capture to PipeWire portal picker         |
+| `screen-recorder/ipc/window-handlers.ts`              | All tools using title bar / hide / restore | Hide/restore for full-screen capture             |
+| `screen-recorder/capture/screen-source-provider.ts`   | Shared with Screen Recorder source picker  | Lists screens/windows for the thumbnail grid     |
 
-Screen Capture and Screen Recorder share the same **`getUserMedia` + `chromeMediaSourceId`** capture primitive (`capture-frame.ts` vs `capture-engine.ts`). Changes to shared IPC (`getCaptureSources`, hide/restore, clipboard) affect both.
+Screen Capture and Screen Recorder share **`getCaptureSources`**, hide/restore IPC, and the in-app **`getUserMedia` + `chromeMediaSourceId`** primitive (`capture-frame.ts` vs `capture-engine.ts`). Screen Capture alone uses **`getDisplayMedia`** on Linux Wayland via `display-media-handler.ts`.
 
 ## Differences from Screen Recorder
 
-|                  | Screen Capture                                           | Screen Recorder               |
-| ---------------- | -------------------------------------------------------- | ----------------------------- |
-| Source selection | In-app grid (most platforms); OS picker on Linux Wayland | In-app `desktopCapturer` grid |
-| Output           | Single PNG                                               | Video (`MediaRecorder`)       |
-| Hide window      | Yes, on `source.type === 'screen'`                       | No                            |
-| Cursor in shot   | Whatever the OS includes — no toggle                     | N/A (video stream)            |
+|                  | Screen Capture                                                                        | Screen Recorder               |
+| ---------------- | ------------------------------------------------------------------------------------- | ----------------------------- |
+| Source selection | In-app grid (most platforms); OS picker on Linux Wayland                              | In-app `desktopCapturer` grid |
+| Output           | Single PNG                                                                            | Video (`MediaRecorder`)       |
+| Hide window      | Yes on full display (`source.type === 'screen'` or OS `displaySurface === 'monitor'`) | No                            |
+| Cursor in shot   | Whatever the OS includes — no toggle                                                  | N/A (video stream)            |
 
 ## Intentionally not implemented / removed
 
 - **Main-process `screenshot:capture` PNG path** — removed; renderer grab from media stream is sufficient
-- **`cursor: 'never'` on `getDisplayMedia`** — N/A
 - **Custom in-app toast** — replaced by native OS notifications
+- **Fixed-delay / frame-count settle after hide** — removed; hide/show and grab sync on IPC and video element events only
 
 ## Platform notes
 

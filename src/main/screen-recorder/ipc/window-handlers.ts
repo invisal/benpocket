@@ -12,6 +12,14 @@ export function registerWindowHandlers(): void {
     windowFromEvent(event)?.minimize();
   });
 
+  ipcMain.handle(IpcChannels.WindowRestore, (event) => {
+    const win = windowFromEvent(event);
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  });
+
   ipcMain.handle(IpcChannels.WindowToggleMaximize, (event) => {
     const win = windowFromEvent(event);
     if (!win) return;

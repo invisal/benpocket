@@ -1,4 +1,36 @@
 const CAPTURE_TIMEOUT_MS = 15_000;
+// ponytail: fixed delay for WM minimize animation before grabbing a monitor frame
+const MINIMIZE_SETTLE_MS = 400;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isMonitorCapture(stream: MediaStream): boolean {
+  const track = stream.getVideoTracks()[0];
+  if (!track) return false;
+
+  const settings = track.getSettings() as MediaTrackSettings & { displaySurface?: string };
+  if (settings.displaySurface === 'monitor') return true;
+  if (settings.displaySurface === 'window' || settings.displaySurface === 'application') {
+    return false;
+  }
+
+  // ponytail: PipeWire sometimes omits displaySurface — treat near-full-display as monitor.
+  const scale = window.devicePixelRatio || 1;
+  const screenW = Math.round(window.screen.width * scale);
+  const screenH = Math.round(window.screen.height * scale);
+  const { width = 0, height = 0 } = settings;
+  return width >= screenW * 0.9 && height >= screenH * 0.9;
+}
+
+async function minimizeApp(): Promise<void> {
+  await window.screenRecorder?.window.minimize();
+}
+
+async function restoreApp(): Promise<void> {
+  await window.screenRecorder?.window.restore();
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
@@ -101,7 +133,18 @@ async function openDisplayMediaStream(): Promise<MediaStream> {
 /** Opens the OS capture picker, then grabs one PNG frame from the chosen source. */
 export async function captureFromSystemPicker(): Promise<Blob> {
   const stream = await openDisplayMediaStream();
-  return grabPngFromStream(stream);
+  const hideApp = isMonitorCapture(stream);
+
+  if (hideApp) {
+    await minimizeApp();
+    await delay(MINIMIZE_SETTLE_MS);
+  }
+
+  try {
+    return await grabPngFromStream(stream);
+  } finally {
+    if (hideApp) await restoreApp();
+  }
 }
 
 export function screenshotFileName(): string {

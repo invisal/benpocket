@@ -9,7 +9,7 @@ export function SelectTrigger({
   ...props
 }: ComponentProps<typeof SelectPrimitive.Trigger>) {
   return (
-    <SelectPrimitive.Trigger render={<Button />} {...props}>
+    <SelectPrimitive.Trigger render={<Button type="button" />} {...props}>
       {children}
       <SelectPrimitive.Icon className="flex items-center text-text-dim">
         <ChevronDown className="size-3.5" />

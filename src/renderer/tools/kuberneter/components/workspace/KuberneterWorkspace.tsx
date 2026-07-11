@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
-import { ClusterOverview } from './ClusterOverview';
+import { ClusterOverview } from './cluster-overview/ClusterOverview';
 import { PodsTable } from './PodsTable';
 import { DeploymentsTable } from './DeploymentsTable';
 import { ServicesTable } from './ServicesTable';

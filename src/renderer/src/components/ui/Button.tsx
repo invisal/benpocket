@@ -66,6 +66,7 @@ export function Button({
   children,
   variant = 'outline',
   size = 'md',
+  type = 'button',
   className,
   disabled,
   ref,
@@ -75,6 +76,7 @@ export function Button({
     <button
       ref={ref}
       disabled={disabled}
+      type={type}
       className={cn(
         // pb-px: the inset bottom shadow reads as a recessed edge rather
         // than content space, which visually shrinks the gap below the

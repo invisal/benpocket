@@ -9,47 +9,16 @@ interface DesktopVideoConstraint {
   };
 }
 
-// ponytail: macOS compositor may need a beat after hide before the frame is clean.
-const HIDE_SETTLE_MS_DARWIN = 300;
-// ponytail: GNOME/Wayland compositor beat after hide on full-screen portal capture.
-const HIDE_SETTLE_MS_LINUX = 400;
-
-function hideSettleMs(): number {
-  return window.api?.platform === 'darwin' ? HIDE_SETTLE_MS_DARWIN : 0;
-}
-
-function monitorHideSettleMs(): number {
-  if (window.api?.platform === 'darwin') return HIDE_SETTLE_MS_DARWIN;
-  if (window.api?.platform === 'linux') return HIDE_SETTLE_MS_LINUX;
-  return 0;
-}
-
 function isMonitorCapture(stream: MediaStream): boolean {
   const track = stream.getVideoTracks()[0];
   if (!track) return false;
 
   const settings = track.getSettings() as MediaTrackSettings & { displaySurface?: string };
-  if (settings.displaySurface === 'monitor') return true;
-  if (settings.displaySurface === 'window' || settings.displaySurface === 'application') {
-    return false;
-  }
-
-  // ponytail: PipeWire sometimes omits displaySurface — treat near-full-display as monitor.
-  const scale = window.devicePixelRatio || 1;
-  const screenW = Math.round(window.screen.width * scale);
-  const screenH = Math.round(window.screen.height * scale);
-  const { width = 0, height = 0 } = settings;
-  return width >= screenW * 0.9 && height >= screenH * 0.9;
-}
-
-function delay(ms: number): Promise<void> {
-  if (ms <= 0) return Promise.resolve();
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return settings.displaySurface === 'monitor';
 }
 
 async function hideApp(): Promise<void> {
   await window.screenRecorder?.window.hide();
-  await delay(hideSettleMs());
 }
 
 async function showApp(): Promise<void> {
@@ -191,7 +160,6 @@ export async function captureFromSystemPicker(): Promise<Blob> {
 
   if (shouldHideApp) {
     await hideApp();
-    await delay(monitorHideSettleMs());
   }
 
   try {

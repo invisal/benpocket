@@ -98,26 +98,26 @@ PNG Blob
 1. User clicks **Capture**
 2. `getDisplayMedia()` — PipeWire portal shows all screens/windows
 3. Main process `display-media-handler.ts` passes a placeholder source on Wayland so the portal owns selection
-4. If the chosen source is a full display (`displaySurface === 'monitor'`, or near-full-size heuristic when PipeWire omits it) → hide CraftBox, 400 ms compositor settle, then grab
-5. Grab **one frame** via shared `grabPngFromStream`, restore window if hidden
+4. If `displaySurface === 'monitor'` → hide CraftBox (IPC waits for window `'hide'`), then attach stream and grab the first decoded frame
+5. Restore window if hidden
 
 ```
 User clicks Capture
     ↓
 captureFromSystemPicker()
     ↓ getDisplayMedia (portal picker)
-    ↓ hide + settle (monitor only) → grabPngFromStream → restore
+    ↓ hide (monitor only) → grabPngFromStream → restore
 PNG Blob
 ```
 
 ### Hiding the app on full-screen capture
 
-When the chosen source is a display (`source.type === 'screen'`):
+When the chosen source is a display (`source.type === 'screen'`, or `displaySurface === 'monitor'` via OS picker):
 
 - `window.screenRecorder.window.hide()` → `ipc/window-handlers.ts`
-  - **macOS:** `app.hide()` (whole app, not just the window)
-  - **Linux/Windows:** waits for Electron `'hide'` event on the window
-- **macOS only:** 300 ms settle delay after hide before grabbing (`ponytail:` compositor beat)
+  - **macOS:** `app.hide()`, then waits for Electron `'hide'` on the window
+  - **Linux/Windows:** `win.hide()`, then waits for Electron `'hide'` event
+- Hide completes **before** the video element attaches — first decoded frame is post-hide
 - After grab: `window.screenRecorder.window.restore()` → `app.show()` on macOS; Linux GNOME gets a brief `setAlwaysOnTop` focus pin
 
 Window capture (`source.type === 'window'`) skips hide/show.
@@ -131,11 +131,11 @@ Auto-copy after capture and the **Copy** button use **different strategies** on 
 | After capture     | Main process first (`screenshot.copy`), renderer fallback   | User-gesture from the Capture click expires during hide/grab/restore |
 | Copy button click | Renderer `navigator.clipboard` first, main process fallback | Fresh user gesture; renderer path is reliable on click               |
 
-After capture, copy is deferred until the preview phase is shown and two `requestAnimationFrame` ticks pass (GNOME/Wayland focus settle).
+After capture, main-process copy runs immediately; it waits for the window `'focus'` event (no timeout) before writing.
 
 Main-process copy: `src/main/screen-recorder/clipboard/copy-screenshot-to-clipboard.ts`
 
-- Waits for window focus (up to 500 ms)
+- Waits for window `'focus'` after `win.focus()`
 - Writes both `clipboard.writeBuffer('image/png', …)` and `clipboard.writeImage()` — needed on Wayland
 
 ## Main process / IPC
@@ -191,11 +191,11 @@ Screen Capture and Screen Recorder share the same **`getUserMedia` + `chromeMedi
 
 ## Platform notes
 
-- **macOS:** `app.hide()` / `app.show()` for full-screen capture; 300 ms post-hide settle before grab
+- **macOS:** `app.hide()` / `app.show()` for full-screen capture; IPC waits for window `'hide'`
 - **Linux Wayland:** `usesOsCapturePicker` — no in-app grid; `getDisplayMedia` + `display-media-handler.ts` for portal picker
 - **Linux GNOME / Wayland:** clipboard after capture needs main-process write + focus wait; restore uses `setAlwaysOnTop` focus pin
 - **Linux X11:** in-app thumbnail grid works like macOS/Windows
-- **`waitForVideoFrame`** uses video events only — no arbitrary timeout wrappers on the grab itself
+- **`waitForVideoFrame`** uses video element events only (`loadeddata`, `playing`, `resize`)
 
 ## Type-checking
 

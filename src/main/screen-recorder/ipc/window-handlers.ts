@@ -43,7 +43,10 @@ export function registerWindowHandlers(): void {
     if (!win) return;
 
     if (process.platform === 'darwin') {
-      if (!app.isHidden()) app.hide();
+      if (app.isHidden()) return;
+      const hidden = waitForWindowHidden(win);
+      app.hide();
+      await hidden;
       return;
     }
 

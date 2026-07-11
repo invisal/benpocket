@@ -101,9 +101,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       setPreviewDataUrl(dataUrl);
       setPhase('result');
 
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
       const copied = await copyAfterCapture(blob);
       if (copied) {
         notifySuccess('Screenshot captured and copied to clipboard.');

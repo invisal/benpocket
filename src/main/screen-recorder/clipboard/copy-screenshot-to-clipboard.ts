@@ -9,7 +9,7 @@ function copyPngBufferToClipboard(png: Buffer): void {
   }
 }
 
-async function waitForWindowFocus(win: BrowserWindow, timeoutMs = 500): Promise<void> {
+async function waitForWindowFocus(win: BrowserWindow): Promise<void> {
   if (win.isFocused()) return;
 
   await new Promise<void>((resolve) => {
@@ -20,7 +20,6 @@ async function waitForWindowFocus(win: BrowserWindow, timeoutMs = 500): Promise<
 
     win.once('focus', done);
     win.focus();
-    setTimeout(done, timeoutMs);
   });
 }
 

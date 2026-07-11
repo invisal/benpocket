@@ -1,23 +1,29 @@
-function isMonitorCapture(stream: MediaStream): boolean {
-  const track = stream.getVideoTracks()[0];
-  if (!track) return false;
+import type { CaptureSource } from '@screen-recorder/types/recording';
 
-  const settings = track.getSettings() as MediaTrackSettings & { displaySurface?: string };
-  if (settings.displaySurface === 'monitor') return true;
-  if (settings.displaySurface === 'window' || settings.displaySurface === 'application') {
-    return false;
-  }
+interface DesktopVideoConstraint {
+  mandatory: {
+    chromeMediaSource: 'desktop';
+    chromeMediaSourceId: string;
+    maxWidth: number;
+    maxHeight: number;
+  };
+}
 
-  // ponytail: PipeWire sometimes omits displaySurface — treat near-full-display as monitor.
-  const scale = window.devicePixelRatio || 1;
-  const screenW = Math.round(window.screen.width * scale);
-  const screenH = Math.round(window.screen.height * scale);
-  const { width = 0, height = 0 } = settings;
-  return width >= screenW * 0.9 && height >= screenH * 0.9;
+// ponytail: macOS compositor may need a beat after hide before the frame is clean.
+const HIDE_SETTLE_MS_DARWIN = 300;
+
+function hideSettleMs(): number {
+  return window.api?.platform === 'darwin' ? HIDE_SETTLE_MS_DARWIN : 0;
+}
+
+function delay(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function hideApp(): Promise<void> {
   await window.screenRecorder?.window.hide();
+  await delay(hideSettleMs());
 }
 
 async function showApp(): Promise<void> {
@@ -103,33 +109,32 @@ async function grabPngFromStream(stream: MediaStream): Promise<Blob> {
   }
 }
 
-async function openDisplayMediaStream(): Promise<MediaStream> {
-  try {
-    return await navigator.mediaDevices.getDisplayMedia({
-      audio: false,
-      video: {
-        width: { ideal: window.screen.width * (window.devicePixelRatio || 1) },
-        height: { ideal: window.screen.height * (window.devicePixelRatio || 1) }
+async function getDesktopVideoStream(source: CaptureSource): Promise<MediaStream> {
+  const constraints: MediaStreamConstraints = {
+    audio: false,
+    video: {
+      mandatory: {
+        chromeMediaSource: 'desktop',
+        chromeMediaSourceId: source.id,
+        maxWidth: window.screen.width * (window.devicePixelRatio || 1),
+        maxHeight: window.screen.height * (window.devicePixelRatio || 1)
       }
-    });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'NotAllowedError') {
-      throw new Error('Capture cancelled.');
-    }
-    throw err;
-  }
+    } as unknown as DesktopVideoConstraint as never
+  };
+
+  return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-/** Opens the OS capture picker, then grabs one PNG frame from the chosen source. */
-export async function captureFromSystemPicker(): Promise<Blob> {
-  const stream = await openDisplayMediaStream();
-  const shouldHideApp = isMonitorCapture(stream);
+/** Grabs one PNG frame from a desktopCapturer source chosen in the in-app picker. */
+export async function captureFromSource(source: CaptureSource): Promise<Blob> {
+  const shouldHideApp = source.type === 'screen';
 
   if (shouldHideApp) {
     await hideApp();
   }
 
   try {
+    const stream = await getDesktopVideoStream(source);
     return await grabPngFromStream(stream);
   } finally {
     if (shouldHideApp) await showApp();

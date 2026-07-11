@@ -1,15 +1,27 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { Tabs } from '@base-ui/react/tabs';
 import { Camera, ClipboardCopy, Download } from 'lucide-react';
+import { cn } from 'cnfast';
 import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { Button } from '@renderer/components/ui/Button';
 import { notifyError, notifySuccess } from '@renderer/lib/notify';
+import type { CaptureSource } from '@screen-recorder/types/recording';
 import { ScreenRecordingPermissionBanner } from '@screen-recorder/features/recording/components/ScreenRecordingPermissionBanner';
-import { blobToDataUrl, captureFromSystemPicker, screenshotFileName } from './lib/capture-frame';
+import { SourcePickerPanels } from './components/SourcePicker';
+import { useCaptureSources, type SourceTab } from './lib/use-capture-sources';
+import { blobToDataUrl, captureFromSource, screenshotFileName } from './lib/capture-frame';
 
 interface Props {}
 
 type Phase = 'idle' | 'capturing' | 'result';
+
+function headerTabClass(active: boolean): string {
+  return cn(
+    'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+    active ? 'bg-accent/10 text-accent' : 'text-text-dim hover:bg-surface-2 hover:text-text-base'
+  );
+}
 
 async function copyViaRenderer(blob: Blob): Promise<boolean> {
   try {
@@ -45,22 +57,40 @@ async function copyAfterCapture(blob: Blob): Promise<boolean> {
 // eslint-disable-next-line no-empty-pattern
 export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [phase, setPhase] = useState<Phase>('idle');
+  const [selectedSource, setSelectedSource] = useState<CaptureSource | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
 
+  const { screens, windows, activeTab, setActiveTab, loading, error } =
+    useCaptureSources(setSelectedSource);
+
+  const handleTabChange = (value: string): void => {
+    const tab = value as SourceTab;
+    setActiveTab(tab);
+    const tabSources = tab === 'screen' ? screens : windows;
+    if (tabSources.length === 0) {
+      setSelectedSource(null);
+      return;
+    }
+    if (!selectedSource || selectedSource.type !== tab) {
+      setSelectedSource(tabSources[0]);
+    }
+  };
+
   const runCapture = async (): Promise<void> => {
+    if (!selectedSource) return;
+
     setPhase('capturing');
     setPreviewDataUrl(null);
     setPreviewBlob(null);
 
     try {
-      const blob = await captureFromSystemPicker();
+      const blob = await captureFromSource(selectedSource);
       const dataUrl = await blobToDataUrl(blob);
       setPreviewBlob(blob);
       setPreviewDataUrl(dataUrl);
       setPhase('result');
 
-      // Let restore/focus settle before writing clipboard (GNOME/Wayland).
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
@@ -72,8 +102,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         notifyError('Could not copy to clipboard.');
       }
     } catch {
-      // Chromium throws jargon like "Could not start video source" when Screen
-      // Recording permission is missing — don't surface that. Idle + banner is enough.
       setPhase('idle');
     }
   };
@@ -111,25 +139,65 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface text-text-base">
-      <div className="shrink-0 border-b border-border-dark px-6 py-4">
-        <h1 className="text-base font-medium">Screen Capture</h1>
-        <p className="mt-0.5 text-xs text-text-dim">
-          {phase === 'idle' && 'Take a screenshot of your screen or a window.'}
-          {phase === 'capturing' && 'Choose what to share in the system dialog…'}
-          {phase === 'result' && 'Save your screenshot or capture again.'}
-        </p>
-      </div>
+    <Tabs.Root
+      value={activeTab}
+      onValueChange={handleTabChange}
+      className="flex h-full min-h-0 flex-col bg-surface text-text-base"
+    >
+      {phase !== 'capturing' && (
+        <header className="shrink-0 border-b border-border-dark px-6 py-4">
+          <div className="flex items-start justify-between gap-4">
+            {phase === 'idle' ? (
+              <Tabs.List className="flex items-center gap-1">
+                <Tabs.Tab value="screen" className={headerTabClass(activeTab === 'screen')}>
+                  Entire Screen{screens.length > 0 ? ` (${screens.length})` : ''}
+                </Tabs.Tab>
+                <Tabs.Tab value="window" className={headerTabClass(activeTab === 'window')}>
+                  Window{windows.length > 0 ? ` (${windows.length})` : ''}
+                </Tabs.Tab>
+              </Tabs.List>
+            ) : (
+              <div>
+                <h1 className="text-base font-medium">Preview</h1>
+                <p className="mt-0.5 text-xs text-text-dim">
+                  Save your screenshot or capture again.
+                </p>
+              </div>
+            )}
+
+            {phase === 'idle' && (
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!selectedSource || loading || Boolean(error)}
+                onClick={() => void runCapture()}
+              >
+                <Camera size={14} />
+                Capture
+              </Button>
+            )}
+          </div>
+        </header>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
         <ScreenRecordingPermissionBanner />
 
-        {phase === 'idle' && (
-          <div className="flex flex-1 flex-col items-center justify-center">
-            <Button variant="primary" onClick={() => void runCapture()}>
-              <Camera size={14} />
-              Capture
-            </Button>
+        {error && <p className="text-sm text-red-400">{error}</p>}
+
+        {phase === 'idle' && !error && (
+          <div className="w-full min-w-0">
+            {loading ? (
+              <p className="py-12 text-sm text-text-dim">Loading sources…</p>
+            ) : (
+              <SourcePickerPanels
+                activeTab={activeTab}
+                screens={screens}
+                windows={windows}
+                selectedSource={selectedSource}
+                onSelectSource={setSelectedSource}
+              />
+            )}
           </div>
         )}
 
@@ -164,7 +232,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           </div>
         )}
       </div>
-    </div>
+    </Tabs.Root>
   );
 }
 

@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
 
 function windowFromEvent(event: Electron.IpcMainInvokeEvent): BrowserWindow | null {
@@ -40,7 +40,14 @@ export function registerWindowHandlers(): void {
 
   ipcMain.handle(IpcChannels.WindowHide, async (event) => {
     const win = windowFromEvent(event);
-    if (!win || !win.isVisible()) return;
+    if (!win) return;
+
+    if (process.platform === 'darwin') {
+      if (!app.isHidden()) app.hide();
+      return;
+    }
+
+    if (!win.isVisible()) return;
     const hidden = waitForWindowHidden(win);
     win.hide();
     await hidden;
@@ -49,6 +56,15 @@ export function registerWindowHandlers(): void {
   ipcMain.handle(IpcChannels.WindowRestore, async (event) => {
     const win = windowFromEvent(event);
     if (!win) return;
+
+    if (process.platform === 'darwin') {
+      app.show();
+      if (win.isMinimized()) win.restore();
+      if (!win.isVisible()) win.show();
+      win.focus();
+      return;
+    }
+
     if (win.isMinimized()) win.restore();
     if (!win.isVisible()) {
       const shown = waitForWindowShown(win);

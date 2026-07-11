@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
 import type { ExportFormat } from '@screen-recorder/types/export';
+import { copyScreenshotToClipboard } from '../clipboard/copy-screenshot-to-clipboard';
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(
@@ -19,6 +20,10 @@ export function registerDialogHandlers(): void {
       return canceled || !filePath ? null : filePath;
     }
   );
+
+  ipcMain.handle(IpcChannels.CopyScreenshot, async (event, data: ArrayBuffer): Promise<void> => {
+    await copyScreenshotToClipboard(event.sender, data);
+  });
 
   ipcMain.handle(
     IpcChannels.SaveScreenshot,

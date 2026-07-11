@@ -11,13 +11,35 @@ interface Props {}
 
 type Phase = 'idle' | 'capturing' | 'failed' | 'result';
 
-async function copyToClipboard(blob: Blob): Promise<boolean> {
+async function copyViaRenderer(blob: Blob): Promise<boolean> {
   try {
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     return true;
   } catch {
     return false;
   }
+}
+
+async function copyViaMainProcess(blob: Blob): Promise<boolean> {
+  if (!window.screenRecorder) return false;
+
+  try {
+    const buffer = await blob.arrayBuffer();
+    await window.screenRecorder.screenshot.copy(buffer);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyToClipboard(blob: Blob): Promise<boolean> {
+  if (await copyViaRenderer(blob)) return true;
+  return copyViaMainProcess(blob);
+}
+
+async function copyAfterCapture(blob: Blob): Promise<boolean> {
+  if (await copyViaMainProcess(blob)) return true;
+  return copyViaRenderer(blob);
 }
 
 // eslint-disable-next-line no-empty-pattern
@@ -36,10 +58,15 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     try {
       const blob = await captureFromSystemPicker();
       const dataUrl = await blobToDataUrl(blob);
-      const copied = await copyToClipboard(blob);
       setPreviewBlob(blob);
       setPreviewDataUrl(dataUrl);
       setPhase('result');
+
+      // Let restore/focus settle before writing clipboard (GNOME/Wayland).
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      const copied = await copyAfterCapture(blob);
       if (copied) {
         notifySuccess('Screenshot captured and copied to clipboard.');
       } else {

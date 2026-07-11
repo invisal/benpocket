@@ -80,6 +80,8 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.ShowSaveExportDialog, defaultFileName, format)
   },
   screenshot: {
+    copy: (data: ArrayBuffer): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.CopyScreenshot, data),
     save: (data: ArrayBuffer, defaultFileName: string): Promise<string | null> =>
       ipcRenderer.invoke(IpcChannels.SaveScreenshot, data, defaultFileName)
   }

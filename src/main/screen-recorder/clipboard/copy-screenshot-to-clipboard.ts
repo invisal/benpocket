@@ -32,7 +32,9 @@ export async function copyScreenshotToClipboard(
   if (!png.length) throw new Error('Could not copy to clipboard.');
 
   const win = BrowserWindow.fromWebContents(sender);
-  if (win) await waitForWindowFocus(win);
+  // Main-process clipboard on macOS does not need the window focused; waiting
+  // here can block the renderer until the user clicks away from the app.
+  if (win && process.platform !== 'darwin') await waitForWindowFocus(win);
 
   copyPngBufferToClipboard(png);
 }

@@ -4,6 +4,10 @@ import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
 import type { ExportFormat } from '@screen-recorder/types/export';
 import { copyScreenshotToClipboard } from '../clipboard/copy-screenshot-to-clipboard';
+import {
+  captureScreenPngWithHide,
+  type ScreenshotCaptureRequest
+} from '../capture/screenshot-capture';
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(
@@ -24,6 +28,14 @@ export function registerDialogHandlers(): void {
   ipcMain.handle(IpcChannels.CopyScreenshot, async (event, data: ArrayBuffer): Promise<void> => {
     await copyScreenshotToClipboard(event.sender, data);
   });
+
+  ipcMain.handle(
+    IpcChannels.CaptureScreenshot,
+    async (event, request: ScreenshotCaptureRequest): Promise<Buffer> => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      return captureScreenPngWithHide(win, request);
+    }
+  );
 
   ipcMain.handle(
     IpcChannels.SaveScreenshot,

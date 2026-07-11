@@ -1,4 +1,5 @@
 import type { CaptureSource } from '@screen-recorder/types/recording';
+import type { CaptureRegionSelection, ScreenRect } from '@shared/capture-region';
 
 interface DesktopVideoConstraint {
   mandatory: {
@@ -14,15 +15,29 @@ function isMonitorCapture(stream: MediaStream): boolean {
   if (!track) return false;
 
   const settings = track.getSettings() as MediaTrackSettings & { displaySurface?: string };
-  return settings.displaySurface === 'monitor';
+  if (settings.displaySurface === 'monitor') return true;
+  if (settings.displaySurface === 'window' || settings.displaySurface === 'application') {
+    return false;
+  }
+
+  // ponytail: PipeWire sometimes omits displaySurface — treat near-full-display as monitor.
+  const scale = window.devicePixelRatio || 1;
+  const screenW = Math.round(window.screen.width * scale);
+  const screenH = Math.round(window.screen.height * scale);
+  const { width = 0, height = 0 } = settings;
+  return width >= screenW * 0.9 && height >= screenH * 0.9;
 }
 
 async function hideApp(): Promise<void> {
   await window.screenRecorder?.window.hide();
 }
 
-async function showApp(): Promise<void> {
-  await window.screenRecorder?.window.restore();
+async function hideMainWindow(): Promise<void> {
+  await window.screenRecorder?.window.hide({ mainOnly: true });
+}
+
+async function showApp(options?: { focus?: boolean }): Promise<void> {
+  await window.screenRecorder?.window.restore(options);
 }
 
 function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -120,12 +135,29 @@ async function getDesktopVideoStream(source: CaptureSource): Promise<MediaStream
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-/** Grabs one PNG frame from a desktopCapturer source chosen in the in-app picker. */
-export async function captureFromSource(source: CaptureSource): Promise<Blob> {
-  const shouldHideApp = source.type === 'screen';
+async function captureDisplayPng(
+  source: CaptureSource,
+  options: { hideBeforeCapture: boolean }
+): Promise<Blob> {
+  const buffer = await window.screenRecorder!.screenshot.capture(source.id, {
+    displayId: source.displayId,
+    hideBeforeCapture: options.hideBeforeCapture,
+    focusAfterRestore: true
+  });
+  return new Blob([buffer], { type: 'image/png' });
+}
 
-  if (shouldHideApp) {
-    await hideApp();
+/** Grabs one PNG frame from a desktopCapturer source chosen in the in-app picker. */
+export async function captureFromSource(
+  source: CaptureSource,
+  options?: { hideApp?: boolean }
+): Promise<Blob> {
+  const shouldHideApp = options?.hideApp ?? source.type === 'screen';
+
+  // Full-display capture uses main-process desktopCapturer (all platforms).
+  // Atomic hide → grab → restore avoids macOS renderer suspension during IPC.
+  if (source.type === 'screen') {
+    return captureDisplayPng(source, { hideBeforeCapture: shouldHideApp });
   }
 
   try {
@@ -166,6 +198,111 @@ export async function captureFromSystemPicker(): Promise<Blob> {
     return await grabPngFromStream(stream);
   } finally {
     if (shouldHideApp) await showApp();
+  }
+}
+
+function screenRectToPixelCrop(
+  selection: CaptureRegionSelection,
+  frameWidth: number,
+  frameHeight: number
+): ScreenRect {
+  const { rect, displayBounds } = selection;
+  const scaleX = frameWidth / displayBounds.width;
+  const scaleY = frameHeight / displayBounds.height;
+
+  return {
+    x: Math.round((rect.x - displayBounds.x) * scaleX),
+    y: Math.round((rect.y - displayBounds.y) * scaleY),
+    width: Math.round(rect.width * scaleX),
+    height: Math.round(rect.height * scaleY)
+  };
+}
+
+function clampCrop(rect: ScreenRect, frameWidth: number, frameHeight: number): ScreenRect {
+  const x = Math.max(0, Math.min(rect.x, frameWidth - 1));
+  const y = Math.max(0, Math.min(rect.y, frameHeight - 1));
+  const width = Math.max(1, Math.min(rect.width, frameWidth - x));
+  const height = Math.max(1, Math.min(rect.height, frameHeight - y));
+  return { x, y, width, height };
+}
+
+async function cropPngBlob(blob: Blob, selection: CaptureRegionSelection): Promise<Blob> {
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const crop = clampCrop(
+      screenRectToPixelCrop(selection, bitmap.width, bitmap.height),
+      bitmap.width,
+      bitmap.height
+    );
+    const canvas = document.createElement('canvas');
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to crop screenshot.');
+    ctx.drawImage(bitmap, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    return canvasToPngBlob(canvas);
+  } finally {
+    bitmap.close();
+  }
+}
+
+export function findScreenSourceForRegion(
+  sources: CaptureSource[],
+  selection: CaptureRegionSelection
+): CaptureSource | null {
+  const screens = sources.filter((source) => source.type === 'screen');
+  const centerX = selection.rect.x + selection.rect.width / 2;
+  const centerY = selection.rect.y + selection.rect.height / 2;
+
+  const matched = screens.find((source) => {
+    const bounds = source.displayBounds;
+    if (!bounds) return false;
+    return (
+      centerX >= bounds.x &&
+      centerX < bounds.x + bounds.width &&
+      centerY >= bounds.y &&
+      centerY < bounds.y + bounds.height
+    );
+  });
+
+  return matched ?? screens[0] ?? null;
+}
+
+/** Drag a screen region, capture the matching display, and return a cropped PNG. */
+export async function selectAndCaptureRegion(
+  sources: CaptureSource[],
+  usesOsPicker: boolean
+): Promise<Blob | null> {
+  await hideMainWindow();
+
+  let selection: CaptureRegionSelection | null = null;
+  try {
+    selection = (await window.screenRecorder?.screenshot.selectRegion()) ?? null;
+  } finally {
+    // Restore main window after overlay closes (unfocused so the next grab is reliable).
+    await showApp({ focus: false });
+  }
+
+  if (!selection) return null;
+
+  try {
+    if (usesOsPicker) {
+      const fullBlob = await captureFromSystemPicker();
+      const cropped = await cropPngBlob(fullBlob, selection);
+      await showApp({ focus: true });
+      return cropped;
+    }
+
+    const source = findScreenSourceForRegion(sources, selection);
+    if (!source) return null;
+
+    const fullBlob = await captureFromSource(source, { hideApp: false });
+    const cropped = await cropPngBlob(fullBlob, selection);
+    await showApp({ focus: true });
+    return cropped;
+  } catch {
+    await showApp({ focus: true });
+    return null;
   }
 }
 

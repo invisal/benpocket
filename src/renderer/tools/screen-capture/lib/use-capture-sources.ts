@@ -4,7 +4,7 @@ import type { CaptureSource } from '@screen-recorder/types/recording';
 const PRELOAD_MISSING_ERROR =
   'Capture API unavailable (preload script did not load). Check the console.';
 
-export type SourceTab = 'screen' | 'window';
+export type SourceTab = 'screen' | 'window' | 'region';
 
 interface UseCaptureSourcesResult {
   sources: CaptureSource[];

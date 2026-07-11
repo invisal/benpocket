@@ -28,6 +28,14 @@ export default defineConfig({
         '@screen-recorder': resolve('src/renderer/tools/screen-recorder')
       }
     },
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          regionSelect: resolve('src/renderer/region-select.html')
+        }
+      }
+    },
     plugins: [react(), tailwindcss()]
   }
 });

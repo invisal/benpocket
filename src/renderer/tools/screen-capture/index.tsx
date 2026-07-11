@@ -14,6 +14,7 @@ import {
   blobToDataUrl,
   captureFromSource,
   captureFromSystemPicker,
+  selectAndCaptureRegion,
   screenshotFileName
 } from './lib/capture-frame';
 
@@ -67,7 +68,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
 
-  const { screens, windows, activeTab, setActiveTab, loading } = useCaptureSources(
+  const { screens, windows, sources, activeTab, setActiveTab, loading } = useCaptureSources(
     setSelectedSource,
     { enabled: !usesOsPicker }
   );
@@ -75,6 +76,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const handleTabChange = (value: string): void => {
     const tab = value as SourceTab;
     setActiveTab(tab);
+    if (tab === 'region') return;
+
     const tabSources = tab === 'screen' ? screens : windows;
     if (tabSources.length === 0) {
       setSelectedSource(null);
@@ -86,28 +89,37 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   };
 
   const runCapture = async (): Promise<void> => {
-    if (!usesOsPicker && !selectedSource) return;
+    if (activeTab !== 'region' && !usesOsPicker && !selectedSource) return;
 
     setPhase('capturing');
     setPreviewDataUrl(null);
     setPreviewBlob(null);
 
     try {
-      const blob = usesOsPicker
-        ? await captureFromSystemPicker()
-        : await captureFromSource(selectedSource!);
+      const blob =
+        activeTab === 'region'
+          ? await selectAndCaptureRegion(sources, usesOsPicker)
+          : usesOsPicker
+            ? await captureFromSystemPicker()
+            : await captureFromSource(selectedSource!);
+
+      if (!blob) {
+        setPhase('idle');
+        return;
+      }
       const dataUrl = await blobToDataUrl(blob);
       setPreviewBlob(blob);
       setPreviewDataUrl(dataUrl);
       setPhase('result');
 
-      const copied = await copyAfterCapture(blob);
-      if (copied) {
-        notifySuccess('Screenshot captured and copied to clipboard.');
-      } else {
-        notifySuccess('Screenshot captured.');
-        notifyError('Could not copy to clipboard.');
-      }
+      void copyAfterCapture(blob).then((copied) => {
+        if (copied) {
+          notifySuccess('Screenshot captured and copied to clipboard.');
+        } else {
+          notifySuccess('Screenshot captured.');
+          notifyError('Could not copy to clipboard.');
+        }
+      });
     } catch {
       setPhase('idle');
     }
@@ -150,15 +162,24 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     }
   };
 
-  const captureDisabled = usesOsPicker ? false : !selectedSource || loading;
+  const captureDisabled =
+    activeTab === 'region'
+      ? false
+      : usesOsPicker
+        ? activeTab !== 'screen'
+        : !selectedSource || loading;
 
-  const idleDescription = usesOsPicker
-    ? 'Click Capture to choose a screen or window in the system dialog.'
-    : undefined;
+  const idleDescription =
+    usesOsPicker && activeTab === 'screen'
+      ? 'Click Capture to choose a screen or window in the system dialog.'
+      : undefined;
 
-  const capturingMessage = usesOsPicker
-    ? 'Choose what to share in the system dialog…'
-    : 'Capturing…';
+  const capturingMessage =
+    activeTab === 'region'
+      ? 'Capturing selected region…'
+      : usesOsPicker
+        ? 'Choose what to share in the system dialog…'
+        : 'Capturing…';
 
   return (
     <Tabs.Root
@@ -171,10 +192,14 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           <div className="flex items-start justify-between gap-4">
             {phase === 'idle' ? (
               usesOsPicker ? (
-                <div>
-                  <h1 className="text-base font-medium">Screen Capture</h1>
-                  <p className="mt-0.5 text-xs text-text-dim">{idleDescription}</p>
-                </div>
+                <Tabs.List className="flex items-center gap-1">
+                  <Tabs.Tab value="screen" className={headerTabClass(activeTab === 'screen')}>
+                    Screen
+                  </Tabs.Tab>
+                  <Tabs.Tab value="region" className={headerTabClass(activeTab === 'region')}>
+                    Region
+                  </Tabs.Tab>
+                </Tabs.List>
               ) : (
                 <Tabs.List className="flex items-center gap-1">
                   <Tabs.Tab value="screen" className={headerTabClass(activeTab === 'screen')}>
@@ -182,6 +207,9 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
                   </Tabs.Tab>
                   <Tabs.Tab value="window" className={headerTabClass(activeTab === 'window')}>
                     Window{windows.length > 0 ? ` (${windows.length})` : ''}
+                  </Tabs.Tab>
+                  <Tabs.Tab value="region" className={headerTabClass(activeTab === 'region')}>
+                    Region
                   </Tabs.Tab>
                 </Tabs.List>
               )
@@ -212,7 +240,15 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       <div className="flex min-h-0 flex-1 flex-col gap-2 p-6">
         <ScreenRecordingPermissionBanner />
 
-        {phase === 'idle' && !usesOsPicker && (
+        {phase === 'idle' && usesOsPicker && activeTab === 'screen' && idleDescription && (
+          <p className="text-sm text-text-dim">{idleDescription}</p>
+        )}
+
+        {phase === 'idle' && activeTab === 'region' && (
+          <p className="text-sm text-text-dim">Drag to select any area on your screen.</p>
+        )}
+
+        {phase === 'idle' && !usesOsPicker && activeTab !== 'region' && (
           <div className="w-full min-w-0">
             {loading ? (
               <p className="text-sm text-text-dim">Loading sources…</p>

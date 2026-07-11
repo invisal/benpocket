@@ -11,6 +11,13 @@ interface ZoomStoreState {
    * handler and ZoomKeyframeEditor's "Set focal point" button.
    */
   armedKeyframeId: string | null;
+  /**
+   * Which keyframe is focused -- set by clicking a pill in ZoomTrack (which
+   * renders independently of the Zoom panel, in CutTimeline) so the panel
+   * can highlight and scroll to the matching card, or by clicking a card
+   * directly in the panel itself.
+   */
+  selectedKeyframeId: string | null;
   setMode: (mode: 'auto' | 'manual') => void;
   /** Returns the new keyframe's id, so callers can immediately arm positioning for it. */
   addKeyframe: (atMs: number) => string;
@@ -18,6 +25,7 @@ interface ZoomStoreState {
   updateKeyframe: (id: string, patch: Partial<Omit<ZoomKeyframe, 'id'>>) => void;
   armPositioning: (id: string) => void;
   disarmPositioning: () => void;
+  setSelectedKeyframeId: (id: string | null) => void;
   /** Replaces every keyframe wholesale -- used to seed auto-generated keyframes (see auto-zoom-engine.ts) once a recording finishes. */
   setKeyframes: (keyframes: ZoomKeyframe[]) => void;
 }
@@ -26,6 +34,7 @@ export const useZoomStore = create<ZoomStoreState>((set) => ({
   mode: 'auto',
   keyframes: [],
   armedKeyframeId: null,
+  selectedKeyframeId: null,
   setMode: (mode) => set({ mode }),
   addKeyframe: (atMs) => {
     const id = crypto.randomUUID();
@@ -47,7 +56,8 @@ export const useZoomStore = create<ZoomStoreState>((set) => ({
   removeKeyframe: (id) =>
     set((state) => ({
       keyframes: state.keyframes.filter((k) => k.id !== id),
-      armedKeyframeId: state.armedKeyframeId === id ? null : state.armedKeyframeId
+      armedKeyframeId: state.armedKeyframeId === id ? null : state.armedKeyframeId,
+      selectedKeyframeId: state.selectedKeyframeId === id ? null : state.selectedKeyframeId
     })),
   updateKeyframe: (id, patch) =>
     set((state) => ({
@@ -55,5 +65,6 @@ export const useZoomStore = create<ZoomStoreState>((set) => ({
     })),
   armPositioning: (id) => set({ armedKeyframeId: id }),
   disarmPositioning: () => set({ armedKeyframeId: null }),
+  setSelectedKeyframeId: (selectedKeyframeId) => set({ selectedKeyframeId }),
   setKeyframes: (keyframes) => set({ keyframes, armedKeyframeId: null })
 }));

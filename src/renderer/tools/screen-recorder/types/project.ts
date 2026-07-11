@@ -31,7 +31,7 @@ export interface CursorSettings {
   smoothing: number;
   /** 0-1 intensity of the motion-blur trail drawn behind fast cursor movement. */
   motionBlur: number;
-  /** 0-5 intensity of the squash/bounce animation played on click. No effect yet -- click events aren't captured (position-only tracking), kept for when click capture lands. */
+  /** 0-5 intensity of the squash/bounce animation played on click -- see `Project.clickPath` for the click data this reads. */
   clickBounce: number;
 }
 
@@ -80,6 +80,8 @@ export interface Project {
   cursor: CursorSettings;
   /** Recorded system-cursor samples for `sourceVideoPath`, source-timeline `atMs`. Empty when the source was a 'window' capture (no display bounds to normalize against) or tracking failed. */
   cursorPath: CursorPathPoint[];
+  /** Recorded real mousedown events, same convention as `cursorPath` -- drives `cursor.clickBounce`. */
+  clickPath: CursorPathPoint[];
   captions: CaptionSettings;
   annotations: Annotation[];
   motionBlur: boolean;

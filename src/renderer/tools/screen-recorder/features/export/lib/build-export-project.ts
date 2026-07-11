@@ -55,6 +55,7 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
       clickBounce: cursorState.clickBounce
     },
     cursorPath: lastRecording?.cursorPath ?? [],
+    clickPath: lastRecording?.clickPath ?? [],
     captions: {
       enabled: captionsState.enabled,
       language: captionsState.language,

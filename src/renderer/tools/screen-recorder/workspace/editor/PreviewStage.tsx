@@ -1,24 +1,40 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Play } from 'lucide-react';
+import type { AspectRatio } from '@screen-recorder/types/export';
 import { useBackgroundStore } from '../../features/background/store/background-store';
 import { backgroundLayerStyle } from '../../features/background/lib/background-css';
 import { useWebcamStore } from '../../features/webcam/store/webcam-store';
 import { useCaptionsStore } from '../../features/captions/store/captions-store';
 import { useZoomStore } from '../../features/zoom/store/zoom-store';
 import { useCursorStore } from '../../features/cursor/store/cursor-store';
+import { useExportStore } from '../../features/export/store/export-store';
 import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
 import { useAppStore } from '../../app/app-store';
 import { CropOverlay } from '../../features/crop/components/CropOverlay';
-// import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
+import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { resolveZoom } from '@shared/zoom-resolve';
 import { smoothCursorPath } from '@shared/cursor-path';
 import { mediaErrorMessage } from '../../lib/media';
 import { cn } from '../../lib/utils';
+
+/**
+ * Numeric width/height ratios for the export aspect ratio picker -- the live
+ * stage is shaped to match whichever one is selected (see main/export
+ * frame-compositor.ts's `computeInnerRect`, which the stage/video-wrapper
+ * split below mirrors: an outer canvas at this ratio, background-padded,
+ * with the source video contain-fit inside at *its own* ratio).
+ */
+const ASPECT_RATIO_VALUES: Record<AspectRatio, number> = {
+  '16:9': 16 / 9,
+  '9:16': 9 / 16,
+  '1:1': 1,
+  '4:3': 4 / 3
+};
 
 interface PreviewStageProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -60,6 +76,7 @@ export function PreviewStage({
   onTimeUpdate
 }: PreviewStageProps): JSX.Element {
   const background = useBackgroundStore();
+  const exportAspectRatio = useExportStore((s) => s.aspectRatio);
   const webcam = useWebcamStore();
   const captionSegments = useCaptionsStore((s) => s.segments);
   const captionsEnabled = useCaptionsStore((s) => s.enabled);
@@ -67,9 +84,10 @@ export function PreviewStage({
   const armedKeyframeId = useZoomStore((s) => s.armedKeyframeId);
   const updateKeyframe = useZoomStore((s) => s.updateKeyframe);
   const disarmPositioning = useZoomStore((s) => s.disarmPositioning);
-  // const cursor = useCursorStore();
+  const cursor = useCursorStore();
   const cursorSmoothing = useCursorStore((s) => s.smoothing);
   const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
+  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
   // Same smoothing pass the export compositor applies (see
   // FrameCompositor.create), so 'auto-cursor' zoom keyframes and the export
   // follow the identical (smoothed) trajectory.
@@ -86,20 +104,24 @@ export function PreviewStage({
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
+  const setPlayhead = useTimelineStore((s) => s.setPlayhead);
   const segmentsRef = useRef(segments);
   useEffect(() => {
     segmentsRef.current = segments;
   }, [segments]);
 
   // `currentTimeMs` only updates on the video's `timeupdate` event, which
-  // browsers fire just a few times a second -- fine for captions/timeline
-  // sync, but far too coarse for a smooth zoom: driving the transform off it
+  // browsers fire just a few times a second -- fine for captions sync, but
+  // far too coarse for a smooth zoom or playhead: driving either off it
   // produced a visible step-then-jump (and, combined with the transition
   // below re-triggering on every irregular update, occasional flicker).
   // Polling the video element directly every animation frame gives a true
-  // ~60fps clock for the zoom to track instead. Also drives the live
+  // ~60fps clock for both to track instead. Also drives the live
   // playbackRate so scrubbing/playing through a sped-up or slowed-down clip
-  // sounds/looks right in the editor, not just in the export.
+  // sounds/looks right in the editor, not just in the export, and the
+  // timeline store's `playheadMs` (CutTimeline's `Playhead` reads it
+  // directly, isolated into its own component so this doesn't cascade a
+  // 60fps re-render through the rest of the timeline).
   const [zoomTimeMs, setZoomTimeMs] = useState(currentTimeMs);
   useEffect(() => {
     let rafId: number;
@@ -108,6 +130,7 @@ export function PreviewStage({
       if (video) {
         const sourceMs = video.currentTime * 1000;
         setZoomTimeMs(sourceMs);
+        setPlayhead(sourceMs);
         const activeSegment = segmentsRef.current.find(
           (s) => sourceMs >= s.range.startMs && sourceMs < s.range.endMs
         );
@@ -123,17 +146,20 @@ export function PreviewStage({
 
   const stageRef = useRef<HTMLDivElement>(null);
   const videoWrapperRef = useRef<HTMLDivElement>(null);
-  // const [stageWidthPx, setStageWidthPx] = useState(0);
+  // Cursor/webcam/annotation sizes are authored in REFERENCE_CANVAS_WIDTH
+  // units and scaled against the stage's actual rendered width -- same
+  // convention `handleWebcamDrag` below already uses.
+  const [stageWidthPx, setStageWidthPx] = useState(0);
 
-  // useEffect(() => {
-  //   const el = stageRef.current;
-  //   if (!el) return;
-  //   const observer = new ResizeObserver((entries) => {
-  //     setStageWidthPx(entries[0]?.contentRect.width ?? 0);
-  //   });
-  //   observer.observe(el);
-  //   return () => observer.disconnect();
-  // }, []);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      setStageWidthPx(entries[0]?.contentRect.width ?? 0);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const dragState = useRef<{
     startClientX: number;
     startClientY: number;
@@ -198,124 +224,144 @@ export function PreviewStage({
     window.removeEventListener('pointermove', handleWebcamDrag);
   }
 
+  // The stage mirrors the export canvas: fixed to the selected export aspect
+  // ratio (not just whatever shape the flex column happens to be), letting
+  // the outer wrapper below center/letterbox it within the available area.
+  const stageAspectRatio = ASPECT_RATIO_VALUES[exportAspectRatio];
+  // The video wrapper mirrors `computeInnerRect` -- contain-fit to the
+  // *source's own* aspect ratio (which may differ from the export canvas)
+  // inside the padded stage. Before metadata loads there's nothing to
+  // constrain yet, so it just falls back to filling the stage.
+  const sourceAspectRatio = sourceResolution
+    ? sourceResolution.width / sourceResolution.height
+    : undefined;
+
   return (
-    <div
-      ref={stageRef}
-      className="relative isolate m-6 flex flex-1 overflow-hidden rounded-xl"
-      style={{ padding: `${background.padding}%` }}
-    >
-      <div className="absolute inset-0 -z-10" style={backgroundLayerStyle(background)} />
-      {background.kind === 'image' && background.blur > 0 && (
-        <div
-          className="absolute inset-0 -z-10"
-          style={{
-            ...backgroundLayerStyle(background),
-            filter: `blur(${background.blur}px)`,
-            transform: 'scale(1.15)'
-          }}
-        />
-      )}
-
-      <span className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-        Source
-      </span>
-
-      <div className="relative flex flex-1 items-center justify-center">
-        <div
-          ref={videoWrapperRef}
-          onClick={handlePreviewClick}
-          className={cn(
-            'relative max-h-full max-w-full overflow-hidden rounded-lg shadow-2xl shadow-black/50',
-            armedKeyframeId && 'cursor-crosshair'
-          )}
-        >
-          <video
-            ref={videoRef}
-            key={previewUrl}
-            src={previewUrl}
-            className="max-h-full max-w-full"
+    <div className="m-6 flex flex-1 items-center justify-center overflow-hidden">
+      <div
+        ref={stageRef}
+        className="relative isolate flex max-h-full max-w-full overflow-hidden rounded-xl"
+        style={{ padding: `${background.padding}%`, aspectRatio: stageAspectRatio }}
+      >
+        <div className="absolute inset-0 -z-10" style={backgroundLayerStyle(background)} />
+        {background.kind === 'image' && background.blur > 0 && (
+          <div
+            className="absolute inset-0 -z-10"
             style={{
+              ...backgroundLayerStyle(background),
+              filter: `blur(${background.blur}px)`,
+              transform: 'scale(1.15)'
+            }}
+          />
+        )}
+
+        <span className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+          Source
+        </span>
+
+        <div className="relative flex flex-1 items-center justify-center">
+          <div
+            ref={videoWrapperRef}
+            onClick={handlePreviewClick}
+            className={cn(
+              'relative max-h-full max-w-full rounded-lg overflow-hidden shadow-2xl shadow-black/50',
+              armedKeyframeId && 'cursor-crosshair'
+            )}
+            style={{
+              aspectRatio: sourceAspectRatio,
               transform: `translate(${zoomShift.x * 100}%, ${zoomShift.y * 100}%) scale(${zoomDepth})`,
               transformOrigin: `${zoomFocal.x * 100}% ${zoomFocal.y * 100}%`
             }}
-            onLoadedMetadata={onLoadedMetadata}
-            onPlay={onPlay}
-            onPause={onPause}
-            onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime * 1000)}
-            onError={(e) => onError(mediaErrorMessage(e.currentTarget.error))}
-          />
+          >
+            <video
+              ref={videoRef}
+              key={previewUrl}
+              src={previewUrl}
+              className="h-full w-full object-contain"
+              onLoadedMetadata={onLoadedMetadata}
+              onPlay={onPlay}
+              onPause={onPause}
+              onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime * 1000)}
+              onError={(e) => onError(mediaErrorMessage(e.currentTarget.error))}
+            />
 
-          {zoomDepth > 1.01 && (
+            {zoomDepth > 1.01 && (
+              <div
+                className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent shadow-[0_0_0_2px_rgba(0,0,0,0.5)]"
+                style={{ left: `${zoomFocalScreenX * 100}%`, top: `${zoomFocalScreenY * 100}%` }}
+              />
+            )}
+
+            {cropToolActive && sourceResolution && selectedSegmentId && (
+              <CropOverlay
+                key={selectedSegmentId}
+                segmentId={selectedSegmentId}
+                sourceWidth={sourceResolution.width}
+                sourceHeight={sourceResolution.height}
+              />
+            )}
+
+            {!cropToolActive && (
+              <CursorOverlay
+                cursor={cursor}
+                rawPath={rawCursorPath}
+                clickPath={clickPath}
+                // rAF-driven, not the coarser `currentTimeMs` prop -- same
+                // reasoning as the zoom transform above, so the spring
+                // smoothing in smoothCursorPath actually reads as smooth
+                // instead of stepping a few times a second.
+                currentTimeMs={zoomTimeMs}
+                stageWidthPx={stageWidthPx}
+              />
+            )}
+          </div>
+
+          {videoError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 p-6 text-center">
+              <p className="text-sm font-medium text-red-400">Couldn&apos;t play this recording</p>
+              <p className="max-w-xs text-xs text-white/50">{videoError}</p>
+            </div>
+          )}
+
+          {!isPlaying && !videoError && !cropToolActive && (
+            <button
+              onClick={() => videoRef.current?.play()}
+              className="absolute flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+            >
+              <Play size={26} fill="currentColor" />
+            </button>
+          )}
+
+          {webcam.enabled && !cropToolActive && (
             <div
-              className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent shadow-[0_0_0_2px_rgba(0,0,0,0.5)]"
-              style={{ left: `${zoomFocalScreenX * 100}%`, top: `${zoomFocalScreenY * 100}%` }}
-            />
+              onPointerDown={startWebcamDrag}
+              className={cn(
+                'absolute flex cursor-grab items-center justify-center border border-white/10 bg-white/5 text-xs text-white/60 backdrop-blur active:cursor-grabbing',
+                webcam.shape === 'circle' && 'rounded-full',
+                webcam.shape === 'rounded-square' && 'rounded-2xl',
+                webcam.shape === 'square' && 'rounded-none'
+              )}
+              style={{
+                left: webcam.position.x,
+                top: webcam.position.y,
+                width: webcam.size,
+                height: webcam.size
+              }}
+            >
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Webcam
+              </span>
+            </div>
           )}
-
-          {cropToolActive && sourceResolution && selectedSegmentId && (
-            <CropOverlay
-              key={selectedSegmentId}
-              segmentId={selectedSegmentId}
-              sourceWidth={sourceResolution.width}
-              sourceHeight={sourceResolution.height}
-            />
-          )}
-
-          {/* {!cropToolActive && (
-            <CursorOverlay
-              cursor={cursor}
-              rawPath={cursorPath}
-              currentTimeMs={currentTimeMs}
-              stageWidthPx={stageWidthPx}
-            />
-          )} */}
         </div>
 
-        {videoError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 p-6 text-center">
-            <p className="text-sm font-medium text-red-400">Couldn&apos;t play this recording</p>
-            <p className="max-w-xs text-xs text-white/50">{videoError}</p>
-          </div>
-        )}
-
-        {!isPlaying && !videoError && !cropToolActive && (
-          <button
-            onClick={() => videoRef.current?.play()}
-            className="absolute flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-          >
-            <Play size={26} fill="currentColor" />
-          </button>
-        )}
-
-        {webcam.enabled && !cropToolActive && (
-          <div
-            onPointerDown={startWebcamDrag}
-            className={cn(
-              'absolute flex cursor-grab items-center justify-center border border-white/10 bg-white/5 text-xs text-white/60 backdrop-blur active:cursor-grabbing',
-              webcam.shape === 'circle' && 'rounded-full',
-              webcam.shape === 'rounded-square' && 'rounded-2xl',
-              webcam.shape === 'square' && 'rounded-none'
-            )}
-            style={{
-              left: webcam.position.x,
-              top: webcam.position.y,
-              width: webcam.size,
-              height: webcam.size
-            }}
-          >
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Webcam
-            </span>
-          </div>
+        {activeCaption && (
+          <p className="absolute inset-x-0 bottom-6 z-10 mx-auto max-w-[80%] rounded-xl bg-black/70 px-5 py-2.5 text-center text-lg font-medium text-white">
+            {activeCaption.text}
+          </p>
         )}
       </div>
-
-      {activeCaption && (
-        <p className="absolute inset-x-0 bottom-6 z-10 mx-auto max-w-[80%] rounded-xl bg-black/70 px-5 py-2.5 text-center text-lg font-medium text-white">
-          {activeCaption.text}
-        </p>
-      )}
     </div>
   );
 }

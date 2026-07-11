@@ -52,3 +52,32 @@ export function outputMsToSourceMs(segments: Seg[], outputMs: number): number | 
   }
   return null;
 }
+
+/**
+ * Maps a source-ms `[startMs, endMs)` range (a zoom keyframe's window, a
+ * caption's span, etc.) onto the ripple/output timeline as a `{left,
+ * width}` percent pair, via `sourceMsToOutputMs` -- so per-tool tracks
+ * (ZoomTrack, CaptionTrack, ...) draw pills at their *real* position even
+ * once the recording has been cut, instead of only working in the "nothing
+ * cut yet" special case.
+ *
+ * Returns `null` if `startMs` itself falls inside a cut-out gap (the whole
+ * thing was cut away). If only the tail was cut, the end clamps to the full
+ * output duration rather than disappearing.
+ */
+export function sourceRangeToOutputPercent(
+  segments: Seg[],
+  totalOutputMs: number,
+  startMs: number,
+  endMs: number
+): { leftPercent: number; widthPercent: number } | null {
+  if (totalOutputMs <= 0) return null;
+  const outputStart = sourceMsToOutputMs(segments, startMs);
+  if (outputStart === null) return null;
+  const outputEnd = sourceMsToOutputMs(segments, endMs) ?? totalOutputMs;
+  const widthMs = Math.max(0, outputEnd - outputStart);
+  return {
+    leftPercent: (outputStart / totalOutputMs) * 100,
+    widthPercent: Math.max(1.5, (widthMs / totalOutputMs) * 100)
+  };
+}

@@ -10,7 +10,6 @@ import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
 import { EditorToolPanel } from './EditorToolPanel';
-import type { EditorTool } from './editorTools';
 
 export function EditorPage(): JSX.Element {
   const lastRecording = useAppStore((state) => state.lastRecording);
@@ -20,12 +19,15 @@ export function EditorPage(): JSX.Element {
   );
   const initializeFromDuration = useTimelineStore((s) => s.initializeFromDuration);
   const splitAt = useTimelineStore((s) => s.splitAt);
-  // Selection lives in the timeline store (not local state) so it's shared
-  // with CutTimeline, which is rendered independently in ScreenRecorderApp
-  // rather than nested inside this page -- see CutTimeline.tsx.
+  // Selection/active-tool live in the timeline store (not local state) so
+  // they're shared with CutTimeline and its per-tool tracks, which are
+  // rendered independently in ScreenRecorderApp rather than nested inside
+  // this page -- see CutTimeline.tsx. E.g. clicking a zoom keyframe pill
+  // needs to open the Zoom panel here, from outside this component tree.
   const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
   const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
-  const setPlayhead = useTimelineStore((s) => s.setPlayhead);
+  const activeTool = useTimelineStore((s) => s.activeTool);
+  const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   const seekRequestMs = useTimelineStore((s) => s.seekRequestMs);
   const clearSeekRequest = useTimelineStore((s) => s.clearSeekRequest);
 
@@ -33,7 +35,6 @@ export function EditorPage(): JSX.Element {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [cropToolActive, setCropToolActive] = useState(false);
-  const [activeTool, setActiveTool] = useState<EditorTool | null>('background');
   const [sourceResolution, setSourceResolution] = useState<{
     width: number;
     height: number;
@@ -52,12 +53,6 @@ export function EditorPage(): JSX.Element {
   }, [segments, selectedSegmentId, setSelectedSegmentId]);
 
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) ?? null;
-
-  // Keep the store's playhead (read by CutTimeline's ruler) in sync with
-  // actual playback position, reported at native `timeupdate` frequency.
-  useEffect(() => {
-    setPlayhead(currentTimeMs);
-  }, [currentTimeMs, setPlayhead]);
 
   // CutTimeline can't reach `videoRef` directly (it's rendered independently
   // in ScreenRecorderApp), so it posts a one-shot seek request instead of
@@ -162,7 +157,7 @@ export function EditorPage(): JSX.Element {
 
       <EditorToolRail
         active={activeTool}
-        onSelect={(tool) => setActiveTool((current) => (current === tool ? null : tool))}
+        onSelect={(tool) => setActiveTool(activeTool === tool ? null : tool)}
       />
       {activeTool && (
         <EditorToolPanel

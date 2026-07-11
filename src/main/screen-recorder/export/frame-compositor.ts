@@ -16,7 +16,7 @@ import type { WebcamOptions } from '@screen-recorder/types/recording';
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
-import { smoothCursorPath, sampleCursorPath } from '@shared/cursor-path';
+import { smoothCursorPath, sampleCursorPath, resolveClickBounceScale } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
 import { resolveZoom } from '@shared/zoom-resolve';
 
@@ -216,12 +216,21 @@ function drawCursorIcon(
   sizePx: number,
   fill: string,
   stroke: string,
-  alpha: number
+  alpha: number,
+  clickScale = 1
 ): void {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x, y);
   ctx.scale(sizePx / 24, sizePx / 24);
+  if (clickScale !== 1) {
+    // Click-bounce scales around the glyph's own tip (5,3 of its 24x24 box,
+    // see traceCursorIconPath) rather than (0,0), so it reads as the cursor
+    // squashing at the click point instead of visibly shifting position.
+    ctx.translate(5, 3);
+    ctx.scale(clickScale, clickScale);
+    ctx.translate(-5, -3);
+  }
   traceCursorIconPath(ctx);
   ctx.fillStyle = fill;
   ctx.fill();
@@ -244,11 +253,13 @@ function drawCursor(
   innerRect: InnerRect,
   cursor: CursorSettings,
   smoothedPath: CursorPathPoint[],
+  clickPath: CursorPathPoint[],
   atMs: number
 ): void {
   if (!cursor.visible || smoothedPath.length === 0) return;
   const point = sampleCursorPath(smoothedPath, atMs);
   if (!point) return;
+  const clickScale = resolveClickBounceScale(clickPath, atMs, cursor.clickBounce);
 
   const scale = outputWidth / REFERENCE_CANVAS_WIDTH;
   const sizePx = cursor.size * CURSOR_SIZE_UNIT_PX * scale;
@@ -290,7 +301,8 @@ function drawCursor(
     sizePx,
     preset.fill,
     preset.stroke,
-    1
+    1,
+    clickScale
   );
   ctx.restore();
 }
@@ -368,6 +380,7 @@ export class FrameCompositor {
   private backgroundImage: Image | undefined;
   private readonly annotationImages = new Map<string, Image>();
   private smoothedCursorPath: CursorPathPoint[] = [];
+  private clickPath: CursorPathPoint[] = [];
 
   private constructor(
     private readonly outputWidth: number,
@@ -396,6 +409,8 @@ export class FrameCompositor {
     // Smoothing doesn't depend on `atMs`, so it's computed once up front
     // rather than per frame.
     compositor.smoothedCursorPath = smoothCursorPath(project.cursorPath, project.cursor.smoothing);
+    // Clicks are discrete events, not a continuous path -- used raw, never smoothed.
+    compositor.clickPath = project.clickPath;
 
     // Only 'image' loads a user file -- 'wallpaper' is a bundled gradient
     // preset rendered procedurally by fillLinearGradient, no image I/O needed.
@@ -458,7 +473,15 @@ export class FrameCompositor {
     // Drawn inside the zoom transform (before restore) so the cursor pans
     // and scales with the content -- it's part of the recorded scene, not a
     // fixed overlay.
-    drawCursor(ctx, outputWidth, innerRect, project.cursor, this.smoothedCursorPath, atMs);
+    drawCursor(
+      ctx,
+      outputWidth,
+      innerRect,
+      project.cursor,
+      this.smoothedCursorPath,
+      this.clickPath,
+      atMs
+    );
     ctx.restore();
 
     // Webcam/annotations are drawn untransformed so content zoom doesn't

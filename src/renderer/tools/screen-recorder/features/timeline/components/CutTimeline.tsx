@@ -1,14 +1,16 @@
 import type { JSX } from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { Clapperboard, Scissors, Trash2 } from 'lucide-react';
+import { Clapperboard, Trash2 } from 'lucide-react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import { useTimelineStore } from '../store/timeline-store';
-import {
-  getSegmentOutputDurationMs,
-  outputMsToSourceMs,
-  sourceMsToOutputMs
-} from '../lib/segment-duration';
+import { getSegmentOutputDurationMs, outputMsToSourceMs } from '../lib/segment-duration';
+import { useEdgeResize } from '../lib/use-edge-resize';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
+import { CropTrack } from '../../crop/components/CropTrack';
+import { CaptionTrack } from '../../captions/components/CaptionTrack';
+import { TrimTrack } from './TrimTrack';
+import { SpeedTrack } from './SpeedTrack';
+import { Playhead } from './Playhead';
 import { cn } from '../../../lib/utils';
 
 function formatTime(ms: number): string {
@@ -31,17 +33,11 @@ function pickMajorTickIntervalMs(totalDurationMs: number): number {
   return interval * 1000;
 }
 
-interface DragResize {
-  segmentId: string;
-  edge: 'start' | 'end';
-  startClientX: number;
-  startRangeMs: { startMs: number; endMs: number };
-  pxPerMs: number;
-}
-
-const DEFAULT_PANEL_HEIGHT_PX = 224;
-const MIN_PANEL_HEIGHT_PX = 140;
-const MAX_PANEL_HEIGHT_PX = 480;
+// Sized to comfortably fit the ruler+clip row plus the Zoom/Caption/Speed/Crop
+// pill tracks beneath it without squishing (each track is a fixed h-9, `shrink-0`).
+const DEFAULT_PANEL_HEIGHT_PX = 340;
+const MIN_PANEL_HEIGHT_PX = 260;
+const MAX_PANEL_HEIGHT_PX = 560;
 
 interface PanelResize {
   startClientY: number;
@@ -73,7 +69,6 @@ export function CutTimeline(): JSX.Element {
   const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
   const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
   const zoom = useTimelineStore((s) => s.timelineZoom);
-  const playheadMs = useTimelineStore((s) => s.playheadMs);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
   const splitAt = useTimelineStore((s) => s.splitAt);
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
@@ -82,7 +77,7 @@ export function CutTimeline(): JSX.Element {
 
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
-  const resizeRef = useRef<DragResize | null>(null);
+  const { startResize } = useEdgeResize();
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const playheadDraggingRef = useRef(false);
 
@@ -93,14 +88,6 @@ export function CutTimeline(): JSX.Element {
 
   const totalDurationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const clampedTotal = totalDurationMs > 0 ? totalDurationMs : 1;
-
-  // `playheadMs` is source-relative (same space as the `<video>` element and
-  // each segment's own `range`), but this track is laid out in ripple/output
-  // order -- map it through the kept segments to find where to draw it.
-  // `null` while scrubbing through a cut-out gap (the preview still plays
-  // the raw source continuously; see PreviewStage), so the playhead just
-  // isn't shown until playback re-enters a kept segment.
-  const outputPlayheadMs = sourceMsToOutputMs(segments, playheadMs);
 
   const majorTickIntervalMs = pickMajorTickIntervalMs(totalDurationMs);
   const minorTickIntervalMs = majorTickIntervalMs / 3;
@@ -148,40 +135,16 @@ export function CutTimeline(): JSX.Element {
     seekFromClientX(event.clientX);
   }
 
-  const handleResizeMove = useCallback(
-    (event: PointerEvent) => {
-      const drag = resizeRef.current;
-      if (!drag) return;
-      const deltaMs = (event.clientX - drag.startClientX) / drag.pxPerMs;
-      const newMs =
-        drag.edge === 'start'
-          ? drag.startRangeMs.startMs + deltaMs
-          : drag.startRangeMs.endMs + deltaMs;
-      resizeSegmentEdge(drag.segmentId, drag.edge, newMs);
-    },
-    [resizeSegmentEdge]
-  );
-
-  const stopResizing = useCallback(() => {
-    resizeRef.current = null;
-    window.removeEventListener('pointermove', handleResizeMove);
-  }, [handleResizeMove]);
-
-  function startResize(segment: TimelineSegment, edge: 'start' | 'end', blockWidthPx: number) {
-    return (event: React.PointerEvent): void => {
-      event.preventDefault();
-      event.stopPropagation();
-      const durationMs = segment.range.endMs - segment.range.startMs;
-      resizeRef.current = {
-        segmentId: segment.id,
-        edge,
-        startClientX: event.clientX,
-        startRangeMs: segment.range,
-        pxPerMs: blockWidthPx / Math.max(durationMs, 1)
-      };
-      window.addEventListener('pointermove', handleResizeMove);
-      window.addEventListener('pointerup', stopResizing, { once: true });
-    };
+  function startResizeHandler(
+    segment: TimelineSegment,
+    edge: 'start' | 'end',
+    blockWidthPx: number
+  ) {
+    const durationMs = segment.range.endMs - segment.range.startMs;
+    const startValueMs = edge === 'start' ? segment.range.startMs : segment.range.endMs;
+    return startResize(startValueMs, durationMs, blockWidthPx, (newMs) =>
+      resizeSegmentEdge(segment.id, edge, newMs)
+    );
   }
 
   const handlePanelResizeMove = useCallback((event: PointerEvent) => {
@@ -237,7 +200,7 @@ export function CutTimeline(): JSX.Element {
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
         <div className="flex shrink-0 items-center gap-3 text-xs text-white/50">
           <span className="flex items-center gap-1.5">
-            <Scissors size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
+            <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
           </span>
           <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
             {formatTime(totalDurationMs)} total
@@ -247,10 +210,18 @@ export function CutTimeline(): JSX.Element {
           </span>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
+        {/*
+          Every track (ruler, clips, Zoom/Caption/Speed/Crop pills) lives
+          inside this one zoom-scaled, horizontally-scrolling container so
+          they share a single coordinate space -- percentages computed
+          against `clampedTotal` line up across rows at any zoom level or
+          scroll position, and the playhead (last child, absolutely
+          positioned) spans the full stack instead of just the ruler.
+        */}
+        <div className="min-h-0 flex-1 overflow-auto">
           <div
             ref={trackAreaRef}
-            className="relative flex h-full flex-col"
+            className="relative flex flex-col gap-1.5"
             style={{ width: `${zoom * 100}%`, minWidth: '100%' }}
           >
             <div
@@ -274,7 +245,15 @@ export function CutTimeline(): JSX.Element {
               ))}
             </div>
 
-            <div className="flex flex-1 gap-0.5 pt-1 mt-2">
+            {/*
+              The real editable clip list -- drag/reorder, edge-resize/trim,
+              double-click to split, delete. Deliberately neutral (not
+              red/Scissors) since those now belong to TrimTrack's sparse
+              "this clip was trimmed" indicator below -- this row always
+              shows every clip, tiled edge-to-edge, which is a different
+              thing from that indicator.
+            */}
+            <div className="flex h-9 shrink-0 items-center gap-0.5 px-1">
               {segments.map((segment, index) => {
                 const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
                 const isSelected = selectedSegmentId === segment.id;
@@ -304,18 +283,20 @@ export function CutTimeline(): JSX.Element {
                     onClick={() => setSelectedSegmentId(segment.id)}
                     onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
                     className={cn(
-                      'group relative flex min-w-[36px] max-h-16 h-14 cursor-grab flex-col items-center justify-center gap-0.5 rounded-md border border-amber-400/30 bg-amber-400/15 active:cursor-grabbing',
+                      'group relative flex h-7 min-w-9 cursor-grab items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/10 active:cursor-grabbing',
                       dragOverIndex === index && 'ring-2 ring-accent',
                       dragOverIndex !== index && isSelected && 'ring-2 ring-white/70'
                     )}
                     style={{ width: `${widthPercent}%` }}
                   >
-                    <div className="pointer-events-none flex flex-col items-center gap-0.5 text-amber-200/90">
-                      <Clapperboard size={13} />
-                      <span className="truncate px-1 text-[10px] font-medium">
+                    <div className="pointer-events-none flex items-center gap-1.5 px-2 text-white/80">
+                      <Clapperboard size={13} className="shrink-0" />
+                      <span className="truncate text-[11px] font-medium">
                         {formatTime(getSegmentOutputDurationMs(segment))}
                       </span>
-                      <span className="text-[9px] text-amber-200/50">{segment.speed}x</span>
+                      {segment.speed !== 1 && (
+                        <span className="shrink-0 text-[10px] text-white/50">{segment.speed}x</span>
+                      )}
                     </div>
 
                     <button
@@ -324,7 +305,7 @@ export function CutTimeline(): JSX.Element {
                         deleteSegment(segment.id);
                       }}
                       disabled={segments.length <= 1}
-                      className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
+                      className="absolute right-1 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
                     >
                       <Trash2 size={11} />
                     </button>
@@ -333,40 +314,36 @@ export function CutTimeline(): JSX.Element {
                       onPointerDown={(e) => {
                         const width =
                           e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                        startResize(segment, 'start', width)(e);
+                        startResizeHandler(segment, 'start', width)(e);
                       }}
-                      className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-accent/0 hover:bg-accent/70"
+                      className="absolute inset-y-0 left-0 w-2 cursor-ew-resize"
                     />
                     <div
                       onPointerDown={(e) => {
                         const width =
                           e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                        startResize(segment, 'end', width)(e);
+                        startResizeHandler(segment, 'end', width)(e);
                       }}
-                      className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-accent/0 hover:bg-accent/70"
+                      className="absolute inset-y-0 right-0 w-2 cursor-ew-resize"
                     />
                   </div>
                 );
               })}
             </div>
 
-            {outputPlayheadMs !== null && (
-              <div
-                className="pointer-events-none absolute inset-y-0 z-10"
-                style={{ left: `${(outputPlayheadMs / clampedTotal) * 100}%` }}
-              >
-                <div className="absolute inset-y-0 left-0 w-px bg-accent" />
-                <div
-                  onPointerDown={startPlayheadDrag}
-                  title="Drag to scrub"
-                  className="pointer-events-auto absolute -left-1.5 top-0 h-3 w-3 cursor-ew-resize rounded-full border-2 border-surface-raised bg-accent shadow"
-                />
-              </div>
-            )}
+            <ZoomTrack />
+            <TrimTrack />
+            <CaptionTrack />
+            <SpeedTrack />
+            <CropTrack />
+
+            <Playhead
+              segments={segments}
+              clampedTotal={clampedTotal}
+              onPointerDown={startPlayheadDrag}
+            />
           </div>
         </div>
-
-        <ZoomTrack />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import type {
   TimelineTrack
 } from '@screen-recorder/types/timeline';
 import type { ExportSegment } from '@screen-recorder/types/export';
+import type { EditorTool } from '../../../workspace/editor/editorTools';
 import { getSegmentOutputDurationMs } from '../lib/segment-duration';
 
 export const PRIMARY_VIDEO_TRACK_ID = 'video-1';
@@ -27,6 +28,14 @@ interface TimelineStoreState {
   /** Horizontal scale (1-4x) for the cut timeline. */
   timelineZoom: number;
   /**
+   * Which right-hand tool panel is open. Lives here (not EditorPage's local
+   * state) for the same reason `selectedSegmentId` does: per-tool tracks
+   * (ZoomTrack, ...) render independently of EditorPage and need to be able
+   * to open/focus a panel themselves -- e.g. clicking a zoom keyframe pill
+   * switches to the Zoom panel so its details are right there to edit.
+   */
+  activeTool: EditorTool | null;
+  /**
    * One-shot seek command (source ms), separate from `playheadMs` to avoid a
    * feedback loop: CutTimeline (rendered independently of the `<video>`
    * element) can't imperatively set `videoRef.current.currentTime` itself,
@@ -39,6 +48,7 @@ interface TimelineStoreState {
   setTracks: (tracks: TimelineTrack[]) => void;
   setSelectedSegmentId: (segmentId: string | null) => void;
   setTimelineZoom: (zoom: number) => void;
+  setActiveTool: (tool: EditorTool | null) => void;
   requestSeek: (ms: number) => void;
   clearSeekRequest: () => void;
   /** Resets the primary video track to one segment spanning the whole recording. */
@@ -80,11 +90,13 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   ],
   selectedSegmentId: null,
   timelineZoom: 1,
+  activeTool: 'background',
   seekRequestMs: null,
   setPlayhead: (playheadMs) => set({ playheadMs }),
   setTracks: (tracks) => set({ tracks }),
   setSelectedSegmentId: (selectedSegmentId) => set({ selectedSegmentId }),
   setTimelineZoom: (timelineZoom) => set({ timelineZoom }),
+  setActiveTool: (activeTool) => set({ activeTool }),
   requestSeek: (ms) => set({ seekRequestMs: ms, playheadMs: ms }),
   clearSeekRequest: () => set({ seekRequestMs: null }),
 
@@ -96,7 +108,8 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
       range: { startMs: 0, endMs: durationMs },
       speed: 1,
       sourceOffsetMs: 0,
-      crop: null
+      crop: null,
+      trimmed: false
     };
     set({
       sourceDurationMs: durationMs,
@@ -176,10 +189,18 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
       const clamped = Math.min(Math.max(newSourceMs, 0), sourceDurationMs);
       if (edge === 'start') {
         const startMs = Math.min(clamped, segment.range.endMs - MIN_SEGMENT_MS);
-        return { ...segment, range: { ...segment.range, startMs: Math.max(0, startMs) } };
+        return {
+          ...segment,
+          range: { ...segment.range, startMs: Math.max(0, startMs) },
+          trimmed: true
+        };
       }
       const endMs = Math.max(clamped, segment.range.startMs + MIN_SEGMENT_MS);
-      return { ...segment, range: { ...segment.range, endMs: Math.min(sourceDurationMs, endMs) } };
+      return {
+        ...segment,
+        range: { ...segment.range, endMs: Math.min(sourceDurationMs, endMs) },
+        trimmed: true
+      };
     });
     set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
   },

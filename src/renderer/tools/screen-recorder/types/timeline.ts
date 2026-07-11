@@ -29,6 +29,14 @@ export interface TimelineSegment {
   speed: ClipSpeed;
   sourceOffsetMs: number;
   crop: CropRect | null;
+  /**
+   * Whether this clip's own in/out point has been manually dragged since it
+   * was created (see `resizeSegmentEdge`) -- not set by splitting alone.
+   * Purely a UI/editing-history flag (not read at export): drives the
+   * sparse "Trim" indicator pill in `TrimTrack`, the same "only show a pill
+   * when something's actually been done" pattern as `SpeedTrack`/`CropTrack`.
+   */
+  trimmed: boolean;
 }
 
 export interface TimelineTrack {

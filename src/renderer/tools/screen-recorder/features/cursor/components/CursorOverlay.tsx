@@ -3,12 +3,18 @@ import { useMemo } from 'react';
 import type { CursorSettings, CursorPathPoint } from '@screen-recorder/types/project';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
-import { smoothCursorPath, sampleCursorPath } from '../engine/cursor-smoothing-engine';
+import {
+  smoothCursorPath,
+  sampleCursorPath,
+  resolveClickBounceScale
+} from '../engine/cursor-smoothing-engine';
 import { CursorStyleIcon } from './CursorStyleIcon';
 
 interface CursorOverlayProps {
   cursor: CursorSettings;
   rawPath: CursorPathPoint[];
+  /** Recorded real mousedown events -- drives `cursor.clickBounce`. */
+  clickPath: CursorPathPoint[];
   currentTimeMs: number;
   /** Rendered on-screen width of the whole stage (background + padding + content), i.e. `stageRef`'s rect -- the same reference frame webcam/annotations already scale against, see REFERENCE_CANVAS_WIDTH. */
   stageWidthPx: number;
@@ -34,6 +40,7 @@ const PREVIEW_POSITION = { x: 0.5, y: 0.4 };
 export function CursorOverlay({
   cursor,
   rawPath,
+  clickPath,
   currentTimeMs,
   stageWidthPx
 }: CursorOverlayProps): JSX.Element | null {
@@ -49,6 +56,7 @@ export function CursorOverlay({
   const preset = resolveCursorStyle(cursor.style);
   const scale = stageWidthPx / REFERENCE_CANVAS_WIDTH;
   const sizePx = cursor.size * CURSOR_SIZE_UNIT_PX * scale;
+  const clickScale = resolveClickBounceScale(clickPath, currentTimeMs, cursor.clickBounce);
 
   return (
     <div
@@ -60,7 +68,13 @@ export function CursorOverlay({
           position: 'absolute',
           left: `${point.x * 100}%`,
           top: `${point.y * 100}%`,
-          filter: cursor.motionBlur > 0 ? `blur(${cursor.motionBlur * 1.5}px)` : undefined
+          filter: cursor.motionBlur > 0 ? `blur(${cursor.motionBlur * 1.5}px)` : undefined,
+          // Anchored near the arrow glyph's own tip (5,3 of its 24x24 box,
+          // see CursorStyleIcon) rather than the icon box's corner, so the
+          // squash/bounce scales around the actual click point instead of
+          // visibly shifting the icon.
+          transform: clickScale !== 1 ? `scale(${clickScale})` : undefined,
+          transformOrigin: '21% 13%'
         }}
       >
         <CursorStyleIcon fill={preset.fill} stroke={preset.stroke} size={sizePx} />

@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { useEffect, useRef } from 'react';
 import { Crosshair, Plus, Trash2 } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import { useZoomStore } from '../store/zoom-store';
@@ -14,8 +15,10 @@ function formatTime(ms: number): string {
 }
 
 const EASINGS: ZoomKeyframe['easing'][] = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
-const MIN_DURATION_MS = 200;
-const MAX_DURATION_MS = 4000;
+// Also used by ZoomTrack's edge-resize handles, so a keyframe's duration
+// stays within the same bounds whether it's dragged there or on this slider.
+export const MIN_DURATION_MS = 200;
+export const MAX_DURATION_MS = 4000;
 
 interface ZoomKeyframeEditorProps {
   /** Current preview position (ms, source-relative) -- "Add keyframe here" targets this. */
@@ -61,14 +64,28 @@ export function ZoomKeyframeEditor({
     mode,
     keyframes,
     armedKeyframeId,
+    selectedKeyframeId,
     setMode,
     addKeyframe,
     removeKeyframe,
     updateKeyframe,
     armPositioning,
-    disarmPositioning
+    disarmPositioning,
+    setSelectedKeyframeId
   } = useZoomStore();
   const sorted = [...keyframes].sort((a, b) => a.atMs - b.atMs);
+
+  // Clicking a pill in ZoomTrack (which renders independently of this
+  // panel, in CutTimeline) sets `selectedKeyframeId` -- scroll that
+  // keyframe's card into view here so switching to the Zoom panel actually
+  // lands you on it instead of leaving you to hunt through the list.
+  const cardRefs = useRef(new Map<string, HTMLDivElement>());
+  useEffect(() => {
+    if (!selectedKeyframeId) return;
+    cardRefs.current
+      .get(selectedKeyframeId)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [selectedKeyframeId]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -125,7 +142,18 @@ export function ZoomKeyframeEditor({
               : null;
 
           return (
-            <div key={kf.id} className="flex flex-col gap-2 rounded-lg border border-line p-2.5">
+            <div
+              key={kf.id}
+              ref={(el) => {
+                if (el) cardRefs.current.set(kf.id, el);
+                else cardRefs.current.delete(kf.id);
+              }}
+              onClick={() => setSelectedKeyframeId(kf.id)}
+              className={cn(
+                'flex flex-col gap-2 rounded-lg border p-2.5',
+                selectedKeyframeId === kf.id ? 'border-accent' : 'border-line'
+              )}
+            >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs text-white/70">{formatTime(kf.atMs)}</span>
                 <div className="flex items-center gap-1">

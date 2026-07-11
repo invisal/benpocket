@@ -15,11 +15,7 @@ function SourceGrid({
   emptyMessage: string;
 }): JSX.Element {
   if (sources.length === 0) {
-    return (
-      <div className="py-12">
-        <p className="text-sm text-text-dim">{emptyMessage}</p>
-      </div>
-    );
+    return <p className="text-sm text-text-dim">{emptyMessage}</p>;
   }
 
   return (

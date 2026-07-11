@@ -42,7 +42,7 @@ README.md                      This file
 
 **Capture again** resets to `idle` with the source grid — it does **not** immediately re-capture. The user picks a source and clicks **Capture** again.
 
-On success, a **native OS notification** is shown (see below). Source-load errors render inline in the body.
+On success, a **native OS notification** is shown (see below). Permission issues are surfaced only via `ScreenRecordingPermissionBanner` — no inline error text.
 
 ## Source loading (`lib/use-capture-sources.ts`)
 

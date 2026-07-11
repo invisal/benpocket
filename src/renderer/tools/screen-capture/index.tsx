@@ -61,7 +61,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
 
-  const { screens, windows, activeTab, setActiveTab, loading, error } =
+  const { screens, windows, activeTab, setActiveTab, loading } =
     useCaptureSources(setSelectedSource);
 
   const handleTabChange = (value: string): void => {
@@ -169,7 +169,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
               <Button
                 variant="primary"
                 size="sm"
-                disabled={!selectedSource || loading || Boolean(error)}
+                disabled={!selectedSource || loading}
                 onClick={() => void runCapture()}
               >
                 <Camera size={14} />
@@ -180,15 +180,13 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         </header>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 p-6">
         <ScreenRecordingPermissionBanner />
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
-
-        {phase === 'idle' && !error && (
+        {phase === 'idle' && (
           <div className="w-full min-w-0">
             {loading ? (
-              <p className="py-12 text-sm text-text-dim">Loading sources…</p>
+              <p className="text-sm text-text-dim">Loading sources…</p>
             ) : (
               <SourcePickerPanels
                 activeTab={activeTab}

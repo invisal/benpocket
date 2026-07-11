@@ -13,24 +13,23 @@ interface UseCaptureSourcesResult {
   activeTab: SourceTab;
   setActiveTab: (tab: SourceTab) => void;
   loading: boolean;
-  error: string | null;
 }
 
 export function useCaptureSources(
   onSelectSource: (source: CaptureSource | null) => void
 ): UseCaptureSourcesResult {
   const [sources, setSources] = useState<CaptureSource[]>([]);
-  const [error, setError] = useState<string | null>(() =>
-    window.screenRecorder ? null : PRELOAD_MISSING_ERROR
-  );
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(window.screenRecorder));
   const [activeTab, setActiveTab] = useState<SourceTab>('screen');
 
   const screens = useMemo(() => sources.filter((source) => source.type === 'screen'), [sources]);
   const windows = useMemo(() => sources.filter((source) => source.type === 'window'), [sources]);
 
   useEffect(() => {
-    if (!window.screenRecorder) return;
+    if (!window.screenRecorder) {
+      console.error(PRELOAD_MISSING_ERROR);
+      return;
+    }
 
     window.screenRecorder.recording
       .getCaptureSources()
@@ -43,10 +42,14 @@ export function useCaptureSources(
         const defaultSource = defaultTab === 'screen' ? nextScreens[0] : nextWindows[0];
         if (defaultSource) onSelectSource(defaultSource);
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch(() => {
+        // Permission denied or picker dismissed — permission banner is enough.
+        setSources([]);
+        onSelectSource(null);
+      })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { sources, screens, windows, activeTab, setActiveTab, loading, error };
+  return { sources, screens, windows, activeTab, setActiveTab, loading };
 }

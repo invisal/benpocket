@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Workspace } from '../../../../preload/http-client/types';
+import type { Workspace, WsAckResult } from '../../../../preload/http-client/types';
+
+/** Throws with the server's error message when a mutation IPC call fails, so callers can surface it. */
+function assertOk(result: WsAckResult): void {
+  if (!result.ok) throw new Error(result.error ?? 'Something went wrong.');
+}
 
 interface WorkspacesState {
   workspaces: Workspace[];
@@ -42,12 +47,12 @@ export const useWorkspacesStore = create<WorkspacesState>()(
       },
 
       renameWorkspace: async (workspaceId, name) => {
-        await window.api.workspaces.rename({ workspaceId, name });
+        assertOk(await window.api.workspaces.rename({ workspaceId, name }));
         await get().load();
       },
 
       deleteWorkspace: async (workspaceId) => {
-        await window.api.workspaces.remove({ workspaceId });
+        assertOk(await window.api.workspaces.remove({ workspaceId }));
         await get().load();
       },
 

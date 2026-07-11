@@ -32,6 +32,34 @@ function hasHeader(headers: Record<string, string>, name: string): boolean {
   return Object.keys(headers).some((key) => key.toLowerCase() === target);
 }
 
+const NETWORK_ERROR_MESSAGES: Record<string, string> = {
+  ENOTFOUND: "Couldn't resolve the host - check the URL is correct.",
+  EAI_AGAIN: "Couldn't resolve the host - check the URL is correct.",
+  ECONNREFUSED: 'Connection refused - is the server running and reachable at this address?',
+  ECONNRESET: 'Connection was reset by the server.',
+  ETIMEDOUT: 'Connection timed out.',
+  CERT_HAS_EXPIRED: "The server's SSL certificate has expired.",
+  UNABLE_TO_VERIFY_LEAF_SIGNATURE: "Couldn't verify the server's SSL certificate.",
+  SELF_SIGNED_CERT_IN_CHAIN: "Couldn't verify the server's SSL certificate."
+};
+
+/**
+ * fetch()/undici only ever throws a generic "fetch failed" TypeError - the actually
+ * useful diagnostic (DNS/connection/TLS error code) lives on `err.cause`. Reads it to
+ * produce a message a user can act on instead of an undifferentiated "fetch failed".
+ */
+function describeNetworkError(err: unknown): string {
+  if (err instanceof Error) {
+    const cause = err.cause;
+    const code = cause && typeof cause === 'object' && 'code' in cause ? cause.code : undefined;
+    if (typeof code === 'string' && NETWORK_ERROR_MESSAGES[code]) {
+      return NETWORK_ERROR_MESSAGES[code];
+    }
+    return err.message;
+  }
+  return 'Unknown network error';
+}
+
 export function registerHttpHandlers(): void {
   ipcMain.handle(
     'http:send',
@@ -44,7 +72,11 @@ export function registerHttpHandlers(): void {
       let requestUrl = payload.url;
 
       try {
-        requestUrl = buildRequestUrl(payload.url, payload.params);
+        try {
+          requestUrl = buildRequestUrl(payload.url, payload.params);
+        } catch {
+          throw new Error('Invalid URL - check the address is complete (e.g. https://...).');
+        }
         const headers = buildRequestHeaders(payload.headers);
 
         const methodAllowsBody = !['GET', 'HEAD'].includes(payload.method);
@@ -86,9 +118,7 @@ export function registerHttpHandlers(): void {
         const isAbort = err instanceof Error && err.name === 'AbortError';
         const message = isAbort
           ? `Request timed out after ${timeoutMs}ms`
-          : err instanceof Error
-            ? err.message
-            : 'Unknown network error';
+          : describeNetworkError(err);
 
         return {
           ok: false,

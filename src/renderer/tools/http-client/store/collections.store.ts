@@ -3,9 +3,15 @@ import type {
   Collection,
   ExportCollectionResult,
   ImportCollectionResult,
-  SavedRequest
+  SavedRequest,
+  WsAckResult
 } from '../../../../preload/http-client/types';
 import { useWorkspacesStore } from './workspaces.store';
+
+/** Throws with the server's error message when a mutation IPC call fails, so callers can surface it. */
+function assertOk(result: WsAckResult): void {
+  if (!result.ok) throw new Error(result.error ?? 'Something went wrong.');
+}
 
 interface CollectionsState {
   collections: Collection[];
@@ -67,52 +73,54 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   renameCollection: async (collectionId, name) => {
-    await window.api.collections.rename({ collectionId, name });
+    assertOk(await window.api.collections.rename({ collectionId, name }));
     await get().load();
   },
 
   deleteCollection: async (collectionId) => {
-    await window.api.collections.remove({ collectionId });
+    assertOk(await window.api.collections.remove({ collectionId }));
     await get().load();
   },
 
   saveRequest: async (collectionId, request, folderId) => {
-    await window.api.collections.saveRequest({ collectionId, request, folderId });
+    assertOk(await window.api.collections.saveRequest({ collectionId, request, folderId }));
     await get().load();
   },
 
   renameRequest: async (collectionId, requestId, name) => {
-    await window.api.collections.renameRequest({ collectionId, requestId, name });
+    assertOk(await window.api.collections.renameRequest({ collectionId, requestId, name }));
     await get().load();
   },
 
   deleteRequest: async (collectionId, requestId) => {
-    await window.api.collections.deleteRequest({ collectionId, requestId });
+    assertOk(await window.api.collections.deleteRequest({ collectionId, requestId }));
     await get().load();
   },
 
   createFolder: async (collectionId, parentFolderId, name) => {
-    await window.api.collections.createFolder({ collectionId, parentFolderId, name });
+    assertOk(await window.api.collections.createFolder({ collectionId, parentFolderId, name }));
     await get().load();
   },
 
   renameFolder: async (collectionId, folderId, name) => {
-    await window.api.collections.renameFolder({ collectionId, folderId, name });
+    assertOk(await window.api.collections.renameFolder({ collectionId, folderId, name }));
     await get().load();
   },
 
   deleteFolder: async (collectionId, folderId) => {
-    await window.api.collections.deleteFolder({ collectionId, folderId });
+    assertOk(await window.api.collections.deleteFolder({ collectionId, folderId }));
     await get().load();
   },
 
   moveRequest: async (collectionId, requestId, targetFolderId) => {
-    await window.api.collections.moveRequest({ collectionId, requestId, targetFolderId });
+    assertOk(await window.api.collections.moveRequest({ collectionId, requestId, targetFolderId }));
     await get().load();
   },
 
   moveFolder: async (collectionId, folderId, targetParentFolderId) => {
-    await window.api.collections.moveFolder({ collectionId, folderId, targetParentFolderId });
+    assertOk(
+      await window.api.collections.moveFolder({ collectionId, folderId, targetParentFolderId })
+    );
     await get().load();
   },
 

@@ -160,11 +160,23 @@ export const HttpClientSidebar: React.FC = () => {
     });
   };
 
+  /** Runs a store mutation and surfaces a failure in the status banner instead of letting it fail silently. */
+  const runMutation = async (fn: () => Promise<unknown>): Promise<void> => {
+    try {
+      await fn();
+    } catch (err) {
+      setStatusMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Something went wrong.'
+      });
+    }
+  };
+
   const submitNewCollection = (): void => {
     const name = draftCollectionName.trim();
     setIsCreatingCollection(false);
     setDraftCollectionName('');
-    if (name) createCollection(name);
+    if (name) runMutation(() => createCollection(name));
   };
 
   const toggleExpanded = (id: string): void => {
@@ -271,6 +283,7 @@ export const HttpClientSidebar: React.FC = () => {
             <span>{statusMessage.text}</span>
             <button
               onClick={() => setStatusMessage(null)}
+              title="Dismiss"
               className="shrink-0 cursor-pointer hover:opacity-70"
             >
               <X size={11} />
@@ -298,8 +311,10 @@ export const HttpClientSidebar: React.FC = () => {
         )}
 
         {collections.length === 0 && !isCreatingCollection && (
-          <div className="text-[11px] text-zinc-650 italic px-1 py-1">
-            No collections yet. Save a request, or import a Postman collection (v2.0 / v2.1 .json).
+          <div className="text-[11px] text-zinc-650 italic px-1 py-1 leading-relaxed">
+            No collections yet. Collections group related saved requests together, so you can find
+            and re-run them later. Save a request, or import a Postman collection (v2.0 / v2.1
+            .json).
           </div>
         )}
 
@@ -312,23 +327,31 @@ export const HttpClientSidebar: React.FC = () => {
               isExpanded={expanded.has(collection.id)}
               onToggle={() => toggleExpanded(collection.id)}
               onToggleFolder={toggleExpanded}
-              onRename={(name) => renameCollection(collection.id, name)}
-              onDelete={() => deleteCollection(collection.id)}
+              onRename={(name) => runMutation(() => renameCollection(collection.id, name))}
+              onDelete={() => runMutation(() => deleteCollection(collection.id))}
               onExport={() => handleExportCollection(collection.id)}
               onOpenRequest={(request) => openSavedRequest(collection, request)}
-              onRenameRequest={(requestId, name) => renameRequest(collection.id, requestId, name)}
-              onDeleteRequest={(requestId) => deleteRequest(collection.id, requestId)}
+              onRenameRequest={(requestId, name) =>
+                runMutation(() => renameRequest(collection.id, requestId, name))
+              }
+              onDeleteRequest={(requestId) =>
+                runMutation(() => deleteRequest(collection.id, requestId))
+              }
               onMoveRequest={(requestId, targetFolderId) =>
-                moveRequest(collection.id, requestId, targetFolderId)
+                runMutation(() => moveRequest(collection.id, requestId, targetFolderId))
               }
               onNewRequest={(folderId) => openNewRequestInFolder(collection.id, folderId)}
               onCreateFolder={(parentFolderId, name) =>
-                createFolder(collection.id, parentFolderId, name)
+                runMutation(() => createFolder(collection.id, parentFolderId, name))
               }
-              onRenameFolder={(folderId, name) => renameFolder(collection.id, folderId, name)}
-              onDeleteFolder={(folderId) => deleteFolder(collection.id, folderId)}
+              onRenameFolder={(folderId, name) =>
+                runMutation(() => renameFolder(collection.id, folderId, name))
+              }
+              onDeleteFolder={(folderId) =>
+                runMutation(() => deleteFolder(collection.id, folderId))
+              }
               onMoveFolder={(folderId, targetParentFolderId) =>
-                moveFolder(collection.id, folderId, targetParentFolderId)
+                runMutation(() => moveFolder(collection.id, folderId, targetParentFolderId))
               }
               onInvalidDrop={handleInvalidDrop}
             />
@@ -511,6 +534,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
       >
         <button
           onClick={onToggle}
+          title={isExpanded ? 'Collapse' : 'Expand'}
           className="text-zinc-500 hover:text-white cursor-pointer shrink-0"
         >
           {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -794,6 +818,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         style={{ paddingLeft: indent }}
+        title={isExpanded ? 'Collapse folder' : 'Expand folder'}
         className={`flex items-center gap-1 group px-1 py-1 rounded hover:bg-editor-bg/60 cursor-grab active:cursor-grabbing ${
           isDragging ? 'opacity-40' : ''
         } ${isDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''}`}
@@ -925,7 +950,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               className="text-[10px] text-zinc-650 italic px-1 py-0.5"
               style={{ paddingLeft: indent + 16 }}
             >
-              Empty folder.
+              Empty - use Save or drag a request here.
             </div>
           )}
 
@@ -1070,6 +1095,17 @@ const RequestItem: React.FC<RequestItemProps> = ({
       <span className="truncate text-zinc-300 group-hover:text-white flex-1">{request.name}</span>
       <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
         {moveAction}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDraftName(request.name);
+            setIsRenaming(true);
+          }}
+          title="Rename request"
+          className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
+        >
+          <Pencil size={11} />
+        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();

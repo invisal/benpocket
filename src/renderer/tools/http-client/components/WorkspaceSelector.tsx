@@ -18,6 +18,7 @@ export const WorkspaceSelector: React.FC = () => {
   const [draftName, setDraftName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? null;
   const canDelete = workspaces.length > 1;
@@ -26,19 +27,42 @@ export const WorkspaceSelector: React.FC = () => {
     const name = draftName.trim();
     setIsCreating(false);
     setDraftName('');
-    if (name) await createWorkspace(name);
+    if (!name) return;
+    try {
+      await createWorkspace(name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    }
   };
 
-  const submitRename = (): void => {
+  const submitRename = async (): Promise<void> => {
     setIsRenaming(false);
     const trimmed = renameDraft.trim();
-    if (activeWorkspace && trimmed && trimmed !== activeWorkspace.name) {
-      renameWorkspace(activeWorkspace.id, trimmed);
+    if (!activeWorkspace || !trimmed || trimmed === activeWorkspace.name) return;
+    try {
+      await renameWorkspace(activeWorkspace.id, trimmed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    }
+  };
+
+  const handleDelete = async (): Promise<void> => {
+    if (!activeWorkspace || !canDelete) return;
+    try {
+      await deleteWorkspace(activeWorkspace.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
     }
   };
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setError(null);
+      }}
+    >
       <Popover.Trigger className="flex items-center gap-1.5 min-w-0 cursor-pointer text-left outline-none">
         <FolderOpen size={13} className="text-accent shrink-0" />
         <span className="truncate text-[10px] font-bold tracking-wider text-zinc-300 uppercase hover:text-white">
@@ -128,7 +152,7 @@ export const WorkspaceSelector: React.FC = () => {
                     <Pencil size={11} />
                   </button>
                   <button
-                    onClick={() => canDelete && deleteWorkspace(activeWorkspace.id)}
+                    onClick={handleDelete}
                     disabled={!canDelete}
                     title={canDelete ? 'Delete workspace' : "Can't delete the last workspace"}
                     className="p-0.5 text-zinc-555 hover:text-red-400 disabled:opacity-30 disabled:hover:text-zinc-555 disabled:cursor-default cursor-pointer"
@@ -138,6 +162,15 @@ export const WorkspaceSelector: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {workspaces.length <= 1 && (
+              <p className="text-[10px] text-zinc-600 leading-relaxed">
+                Workspaces keep collections and environments completely separate - use more than one
+                to split, say, personal and work APIs.
+              </p>
+            )}
+
+            {error && <p className="text-[10px] text-red-400 leading-relaxed">{error}</p>}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

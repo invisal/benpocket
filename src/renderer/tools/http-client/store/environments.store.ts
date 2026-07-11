@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Environment, KeyValuePair } from '../../../../preload/http-client/types';
+import type { Environment, KeyValuePair, WsAckResult } from '../../../../preload/http-client/types';
 import { useWorkspacesStore } from './workspaces.store';
+
+/** Throws with the server's error message when a mutation IPC call fails, so callers can surface it. */
+function assertOk(result: WsAckResult): void {
+  if (!result.ok) throw new Error(result.error ?? 'Something went wrong.');
+}
 
 interface EnvironmentsState {
   environments: Environment[];
@@ -50,12 +55,12 @@ export const useEnvironmentsStore = create<EnvironmentsState>()(
       },
 
       renameEnvironment: async (environmentId, name) => {
-        await window.api.environments.rename({ environmentId, name });
+        assertOk(await window.api.environments.rename({ environmentId, name }));
         await get().load();
       },
 
       deleteEnvironment: async (environmentId) => {
-        await window.api.environments.remove({ environmentId });
+        assertOk(await window.api.environments.remove({ environmentId }));
         await get().load();
         set((state) =>
           state.activeEnvironmentId === environmentId ? { activeEnvironmentId: null } : {}
@@ -63,7 +68,7 @@ export const useEnvironmentsStore = create<EnvironmentsState>()(
       },
 
       saveVariables: async (environmentId, variables) => {
-        await window.api.environments.saveVariables({ environmentId, variables });
+        assertOk(await window.api.environments.saveVariables({ environmentId, variables }));
         await get().load();
       },
 

@@ -27,6 +27,7 @@ export const EnvironmentSelector: React.FC = () => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState('');
   const [localVariables, setLocalVariables] = useState<KeyValueRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -56,7 +57,9 @@ export const EnvironmentSelector: React.FC = () => {
       saveVariables(
         environmentId,
         rows.filter((r) => r.key.trim() || r.value.trim())
-      );
+      ).catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Something went wrong.');
+      });
     }, SAVE_DEBOUNCE_MS);
   };
 
@@ -78,19 +81,42 @@ export const EnvironmentSelector: React.FC = () => {
     const name = draftName.trim();
     setIsCreating(false);
     setDraftName('');
-    if (name) await createEnvironment(name);
+    if (!name) return;
+    try {
+      await createEnvironment(name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    }
   };
 
-  const submitRename = (): void => {
+  const submitRename = async (): Promise<void> => {
     setIsRenaming(false);
     const trimmed = renameDraft.trim();
-    if (activeEnvironment && trimmed && trimmed !== activeEnvironment.name) {
-      renameEnvironment(activeEnvironment.id, trimmed);
+    if (!activeEnvironment || !trimmed || trimmed === activeEnvironment.name) return;
+    try {
+      await renameEnvironment(activeEnvironment.id, trimmed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    }
+  };
+
+  const handleDelete = async (): Promise<void> => {
+    if (!activeEnvironment) return;
+    try {
+      await deleteEnvironment(activeEnvironment.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
     }
   };
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setError(null);
+      }}
+    >
       <Popover.Trigger className="flex items-center gap-1.5 px-3 py-1.5 bg-sidebar-bg border border-border-dark hover:border-accent text-zinc-300 hover:text-white text-xs font-semibold rounded cursor-pointer transition-colors">
         <Globe size={12} className={activeEnvironment ? 'text-accent' : 'text-zinc-500'} />
         <span className="max-w-32 truncate">{activeEnvironment?.name ?? 'No Environment'}</span>
@@ -180,7 +206,7 @@ export const EnvironmentSelector: React.FC = () => {
                       <Pencil size={11} />
                     </button>
                     <button
-                      onClick={() => deleteEnvironment(activeEnvironment.id)}
+                      onClick={handleDelete}
                       title="Delete environment"
                       className="p-0.5 text-zinc-555 hover:text-red-400 cursor-pointer"
                     >
@@ -210,6 +236,8 @@ export const EnvironmentSelector: React.FC = () => {
                 <code className="text-zinc-500">token</code>.
               </div>
             )}
+
+            {error && <p className="text-[10px] text-red-400 leading-relaxed">{error}</p>}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

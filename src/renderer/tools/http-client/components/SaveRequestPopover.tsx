@@ -133,7 +133,10 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger className="px-3 py-1.5 bg-sidebar-bg border border-border-dark hover:border-accent text-zinc-300 hover:text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors">
+      <Popover.Trigger
+        title="Save to a collection (Ctrl+S / ⌘S quick-saves if already saved)"
+        className="px-3 py-1.5 bg-sidebar-bg border border-border-dark hover:border-accent text-zinc-300 hover:text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
+      >
         <Save size={12} />
         <span>Save</span>
       </Popover.Trigger>

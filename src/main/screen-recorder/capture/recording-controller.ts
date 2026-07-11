@@ -1,7 +1,7 @@
 import type { RecordingRequest, RecordingSession } from '@screen-recorder/types/recording';
 
 // Orchestrates a recording session: video capture (via renderer-side
-// getUserMedia/getDisplayMedia against the chosen source), mic/system audio
+// getUserMedia with chromeMediaSourceId against the chosen source), mic/system audio
 // muxing, and writing the raw capture to disk for the editor to load.
 // TODO: implement the actual capture pipeline (likely MediaRecorder in the
 // renderer streaming chunks to this process over IPC, or a native recorder

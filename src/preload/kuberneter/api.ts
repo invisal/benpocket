@@ -26,6 +26,13 @@ export interface KuberneterApi {
     resource: string,
     namespace?: string
   ) => Promise<GetResourcesResponse>;
+  getTopNodes: (
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined
+  ) => Promise<{
+    items?: { name: string; cpu: string; cpuPct: string; memory: string; memoryPct: string }[];
+    error?: string;
+  }>;
 }
 
 export const kuberneterApi: KuberneterApi = {
@@ -34,5 +41,13 @@ export const kuberneterApi: KuberneterApi = {
   saveKubeconfig: (content, filename) =>
     ipcRenderer.invoke('kuberneter:save-kubeconfig', content, filename),
   getResources: (kubeconfigPath, contextName, resource, namespace) =>
-    ipcRenderer.invoke('kuberneter:get-resources', kubeconfigPath, contextName, resource, namespace)
+    ipcRenderer.invoke(
+      'kuberneter:get-resources',
+      kubeconfigPath,
+      contextName,
+      resource,
+      namespace
+    ),
+  getTopNodes: (kubeconfigPath, contextName) =>
+    ipcRenderer.invoke('kuberneter:get-top-nodes', kubeconfigPath, contextName)
 };

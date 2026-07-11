@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type {
   Collection,
+  CreateCollectionPayload,
   CreateFolderPayload,
   DeleteCollectionPayload,
   DeleteFolderPayload,
@@ -48,21 +49,27 @@ export async function writeCollections(collections: Collection[]): Promise<void>
 }
 
 export function registerCollectionHandlers(): void {
-  ipcMain.handle('collections:list', async (): Promise<Collection[]> => readCollections());
+  ipcMain.handle('collections:list', async (_event, workspaceId: string): Promise<Collection[]> =>
+    (await readCollections()).filter((c) => c.workspaceId === workspaceId)
+  );
 
-  ipcMain.handle('collections:create', async (_event, name: string): Promise<Collection> => {
-    const collections = await readCollections();
-    const collection: Collection = {
-      id: randomUUID(),
-      name: name.trim() || 'Untitled Collection',
-      createdAt: Date.now(),
-      requests: [],
-      folders: []
-    };
-    collections.push(collection);
-    await writeCollections(collections);
-    return collection;
-  });
+  ipcMain.handle(
+    'collections:create',
+    async (_event, payload: CreateCollectionPayload): Promise<Collection> => {
+      const collections = await readCollections();
+      const collection: Collection = {
+        id: randomUUID(),
+        name: payload.name.trim() || 'Untitled Collection',
+        createdAt: Date.now(),
+        workspaceId: payload.workspaceId,
+        requests: [],
+        folders: []
+      };
+      collections.push(collection);
+      await writeCollections(collections);
+      return collection;
+    }
+  );
 
   ipcMain.handle(
     'collections:rename',

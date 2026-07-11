@@ -1,11 +1,14 @@
 import { ipcRenderer, type IpcRendererEvent } from 'electron';
 import type {
   Collection,
+  CreateCollectionPayload,
+  CreateEnvironmentPayload,
   CreateFolderPayload,
   DeleteCollectionPayload,
   DeleteEnvironmentPayload,
   DeleteFolderPayload,
   DeleteRequestPayload,
+  DeleteWorkspacePayload,
   Environment,
   ExportCollectionPayload,
   ExportCollectionResult,
@@ -18,8 +21,10 @@ import type {
   RenameEnvironmentPayload,
   RenameFolderPayload,
   RenameRequestPayload,
+  RenameWorkspacePayload,
   SaveEnvironmentVariablesPayload,
   SaveRequestPayload,
+  Workspace,
   WsAckResult,
   WsConnectPayload,
   WsDisconnectPayload,
@@ -39,8 +44,8 @@ export interface PostmanBridge {
     onEvent: (callback: (event: WsEvent) => void) => () => void;
   };
   collections: {
-    list: () => Promise<Collection[]>;
-    create: (name: string) => Promise<Collection>;
+    list: (workspaceId: string) => Promise<Collection[]>;
+    create: (payload: CreateCollectionPayload) => Promise<Collection>;
     rename: (payload: RenameCollectionPayload) => Promise<WsAckResult>;
     remove: (payload: DeleteCollectionPayload) => Promise<WsAckResult>;
     saveRequest: (payload: SaveRequestPayload) => Promise<WsAckResult>;
@@ -52,14 +57,20 @@ export interface PostmanBridge {
     moveRequest: (payload: MoveRequestPayload) => Promise<WsAckResult>;
     moveFolder: (payload: MoveFolderPayload) => Promise<WsAckResult>;
     exportToFile: (payload: ExportCollectionPayload) => Promise<ExportCollectionResult>;
-    importFromFile: () => Promise<ImportCollectionResult>;
+    importFromFile: (workspaceId: string) => Promise<ImportCollectionResult>;
   };
   environments: {
-    list: () => Promise<Environment[]>;
-    create: (name: string) => Promise<Environment>;
+    list: (workspaceId: string) => Promise<Environment[]>;
+    create: (payload: CreateEnvironmentPayload) => Promise<Environment>;
     rename: (payload: RenameEnvironmentPayload) => Promise<WsAckResult>;
     remove: (payload: DeleteEnvironmentPayload) => Promise<WsAckResult>;
     saveVariables: (payload: SaveEnvironmentVariablesPayload) => Promise<WsAckResult>;
+  };
+  workspaces: {
+    list: () => Promise<Workspace[]>;
+    create: (name: string) => Promise<Workspace>;
+    rename: (payload: RenameWorkspacePayload) => Promise<WsAckResult>;
+    remove: (payload: DeleteWorkspacePayload) => Promise<WsAckResult>;
   };
 }
 
@@ -88,8 +99,10 @@ export const postmanApi: PostmanBridge = {
 
   // Collections - saved requests persisted to disk in the main process.
   collections: {
-    list: (): Promise<Collection[]> => ipcRenderer.invoke('collections:list'),
-    create: (name: string): Promise<Collection> => ipcRenderer.invoke('collections:create', name),
+    list: (workspaceId: string): Promise<Collection[]> =>
+      ipcRenderer.invoke('collections:list', workspaceId),
+    create: (payload: CreateCollectionPayload): Promise<Collection> =>
+      ipcRenderer.invoke('collections:create', payload),
     rename: (payload: RenameCollectionPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('collections:rename', payload),
     remove: (payload: DeleteCollectionPayload): Promise<WsAckResult> =>
@@ -112,19 +125,31 @@ export const postmanApi: PostmanBridge = {
       ipcRenderer.invoke('collections:moveFolder', payload),
     exportToFile: (payload: ExportCollectionPayload): Promise<ExportCollectionResult> =>
       ipcRenderer.invoke('collections:exportToFile', payload),
-    importFromFile: (): Promise<ImportCollectionResult> =>
-      ipcRenderer.invoke('collections:importFromFile')
+    importFromFile: (workspaceId: string): Promise<ImportCollectionResult> =>
+      ipcRenderer.invoke('collections:importFromFile', workspaceId)
   },
 
   // Environments - named sets of {{variable}} values, persisted to disk.
   environments: {
-    list: (): Promise<Environment[]> => ipcRenderer.invoke('environments:list'),
-    create: (name: string): Promise<Environment> => ipcRenderer.invoke('environments:create', name),
+    list: (workspaceId: string): Promise<Environment[]> =>
+      ipcRenderer.invoke('environments:list', workspaceId),
+    create: (payload: CreateEnvironmentPayload): Promise<Environment> =>
+      ipcRenderer.invoke('environments:create', payload),
     rename: (payload: RenameEnvironmentPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('environments:rename', payload),
     remove: (payload: DeleteEnvironmentPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('environments:delete', payload),
     saveVariables: (payload: SaveEnvironmentVariablesPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('environments:saveVariables', payload)
+  },
+
+  // Workspaces - scope collections/environments into named groups, like Postman workspaces.
+  workspaces: {
+    list: (): Promise<Workspace[]> => ipcRenderer.invoke('workspaces:list'),
+    create: (name: string): Promise<Workspace> => ipcRenderer.invoke('workspaces:create', name),
+    rename: (payload: RenameWorkspacePayload): Promise<WsAckResult> =>
+      ipcRenderer.invoke('workspaces:rename', payload),
+    remove: (payload: DeleteWorkspacePayload): Promise<WsAckResult> =>
+      ipcRenderer.invoke('workspaces:delete', payload)
   }
 };

@@ -260,6 +260,10 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
         </div>
       </div>
 
+      {isJson && jsonError && value.trim() && (
+        <p className="text-[10px] text-red-400 leading-relaxed">{jsonError}</p>
+      )}
+
       {showDropdown &&
         rect &&
         createPortal(

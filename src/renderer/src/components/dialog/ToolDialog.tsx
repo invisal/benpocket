@@ -1,12 +1,11 @@
-import { useState, ReactNode } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { ChevronLeft, Folder, FolderOpen, GlobeIcon, Plus, Server, VideoIcon } from 'lucide-react';
 import { cn } from 'cnfast';
 import { Dialog } from '../ui/Dialog';
 import { useToolTabs } from '../providers/ToolProvider';
 import { useLayoutStore } from '../../store/layout.store';
+import { useWorkspacesStore } from '../../../tools/http-client/store/workspaces.store';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
-
-const DUMMY_WORKSPACES = ['Personal', 'Team Alpha', 'Acme Corp'];
 
 type ToolDialogView = 'tools' | 'kuberneter' | 'http-client';
 
@@ -17,8 +16,18 @@ interface ToolDialogProps {
 
 export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
   const [view, setView] = useState<ToolDialogView>('tools');
-  const { openTab } = useToolTabs();
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [draftWorkspaceName, setDraftWorkspaceName] = useState('');
+  const { tabs, selectTab, openTab } = useToolTabs();
   const kuberneterKubeconfigs = useLayoutStore((s) => s.kuberneterKubeconfigs);
+  const workspaces = useWorkspacesStore((s) => s.workspaces);
+  const workspacesLoaded = useWorkspacesStore((s) => s.isLoaded);
+  const loadWorkspaces = useWorkspacesStore((s) => s.load);
+  const createWorkspace = useWorkspacesStore((s) => s.createWorkspace);
+
+  useEffect(() => {
+    if (open && !workspacesLoaded) loadWorkspaces();
+  }, [open, workspacesLoaded, loadWorkspaces]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setView('tools');
@@ -44,9 +53,21 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
     }
   };
 
-  const handleOpenWorkspace = () => {
-    openTab('http-client', {});
+  const handleOpenWorkspace = (workspaceId: string) => {
+    useWorkspacesStore.getState().setActiveWorkspaceId(workspaceId);
+    const existing = tabs.find((t) => t.type === 'http-client');
+    if (existing) selectTab(existing.id);
+    else openTab('http-client', {});
     close();
+  };
+
+  const submitNewWorkspace = async () => {
+    const name = draftWorkspaceName.trim();
+    setIsCreatingWorkspace(false);
+    setDraftWorkspaceName('');
+    if (!name) return;
+    const workspace = await createWorkspace(name);
+    handleOpenWorkspace(workspace.id);
   };
 
   const handleOpenScreenRecorder = () => {
@@ -127,14 +148,42 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
           <>
             <DialogSubHeader title="Select Workspace" onBack={() => setView('tools')} />
             <div className="mt-4 space-y-1">
-              {DUMMY_WORKSPACES.map((name) => (
+              {workspaces.map((workspace) => (
                 <ToolRow
-                  key={name}
+                  key={workspace.id}
                   icon={<FolderOpen size={18} />}
-                  name={name}
-                  onClick={handleOpenWorkspace}
+                  name={workspace.name}
+                  description={new Date(workspace.createdAt).toLocaleDateString()}
+                  onClick={() => handleOpenWorkspace(workspace.id)}
                 />
               ))}
+              {isCreatingWorkspace ? (
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Workspace name..."
+                  value={draftWorkspaceName}
+                  onChange={(e) => setDraftWorkspaceName(e.target.value)}
+                  onBlur={submitNewWorkspace}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitNewWorkspace();
+                    if (e.key === 'Escape') {
+                      setIsCreatingWorkspace(false);
+                      setDraftWorkspaceName('');
+                    }
+                  }}
+                  className="w-full bg-surface-2 border border-accent rounded-md px-2.5 py-2 text-[13px] text-text-base outline-none"
+                />
+              ) : (
+                <ToolRow
+                  icon={<Plus size={18} />}
+                  name="New Workspace..."
+                  onClick={() => {
+                    setIsCreatingWorkspace(true);
+                    setDraftWorkspaceName('');
+                  }}
+                />
+              )}
             </div>
           </>
         )}

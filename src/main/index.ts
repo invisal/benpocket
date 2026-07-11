@@ -12,6 +12,7 @@ import {
 import { registerCollectionHandlers } from './http-client/ipc/collections';
 import { registerCollectionTransferHandlers } from './http-client/ipc/collectionsTransfer';
 import { registerEnvironmentHandlers } from './http-client/ipc/environments';
+import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
 import { registerKuberneterHandlers } from './kuberneter';
@@ -161,6 +162,7 @@ app.whenReady().then(() => {
   registerCollectionHandlers();
   registerCollectionTransferHandlers();
   registerEnvironmentHandlers();
+  registerWorkspaceHandlers();
 
   // Recording capture, project persistence, export, settings, window
   // controls, screen-recording permissions, and export-path dialogs for the

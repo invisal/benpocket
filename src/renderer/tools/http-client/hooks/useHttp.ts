@@ -214,7 +214,7 @@ export function useHttp(tabId: string): UseHttpResult {
             headers: {},
             durationMs: 0,
             sizeBytes: 0,
-            body: '',
+            bodyBase64: '',
             url,
             error: message
           }

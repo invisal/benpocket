@@ -92,6 +92,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           onUpdate={onUpdateParam}
           onRemove={onRemoveParam}
           keyPlaceholder="Param"
+          valuePlaceholder="Value or {{var}}"
         />
       </Tabs.Panel>
 
@@ -101,6 +102,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           onUpdate={onUpdateHeader}
           onRemove={onRemoveHeader}
           keyPlaceholder="Header"
+          valuePlaceholder="Value or {{var}}"
           keySuggestions={COMMON_HTTP_HEADERS}
         />
       </Tabs.Panel>

@@ -56,10 +56,10 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
           onChange={onUrlChange}
           variables={variables}
           onEnter={onSend}
-          placeholder="Enter request URL, e.g. https://api.example.com/v1/resource"
+          placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/..."
         />
       </div>
-      <Button onClick={onSend} variant="primary">
+      <Button onClick={onSend} variant="primary" title="Send (Ctrl+Enter / ⌘Enter)">
         {isLoading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
         <span>Send</span>
       </Button>

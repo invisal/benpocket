@@ -2,6 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import type { HttpResponsePayload } from '../../../../preload/http-client/types';
+import { base64ToBytes, bytesToText } from '../lib/bytes';
+import { ResponseBodyViewer } from './ResponseBodyViewer';
+import { ResponseHeadersTable } from './ResponseHeadersTable';
 
 type ResponseTabValue = 'body' | 'headers';
 
@@ -19,14 +22,6 @@ function statusColorClass(status: number, ok: boolean): string {
   return 'text-red-500';
 }
 
-function tryPrettyPrint(body: string): string {
-  try {
-    return JSON.stringify(JSON.parse(body), null, 2);
-  } catch {
-    return body;
-  }
-}
-
 interface ResponseInspectorProps {
   response: HttpResponsePayload | null;
   isLoading: boolean;
@@ -35,7 +30,12 @@ interface ResponseInspectorProps {
 export const ResponseInspector: React.FC<ResponseInspectorProps> = ({ response, isLoading }) => {
   const [activeTab, setActiveTab] = useState<ResponseTabValue>('body');
 
-  const prettyBody = useMemo(() => (response ? tryPrettyPrint(response.body) : ''), [response]);
+  const bytes = useMemo(
+    () => (response ? base64ToBytes(response.bodyBase64) : new Uint8Array(0)),
+    [response]
+  );
+  const text = useMemo(() => bytesToText(bytes), [bytes]);
+  const contentType = response?.headers['content-type'];
   const headerEntries = useMemo(
     () => (response ? Object.entries(response.headers) : []),
     [response]
@@ -99,20 +99,17 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({ response, 
               </Tabs.List>
 
               <Tabs.Panel value="body" className="flex-1 min-h-0 overflow-auto p-4">
-                <pre className="font-mono text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap break-all select-text">
-                  {prettyBody}
-                </pre>
+                <ResponseBodyViewer
+                  key={response.bodyBase64}
+                  text={text}
+                  bytes={bytes}
+                  bodyBase64={response.bodyBase64}
+                  contentType={contentType}
+                />
               </Tabs.Panel>
 
               <Tabs.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-4">
-                <div className="flex flex-col gap-1 font-mono text-xs select-text">
-                  {headerEntries.map(([key, value]) => (
-                    <div key={key} className="flex gap-2">
-                      <span className="text-accent shrink-0">{key}:</span>
-                      <span className="text-zinc-400 break-all">{value}</span>
-                    </div>
-                  ))}
-                </div>
+                <ResponseHeadersTable headers={response.headers} />
               </Tabs.Panel>
             </Tabs.Root>
           )

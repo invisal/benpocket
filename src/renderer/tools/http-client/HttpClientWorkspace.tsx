@@ -1,8 +1,11 @@
-import React, { useState, type ComponentType } from 'react';
+import React, { useEffect, useState, type ComponentType } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { FileText, Globe, Waves, X } from 'lucide-react';
 import { cn } from 'cnfast';
 import { usePostmanTabsStore, type PostmanTab } from './store/tabs.store';
+import { useCollectionsStore } from './store/collections.store';
+import { useEnvironmentsStore } from './store/environments.store';
+import { useWorkspacesStore } from './store/workspaces.store';
 import { HttpClientSidebar } from './HttpClientSidebar';
 import { useApiClient, disposeApiClientTab, type ProtocolTab } from './hooks/useApiClient';
 import type { PostmanTabSeed } from './types';
@@ -41,6 +44,25 @@ export const HttpClientWorkspace: React.FC = () => {
   const closeTab = usePostmanTabsStore((s) => s.closeTab);
   const renameTab = usePostmanTabsStore((s) => s.renameTab);
   const openNewRequestTab = usePostmanTabsStore((s) => s.openNewRequestTab);
+
+  const workspacesLoaded = useWorkspacesStore((s) => s.isLoaded);
+  const loadWorkspaces = useWorkspacesStore((s) => s.load);
+  const activeWorkspaceId = useWorkspacesStore((s) => s.activeWorkspaceId);
+  const loadCollections = useCollectionsStore((s) => s.load);
+  const loadEnvironments = useEnvironmentsStore((s) => s.load);
+
+  useEffect(() => {
+    if (!workspacesLoaded) loadWorkspaces();
+  }, [workspacesLoaded, loadWorkspaces]);
+
+  // Re-scope collections/environments to whichever workspace is active, both on
+  // first load and whenever the user switches workspaces.
+  useEffect(() => {
+    if (activeWorkspaceId) {
+      loadCollections();
+      loadEnvironments();
+    }
+  }, [activeWorkspaceId, loadCollections, loadEnvironments]);
 
   const handleCloseTab = (id: string): void => {
     closeTab(id);
@@ -171,7 +193,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
           <div
             onClick={onActivate}
             onDoubleClick={startRenaming}
-            title="Double-click to rename"
+            title="Double-click to rename · Right-click for more options"
             className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
               isActive
                 ? 'bg-editor-bg text-white border-t-2 border-t-accent'
@@ -180,11 +202,18 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
           >
             <FileText size={12} className={isActive ? 'text-accent' : 'text-zinc-600'} />
             <span className="truncate max-w-30">{tab.title}</span>
+            {!tab.meta?.savedRequestId && (
+              <span
+                title="Not saved to a collection"
+                className="size-1.5 rounded-full bg-amber-500 shrink-0"
+              />
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
+              title="Close tab"
               className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-555 group-hover:text-zinc-400 hover:text-white"
             >
               <X size={10} />
@@ -210,9 +239,59 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   const tab = usePostmanTabsStore((s) => s.tabs.find((t) => t.id === tabId));
   const renameTab = usePostmanTabsStore((s) => s.renameTab);
   const seed = tab?.meta as PostmanTabSeed | undefined;
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!saveError) return;
+    const timer = setTimeout(() => setSaveError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [saveError]);
+
+  // Cmd/Ctrl+Enter to send, Cmd/Ctrl+S to quick-save a request already linked to a
+  // collection (an unlinked tab still needs the Save popover to pick a destination).
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (e.key === 'Enter' && client.protocol === 'HTTP') {
+        e.preventDefault();
+        client.http.send();
+      } else if (e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (client.protocol === 'HTTP' && client.binding) {
+          useCollectionsStore
+            .getState()
+            .saveRequest(
+              client.binding.collectionId,
+              {
+                id: client.binding.requestId,
+                name: tab?.title ?? 'Untitled Request',
+                method: client.http.state.method,
+                url: client.http.state.url,
+                headers: client.http.state.headers,
+                params: client.http.state.params,
+                bodyType: client.http.state.bodyType,
+                body: client.http.state.body,
+                updatedAt: Date.now()
+              },
+              null
+            )
+            .catch((err: unknown) => {
+              setSaveError(err instanceof Error ? err.message : 'Save failed.');
+            });
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [client, tab]);
 
   return (
     <div className="flex-1 flex flex-col gap-3 min-h-0">
+      {saveError && (
+        <div className="shrink-0 rounded px-2 py-1.5 text-[10px] leading-snug border bg-red-950/30 border-red-900/40 text-red-400">
+          {saveError}
+        </div>
+      )}
       <Tabs.Root
         value={client.protocol}
         onValueChange={(value) => client.setProtocol(value as ProtocolTab)}

@@ -200,7 +200,10 @@ export interface PostmanImportResult {
 }
 
 /** Postman Collection v2.0 / v2.1 -> our internal Collection, preserving folder nesting. */
-export function importPostmanCollection(file: PostmanCollectionFile): PostmanImportResult {
+export function importPostmanCollection(
+  file: PostmanCollectionFile,
+  workspaceId: string
+): PostmanImportResult {
   const { requests, folders } = importItems(file.item);
 
   return {
@@ -208,6 +211,7 @@ export function importPostmanCollection(file: PostmanCollectionFile): PostmanImp
       id: randomUUID(),
       name: file.info?.name?.trim() || 'Imported Collection',
       createdAt: Date.now(),
+      workspaceId,
       requests,
       folders
     },

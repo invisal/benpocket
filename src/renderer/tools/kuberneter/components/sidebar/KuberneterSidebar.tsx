@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
-import { Input } from '../../../../src/components/ui/Input';
+import { KubeSearchbox } from '../KubeSearchbox';
 import {
   ChevronDown,
   ChevronRight,
@@ -14,8 +14,7 @@ import {
   Clock,
   ShieldCheck,
   Package,
-  Boxes,
-  Search
+  Boxes
 } from 'lucide-react';
 
 interface SidebarCategory {
@@ -187,15 +186,11 @@ export const KuberneterSidebar: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 h-full text-zinc-300 select-none animate-in fade-in duration-300">
       {/* Search Navigation Bar */}
-      <div className="relative shrink-0 px-1 mb-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-550 z-10" />
-        <Input
-          type="text"
+      <div className="shrink-0 px-1 mb-1">
+        <KubeSearchbox
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search navigation..."
-          size="sm"
-          className="pl-8 bg-surface border border-border-dark text-[11px] outline-none text-zinc-300 focus:border-accent transition-colors"
+          onChange={setSearchTerm}
         />
       </div>
 

@@ -1,17 +1,9 @@
-import { ComponentType, useEffect, useState } from 'react';
-import { Download, FileText, HardDrive, Home, Monitor } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { HardDrive } from 'lucide-react';
 import { cn } from 'cnfast';
 import type { SidebarItem, SidebarSections } from '../../../../preload/file-explorer/api';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
-
-type IconComponent = ComponentType<{ size?: number; className?: string }>;
-
-const favoriteIcons: Record<string, IconComponent> = {
-  Home,
-  Desktop: Monitor,
-  Documents: FileText,
-  Downloads: Download
-};
+import { getFavoriteIcon, IconComponent } from '../lib/sidebarIcons';
 
 function normalize(target: string): string {
   return target.replace(/[\\/]+$/, '').toLowerCase();
@@ -74,7 +66,7 @@ export function FileExplorerSidebar() {
         items={sections.favorites}
         currentPath={activePath ?? ''}
         onNavigate={navigateActive}
-        getIcon={(item) => favoriteIcons[item.label] ?? Home}
+        getIcon={(item) => getFavoriteIcon(item.label)}
       />
       <SidebarSection
         title="Locations"

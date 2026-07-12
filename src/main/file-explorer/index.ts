@@ -2,6 +2,7 @@ import { ipcMain, app, shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { readFilesFromClipboard, writeFilesToClipboard, ClipboardMode } from './nativeClipboard';
 
 export interface FileEntry {
   name: string;
@@ -42,6 +43,19 @@ function pathExists(target: string): boolean {
   } catch {
     return false;
   }
+}
+
+async function getAvailableName(destDir: string, baseName: string): Promise<string> {
+  const extension = path.extname(baseName);
+  const stem = path.basename(baseName, extension);
+
+  let candidate = baseName;
+  let attempt = 1;
+  while (pathExists(path.join(destDir, candidate))) {
+    attempt += 1;
+    candidate = `${stem} (${attempt})${extension}`;
+  }
+  return candidate;
 }
 
 function getFavorites(): SidebarItem[] {
@@ -195,6 +209,102 @@ export function registerFileExplorerHandlers(): void {
         const content = await fs.promises.readFile(filePath, 'utf-8');
         return { content };
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:delete-entries',
+    async (_, paths: string[]): Promise<{ success: true } | { error: string }> => {
+      try {
+        for (const target of paths) {
+          await shell.trashItem(target);
+        }
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:copy-entries',
+    async (
+      _,
+      sourcePaths: string[],
+      destDir: string
+    ): Promise<{ success: true } | { error: string }> => {
+      try {
+        for (const source of sourcePaths) {
+          const name = await getAvailableName(destDir, path.basename(source));
+          await fs.promises.cp(source, path.join(destDir, name), { recursive: true });
+        }
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:move-entries',
+    async (
+      _,
+      sourcePaths: string[],
+      destDir: string
+    ): Promise<{ success: true } | { error: string }> => {
+      try {
+        for (const source of sourcePaths) {
+          const name = await getAvailableName(destDir, path.basename(source));
+          const destination = path.join(destDir, name);
+          try {
+            await fs.promises.rename(source, destination);
+          } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
+            // Source and destination are on different filesystems/devices --
+            // rename can't cross that boundary, so fall back to copy + remove.
+            await fs.promises.cp(source, destination, { recursive: true });
+            await fs.promises.rm(source, { recursive: true });
+          }
+        }
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: message };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:clipboard-write',
+    async (_, paths: string[], mode: ClipboardMode): Promise<void> => {
+      await writeFilesToClipboard(paths, mode);
+    }
+  );
+
+  ipcMain.handle('file-explorer:clipboard-read', async () => {
+    return readFilesFromClipboard();
+  });
+
+  ipcMain.handle(
+    'file-explorer:create-file',
+    async (
+      _,
+      destDir: string,
+      name: string
+    ): Promise<{ success: true; path: string } | { error: 'exists' } | { error: string }> => {
+      const fullPath = path.join(destDir, name);
+      try {
+        // The 'wx' flag fails atomically if the file already exists, avoiding a
+        // separate existence-check race between checking and writing.
+        await fs.promises.writeFile(fullPath, '', { flag: 'wx' });
+        return { success: true, path: fullPath };
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'EEXIST') return { error: 'exists' };
         const message = err instanceof Error ? err.message : String(err);
         return { error: message };
       }

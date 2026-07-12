@@ -27,6 +27,9 @@ export type ReadFileContentResponse =
   | { error: 'unsupported-extension' }
   | { error: string };
 
+export type ClipboardMode = 'copy' | 'cut';
+export type ClipboardFiles = { paths: string[]; mode: ClipboardMode };
+
 export interface FileExplorerApi {
   getHomeDir: () => Promise<string>;
   listDirectory: (dirPath: string) => Promise<ListDirectoryResponse>;
@@ -34,6 +37,21 @@ export interface FileExplorerApi {
   openPath: (targetPath: string) => Promise<{ success: true } | { error: string }>;
   getSidebarSections: () => Promise<SidebarSections>;
   readFileContent: (filePath: string) => Promise<ReadFileContentResponse>;
+  deleteEntries: (paths: string[]) => Promise<{ success: true } | { error: string }>;
+  copyEntries: (
+    sourcePaths: string[],
+    destDir: string
+  ) => Promise<{ success: true } | { error: string }>;
+  moveEntries: (
+    sourcePaths: string[],
+    destDir: string
+  ) => Promise<{ success: true } | { error: string }>;
+  writeClipboardFiles: (paths: string[], mode: ClipboardMode) => Promise<void>;
+  readClipboardFiles: () => Promise<ClipboardFiles | null>;
+  createFile: (
+    destDir: string,
+    name: string
+  ) => Promise<{ success: true; path: string } | { error: 'exists' } | { error: string }>;
 }
 
 export const fileExplorerApi: FileExplorerApi = {
@@ -43,5 +61,14 @@ export const fileExplorerApi: FileExplorerApi = {
     ipcRenderer.invoke('file-explorer:get-file-icon', filePath, extension),
   openPath: (targetPath) => ipcRenderer.invoke('file-explorer:open-path', targetPath),
   getSidebarSections: () => ipcRenderer.invoke('file-explorer:get-sidebar-sections'),
-  readFileContent: (filePath) => ipcRenderer.invoke('file-explorer:read-file-content', filePath)
+  readFileContent: (filePath) => ipcRenderer.invoke('file-explorer:read-file-content', filePath),
+  deleteEntries: (paths) => ipcRenderer.invoke('file-explorer:delete-entries', paths),
+  copyEntries: (sourcePaths, destDir) =>
+    ipcRenderer.invoke('file-explorer:copy-entries', sourcePaths, destDir),
+  moveEntries: (sourcePaths, destDir) =>
+    ipcRenderer.invoke('file-explorer:move-entries', sourcePaths, destDir),
+  writeClipboardFiles: (paths, mode) =>
+    ipcRenderer.invoke('file-explorer:clipboard-write', paths, mode),
+  readClipboardFiles: () => ipcRenderer.invoke('file-explorer:clipboard-read'),
+  createFile: (destDir, name) => ipcRenderer.invoke('file-explorer:create-file', destDir, name)
 };

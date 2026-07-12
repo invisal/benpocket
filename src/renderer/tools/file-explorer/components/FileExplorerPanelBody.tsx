@@ -4,6 +4,7 @@ import { FileTable } from './FileTable';
 import { FileEntry } from './columns';
 import { getParentPath } from '../lib/paths';
 import { useDirectoryListing } from '../lib/useDirectoryListing';
+import { useFileExplorerStore } from '../store/fileExplorer.store';
 
 interface FileExplorerPanelBodyProps {
   path: string | null;
@@ -18,7 +19,8 @@ export function FileExplorerPanelBody({
   onSelectionChange,
   onActivate
 }: FileExplorerPanelBodyProps) {
-  const { entries, status, errorMessage } = useDirectoryListing(path);
+  const refreshSignal = useFileExplorerStore((s) => s.refreshSignal);
+  const { entries, status, errorMessage } = useDirectoryListing(path, refreshSignal);
 
   if (path === null) {
     return (
@@ -58,6 +60,7 @@ export function FileExplorerPanelBody({
       {status === 'ready' && (
         <FileTable
           entries={entries}
+          currentPath={path}
           onNavigate={onNavigate}
           onSelectionChange={onSelectionChange}
         />

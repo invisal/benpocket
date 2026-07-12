@@ -43,6 +43,7 @@ export function ContextMenuItem({
     <ContextMenuPrimitive.Item
       className={cn(
         'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-2 text-[13px] outline-none select-none',
+        'text-xs',
         'data-[highlighted]:bg-border-dark/60 data-[highlighted]:text-text-base',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className

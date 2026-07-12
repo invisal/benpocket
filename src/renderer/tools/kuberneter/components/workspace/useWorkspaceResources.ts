@@ -11,6 +11,7 @@ import { DaemonSetData } from '../../types/DaemonSetData';
 import { StatefulSetData } from '../../types/StatefulSetData';
 import { ReplicaSetData } from '../../types/ReplicaSetData';
 import { JobData } from '../../types/JobData';
+import { CronJobData } from '../../types/CronJobData';
 import { K8sResource } from '../../types/K8sResource';
 import { TopNodeItem } from '../../types/TopNodeItem';
 import { formatAge } from '../../ults/formatAge';
@@ -39,6 +40,7 @@ export function useWorkspaceResources(resource: string) {
   const [statefulSetsData, setStatefulSetsData] = useState<StatefulSetData[]>([]);
   const [replicaSetsData, setReplicaSetsData] = useState<ReplicaSetData[]>([]);
   const [jobsData, setJobsData] = useState<JobData[]>([]);
+  const [cronJobsData, setCronJobsData] = useState<CronJobData[]>([]);
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
   const [configMapsData, setConfigMapsData] = useState<ConfigMapData[]>([]);
   const [applicationsData, setApplicationsData] = useState<ApplicationData[]>([]);
@@ -64,6 +66,7 @@ export function useWorkspaceResources(resource: string) {
       else if (resource === 'statefulsets') queryResource = 'statefulsets';
       else if (resource === 'replicasets') queryResource = 'replicasets';
       else if (resource === 'jobs') queryResource = 'jobs';
+      else if (resource === 'cronjobs') queryResource = 'cronjobs';
       else if (resource === 'services') queryResource = 'services';
       else if (resource === 'configmaps') queryResource = 'configmaps';
       else if (resource === 'apps') queryResource = 'deployments,statefulsets,daemonsets';
@@ -351,6 +354,42 @@ export function useWorkspaceResources(resource: string) {
           };
         });
         setJobsData(transformed);
+      } else if (resource === 'cronjobs') {
+        const transformed = items.map((item) => {
+          const name = item.metadata?.name || '';
+          const ns = item.metadata?.namespace || '';
+          const schedule = item.spec?.schedule || '-';
+          const suspend = item.spec?.suspend ?? false;
+          const active = item.status?.active ?? 0;
+          const timeZone = item.spec?.timeZone || '-';
+
+          // Last schedule: age since lastScheduleTime
+          const lastScheduleTime = item.status?.lastScheduleTime;
+          const lastSchedule = lastScheduleTime ? formatAge(lastScheduleTime) : '-';
+
+          // Next execution: only computable if not suspended and we have the schedule
+          // We display N/A when suspended, otherwise leave as '-' (server-side calculation)
+          const nextExecution = suspend ? 'N/A' : '-';
+
+          // Warning: suspended with active jobs, or no schedule
+          const hasWarning = active > 0 && suspend;
+
+          return {
+            id: `${ns}/${name}`,
+            name,
+            ns,
+            schedule,
+            suspend,
+            active,
+            lastSchedule,
+            nextExecution,
+            timeZone,
+            age: formatAge(item.metadata?.creationTimestamp || ''),
+            rawAge: new Date(item.metadata?.creationTimestamp || Date.now()).getTime().toString(),
+            hasWarning
+          };
+        });
+        setCronJobsData(transformed);
       } else if (resource === 'services') {
         const transformed = items.map((item) => {
           const ports = item.spec?.ports?.map((p) => `${p.port}/${p.protocol}`).join(', ') || '';
@@ -569,6 +608,7 @@ export function useWorkspaceResources(resource: string) {
     statefulSetsData,
     replicaSetsData,
     jobsData,
+    cronJobsData,
     servicesData,
     configMapsData,
     applicationsData,

@@ -23,6 +23,8 @@ export interface K8sResource {
     failed?: number;
     active?: number;
     completionTime?: string;
+    lastScheduleTime?: string;
+    lastSuccessfulTime?: string;
     conditions?: { type?: string; status?: string; message?: string }[];
     nodeInfo?: { kubeletVersion?: string };
     capacity?: { cpu?: string; memory?: string };
@@ -36,6 +38,9 @@ export interface K8sResource {
     replicas?: number;
     completions?: number;
     parallelism?: number;
+    schedule?: string;
+    suspend?: boolean;
+    timeZone?: string;
     strategy?: {
       type?: string;
     };

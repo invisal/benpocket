@@ -7,6 +7,7 @@ import { DaemonSets } from './daemonsets/DaemonSets';
 import { StatefulSets } from './statefulsets/StatefulSets';
 import { ReplicaSets } from './replicasets/ReplicaSets';
 import { Jobs } from './jobs/Jobs';
+import { CronJobs } from './cronjobs/CronJobs';
 import { ServicesTable } from './ServicesTable';
 import { ConfigMapsTable } from './ConfigMapsTable';
 import { Application } from './application/Application';
@@ -30,6 +31,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     statefulSetsData,
     replicaSetsData,
     jobsData,
+    cronJobsData,
     servicesData,
     configMapsData,
     applicationsData,
@@ -113,6 +115,13 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
 
           {resource === 'jobs' && (
             <Jobs jobsData={jobsData} kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+          )}
+
+          {resource === 'cronjobs' && (
+            <CronJobs
+              cronJobsData={cronJobsData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
           )}
 
           {resource === 'services' && (

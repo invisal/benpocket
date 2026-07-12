@@ -1,7 +1,8 @@
 import { ChevronRight, HardDrive } from 'lucide-react';
 import { cn } from 'cnfast';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Menu } from '@renderer/components/ui/Menu';
+import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { splitPathSegments } from '../lib/paths';
 import { getFavoriteIcon } from '../lib/sidebarIcons';
 import type { SidebarSections } from '../../../../preload/file-explorer/api';
@@ -21,44 +22,130 @@ export function Breadcrumb(props: BreadcrumbProps) {
 
 export function BreadcrumbInner({ currentPath, onNavigate }: BreadcrumbProps) {
   const segments = splitPathSegments(currentPath);
+  const [isEditing, setIsEditing] = useState(false);
 
   return (
     <>
       <div>
         <BreadcrumbLocationPicker onNavigate={onNavigate} />
       </div>
-      <div
-        className={cn(
-          'flex flex-1 items-center px-1 h-8 text-xs overflow-x-auto shrink-0 select-none', // Layout
-          'bg-surface-2', // Background
-          'border border-border rounded', // Border
-          'shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_-1px_0_rgba(255,255,255,0.05)]' // 3D inset
-        )}
-      >
-        {segments.map((segment, i) => {
-          const isLast = i === segments.length - 1;
-          return (
-            <span key={segment.path} className="flex items-center gap-1 shrink-0">
-              {i > 0 && (
-                <BreadcrumbSegmentMenu path={segments[i - 1].path} onNavigate={onNavigate} />
-              )}
-              <button
-                onClick={() => onNavigate(segment.path)}
-                disabled={isLast}
-                className={cn(
-                  'px-2 h-6 rounded max-w-48 truncate text-xs border border-surface-2',
-                  isLast
-                    ? 'text-text-base font-medium cursor-default'
-                    : 'text-text-dim cursor-pointer hover:bg-surface hover:border-border'
+      {isEditing ? (
+        <BreadcrumbPathInput
+          currentPath={currentPath}
+          onNavigate={onNavigate}
+          onDone={() => setIsEditing(false)}
+        />
+      ) : (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsEditing(true);
+          }}
+          className={cn(
+            'flex flex-1 items-center px-1 h-8 text-xs overflow-x-auto shrink-0 select-none gap-2 px-3', // Layout
+            'bg-surface-2', // Background
+            'border border-border rounded', // Border
+            'shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_-1px_0_rgba(255,255,255,0.05)]' // 3D inset
+          )}
+        >
+          {segments.map((segment, i) => {
+            const isLast = i === segments.length - 1;
+            return (
+              <span key={segment.path} className="flex items-center gap-1 shrink-0">
+                {i > 0 && (
+                  <BreadcrumbSegmentMenu path={segments[i - 1].path} onNavigate={onNavigate} />
                 )}
-              >
-                {segment.label}
-              </button>
-            </span>
-          );
-        })}
-      </div>
+                <ContextMenu.Root>
+                  <ContextMenu.Trigger
+                    render={
+                      <button
+                        onClick={() => !isLast && onNavigate(segment.path)}
+                        className={cn(
+                          'px-0 h-6 rounded max-w-48 truncate text-xs border border-surface-2 cursor-pointer', // Layout
+                          'text-text-dim hover:bg-surface hover:border-border hover:px-1.5 hover:-mx-1.5', // Color + hover
+                          'data-[popup-open]:bg-surface data-[popup-open]:border-border data-[popup-open]:px-1.5 data-[popup-open]:-mx-1.5' // Keep hover style while menu is open
+                        )}
+                      >
+                        {segment.label}
+                      </button>
+                    }
+                  />
+                  <ContextMenu.Content side="bottom" align="start">
+                    <ContextMenu.Item onClick={() => navigator.clipboard.writeText(segment.path)}>
+                      Copy address
+                    </ContextMenu.Item>
+                    <ContextMenu.Item onClick={() => navigator.clipboard.writeText(segment.label)}>
+                      Copy name
+                    </ContextMenu.Item>
+                  </ContextMenu.Content>
+                </ContextMenu.Root>
+              </span>
+            );
+          })}
+        </div>
+      )}
     </>
+  );
+}
+
+function BreadcrumbPathInput({
+  currentPath,
+  onNavigate,
+  onDone
+}: {
+  currentPath: string;
+  onNavigate: (path: string) => void;
+  onDone: () => void;
+}) {
+  const [value, setValue] = useState(currentPath);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  async function commit() {
+    committedRef.current = true;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === currentPath) {
+      onDone();
+      return;
+    }
+    const res = await window.fileExplorer.listDirectory(trimmed);
+    if ('error' in res) {
+      onDone();
+      return;
+    }
+    onNavigate(trimmed);
+    onDone();
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        if (!committedRef.current) onDone();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          onDone();
+        }
+      }}
+      className={cn(
+        'flex-1 h-8 px-3 text-xs', // Layout
+        'bg-surface-2', // Background
+        'border border-border rounded', // Border
+        'text-text-base outline-none', // Text
+        'shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_-1px_0_rgba(255,255,255,0.05)]' // 3D inset
+      )}
+    />
   );
 }
 
@@ -128,8 +215,10 @@ function BreadcrumbSegmentMenu({
   onNavigate: (path: string) => void;
 }) {
   const [state, setState] = useState<SubfolderState>({ status: 'idle' });
+  const [isOpen, setIsOpen] = useState(false);
 
   function handleOpenChange(open: boolean) {
+    setIsOpen(open);
     if (!open || state.status !== 'idle') return;
 
     setState({ status: 'loading' });
@@ -149,8 +238,20 @@ function BreadcrumbSegmentMenu({
 
   return (
     <Menu.Root onOpenChange={handleOpenChange}>
-      <Menu.Trigger className="flex items-center h-6 w-4 justify-center shrink-0 rounded hover:bg-surface border border-transparent hover:border-border cursor-pointer">
-        <ChevronRight size={12} className="text-zinc-600 shrink-0" />
+      <Menu.Trigger
+        className={cn(
+          'flex items-center h-6 p-0 justify-center shrink-0 rounded border border-transparent cursor-pointer', // Layout
+          'hover:bg-surface hover:border-border hover:px-0.5 hover:-mx-0.5', // Hover
+          'data-[popup-open]:bg-surface data-[popup-open]:border-border data-[popup-open]:px-0.5 data-[popup-open]:-mx-0.5' // Keep hover style while menu is open
+        )}
+      >
+        <ChevronRight
+          size={12}
+          className={cn(
+            'text-zinc-600 shrink-0 transition-transform duration-200',
+            isOpen && 'rotate-90'
+          )}
+        />
       </Menu.Trigger>
       <Menu.Content align="start">
         {state.status === 'loading' && (

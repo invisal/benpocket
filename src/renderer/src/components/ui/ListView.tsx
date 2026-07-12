@@ -314,94 +314,92 @@ export function ListView<TData>({
         rows.length === 0 && emptyState && 'flex flex-col'
       )}
     >
-      {rows.length === 0 && emptyState ? (
-        emptyState
-      ) : (
-        <>
-          <div ref={headerRef} role="rowgroup" className="sticky top-0 z-10">
-            {table.getHeaderGroups().map((headerGroup) => (
+      <div ref={headerRef} role="rowgroup" className="sticky top-0 z-10">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <div
+            key={headerGroup.id}
+            role="row"
+            style={{ display: 'grid', gridTemplateColumns }}
+            className="bg-surface-2 border-b border-border-dark text-zinc-450 text-[10px] text-xs font-medium  tracking-wider"
+          >
+            {headerGroup.headers.map((header) => (
               <div
-                key={headerGroup.id}
-                role="row"
-                style={{ display: 'grid', gridTemplateColumns }}
-                className="bg-surface-2 border-b border-border-dark text-zinc-450 text-[10px] text-xs font-medium  tracking-wider"
+                key={header.id}
+                role="columnheader"
+                className="relative hover:bg-surface-3 px-3 py-1.5 cursor-pointer select-none truncate"
+                onClick={header.column.getToggleSortingHandler()}
               >
-                {headerGroup.headers.map((header) => (
+                {flexRender(header.column.columnDef.header, header.getContext())}
+                {header.column.getIsSorted() === 'asc' && ' ▲'}
+                {header.column.getIsSorted() === 'desc' && ' ▼'}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={header.getResizeHandler()}
+                  onTouchStart={header.getResizeHandler()}
+                  className="group absolute -right-1.5 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none select-none items-center justify-center"
+                >
                   <div
-                    key={header.id}
-                    role="columnheader"
-                    className="relative hover:bg-surface-3 px-3 py-1.5 cursor-pointer select-none truncate"
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' && ' ▲'}
-                    {header.column.getIsSorted() === 'desc' && ' ▼'}
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      onMouseDown={header.getResizeHandler()}
-                      onTouchStart={header.getResizeHandler()}
-                      className="group absolute -right-1.5 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none select-none items-center justify-center"
-                    >
-                      <div
-                        className={cn(
-                          'h-full w-px bg-border-dark group-hover:bg-accent',
-                          header.column.getIsResizing() && 'bg-accent'
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
+                    className={cn(
+                      'h-full w-px bg-border-dark group-hover:bg-accent',
+                      header.column.getIsResizing() && 'bg-accent'
+                    )}
+                  />
+                </div>
               </div>
             ))}
           </div>
-          <div
-            role="rowgroup"
-            style={{
-              position: 'relative',
-              height: `${rowVirtualizer.getTotalSize() - headerHeight}px`
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              const entry = row.original;
-              const id = getRowId(entry);
-              const isSelected = selectedIds.has(id);
-              const isFocusedRow = id === effectiveFocusedId;
-              return (
-                <div
-                  key={id}
-                  role="row"
-                  aria-selected={isSelected}
-                  data-row-id={id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns,
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start - headerHeight}px)`
-                  }}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => handleRowClick(entry, id, e)}
-                  onDoubleClick={() => onRowDoubleClick?.(entry)}
-                  className={cn(
-                    'hover:bg-surface-2 cursor-pointer select-none outline-none',
-                    isSelected && 'bg-surface-3',
-                    isFocusedRow && isFocusWithin && 'ring-1 ring-inset ring-accent'
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <div key={cell.id} role="cell" className="p-1.5 px-3 text-xs min-w-0 truncate">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </>
+        ))}
+      </div>
+      {rows.length === 0 && emptyState ? (
+        emptyState
+      ) : (
+        <div
+          role="rowgroup"
+          style={{
+            position: 'relative',
+            height: `${rowVirtualizer.getTotalSize() - headerHeight}px`
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const row = rows[virtualRow.index];
+            const entry = row.original;
+            const id = getRowId(entry);
+            const isSelected = selectedIds.has(id);
+            const isFocusedRow = id === effectiveFocusedId;
+            return (
+              <div
+                key={id}
+                role="row"
+                aria-selected={isSelected}
+                data-row-id={id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns,
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start - headerHeight}px)`
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => handleRowClick(entry, id, e)}
+                onDoubleClick={() => onRowDoubleClick?.(entry)}
+                className={cn(
+                  'hover:bg-surface-2 cursor-pointer select-none outline-none',
+                  isSelected && 'bg-surface-3',
+                  isFocusedRow && isFocusWithin && 'ring-1 ring-inset ring-accent'
+                )}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <div key={cell.id} role="cell" className="p-1.5 px-3 text-xs min-w-0 truncate">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

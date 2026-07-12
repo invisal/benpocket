@@ -1,5 +1,5 @@
 import React from 'react';
-import { RecentConnection } from '../../../../../src/store/layout.store';
+import { RecentConnection } from '../../../store/kuberneter.store';
 import { Globe } from 'lucide-react';
 
 interface RecentListProps {

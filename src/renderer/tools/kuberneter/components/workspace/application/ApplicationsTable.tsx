@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { KubeTable, Column } from '../../kubeTable';
-import { MoreVertical, AlertCircle } from 'lucide-react';
+import { MoreVertical } from 'lucide-react';
 import { cn } from 'cnfast';
 import { ApplicationData } from '../../../types/ApplicationData';
 
@@ -149,13 +149,8 @@ export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       data={filteredData}
       getRowKey={(row) => row.id}
       variant="modern"
-      className="flex-1 border-t border-border-dark/60"
-      emptyState={
-        <div className="flex flex-col items-center justify-center text-zinc-550 gap-2 py-10 font-sans">
-          <AlertCircle className="size-8 text-zinc-650" />
-          <span className="text-xs">No applications match the search filters.</span>
-        </div>
-      }
+      className="flex-1"
+      emptyMessage="No applications match the search filters."
     />
   );
 };

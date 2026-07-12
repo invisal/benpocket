@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLayoutStore } from '../../../src/store/layout.store';
+import { useKuberneterStore } from '../store/kuberneter.store';
 import { useToolTabs } from '../../../src/components/providers/ToolProvider';
 
 export const KubeTitleBar: React.FC = () => {
@@ -16,7 +16,7 @@ export const KubeTitleBar: React.FC = () => {
     kuberneterInstanceNamespace,
     setKuberneterInstanceNamespace,
     kuberneterInstanceConfigPath
-  } = useLayoutStore();
+  } = useKuberneterStore();
 
   const cluster = currentInstanceId ? kuberneterInstanceCluster[currentInstanceId] || '' : '';
   const namespace = currentInstanceId

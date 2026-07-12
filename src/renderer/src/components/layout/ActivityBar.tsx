@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useToolTabs } from '../providers/ToolProvider';
-import { FolderOpen, GlobeIcon, HomeIcon, PlusIcon, VideoIcon } from 'lucide-react';
+import { FolderOpen, GlobeIcon, HomeIcon, PlusIcon, VideoIcon, CameraIcon } from 'lucide-react';
 import cn from 'cnfast';
 import { ContextMenu } from '../ui/ContextMenu';
 import { ToolDialog } from '../dialog/ToolDialog';
@@ -18,6 +18,8 @@ export const ActivityBar: React.FC = () => {
         return <GlobeIcon size={16} />;
       case 'screen-recorder':
         return <VideoIcon size={16} />;
+      case 'screen-capture':
+        return <CameraIcon size={16} />;
       case 'kuberneter':
         return (
           <img

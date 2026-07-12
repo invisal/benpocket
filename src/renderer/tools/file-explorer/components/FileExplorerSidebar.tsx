@@ -15,10 +15,8 @@ export function FileExplorerSidebar() {
   const activePanel = useFileExplorerStore((s) => s.activePanel);
   const panel1Path = useFileExplorerStore((s) => s.panel1Path);
   const panel2Path = useFileExplorerStore((s) => s.panel2Path);
-  const panel2Mode = useFileExplorerStore((s) => s.panel2Mode);
   const setPanel1Path = useFileExplorerStore((s) => s.setPanel1Path);
   const setPanel2Path = useFileExplorerStore((s) => s.setPanel2Path);
-  const setPanel2Mode = useFileExplorerStore((s) => s.setPanel2Mode);
 
   useEffect(() => {
     window.fileExplorer.getSidebarSections().then(setSections);
@@ -31,36 +29,6 @@ export function FileExplorerSidebar() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <span className="px-2 text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
-          Panel 2 View
-        </span>
-        <div className="grid grid-cols-2 gap-1">
-          <button
-            onClick={() => setPanel2Mode('table')}
-            className={cn(
-              'px-2 py-1 rounded text-xs text-center cursor-pointer transition-colors',
-              panel2Mode === 'table'
-                ? 'bg-surface-4 text-text-base'
-                : 'text-text-dim hover:bg-surface-3 hover:text-text-base'
-            )}
-          >
-            Table
-          </button>
-          <button
-            onClick={() => setPanel2Mode('preview')}
-            className={cn(
-              'px-2 py-1 rounded text-xs text-center cursor-pointer transition-colors',
-              panel2Mode === 'preview'
-                ? 'bg-surface-4 text-text-base'
-                : 'text-text-dim hover:bg-surface-3 hover:text-text-base'
-            )}
-          >
-            Preview
-          </button>
-        </div>
-      </div>
-
       <SidebarSection
         title="Favorites"
         items={sections.favorites}

@@ -73,16 +73,18 @@ export const Application: React.FC<ApplicationProps> = ({
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-h-0 select-none">
-      <ApplicationsToolbar
-        searchQuery={searchQuery}
-        caseSensitive={caseSensitive}
-        useRegex={useRegex}
-        selectedCount={selectedIds.size}
-        onSearchChange={setSearchQuery}
-        onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-        onRegexToggle={() => setUseRegex((v) => !v)}
-      />
+    <div className="flex-1 flex flex-col gap-3 min-h-0 select-none py-4">
+      <div className="px-4">
+        <ApplicationsToolbar
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          useRegex={useRegex}
+          selectedCount={selectedIds.size}
+          onSearchChange={setSearchQuery}
+          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+          onRegexToggle={() => setUseRegex((v) => !v)}
+        />
+      </div>
       <ApplicationsTable
         filteredData={filteredData}
         selectedIds={selectedIds}

@@ -8,6 +8,7 @@ import type {
 import type { Project, CursorPathPoint } from '@screen-recorder/types/project';
 import type { ExportFormat, ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
+import type { ScreenRect } from '@shared/capture-region';
 
 export const screenRecorderApi = {
   recording: {
@@ -58,6 +59,10 @@ export const screenRecorderApi = {
   },
   window: {
     minimize: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowMinimize),
+    hide: (options?: { mainOnly?: boolean }): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.WindowHide, options),
+    restore: (options?: { focus?: boolean }): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.WindowRestore, options),
     toggleMaximize: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowToggleMaximize),
     close: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowClose),
     isMaximized: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.WindowIsMaximized),
@@ -94,6 +99,32 @@ export const screenRecorderApi = {
       const listener = (_event: unknown, source: CaptureSource): void => callback(source);
       ipcRenderer.on(IpcChannels.TraySourceSelected, listener);
       return () => ipcRenderer.removeListener(IpcChannels.TraySourceSelected, listener);
+    },
+    screenshot: {
+      capture: (
+        sourceId: string,
+        options?: {
+          displayId?: string;
+          hideBeforeCapture?: boolean;
+          focusAfterRestore?: boolean;
+        }
+      ): Promise<ArrayBuffer> =>
+        ipcRenderer.invoke(IpcChannels.CaptureScreenshot, { sourceId, ...options }),
+      copy: (data: ArrayBuffer): Promise<void> =>
+        ipcRenderer.invoke(IpcChannels.CopyScreenshot, data),
+      save: (data: ArrayBuffer, defaultFileName: string): Promise<string | null> =>
+        ipcRenderer.invoke(IpcChannels.SaveScreenshot, data, defaultFileName),
+      selectRegion: (): Promise<import('@shared/capture-region').CaptureRegionSelection | null> =>
+        ipcRenderer.invoke(IpcChannels.SelectCaptureRegion),
+      pickOsSource: (options?: {
+        monitorOnly?: boolean;
+      }): Promise<import('@shared/os-picker-source').OsPickerSource | null> =>
+        ipcRenderer.invoke(IpcChannels.PickOsCaptureSource, options)
+    },
+    regionSelect: {
+      complete: (rect: ScreenRect): void =>
+        ipcRenderer.send(IpcChannels.RegionSelectComplete, rect),
+      cancel: (): void => ipcRenderer.send(IpcChannels.RegionSelectCancel)
     }
   }
 };

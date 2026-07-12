@@ -180,7 +180,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
       ref={containerRef}
       className={cn(
         'p-2 flex flex-col gap-3 select-none shrink-0 min-w-0 overflow-hidden transition-[height] duration-200',
-        isWide ? 'h-[180px]' : 'h-[280px]'
+        isWide ? 'h-[180px]' : 'h-[300px]'
       )}
     >
       {/* 1. Big prominent title at the top left of the card */}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../store/kuberneter.store';
 import { KubeSearchbox } from '../KubeSearchbox';
 import {
   ChevronDown,
@@ -44,13 +45,9 @@ function highlightText(text: string, search: string): React.ReactNode {
 }
 
 export const KuberneterSidebar: React.FC = () => {
-  const {
-    openTab,
-    activeInstanceId,
-    kuberneterInstanceCluster,
-    kuberneterInstanceResource,
-    setKuberneterInstanceResource
-  } = useLayoutStore();
+  const { openTab, activeInstanceId } = useLayoutStore();
+  const { kuberneterInstanceCluster, kuberneterInstanceResource, setKuberneterInstanceResource } =
+    useKuberneterStore();
 
   const cluster = kuberneterInstanceCluster[activeInstanceId] || '';
   const activeResource = kuberneterInstanceResource[activeInstanceId] || 'overview';

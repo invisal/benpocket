@@ -1,11 +1,13 @@
 import React from 'react';
 import { useWorkspaceResources } from './useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
-import { PodsTable } from './PodsTable';
-import { DeploymentsTable } from './DeploymentsTable';
+import { Pods } from './pods/Pods';
+import { Deployments } from './deployments/Deployments';
+import { DaemonSets } from './daemonsets/DaemonSets';
 import { ServicesTable } from './ServicesTable';
 import { ConfigMapsTable } from './ConfigMapsTable';
 import { Application } from './application/Application';
+import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -21,9 +23,11 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     kuberneterSelectedNamespace,
     podsData,
     deploysData,
+    daemonSetsData,
     servicesData,
     configMapsData,
     applicationsData,
+    nodesData,
     isLoading,
     errorMsg
   } = useWorkspaceResources(resource);
@@ -43,7 +47,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   }
 
   return (
-    <div className="flex-1 flex flex-col gap-4 min-h-0">
+    <div className="flex-1 flex flex-col gap-4 min-h-0 min-w-0">
       {isLoading && (
         <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
           <Loader2 className="size-6 text-accent animate-spin" />
@@ -70,15 +74,19 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'overview' && <ClusterOverview />}
 
           {resource === 'pods' && (
-            <PodsTable
-              podsData={podsData}
+            <Pods podsData={podsData} kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+          )}
+
+          {resource === 'deployments' && (
+            <Deployments
+              deploysData={deploysData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}
 
-          {resource === 'deployments' && (
-            <DeploymentsTable
-              deploysData={deploysData}
+          {resource === 'daemonsets' && (
+            <DaemonSets
+              daemonSetsData={daemonSetsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}
@@ -103,6 +111,8 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}
+
+          {resource === 'nodes' && <Nodes nodesData={nodesData} />}
         </>
       )}
     </div>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { cn } from 'cnfast';
 import { KubeTable, Column } from '../../kubeTable';
 
 interface EventResource {
@@ -134,29 +133,29 @@ export const WarningsFeed: React.FC<WarningsFeedProps> = ({ events, namespace })
   ];
 
   return (
-    <div className={cn('p-2 flex flex-col gap-2.5')}>
-      <div className="flex justify-between items-center shrink-0 pb-1.5 border-b border-border/40">
-        <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans truncate">
-          Warnings ({warningEvents.length})
+    <div className="flex flex-col gap-2 select-none min-w-0 w-full relative">
+      <div className="px-4">
+        <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
+          Warning Events Log
         </span>
       </div>
 
-      <div className="flex flex-col gap-2 min-h-0">
-        {warningEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-zinc-550 gap-2 py-8">
-            <ShieldCheck className="size-8 text-emerald-500/40" />
-            <span className="text-[10px] italic">
-              No warnings active in cluster. Perfect health!
-            </span>
-          </div>
-        ) : (
-          <KubeTable
-            columns={columns}
-            data={warningEvents}
-            getRowKey={(evt) => evt.metadata?.name || Math.random().toString()}
-            className="mt-2 bg-transparent"
-          />
-        )}
+      <div className="mt-2">
+        <KubeTable
+          columns={columns}
+          data={warningEvents}
+          getRowKey={(evt) => evt.metadata?.name || Math.random().toString()}
+          className="mt-2 overflow-visible flex-initial"
+          hideHeaderWhenEmpty
+          emptyState={
+            <div className="w-full flex flex-col items-center justify-center text-zinc-550 gap-2 py-8 select-none">
+              <ShieldCheck className="size-8 text-emerald-500/40" />
+              <span className="text-[10px] italic">
+                No warnings active in cluster. Perfect health!
+              </span>
+            </div>
+          }
+        />
       </div>
     </div>
   );

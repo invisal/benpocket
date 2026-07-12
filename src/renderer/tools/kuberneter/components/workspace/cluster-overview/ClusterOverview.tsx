@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { MetricGauge } from './MetricGauge';
 import { HistoryChart } from './HistoryChart';
 import { WarningsFeed } from './WarningsFeed';
@@ -125,18 +126,24 @@ interface EventResource {
 
 export const ClusterOverview: React.FC = () => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const kuberneterSelectedCluster = useLayoutStore(
+  const kuberneterSelectedCluster = useKuberneterStore(
     (s) => s.kuberneterInstanceCluster[activeInstanceId] || ''
   );
-  const kuberneterSelectedNamespace = useLayoutStore(
+  const kuberneterSelectedNamespace = useKuberneterStore(
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
-  const activeConfigPath = useLayoutStore(
+  const activeConfigPath = useKuberneterStore(
     (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
 
+  const refreshInterval = useKuberneterStore(
+    (s) => s.kuberneterInstanceRefreshInterval[activeInstanceId] || '60s'
+  );
+  const setKuberneterInstanceRefreshInterval = useKuberneterStore(
+    (s) => s.setKuberneterInstanceRefreshInterval
+  );
+
   // User control states
-  const [refreshInterval, setRefreshInterval] = useState('5s');
   const [timeRange, setTimeRange] = useState('1h');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -441,23 +448,25 @@ export const ClusterOverview: React.FC = () => {
   const filteredHistory = history.slice(-maxPoints);
 
   return (
-    <div className={cn('flex-1 flex flex-col gap-3 min-h-0 overflow-hidden pr-1 pb-2')}>
+    <div className={cn('flex-1 flex flex-col gap-3 min-h-0 overflow-hidden py-4')}>
       {/* Sleek dashboard header toolbar controls */}
-      <ClusterOverviewHeader
-        timeRange={timeRange}
-        setTimeRange={setTimeRange}
-        refreshInterval={refreshInterval}
-        setRefreshInterval={setRefreshInterval}
-        isRefreshing={isRefreshing}
-        onSync={() => fetchData(true)}
-      />
+      <div className="px-4">
+        <ClusterOverviewHeader
+          timeRange={timeRange}
+          setTimeRange={setTimeRange}
+          refreshInterval={refreshInterval}
+          setRefreshInterval={(val) => setKuberneterInstanceRefreshInterval(activeInstanceId, val)}
+          isRefreshing={isRefreshing}
+          onSync={() => fetchData(true)}
+        />
+      </div>
 
       {/* Main dashboard panels container */}
-      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden px-0">
         {/* Scrollable Dashboard Panel */}
         <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto overflow-x-hidden min-h-0 pr-1 pb-2">
           {/* Row 1: ECharts Concentric gauges */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 shrink-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 shrink-0 px-4">
             <MetricGauge
               title="CPU Allocation"
               unit=" Cores"
@@ -504,7 +513,7 @@ export const ClusterOverview: React.FC = () => {
           </div>
 
           {/* Row 2: Live Utilization Timeline */}
-          <div className="shrink-0">
+          <div className="shrink-0 px-4">
             <HistoryChart history={filteredHistory} />
           </div>
 

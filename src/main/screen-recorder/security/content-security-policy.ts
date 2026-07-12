@@ -7,8 +7,9 @@ import { app, session } from 'electron';
 // lets us keep production locked down while dev actually works.
 //
 // img-src needs 'data:' because capture source thumbnails are data URLs
-// (see main/capture/screen-source-provider.ts). media-src needs 'blob:'
-// because recorded video preview uses an in-memory Blob URL (see
+// (see main/screen-recorder/capture/screen-source-provider.ts) and Screen Capture preview
+// may use blob: or data: URLs. media-src needs 'blob:' because recorded
+// video preview uses an in-memory Blob URL (see
 // features/recording/engine/capture-engine.ts) rather than writing to disk
 // and reloading from a file:// URL.
 export function applyContentSecurityPolicy(): void {
@@ -17,7 +18,7 @@ export function applyContentSecurityPolicy(): void {
   const policy = isDev
     ? [
         "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-        "img-src 'self' data:",
+        "img-src 'self' data: blob:",
         "media-src 'self' blob:",
         "connect-src 'self' ws: wss: http://localhost:* https://localhost:*"
       ].join('; ')
@@ -25,7 +26,7 @@ export function applyContentSecurityPolicy(): void {
         "default-src 'self'",
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data:",
+        "img-src 'self' data: blob:",
         "media-src 'self' blob:",
         "connect-src 'self'"
       ].join('; ');

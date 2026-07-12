@@ -3,6 +3,7 @@ import { ToolComponentProps } from '@renderer/components/providers/createTabProv
 import { FileExplorerPanelBody } from './components/FileExplorerPanelBody';
 import { FilePreview } from './components/FilePreview';
 import { FileExplorerSidebar } from './components/FileExplorerSidebar';
+import { Breadcrumb } from './components/Breadcrumb';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import {
   createFileExplorerStore,
@@ -36,6 +37,7 @@ function FileExplorerLayout() {
   const setActivePanel = useFileExplorerStore((s) => s.setActivePanel);
   const setSidebarWidth = useFileExplorerStore((s) => s.setSidebarWidth);
   const setPanel1Width = useFileExplorerStore((s) => s.setPanel1Width);
+  const setPanel2Mode = useFileExplorerStore((s) => s.setPanel2Mode);
 
   useEffect(() => {
     window.fileExplorer.getHomeDir().then((home) => {
@@ -81,9 +83,21 @@ function FileExplorerLayout() {
               path={panel2Path}
               onNavigate={setPanel2Path}
               onActivate={() => setActivePanel('panel2')}
+              modeSwitch={{ value: panel2Mode, onChange: setPanel2Mode }}
             />
           ) : (
-            <FilePreview selection={panel1Selection} />
+            <div
+              className="flex-1 flex flex-col min-h-0 min-w-0"
+              onMouseDownCapture={() => setActivePanel('panel2')}
+            >
+              <Breadcrumb
+                currentPath={panel2Path ?? ''}
+                onNavigate={setPanel2Path}
+                modeSwitch={{ value: panel2Mode, onChange: setPanel2Mode }}
+                showPath={false}
+              />
+              <FilePreview selection={panel1Selection} />
+            </div>
           )}
         </div>
       </div>

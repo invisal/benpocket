@@ -1,17 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
+import { IpcChannels } from '@shared/ipc-channels';
 import { screenRecorderApi } from './screen-recorder/api';
 import { kuberneterApi } from './kuberneter/api';
 import { postmanApi } from './http-client/api';
 import { fileExplorerApi } from './file-explorer/api';
+import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 // Custom APIs for renderer
 const api = {
   platform: process.platform,
+  usesOsCapturePicker: usesOsCapturePicker(),
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
   openDirectory: () => ipcRenderer.invoke('open-directory'),
+  showNotification: (title: string, body: string): Promise<boolean> =>
+    ipcRenderer.invoke(IpcChannels.ShowNotification, title, body),
   ...postmanApi
 };
 

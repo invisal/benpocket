@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from 'cnfast';
+import { AlertCircle } from 'lucide-react';
 
 export interface Column<T> {
   key: string;
@@ -21,6 +22,8 @@ interface KubeTableProps<T> {
   selectedRowKey?: string | number;
   getRowKey: (row: T) => string | number;
   emptyState?: React.ReactNode;
+  emptyMessage?: string;
+  hideHeaderWhenEmpty?: boolean;
   className?: string;
   variant?: 'standard' | 'modern';
   /** Enable column resizing by drag. Default: true */
@@ -37,6 +40,8 @@ export function KubeTable<T>({
   selectedRowKey,
   getRowKey,
   emptyState,
+  emptyMessage,
+  hideHeaderWhenEmpty,
   className,
   variant = 'standard',
   resizable = true
@@ -96,12 +101,22 @@ export function KubeTable<T>({
   const isColResizable = (col: Column<T>) => resizable && col.resizable !== false;
 
   return (
-    <div className={cn('overflow-auto flex-1 relative', className)}>
+    <div
+      className={cn(
+        'overflow-auto flex-1 relative kube-table-container bg-transparent',
+        isModern && 'border border-border-dark',
+        className
+      )}
+    >
       <table
-        className="text-left text-xs"
+        className="text-left text-xs bg-transparent"
         style={
-          resizable
-            ? { tableLayout: 'fixed', width: '100%' }
+          resizable && data.length > 0
+            ? {
+                tableLayout: 'fixed',
+                width: Object.values(colWidths).reduce((a, b) => a + b, 0),
+                minWidth: '100%'
+              }
             : { width: '100%', borderCollapse: 'collapse' }
         }
       >
@@ -114,65 +129,74 @@ export function KubeTable<T>({
           </colgroup>
         )}
 
-        <thead
-          className={cn(
-            'sticky top-0 z-10',
-            isModern
-              ? 'bg-sidebar-bg text-zinc-455 text-[10px] font-bold uppercase tracking-wider'
-              : 'bg-surface-2/20 border border-border/20'
-          )}
-        >
-          <tr>
-            {columns.map((col) => {
-              const alignClass =
-                col.align === 'center'
-                  ? 'text-center'
-                  : col.align === 'right'
-                    ? 'text-right'
-                    : 'text-left';
-              const canResize = isColResizable(col);
-              return (
-                <th
-                  key={col.key}
-                  className={cn(
-                    'p-2 font-sans select-none relative overflow-hidden',
-                    alignClass,
-                    isModern
-                      ? 'py-2.5 border-b border-border-dark/60 text-zinc-400 font-semibold'
-                      : 'border border-border/20',
-                    col.headerClassName
-                  )}
-                  style={resizable ? { width: colWidths[col.key] ?? DEFAULT_COL_WIDTH } : undefined}
-                >
-                  <span className="block truncate">{col.header}</span>
+        {(!hideHeaderWhenEmpty || data.length > 0) && (
+          <thead
+            className={cn(
+              'sticky top-0 z-10',
+              isModern
+                ? 'bg-sidebar-bg text-zinc-455 text-[10px] font-bold uppercase tracking-wider'
+                : 'bg-surface-2/20 border border-border/20'
+            )}
+          >
+            <tr>
+              {columns.map((col) => {
+                const alignClass =
+                  col.align === 'center'
+                    ? 'text-center'
+                    : col.align === 'right'
+                      ? 'text-right'
+                      : 'text-left';
+                const canResize = isColResizable(col);
+                return (
+                  <th
+                    key={col.key}
+                    className={cn(
+                      'p-2 font-sans select-none relative overflow-hidden',
+                      alignClass,
+                      isModern
+                        ? 'py-2.5 border-b border-border-dark/60 text-zinc-400 font-semibold'
+                        : 'border border-border/20',
+                      col.headerClassName
+                    )}
+                    style={
+                      resizable ? { width: colWidths[col.key] ?? DEFAULT_COL_WIDTH } : undefined
+                    }
+                  >
+                    <span className="block truncate">{col.header}</span>
 
-                  {/* Resize handle — always-visible separator, accent on hover */}
-                  {canResize && (
-                    <div
-                      onMouseDown={(e) => startResize(e, col.key)}
-                      className="absolute right-0 top-0 h-full w-4 z-20 cursor-col-resize flex items-center justify-center group/handle"
-                      title="Drag to resize"
-                    >
-                      <div className="w-px h-4/5 bg-border-dark group-hover/handle:bg-accent transition-colors duration-100" />
-                    </div>
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
+                    {/* Resize handle — always-visible separator, accent on hover */}
+                    {canResize && (
+                      <div
+                        onMouseDown={(e) => startResize(e, col.key)}
+                        className="absolute right-0 top-0 h-full w-4 z-20 cursor-col-resize flex items-center justify-center group/handle"
+                        title="Drag to resize"
+                      >
+                        <div className="w-px h-4/5 bg-border-dark group-hover/handle:bg-accent transition-colors duration-100" />
+                      </div>
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+        )}
 
         <tbody className="text-zinc-350 bg-transparent">
           {data.length === 0 ? (
-            <tr>
+            <tr className="bg-transparent">
               <td
                 colSpan={columns.length}
                 className={cn(
-                  'p-8 text-center text-zinc-550 italic font-sans',
+                  'p-8 text-center text-zinc-550 italic font-sans bg-transparent',
                   isModern ? 'border-b border-border-dark/30' : 'border border-border/20'
                 )}
               >
-                {emptyState || 'No data available'}
+                {emptyState || (
+                  <div className="w-full flex flex-col items-center justify-center text-zinc-550 gap-2 py-10 font-sans not-italic">
+                    <AlertCircle className="size-8 text-zinc-650" />
+                    <span className="text-xs">{emptyMessage || 'No data available'}</span>
+                  </div>
+                )}
               </td>
             </tr>
           ) : (

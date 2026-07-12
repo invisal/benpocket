@@ -21,6 +21,13 @@ const screenRecordTool = registerTool({
   label: ''
 });
 
+const screenCaptureTool = registerTool({
+  name: 'screen-capture',
+  loadComponent: () => import('./../../../tools/screen-capture'),
+  generateName: () => 'Screen Capture',
+  label: ''
+});
+
 const kuberneterTool = registerTool({
   name: 'kuberneter' as const,
   loadComponent: () => import('./../../../tools/kuberneter'),
@@ -39,6 +46,7 @@ export const allTools = [
   homeTool,
   httpClientTool,
   screenRecordTool,
+  screenCaptureTool,
   kuberneterTool,
   fileExplorerTool
 ];

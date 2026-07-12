@@ -1,9 +1,19 @@
 import { useEffect, useState, ReactNode } from 'react';
-import { ChevronLeft, Folder, FolderOpen, GlobeIcon, Plus, Server, VideoIcon } from 'lucide-react';
+import {
+  ChevronLeft,
+  CameraIcon,
+  Folder,
+  FolderOpen,
+  GlobeIcon,
+  Plus,
+  Server,
+  VideoIcon
+} from 'lucide-react';
 import { cn } from 'cnfast';
 import { Dialog } from '../ui/Dialog';
 import { useToolTabs } from '../providers/ToolProvider';
 import { useLayoutStore } from '../../store/layout.store';
+import { useKuberneterStore } from '../../../tools/kuberneter/store/kuberneter.store';
 import { useWorkspacesStore } from '../../../tools/http-client/store/workspaces.store';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
 
@@ -19,7 +29,7 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [draftWorkspaceName, setDraftWorkspaceName] = useState('');
   const { tabs, selectTab, openTab } = useToolTabs();
-  const kuberneterKubeconfigs = useLayoutStore((s) => s.kuberneterKubeconfigs);
+  const kuberneterKubeconfigs = useKuberneterStore((s) => s.kuberneterKubeconfigs);
   const workspaces = useWorkspacesStore((s) => s.workspaces);
   const workspacesLoaded = useWorkspacesStore((s) => s.isLoaded);
   const loadWorkspaces = useWorkspacesStore((s) => s.load);
@@ -48,7 +58,7 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
   const handleAddKubeconfigFile = async () => {
     const filePath = await window.kuberneter.selectKubeconfigFile();
     if (filePath) {
-      useLayoutStore.getState().addKuberneterKubeconfig(filePath);
+      useKuberneterStore.getState().addKuberneterKubeconfig(filePath);
       handleOpenKubeconfig(filePath);
     }
   };
@@ -72,6 +82,11 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
 
   const handleOpenScreenRecorder = () => {
     openTab('screen-recorder', {});
+    close();
+  };
+
+  const handleOpenScreenCapture = () => {
+    openTab('screen-capture', {});
     close();
   };
 
@@ -105,6 +120,12 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
                 name="Screen Recorder"
                 description="Record and export your screen."
                 onClick={handleOpenScreenRecorder}
+              />
+              <ToolRow
+                icon={<CameraIcon size={18} />}
+                name="Screen Capture"
+                description="Capture a still image from your screen."
+                onClick={handleOpenScreenCapture}
               />
               <ToolRow
                 icon={<Folder size={18} />}

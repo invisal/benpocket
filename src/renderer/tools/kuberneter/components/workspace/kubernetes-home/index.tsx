@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { ActionsPanel } from './ActionsPanel';
 import { RecentList } from './RecentList';
 import { ConfigTree } from './ConfigTree';
@@ -7,8 +8,9 @@ import { PasteConfigModal } from './PasteConfigModal';
 import { Server, AlertCircle } from 'lucide-react';
 
 export const KuberneterHomeView: React.FC = () => {
+  const { activeInstanceId } = useLayoutStore();
+
   const {
-    activeInstanceId,
     kuberneterKubeconfigs,
     addKuberneterKubeconfig,
     removeKuberneterKubeconfig,
@@ -19,7 +21,7 @@ export const KuberneterHomeView: React.FC = () => {
     setKuberneterInstanceConfigPath,
     kuberneterRecentConnections,
     addKuberneterRecentConnection
-  } = useLayoutStore();
+  } = useKuberneterStore();
 
   const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || 'default';
   const activeContext = kuberneterInstanceCluster[activeInstanceId] || '';
@@ -64,7 +66,7 @@ export const KuberneterHomeView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-6 min-h-0 min-w-0 bg-surface text-zinc-300">
+    <div className="flex-1 flex flex-col gap-6 min-h-0 min-w-0 bg-surface text-zinc-300 p-4">
       {/* Header Info */}
       <div className="shrink-0 border-b border-border-dark pb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2 font-sans tracking-tight">

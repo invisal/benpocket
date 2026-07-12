@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useKuberneterStore } from '../../tools/kuberneter/store/kuberneter.store';
 
 export interface Tab {
   id: string;
@@ -14,13 +15,6 @@ export interface ActivityInstance {
   id: string;
   type: 'kuberneter' | 'postman' | 'screenrecorder';
   title: string;
-}
-
-export interface RecentConnection {
-  contextName: string;
-  configPath: string;
-  server?: string;
-  timestamp: number;
 }
 
 interface LayoutState {
@@ -38,22 +32,6 @@ interface LayoutState {
   activeInstances: ActivityInstance[];
   activeInstanceId: string | 'home';
 
-  // Per-instance K8s config states
-  kuberneterInstanceCluster: Record<string, string>;
-  kuberneterInstanceNamespace: Record<string, string>;
-  kuberneterInstanceResource: Record<string, string>;
-  kuberneterInstanceConfigPath: Record<string, string>;
-  setKuberneterInstanceConfigPath: (instanceId: string, path: string) => void;
-
-  // Managed kubeconfigs list (persisted)
-  kuberneterKubeconfigs: string[];
-  addKuberneterKubeconfig: (filePath: string) => void;
-  removeKuberneterKubeconfig: (filePath: string) => void;
-
-  // Recent connections history (persisted)
-  kuberneterRecentConnections: RecentConnection[];
-  addKuberneterRecentConnection: (contextName: string, configPath: string, server?: string) => void;
-
   // Layout Toggle Actions
   toggleLeftPanel: () => void;
   setLeftPanelWidth: (width: number) => void;
@@ -67,11 +45,6 @@ interface LayoutState {
   closeTab: (id: string) => void;
   setActiveTabId: (id: string | null) => void;
   renameTab: (id: string, title: string) => void;
-
-  // Kuberneter K8s Actions per instance
-  setKuberneterInstanceCluster: (instanceId: string, cluster: string) => void;
-  setKuberneterInstanceNamespace: (instanceId: string, ns: string) => void;
-  setKuberneterInstanceResource: (instanceId: string, resource: string) => void;
 
   // Instance Lifecycle Actions
   addActivityInstance: (
@@ -98,13 +71,6 @@ export const useLayoutStore = create<LayoutState>()(
 
       activeInstances: [],
       activeInstanceId: 'home',
-
-      kuberneterInstanceCluster: {},
-      kuberneterInstanceNamespace: {},
-      kuberneterInstanceResource: {},
-      kuberneterInstanceConfigPath: {},
-      kuberneterKubeconfigs: [],
-      kuberneterRecentConnections: [],
 
       toggleLeftPanel: () => set((state) => ({ isLeftPanelOpen: !state.isLeftPanelOpen })),
       setLeftPanelWidth: (width) => set({ leftPanelWidth: Math.max(150, Math.min(width, 600)) }),
@@ -155,59 +121,6 @@ export const useLayoutStore = create<LayoutState>()(
           openTabs: state.openTabs.map((t) => (t.id === id ? { ...t, title } : t))
         })),
 
-      setKuberneterInstanceCluster: (instanceId, cluster) =>
-        set((state) => ({
-          kuberneterInstanceCluster: { ...state.kuberneterInstanceCluster, [instanceId]: cluster }
-        })),
-
-      setKuberneterInstanceNamespace: (instanceId, ns) =>
-        set((state) => ({
-          kuberneterInstanceNamespace: { ...state.kuberneterInstanceNamespace, [instanceId]: ns }
-        })),
-
-      setKuberneterInstanceResource: (instanceId, resource) =>
-        set((state) => ({
-          kuberneterInstanceResource: {
-            ...state.kuberneterInstanceResource,
-            [instanceId]: resource
-          }
-        })),
-
-      setKuberneterInstanceConfigPath: (instanceId, path) =>
-        set((state) => ({
-          kuberneterInstanceConfigPath: {
-            ...state.kuberneterInstanceConfigPath,
-            [instanceId]: path
-          }
-        })),
-
-      addKuberneterKubeconfig: (filePath) =>
-        set((state) => {
-          if (state.kuberneterKubeconfigs.includes(filePath)) return state;
-          return { kuberneterKubeconfigs: [...state.kuberneterKubeconfigs, filePath] };
-        }),
-
-      removeKuberneterKubeconfig: (filePath) =>
-        set((state) => ({
-          kuberneterKubeconfigs: state.kuberneterKubeconfigs.filter((p) => p !== filePath)
-        })),
-
-      addKuberneterRecentConnection: (contextName, configPath, server) =>
-        set((state) => {
-          const filtered = state.kuberneterRecentConnections.filter(
-            (c) => !(c.contextName === contextName && c.configPath === configPath)
-          );
-          const newRecent: RecentConnection = {
-            contextName,
-            configPath,
-            server,
-            timestamp: Date.now()
-          };
-          return {
-            kuberneterRecentConnections: [newRecent, ...filtered].slice(0, 10)
-          };
-        }),
-
       addActivityInstance: (type, customId, context) =>
         set((state) => {
           const instanceId = customId || `${type}-${Date.now()}`;
@@ -247,30 +160,18 @@ export const useLayoutStore = create<LayoutState>()(
             ...(type === 'kuberneter' ? { meta: { resource: 'home' } } : {})
           };
 
+          // IMPORTANT: If this is a kuberneter instance, we initialize its private store
+          if (type === 'kuberneter') {
+            useKuberneterStore.getState().initInstance(instanceId, context);
+          }
+
           return {
             activeInstances: [...state.activeInstances, newInstance],
             activeInstanceId: instanceId,
             activeActivity: type,
             openTabs: [...state.openTabs, defaultTab],
             activeTabId: defaultTabId,
-            isLeftPanelOpen: true,
-            // Pre-populate K8s defaults for Kuberneter instance
-            kuberneterInstanceCluster: {
-              ...state.kuberneterInstanceCluster,
-              [instanceId]: context?.cluster || ''
-            },
-            kuberneterInstanceConfigPath: {
-              ...state.kuberneterInstanceConfigPath,
-              [instanceId]: context?.configPath || 'default'
-            },
-            kuberneterInstanceNamespace: {
-              ...state.kuberneterInstanceNamespace,
-              [instanceId]: context?.namespace || 'All Namespaces'
-            },
-            kuberneterInstanceResource: {
-              ...state.kuberneterInstanceResource,
-              [instanceId]: context?.cluster ? 'overview' : 'home'
-            }
+            isLeftPanelOpen: true
           };
         }),
 
@@ -350,13 +251,7 @@ export const useLayoutStore = create<LayoutState>()(
         activeTabId: state.activeTabId,
         activeInstances: state.activeInstances,
         activeInstanceId: state.activeInstanceId,
-        activeActivity: state.activeActivity,
-        kuberneterKubeconfigs: state.kuberneterKubeconfigs,
-        kuberneterInstanceCluster: state.kuberneterInstanceCluster,
-        kuberneterInstanceNamespace: state.kuberneterInstanceNamespace,
-        kuberneterInstanceResource: state.kuberneterInstanceResource,
-        kuberneterInstanceConfigPath: state.kuberneterInstanceConfigPath,
-        kuberneterRecentConnections: state.kuberneterRecentConnections
+        activeActivity: state.activeActivity
       })
     }
   )

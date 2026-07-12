@@ -2,7 +2,7 @@ import React from 'react';
 import { useWorkspaceResources } from './useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
 import { Pods } from './pods/Pods';
-import { DeploymentsTable } from './DeploymentsTable';
+import { Deployments } from './deployments/Deployments';
 import { ServicesTable } from './ServicesTable';
 import { ConfigMapsTable } from './ConfigMapsTable';
 import { Application } from './application/Application';
@@ -76,7 +76,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           )}
 
           {resource === 'deployments' && (
-            <DeploymentsTable
+            <Deployments
               deploysData={deploysData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />

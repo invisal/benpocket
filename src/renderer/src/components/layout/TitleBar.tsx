@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Minus, Square, Copy, Sun, Moon } from 'lucide-react';
 import { useLayoutStore } from '../../store/layout.store';
+import { useKuberneterStore } from '../../../tools/kuberneter/store/kuberneter.store';
 import { useThemeStore } from '../../store/theme.store';
 import { useToolTabs } from '../providers/ToolProvider';
 import { KubeTitleBar } from '../../../tools/kuberneter/components/kubeTitleBar';
@@ -15,9 +16,10 @@ export const TitleBar: React.FC = () => {
     isRightPanelOpen,
     toggleRightPanel,
     isBottomPanelOpen,
-    toggleBottomPanel,
-    kuberneterInstanceCluster
+    toggleBottomPanel
   } = useLayoutStore();
+
+  const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
 
   const { theme, toggleTheme } = useThemeStore();
 

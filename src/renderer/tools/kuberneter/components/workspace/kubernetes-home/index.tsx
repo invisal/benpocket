@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { ActionsPanel } from './ActionsPanel';
 import { RecentList } from './RecentList';
 import { ConfigTree } from './ConfigTree';
@@ -7,8 +8,9 @@ import { PasteConfigModal } from './PasteConfigModal';
 import { Server, AlertCircle } from 'lucide-react';
 
 export const KuberneterHomeView: React.FC = () => {
+  const { activeInstanceId } = useLayoutStore();
+  
   const {
-    activeInstanceId,
     kuberneterKubeconfigs,
     addKuberneterKubeconfig,
     removeKuberneterKubeconfig,
@@ -19,7 +21,7 @@ export const KuberneterHomeView: React.FC = () => {
     setKuberneterInstanceConfigPath,
     kuberneterRecentConnections,
     addKuberneterRecentConnection
-  } = useLayoutStore();
+  } = useKuberneterStore();
 
   const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || 'default';
   const activeContext = kuberneterInstanceCluster[activeInstanceId] || '';

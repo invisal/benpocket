@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { useToolTabs } from '../../../../../src/components/providers/ToolProvider';
 import { Input } from '../../../../../src/components/ui/Input';
 import {
@@ -56,7 +57,8 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
   onConnect,
   onRemoveConfig
 }) => {
-  const { addKuberneterRecentConnection, addActivityInstance } = useLayoutStore();
+  const { addActivityInstance } = useLayoutStore();
+  const { addKuberneterRecentConnection } = useKuberneterStore();
 
   const { openTab } = useToolTabs();
 

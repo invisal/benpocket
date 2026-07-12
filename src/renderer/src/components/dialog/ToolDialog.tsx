@@ -13,6 +13,7 @@ import { cn } from 'cnfast';
 import { Dialog } from '../ui/Dialog';
 import { useToolTabs } from '../providers/ToolProvider';
 import { useLayoutStore } from '../../store/layout.store';
+import { useKuberneterStore } from '../../../tools/kuberneter/store/kuberneter.store';
 import { useWorkspacesStore } from '../../../tools/http-client/store/workspaces.store';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
 
@@ -28,7 +29,7 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [draftWorkspaceName, setDraftWorkspaceName] = useState('');
   const { tabs, selectTab, openTab } = useToolTabs();
-  const kuberneterKubeconfigs = useLayoutStore((s) => s.kuberneterKubeconfigs);
+  const kuberneterKubeconfigs = useKuberneterStore((s) => s.kuberneterKubeconfigs);
   const workspaces = useWorkspacesStore((s) => s.workspaces);
   const workspacesLoaded = useWorkspacesStore((s) => s.isLoaded);
   const loadWorkspaces = useWorkspacesStore((s) => s.load);
@@ -57,7 +58,7 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
   const handleAddKubeconfigFile = async () => {
     const filePath = await window.kuberneter.selectKubeconfigFile();
     if (filePath) {
-      useLayoutStore.getState().addKuberneterKubeconfig(filePath);
+      useKuberneterStore.getState().addKuberneterKubeconfig(filePath);
       handleOpenKubeconfig(filePath);
     }
   };

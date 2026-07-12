@@ -33,6 +33,14 @@ export interface KuberneterApi {
     items?: { name: string; cpu: string; cpuPct: string; memory: string; memoryPct: string }[];
     error?: string;
   }>;
+  getTopPods: (
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    namespace?: string
+  ) => Promise<{
+    items?: { namespace: string; name: string; cpu: string; memory: string }[];
+    error?: string;
+  }>;
 }
 
 export const kuberneterApi: KuberneterApi = {
@@ -49,5 +57,7 @@ export const kuberneterApi: KuberneterApi = {
       namespace
     ),
   getTopNodes: (kubeconfigPath, contextName) =>
-    ipcRenderer.invoke('kuberneter:get-top-nodes', kubeconfigPath, contextName)
+    ipcRenderer.invoke('kuberneter:get-top-nodes', kubeconfigPath, contextName),
+  getTopPods: (kubeconfigPath, contextName, namespace) =>
+    ipcRenderer.invoke('kuberneter:get-top-pods', kubeconfigPath, contextName, namespace)
 };

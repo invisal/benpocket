@@ -133,20 +133,28 @@ class ExportManager {
           height: innerRect.height,
           frameRate: options.frameRate,
           cropRect: segmentCropRect,
-          speed: segment.speed,
-          startFrameIndex: frameIndex
+          speed: segment.speed
         });
         decoderCommands.push(decoder);
         decoder.on('error', (err) => {
           fatalError = err instanceof Error ? err : new Error(String(err));
         });
 
+        // Zoom keyframes and the recorded cursor/click paths (project.zoomKeyframes,
+        // project.cursorPath, project.clickPath) are authored against the *source*
+        // recording's raw timeline, same as the live preview scrubbing the raw
+        // <video> element -- see ZoomTrack.tsx. So each frame must be composited at
+        // its real source-ms position within this segment, not its position in the
+        // ripple-edited output stream, or the animation/cursor drift out of sync
+        // with the content as soon as anything's been cut.
+        let segmentFrameIndex = 0;
         for await (const frame of frames) {
           if (fatalError) throw fatalError;
-          const atMs = frame.index * msPerFrame;
+          const atMs = segment.range.startMs + segmentFrameIndex * msPerFrame * segment.speed;
           const composited = compositor.composite(options.project, atMs, frame.buffer);
           await writeFrame(encoder.stdin, composited);
 
+          segmentFrameIndex++;
           frameIndex++;
           const percent = Math.min(50, Math.round((frameIndex / totalFrames) * 50));
           if (percent !== lastRenderPercent) {

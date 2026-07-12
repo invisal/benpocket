@@ -236,6 +236,17 @@ export function PreviewStage({
     ? sourceResolution.width / sourceResolution.height
     : undefined;
 
+  // Same REFERENCE_CANVAS_WIDTH-relative scaling convention as cursor/webcam
+  // sizing, so corner radius and shadow read as the same physical size in
+  // the editor as they do at export -- see frame-compositor.ts's `composite`
+  // (canvas clip + shadow at `innerRect`) for the export-side mirror of this.
+  const previewScale = stageWidthPx > 0 ? stageWidthPx / REFERENCE_CANVAS_WIDTH : 1;
+  const contentBorderRadius = background.cornerRadius * previewScale;
+  const contentBoxShadow =
+    background.shadow > 0
+      ? `0 ${Math.round(background.shadow * 0.3 * previewScale)}px ${Math.round(background.shadow * 0.7 * previewScale)}px rgba(0, 0, 0, ${(0.15 + (background.shadow / 100) * 0.45).toFixed(2)})`
+      : 'none';
+
   return (
     <div className="m-6 flex flex-1 items-center justify-center overflow-hidden">
       <div
@@ -265,11 +276,13 @@ export function PreviewStage({
             ref={videoWrapperRef}
             onClick={handlePreviewClick}
             className={cn(
-              'relative max-h-full max-w-full rounded-lg overflow-hidden shadow-2xl shadow-black/50',
+              'relative max-h-full max-w-full overflow-hidden',
               armedKeyframeId && 'cursor-crosshair'
             )}
             style={{
               aspectRatio: sourceAspectRatio,
+              borderRadius: contentBorderRadius,
+              boxShadow: contentBoxShadow,
               transform: `translate(${zoomShift.x * 100}%, ${zoomShift.y * 100}%) scale(${zoomDepth})`,
               transformOrigin: `${zoomFocal.x * 100}% ${zoomFocal.y * 100}%`
             }}

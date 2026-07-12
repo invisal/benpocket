@@ -167,6 +167,32 @@ function drawBackground(
   }
 }
 
+/**
+ * Casts a soft drop shadow from a rounded-rect the size of the content
+ * (`innerRect`), matching the live preview's `box-shadow` on the video
+ * wrapper (see PreviewStage.tsx's `contentBoxShadow`) -- drawn *before* the
+ * zoom transform so the shadow stays anchored to the content's rest
+ * position rather than panning or scaling along with it.
+ */
+function drawContentShadow(
+  ctx: CanvasRenderingContext2D,
+  rect: InnerRect,
+  radiusPx: number,
+  intensity: number,
+  scale: number
+): void {
+  if (intensity <= 0) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(rect.x, rect.y, rect.width, rect.height, radiusPx);
+  ctx.shadowColor = `rgba(0, 0, 0, ${(0.15 + (intensity / 100) * 0.45).toFixed(2)})`;
+  ctx.shadowBlur = intensity * 0.7 * scale;
+  ctx.shadowOffsetY = intensity * 0.3 * scale;
+  ctx.fillStyle = '#000000';
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawWebcamPlaceholder(
   ctx: CanvasRenderingContext2D,
   outputWidth: number,
@@ -437,6 +463,13 @@ export class FrameCompositor {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     drawBackground(ctx, outputWidth, outputHeight, project.background, this.backgroundImage);
 
+    // Authored in REFERENCE_CANVAS_WIDTH units (same convention as cursor/
+    // webcam sizing) so it reads as the same physical size regardless of
+    // export resolution.
+    const referenceScale = outputWidth / REFERENCE_CANVAS_WIDTH;
+    const cornerRadiusPx = project.background.cornerRadius * referenceScale;
+    drawContentShadow(ctx, innerRect, cornerRadiusPx, project.background.shadow, referenceScale);
+
     const { depth, focal, shift } = resolveZoom(
       atMs,
       project.zoomKeyframes,
@@ -457,6 +490,19 @@ export class FrameCompositor {
     ctx.translate(focalPx.x, focalPx.y);
     ctx.scale(depth, depth);
     ctx.translate(-focalPx.x, -focalPx.y);
+
+    // Clip to the content's rounded-rect *after* the zoom transform above,
+    // using the same (un-zoomed) innerRect coordinates -- the clip path
+    // itself then rides along with the current transform, growing/panning
+    // with the zoomed content exactly like the preview, where border-radius
+    // lives on the same element that's `transform: scale()`'d (see
+    // PreviewStage.tsx's videoWrapperRef) rather than on a separate fixed
+    // frame. Clipping at the *pre*-zoom rect here would instead crop zoomed
+    // content back into the tiny original frame, cutting off exactly what
+    // the preview lets bleed outward into the padding.
+    ctx.beginPath();
+    ctx.roundRect(innerRect.x, innerRect.y, innerRect.width, innerRect.height, cornerRadiusPx);
+    ctx.clip();
 
     // putImageData ignores the current transform, so the decoded frame is
     // written to an untransformed scratch canvas first, then drawImage'd

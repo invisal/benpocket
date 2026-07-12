@@ -43,7 +43,9 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
       kind: backgroundState.kind,
       value: backgroundState.value,
       padding: backgroundState.padding,
-      blur: backgroundState.blur
+      blur: backgroundState.blur,
+      cornerRadius: backgroundState.cornerRadius,
+      shadow: backgroundState.shadow
     },
     cursor: {
       visible: cursorState.visible,

@@ -82,13 +82,6 @@ export interface DecodeFramesOptions {
   cropRect?: PixelCropRect;
   /** Playback rate for this clip; `setpts=PTS/speed` rescales output timing. */
   speed: ClipSpeed;
-  /**
-   * `DecodedFrame.index` continues from here instead of restarting at 0 --
-   * export-manager.ts calls this once per kept segment, and frame indices
-   * need to stay monotonic across all of them so zoom keyframes (authored
-   * against the *output* timeline) resolve correctly.
-   */
-  startFrameIndex?: number;
 }
 
 export interface DecodeFramesResult {
@@ -103,8 +96,7 @@ export interface DecodeFramesResult {
  * opaque, fixed-size rectangle.
  */
 export function decodeFrames(opts: DecodeFramesOptions): DecodeFramesResult {
-  const { sourcePath, trimRange, width, height, frameRate, cropRect, speed, startFrameIndex } =
-    opts;
+  const { sourcePath, trimRange, width, height, frameRate, cropRect, speed } = opts;
   const startSec = trimRange.startMs / 1000;
   const durationSec = (trimRange.endMs - trimRange.startMs) / 1000;
 
@@ -134,7 +126,7 @@ export function decodeFrames(opts: DecodeFramesOptions): DecodeFramesResult {
     .outputOptions(['-pix_fmt', 'rgba']);
 
   const stdout = command.pipe() as unknown as NodeJS.ReadableStream;
-  const splitter = new FrameSplitter(width * height * 4, startFrameIndex);
+  const splitter = new FrameSplitter(width * height * 4);
   stdout.pipe(splitter);
 
   return { frames: splitter as unknown as AsyncIterable<DecodedFrame>, command };

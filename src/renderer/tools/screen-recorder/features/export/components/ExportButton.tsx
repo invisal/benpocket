@@ -24,7 +24,7 @@ export function ExportButton(): JSX.Element {
       </button>
 
       {status === 'error' && error && (
-        <p className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-red-500/30 bg-black/90 p-2 text-[11px] text-red-400 shadow-lg">
+        <p className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-red-500/30 bg-surface-raised p-2 text-[11px] text-red-400 shadow-lg">
           {error}
         </p>
       )}

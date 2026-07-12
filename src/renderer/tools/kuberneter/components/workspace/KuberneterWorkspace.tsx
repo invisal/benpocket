@@ -1,7 +1,7 @@
 import React from 'react';
 import { useWorkspaceResources } from './useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
-import { PodsTable } from './PodsTable';
+import { Pods } from './pods/Pods';
 import { DeploymentsTable } from './DeploymentsTable';
 import { ServicesTable } from './ServicesTable';
 import { ConfigMapsTable } from './ConfigMapsTable';
@@ -45,7 +45,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   }
 
   return (
-    <div className="flex-1 flex flex-col gap-4 min-h-0">
+    <div className="flex-1 flex flex-col gap-4 min-h-0 min-w-0">
       {isLoading && (
         <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
           <Loader2 className="size-6 text-accent animate-spin" />
@@ -72,10 +72,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'overview' && <ClusterOverview />}
 
           {resource === 'pods' && (
-            <PodsTable
-              podsData={podsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <Pods podsData={podsData} kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'deployments' && (

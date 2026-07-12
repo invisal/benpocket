@@ -46,11 +46,28 @@ export const ScreenRecorderSidebar: React.FC = () => {
     setError(null);
     setLiveCounts({ cursorCount: 0, clickCount: 0 });
     try {
-      captureRef.current = await startCapture({ source: selectedSource, audio });
+      // `selectedSource.displayBounds` for a window source (currently just
+      // the Simulator) was resolved via AppleScript whenever the source list
+      // was last loaded -- possibly well before this click, during which the
+      // window could have moved or resized. Re-resolve it right now, as
+      // close to the actual capture/tracking start as possible, so both the
+      // video's capture-size constraint and the cursor normalization rect
+      // agree with where the window actually is.
+      const source =
+        selectedSource.type === 'window'
+          ? {
+              ...selectedSource,
+              displayBounds:
+                (await window.screenRecorder.simulator.refreshWindowBounds().catch(() => null)) ??
+                selectedSource.displayBounds
+            }
+          : selectedSource;
+
+      captureRef.current = await startCapture({ source, audio });
       // Uses the recorder's *actual* startedAt (not a pre-call guess) so
       // cursor samples line up exactly with the video's own t=0.
       cursorCaptureRef.current = await startCursorCapture(
-        selectedSource,
+        source,
         captureRef.current.startedAt,
         setLiveCounts
       );

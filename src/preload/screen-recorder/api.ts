@@ -76,6 +76,25 @@ export const screenRecorderApi = {
   dialog: {
     showSaveExportPath: (defaultFileName: string, format: ExportFormat): Promise<string | null> =>
       ipcRenderer.invoke(IpcChannels.ShowSaveExportDialog, defaultFileName, format)
+  },
+  simulator: {
+    /** Name of the currently booted iOS Simulator device, or null if none is booted / Xcode Command Line Tools aren't installed. */
+    getBootedName: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.GetBootedSimulator),
+    /** Fresh AppleScript-resolved bounds of the Simulator window right now, or null if none is booted / its window isn't open. */
+    refreshWindowBounds: (): Promise<CaptureSource['displayBounds'] | null> =>
+      ipcRenderer.invoke(IpcChannels.RefreshSimulatorWindowBounds)
+  },
+  tray: {
+    onOpenRecordPicker: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.TrayOpenRecordPicker, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.TrayOpenRecordPicker, listener);
+    },
+    onSourceSelected: (callback: (source: CaptureSource) => void): (() => void) => {
+      const listener = (_event: unknown, source: CaptureSource): void => callback(source);
+      ipcRenderer.on(IpcChannels.TraySourceSelected, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.TraySourceSelected, listener);
+    }
   }
 };
 

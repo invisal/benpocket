@@ -15,10 +15,15 @@ import { registerEnvironmentHandlers } from './http-client/ipc/environments';
 import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
+import { createRecorderTray } from './screen-recorder/windows/tray';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
 
-function createWindow(): void {
+// Kept alive for the app's lifetime -- Electron destroys the OS-level tray
+// icon if the `Tray` instance is garbage collected.
+let tray: ReturnType<typeof createRecorderTray> | null = null;
+
+function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -50,6 +55,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
+
+  return mainWindow;
 }
 
 // This method will be called when Electron has finished
@@ -175,7 +182,8 @@ app.whenReady().then(() => {
   // File Explorer tool: directory listing, native file icons, open-with-default-app
   registerFileExplorerHandlers();
 
-  createWindow();
+  const mainWindow = createWindow();
+  tray = createRecorderTray(icon, mainWindow);
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -192,6 +200,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  tray?.destroy();
 });
 
 // In this file you can include the rest of your app's specific main process

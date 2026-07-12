@@ -5,6 +5,7 @@ import { Pods } from './pods/Pods';
 import { Deployments } from './deployments/Deployments';
 import { DaemonSets } from './daemonsets/DaemonSets';
 import { StatefulSets } from './statefulsets/StatefulSets';
+import { ReplicaSets } from './replicasets/ReplicaSets';
 import { ServicesTable } from './ServicesTable';
 import { ConfigMapsTable } from './ConfigMapsTable';
 import { Application } from './application/Application';
@@ -26,6 +27,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     deploysData,
     daemonSetsData,
     statefulSetsData,
+    replicaSetsData,
     servicesData,
     configMapsData,
     applicationsData,
@@ -96,6 +98,13 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'statefulsets' && (
             <StatefulSets
               statefulSetsData={statefulSetsData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'replicasets' && (
+            <ReplicaSets
+              replicaSetsData={replicaSetsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}

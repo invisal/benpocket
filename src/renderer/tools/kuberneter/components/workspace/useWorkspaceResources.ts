@@ -9,6 +9,7 @@ import { ApplicationData } from '../../types/ApplicationData';
 import { NodeData } from '../../types/NodeData';
 import { DaemonSetData } from '../../types/DaemonSetData';
 import { StatefulSetData } from '../../types/StatefulSetData';
+import { ReplicaSetData } from '../../types/ReplicaSetData';
 import { K8sResource } from '../../types/K8sResource';
 import { TopNodeItem } from '../../types/TopNodeItem';
 import { formatAge } from '../../ults/formatAge';
@@ -35,6 +36,7 @@ export function useWorkspaceResources(resource: string) {
   const [deploysData, setDeploysData] = useState<DeployData[]>([]);
   const [daemonSetsData, setDaemonSetsData] = useState<DaemonSetData[]>([]);
   const [statefulSetsData, setStatefulSetsData] = useState<StatefulSetData[]>([]);
+  const [replicaSetsData, setReplicaSetsData] = useState<ReplicaSetData[]>([]);
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
   const [configMapsData, setConfigMapsData] = useState<ConfigMapData[]>([]);
   const [applicationsData, setApplicationsData] = useState<ApplicationData[]>([]);
@@ -58,6 +60,7 @@ export function useWorkspaceResources(resource: string) {
       else if (resource === 'deployments') queryResource = 'deployments';
       else if (resource === 'daemonsets') queryResource = 'daemonsets';
       else if (resource === 'statefulsets') queryResource = 'statefulsets';
+      else if (resource === 'replicasets') queryResource = 'replicasets';
       else if (resource === 'services') queryResource = 'services';
       else if (resource === 'configmaps') queryResource = 'configmaps';
       else if (resource === 'apps') queryResource = 'deployments,statefulsets,daemonsets';
@@ -291,6 +294,28 @@ export function useWorkspaceResources(resource: string) {
           };
         });
         setStatefulSetsData(transformed);
+      } else if (resource === 'replicasets') {
+        const transformed = items.map((item) => {
+          const name = item.metadata?.name || '';
+          const ns = item.metadata?.namespace || '';
+          const desired = item.spec?.replicas ?? 0;
+          const current = item.status?.replicas ?? 0;
+          const ready = item.status?.readyReplicas ?? 0;
+          const hasWarning = desired > 0 && ready < desired;
+
+          return {
+            id: `${ns}/${name}`,
+            name,
+            ns,
+            desired,
+            current,
+            ready,
+            age: formatAge(item.metadata?.creationTimestamp || ''),
+            rawAge: new Date(item.metadata?.creationTimestamp || Date.now()).getTime().toString(),
+            hasWarning
+          };
+        });
+        setReplicaSetsData(transformed);
       } else if (resource === 'services') {
         const transformed = items.map((item) => {
           const ports = item.spec?.ports?.map((p) => `${p.port}/${p.protocol}`).join(', ') || '';
@@ -507,6 +532,7 @@ export function useWorkspaceResources(resource: string) {
     deploysData,
     daemonSetsData,
     statefulSetsData,
+    replicaSetsData,
     servicesData,
     configMapsData,
     applicationsData,

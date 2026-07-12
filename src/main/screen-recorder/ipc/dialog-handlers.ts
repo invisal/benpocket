@@ -28,12 +28,14 @@ export function registerDialogHandlers(): void {
   );
 
   ipcMain.handle(IpcChannels.CopyScreenshot, async (event, data: ArrayBuffer): Promise<void> => {
+    // Screen Capture tool only.
     await copyScreenshotToClipboard(event.sender, data);
   });
 
   ipcMain.handle(
     IpcChannels.CaptureScreenshot,
     async (event, request: ScreenshotCaptureRequest): Promise<Buffer> => {
+      // Screen Capture tool only — atomic hide/grab/restore for full-display stills.
       const win = BrowserWindow.fromWebContents(event.sender);
       return captureScreenPngWithHide(win, request);
     }
@@ -42,6 +44,7 @@ export function registerDialogHandlers(): void {
   ipcMain.handle(
     IpcChannels.PickOsCaptureSource,
     async (_event, options?: { monitorOnly?: boolean }): Promise<OsPickerSource | null> => {
+      // Screen Capture region on Linux Wayland only (no-op elsewhere).
       return pickOsCaptureSource(options?.monitorOnly ?? false);
     }
   );
@@ -49,6 +52,7 @@ export function registerDialogHandlers(): void {
   ipcMain.handle(
     IpcChannels.SaveScreenshot,
     async (event, data: ArrayBuffer, defaultFileName: string): Promise<string | null> => {
+      // Screen Capture tool only.
       const win = BrowserWindow.fromWebContents(event.sender);
       const options = {
         defaultPath: join(app.getPath('pictures'), defaultFileName),

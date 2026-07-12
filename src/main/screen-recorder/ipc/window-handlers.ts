@@ -14,10 +14,12 @@ export function registerWindowHandlers(): void {
   });
 
   ipcMain.handle(IpcChannels.WindowHide, async (event, options?: { mainOnly?: boolean }) => {
+    // Screen Capture only — hide before screenshot / region overlay. TitleBar does not call this.
     await hideCaptureWindow(windowFromEvent(event), options);
   });
 
   ipcMain.handle(IpcChannels.WindowRestore, async (event, options?: { focus?: boolean }) => {
+    // Screen Capture only — restore after screenshot / region overlay.
     await restoreCaptureWindow(windowFromEvent(event), options);
   });
 

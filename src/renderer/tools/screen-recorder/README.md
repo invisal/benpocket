@@ -66,13 +66,15 @@ Renderer code talks to the main process through `window.screenRecorder` (exposed
 | `project.*`               | `ipc/project-handlers.ts` (open/save — currently stubs, no real persistence)                                                    |
 | `export.*`                | `export/export-manager.ts` → `frame-compositor.ts` / `video-encoder.ts` / `video-decoder.ts` (ffmpeg-backed)                    |
 | `settings.*`              | `store/settings-store.ts` (electron-store; pinned to `^8.x` — v9+ is ESM-only and breaks under electron-vite's CJS main bundle) |
-| `window.*`                | generic minimize/maximize/close, forwarded from `ipc/window-handlers.ts`                                                        |
+| `window.*`                | TitleBar minimize/maximize/close (`ipc/window-handlers.ts`); `hide`/`restore` added for Screen Capture only                     |
 | `permissions.*`           | `permissions/screen-recording-permission.ts` (macOS screen-recording permission check)                                          |
 | `dialog.*`                | `ipc/dialog-handlers.ts` (native save-file dialog for export)                                                                   |
+| `screenshot.*`            | **Screen Capture tool only** — PNG capture, clipboard, save, region overlay, Wayland portal pick (see `tools/screen-capture/`)  |
+| `regionSelect.*`          | **Screen Capture tool only** — IPC from the `region-select.html` overlay entry                                                  |
 
-The actual capture (`getUserMedia` + `MediaRecorder`) happens in the **renderer** (`features/recording/engine/capture-engine.ts`) since those are browser APIs with no main-process equivalent; the main process only persists the finished blob and drives export.
+The actual capture (`getUserMedia` + `MediaRecorder`) happens in the **renderer** (`features/recording/engine/capture-engine.ts`) since those are browser APIs with no main-process equivalent; the main process only persists the finished blob and drives export. Screen Recorder does **not** call `getDisplayMedia` — the Wayland `display-media-handler.ts` hook (Screen Capture only) does not affect recording.
 
-CSP is set dynamically per-response from `main/screen-recorder/security/content-security-policy.ts` (dev vs. prod policy, `media-src blob:` for the recording preview) — `index.html` intentionally has **no** CSP `<meta>` tag, because a static tag would combine restrictively with that header and block what it's meant to allow.
+CSP is set dynamically per-response from `main/screen-recorder/security/content-security-policy.ts` (dev vs. prod policy, `media-src blob:` for the recording preview, `img-src data: blob:` for source thumbnails and screenshot previews) — `index.html` intentionally has **no** CSP `<meta>` tag, because a static tag would combine restrictively with that header and block what it's meant to allow.
 
 ## Editor tool panel
 

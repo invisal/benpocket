@@ -65,6 +65,7 @@ app.whenReady().then(() => {
   // (Vite HMR needs 'unsafe-eval' + a websocket connect-src) and production,
   // and needs media-src blob: for ScreenRecorder's recording preview.
   applyContentSecurityPolicy();
+  // Screen Capture (Wayland): PipeWire portal for getDisplayMedia. No-op on other platforms.
   registerDisplayMediaHandler();
 
   // Default open or close DevTools by F12 in development

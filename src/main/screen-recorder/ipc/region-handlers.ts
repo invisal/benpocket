@@ -7,5 +7,8 @@ import {
 
 export function registerRegionHandlers(): void {
   registerRegionSelectListeners();
-  ipcMain.handle(IpcChannels.SelectCaptureRegion, () => selectCaptureRegion());
+  ipcMain.handle(IpcChannels.SelectCaptureRegion, () => {
+    // Screen Capture tool only — fullscreen drag-to-select overlay.
+    return selectCaptureRegion();
+  });
 }

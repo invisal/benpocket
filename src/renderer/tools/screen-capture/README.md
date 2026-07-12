@@ -191,6 +191,23 @@ Renderer helper: `src/renderer/src/lib/notify.ts` — `notifySuccess()` / `notif
 
 IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:capture`, `screenshot:pick-os-source`, `screenshot:copy`, `screenshot:save`, `screenshot:select-region`, `region-select:complete`, `region-select:cancel`, `notification:show`, `window:hide`, `window:restore`.
 
+## Impact on other CraftBox tools
+
+Screen Capture lives under `tools/screen-capture/` but reuses the **`window.screenRecorder`** preload namespace and some main-process modules from Screen Recorder. Changes are additive unless noted.
+
+| Shared surface                                   | Used by Screen Capture                   | Used by Screen Recorder / others                          | Cross-tool risk                                                                                     |
+| ------------------------------------------------ | ---------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `recording.getCaptureSources`                    | Yes (in-app picker)                      | Yes — `SourcePicker.tsx`                                  | **None** — `screen-source-provider.ts` unchanged; same listing both tools already shared            |
+| `getUserMedia` + `chromeMediaSourceId`           | Window stills, Wayland stream grab       | Video recording (`capture-engine.ts`)                     | **None** — different code paths; Screen Recorder never calls `getDisplayMedia`                      |
+| `display-media-handler.ts`                       | Wayland full capture (`getDisplayMedia`) | **Not used**                                              | **Isolated** — handler registers **only on Linux Wayland**; macOS/Windows keep Electron defaults    |
+| `screenshot.*` / `pickOsSource` / `selectRegion` | Yes                                      | **Not used**                                              | **None** — IPC exists but no other tool calls it                                                    |
+| `window.hide` / `window.restore`                 | Yes — hide before capture / region       | **Not used** (TitleBar uses minimize/maximize/close only) | **None** — only invoked from Screen Capture renderer                                                |
+| `window.minimize` / `close` / …                  | No                                       | TitleBar (all tools)                                      | **None** — existing handlers untouched                                                              |
+| `content-security-policy.ts`                     | Preview images                           | Recording preview (`blob:` URLs)                          | **Low** — added `blob:` to `img-src` (allows blob preview images app-wide; does not loosen scripts) |
+| `usesOsCapturePicker` on `window.api`            | UI routing                               | **Not read** by other tools                               | **None** — read-only flag                                                                           |
+
+**Screen Recorder on Linux Wayland:** still uses the in-app `getCaptureSources` grid (PipeWire source enumeration is limited — pre-existing constraint, not introduced by Screen Capture). Screen Capture skips the grid on Wayland and uses OS portals instead.
+
 ## Shared global hooks (affects other tools)
 
 Registered once in `src/main/index.ts`:

@@ -290,7 +290,7 @@ export const KuberneterSidebar: React.FC = () => {
             variant="ghost"
             size="sm"
             icon={<NamespaceIcon className="size-3.5 text-zinc-500" />}
-            className="w-full flex items-center justify-between text-[11px] font-sans h-7 px-1.5 hover:bg-border-dark/30"
+            className="w-full flex items-center justify-between text-xs font-sans h-7 px-1.5 hover:bg-border-dark/30"
           >
             <Select.Value />
           </Select.Trigger>

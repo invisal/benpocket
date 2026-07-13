@@ -27,6 +27,17 @@ interface SidebarCategory {
   subItems?: Array<{ id: string; label: string }>;
 }
 
+const NamespaceIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    viewBox="0 0 16 16"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    fill="currentColor"
+  >
+    <path d="M5.78414398,3.49727599 C6.06028398,3.02157176 6.67187398,2.85858768 7.15016398,3.1332348 C7.59429041,3.38826426 7.76731842,3.93097006 7.56867762,4.38807373 L7.51619398,4.49186972 L2.86619398,12.5023475 C2.59004398,12.9780617 1.97845398,13.1410756 1.50016398,12.8663688 C1.05603755,12.6113763 0.883012992,12.0686646 1.08165909,11.6115519 L1.13414398,11.5077538 L5.78414398,3.49727599 Z M8,11 C8.55229,11 9,11.4477 9,12 C9,12.5523 8.55229,13 8,13 C7.44772,13 7,12.5523 7,12 C7,11.4477 7.44772,11 8,11 Z M11.00004,11 C11.55224,11 12.00004,11.4477 12.00004,12 C12.00004,12.5523 11.55224,13 11.00004,13 C10.44774,13 10,12.5523 10,12 C10,11.4477 10.44774,11 11.00004,11 Z M14,11 C14.5522,11 15,11.4477 15,12 C15,12.5523 14.5522,13 14,13 C13.4477,13 13,12.5523 13,12 C13,11.4477 13.4477,11 14,11 Z" />
+  </svg>
+);
+
 function highlightText(text: string, search: string): React.ReactNode {
   if (!search) return text;
   const regex = new RegExp(`(${search.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
@@ -278,6 +289,7 @@ export const KuberneterSidebar: React.FC = () => {
           <Select.Trigger
             variant="ghost"
             size="sm"
+            icon={<NamespaceIcon className="size-3.5 text-zinc-500" />}
             className="w-full flex items-center justify-between text-[11px] font-sans h-7 px-1.5 hover:bg-border-dark/30"
           >
             <Select.Value />

@@ -44,14 +44,23 @@ export const Workspace: React.FC = () => {
         ))}
       </div>
 
-      {/* Editor Content Area */}
-      {activeTab.type === 'kuberneter' && (
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0 min-w-0 bg-surface">
-          <KuberneterWorkspace
-            resource={(activeTab.meta as { resource?: string })?.resource || 'overview'}
-          />
-        </div>
-      )}
+      {/* Kuberneter tabs — all kept mounted, inactive ones hidden via CSS to preserve state */}
+      {filteredTabs
+        .filter((tab) => tab.type === 'kuberneter')
+        .map((tab) => {
+          const isActive = tab.id === activeTabId;
+          const resource = (tab.meta as { resource?: string })?.resource || 'overview';
+          return (
+            <div
+              key={tab.id}
+              className={`flex-1 overflow-hidden flex flex-col min-h-0 min-w-0 bg-surface${isActive ? '' : ' hidden'}`}
+            >
+              <KuberneterWorkspace resource={resource} />
+            </div>
+          );
+        })}
+
+      {/* Other tab types — only render the active one */}
       {(activeTab.type === 'postman' || activeTab.type === 'screenrecorder') && (
         <div className="flex-1 overflow-hidden p-4 flex flex-col min-h-0 min-w-0 bg-surface">
           {activeTab.type === 'postman' && <HttpClientWorkspace />}

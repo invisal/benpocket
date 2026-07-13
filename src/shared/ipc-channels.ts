@@ -21,6 +21,7 @@ export const IpcChannels = {
   SelectCaptureRegion: 'screenshot:select-region',
   RegionSelectComplete: 'region-select:complete',
   RegionSelectCancel: 'region-select:cancel',
+  RegionSelectGetContentOrigin: 'region-select:get-content-origin',
   GetSettings: 'settings:get',
   SetSettings: 'settings:set',
   RegisterShortcut: 'shortcuts:register',

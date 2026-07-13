@@ -103,6 +103,8 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.PickOsCaptureSource, options)
   },
   regionSelect: {
+    getContentOrigin: (): Promise<ScreenRect | null> =>
+      ipcRenderer.invoke(IpcChannels.RegionSelectGetContentOrigin),
     complete: (rect: ScreenRect): void => ipcRenderer.send(IpcChannels.RegionSelectComplete, rect),
     cancel: (): void => ipcRenderer.send(IpcChannels.RegionSelectCancel)
   }

@@ -84,9 +84,33 @@ function onRegionCancel(): void {
   finishSelection(null);
 }
 
+function readContentOrigin(win: BrowserWindow): ScreenRect {
+  const bounds = win.getContentBounds();
+  return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+}
+
+async function onRegionGetContentOrigin(
+  event: Electron.IpcMainInvokeEvent
+): Promise<ScreenRect | null> {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win !== regionWindow) return null;
+
+  if (!win.isVisible()) {
+    await new Promise<void>((resolve) => win.once('show', () => resolve()));
+  }
+
+  // ponytail: macOS applies workArea clamping asynchronously after show().
+  if (process.platform === 'darwin') {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+
+  return readContentOrigin(win);
+}
+
 export function registerRegionSelectListeners(): void {
   ipcMain.on(IpcChannels.RegionSelectComplete, onRegionComplete);
   ipcMain.on(IpcChannels.RegionSelectCancel, onRegionCancel);
+  ipcMain.handle(IpcChannels.RegionSelectGetContentOrigin, onRegionGetContentOrigin);
 }
 
 export function selectCaptureRegion(): Promise<CaptureRegionSelection | null> {
@@ -114,6 +138,9 @@ export function selectCaptureRegion(): Promise<CaptureRegionSelection | null> {
       focusable: true,
       show: false,
       backgroundColor: '#00000000',
+      ...(process.platform === 'darwin'
+        ? { enableLargerThanScreen: true, roundedCorners: false }
+        : {}),
       webPreferences: {
         preload: preloadScriptPath(),
         sandbox: false,

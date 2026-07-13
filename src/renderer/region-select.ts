@@ -2,8 +2,9 @@ import '../preload/index.d.ts';
 import type { ScreenRect } from '@shared/capture-region';
 
 const params = new URLSearchParams(window.location.search);
-const offsetX = Number(params.get('ox') ?? 0);
-const offsetY = Number(params.get('oy') ?? 0);
+let offsetX = Number(params.get('ox') ?? 0);
+let offsetY = Number(params.get('oy') ?? 0);
+let overlayReady = false;
 
 function requireCanvas(): HTMLCanvasElement {
   const el = document.getElementById('canvas');
@@ -72,7 +73,22 @@ function cancel(): void {
   window.screenRecorder?.regionSelect.cancel();
 }
 
+async function initOverlay(): Promise<void> {
+  document.body.style.pointerEvents = 'none';
+
+  const origin = await window.screenRecorder?.regionSelect.getContentOrigin();
+  if (origin) {
+    offsetX = origin.x;
+    offsetY = origin.y;
+  }
+
+  overlayReady = true;
+  document.body.style.pointerEvents = 'auto';
+  resizeCanvas();
+}
+
 canvas.addEventListener('pointerdown', (event) => {
+  if (!overlayReady) return;
   dragStart = { x: event.clientX, y: event.clientY };
   activeRect = { x: event.clientX, y: event.clientY, width: 0, height: 0 };
   canvas.setPointerCapture(event.pointerId);
@@ -107,4 +123,4 @@ window.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+void initOverlay();

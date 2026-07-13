@@ -219,7 +219,7 @@ export function CutTimeline(): JSX.Element {
             <div
               onClick={handleRulerClick}
               title="Click to scrub"
-              className="relative h-5 shrink-0 cursor-pointer select-none mx-4"
+              className="relative h-5 shrink-0 cursor-pointer select-none mx-3"
             >
               {ticks.map(({ atMs, major }) => (
                 <div

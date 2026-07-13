@@ -58,6 +58,12 @@ interface TimelineStoreState {
   deleteSegment: (segmentId: string) => void;
   reorderSegments: (fromIndex: number, toIndex: number) => void;
   resizeSegmentEdge: (segmentId: string, edge: 'start' | 'end', newSourceMs: number) => void;
+  /**
+   * Clears the `trimmed` display flag TrimTrack reads -- doesn't restore the
+   * segment's original range (that's not stored anywhere), just dismisses
+   * the "this clip was trimmed" pill.
+   */
+  setSegmentTrimmed: (segmentId: string, trimmed: boolean) => void;
   /** Crop is per-clip: each segment can be framed differently. */
   setSegmentCrop: (segmentId: string, crop: CropRect | null) => void;
   /** Speed is per-clip: each segment can play back at a different rate. */
@@ -200,6 +206,14 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
         trimmed: true
       };
     });
+    set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+  },
+
+  setSegmentTrimmed: (segmentId, trimmed) => {
+    const track = primaryTrack(get().tracks);
+    const segments = track.segments.map((segment) =>
+      segment.id === segmentId ? { ...segment, trimmed } : segment
+    );
     set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
   },
 

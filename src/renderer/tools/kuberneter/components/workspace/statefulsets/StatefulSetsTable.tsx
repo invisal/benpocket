@@ -141,7 +141,7 @@ export const StatefulSetsTable: React.FC<StatefulSetsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectStatefulSet(row)}
       selectedRowKey={selectedStatefulSetId}

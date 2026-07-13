@@ -4,6 +4,7 @@ import { CronJobsToolbar } from './CronJobsToolbar';
 import { CronJobsTable } from './CronJobsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 interface CronJobsProps {
   cronJobsData: CronJobData[];
@@ -128,30 +129,29 @@ export const CronJobs: React.FC<CronJobsProps> = ({
   };
 
   return (
-    <div className="flex-1 flex gap-4 min-h-0 min-w-0 py-2">
-      <div className="flex-1 flex flex-col gap-2 min-h-0 min-w-0 select-none">
-        <div className="px-4">
-          <CronJobsToolbar
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            useRegex={useRegex}
-            totalCount={filteredData.length}
-            selectedCount={selectedIds.size}
-            onSearchChange={setSearchQuery}
-            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-            onRegexToggle={() => setUseRegex((v) => !v)}
-            onDownload={handleDownloadCsv}
-          />
-        </div>
-        <CronJobsTable
-          filteredData={filteredData}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onSelectCronJob={handleSelectCronJob}
-          selectedCronJobId={selectedCronJobId}
+    <KubeWorkspaceLayout
+      header={
+        <CronJobsToolbar
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          useRegex={useRegex}
+          totalCount={filteredData.length}
+          selectedCount={selectedIds.size}
+          onSearchChange={setSearchQuery}
+          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+          onRegexToggle={() => setUseRegex((v) => !v)}
+          onDownload={handleDownloadCsv}
         />
-      </div>
-    </div>
+      }
+    >
+      <CronJobsTable
+        filteredData={filteredData}
+        selectedIds={selectedIds}
+        onSelectAll={handleSelectAll}
+        onSelectRow={handleSelectRow}
+        onSelectCronJob={handleSelectCronJob}
+        selectedCronJobId={selectedCronJobId}
+      />
+    </KubeWorkspaceLayout>
   );
 };

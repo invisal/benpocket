@@ -4,6 +4,7 @@ import { DaemonSetsToolbar } from './DaemonSetsToolbar';
 import { DaemonSetsTable } from './DaemonSetsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 interface DaemonSetsProps {
   daemonSetsData: DaemonSetData[];
@@ -137,31 +138,29 @@ export const DaemonSets: React.FC<DaemonSetsProps> = ({
   };
 
   return (
-    <div className="flex-1 flex gap-4 min-h-0 min-w-0 py-2">
-      {/* Table & Toolbar Container */}
-      <div className="flex-1 flex flex-col gap-2 min-h-0 min-w-0 select-none">
-        <div className="px-4">
-          <DaemonSetsToolbar
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            useRegex={useRegex}
-            totalCount={filteredData.length}
-            selectedCount={selectedIds.size}
-            onSearchChange={setSearchQuery}
-            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-            onRegexToggle={() => setUseRegex((v) => !v)}
-            onDownload={handleDownloadCsv}
-          />
-        </div>
-        <DaemonSetsTable
-          filteredData={filteredData}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onSelectDaemonSet={handleSelectDaemonSet}
-          selectedDaemonSetId={selectedDaemonSetId}
+    <KubeWorkspaceLayout
+      header={
+        <DaemonSetsToolbar
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          useRegex={useRegex}
+          totalCount={filteredData.length}
+          selectedCount={selectedIds.size}
+          onSearchChange={setSearchQuery}
+          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+          onRegexToggle={() => setUseRegex((v) => !v)}
+          onDownload={handleDownloadCsv}
         />
-      </div>
-    </div>
+      }
+    >
+      <DaemonSetsTable
+        filteredData={filteredData}
+        selectedIds={selectedIds}
+        onSelectAll={handleSelectAll}
+        onSelectRow={handleSelectRow}
+        onSelectDaemonSet={handleSelectDaemonSet}
+        selectedDaemonSetId={selectedDaemonSetId}
+      />
+    </KubeWorkspaceLayout>
   );
 };

@@ -235,7 +235,7 @@ export const PodsTable: React.FC<PodsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectPod(row)}
       selectedRowKey={selectedPodId}

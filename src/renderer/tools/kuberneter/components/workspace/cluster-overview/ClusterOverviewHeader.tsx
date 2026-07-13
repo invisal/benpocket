@@ -22,7 +22,7 @@ export const ClusterOverviewHeader: React.FC<ClusterOverviewHeaderProps> = ({
   onSync
 }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3.5 shrink-0">
+    <div className="flex flex-wrap items-center justify-between gap-3 w-full">
       <div className="flex items-center gap-2">
         <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans">
           Cluster Pulse

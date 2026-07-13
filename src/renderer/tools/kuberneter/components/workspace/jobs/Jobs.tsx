@@ -4,6 +4,7 @@ import { JobsToolbar } from './JobsToolbar';
 import { JobsTable } from './JobsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 interface JobsProps {
   jobsData: JobData[];
@@ -113,30 +114,29 @@ export const Jobs: React.FC<JobsProps> = ({ jobsData, kuberneterSelectedNamespac
   };
 
   return (
-    <div className="flex-1 flex gap-4 min-h-0 min-w-0 py-2">
-      <div className="flex-1 flex flex-col gap-2 min-h-0 min-w-0 select-none">
-        <div className="px-4">
-          <JobsToolbar
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            useRegex={useRegex}
-            totalCount={filteredData.length}
-            selectedCount={selectedIds.size}
-            onSearchChange={setSearchQuery}
-            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-            onRegexToggle={() => setUseRegex((v) => !v)}
-            onDownload={handleDownloadCsv}
-          />
-        </div>
-        <JobsTable
-          filteredData={filteredData}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onSelectJob={handleSelectJob}
-          selectedJobId={selectedJobId}
+    <KubeWorkspaceLayout
+      header={
+        <JobsToolbar
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          useRegex={useRegex}
+          totalCount={filteredData.length}
+          selectedCount={selectedIds.size}
+          onSearchChange={setSearchQuery}
+          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+          onRegexToggle={() => setUseRegex((v) => !v)}
+          onDownload={handleDownloadCsv}
         />
-      </div>
-    </div>
+      }
+    >
+      <JobsTable
+        filteredData={filteredData}
+        selectedIds={selectedIds}
+        onSelectAll={handleSelectAll}
+        onSelectRow={handleSelectRow}
+        onSelectJob={handleSelectJob}
+        selectedJobId={selectedJobId}
+      />
+    </KubeWorkspaceLayout>
   );
 };

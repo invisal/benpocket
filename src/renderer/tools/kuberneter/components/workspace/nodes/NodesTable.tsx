@@ -198,7 +198,7 @@ export const NodesTable: React.FC<NodesTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       emptyMessage="No nodes match the search filters."
     />

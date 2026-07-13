@@ -145,7 +145,7 @@ export const ReplicaSetsTable: React.FC<ReplicaSetsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectReplicaSet(row)}
       selectedRowKey={selectedReplicaSetId}

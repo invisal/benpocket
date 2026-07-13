@@ -279,8 +279,8 @@ export const KuberneterSidebar: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-2 h-full text-zinc-300 select-none animate-in fade-in duration-300">
-      {/* Namespace Selector Header */}
+    <div className="flex flex-col h-full text-zinc-300 select-none animate-in fade-in duration-300">
+      {/* 1. Namespace header — same height as tab bar (h-9) */}
       <div className="h-9 shrink-0 flex items-center mx-[-12px] mt-[-12px] px-3 border-b border-border-dark">
         <Select.Root
           value={namespace}
@@ -304,21 +304,18 @@ export const KuberneterSidebar: React.FC = () => {
         </Select.Root>
       </div>
 
-      {/* Search Navigation Bar */}
-      <div className="shrink-0 px-1">
+      {/* 2. Search section — same height as workspace header (h-11) */}
+      <div className="h-11 shrink-0 flex items-center border-b border-border-dark mx-[-12px] px-3">
         <KubeSearchbox
           value={searchTerm}
           placeholder="Search navigation..."
           onChange={setSearchTerm}
-          className="[&_input]:bg-surface-1"
+          className="flex-1 [&_input]:bg-surface-1"
         />
       </div>
 
-      {/* Separator — mirrors the border-t on KubeTable */}
-      <div className="shrink-0 border-b border-border-dark mx-[-12px]" />
-
-      {/* Navigation Tree */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 pr-1">
+      {/* 3. Navigation section — remaining height */}
+      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 pr-1 pt-2">
         <span
           className="text-xs font-bold text-zinc-200 uppercase tracking-wider px-1 mb-1.5 font-sans flex items-center gap-2 truncate"
           title={cluster}

@@ -183,7 +183,7 @@ export const CronJobsTable: React.FC<CronJobsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectCronJob(row)}
       selectedRowKey={selectedCronJobId}

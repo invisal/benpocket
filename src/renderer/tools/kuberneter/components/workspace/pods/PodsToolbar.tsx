@@ -26,7 +26,7 @@ export const PodsToolbar: React.FC<PodsToolbarProps> = ({
   onDownload
 }) => {
   return (
-    <div className="flex items-center justify-between shrink-0">
+    <div className="flex items-center justify-between w-full">
       <KubeSearchbox
         value={searchQuery}
         placeholder="Search Pods..."

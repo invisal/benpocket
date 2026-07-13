@@ -4,6 +4,7 @@ import { PodsToolbar } from './PodsToolbar';
 import { PodsTable } from './PodsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 interface PodsProps {
   podsData: PodData[];
@@ -146,32 +147,30 @@ export const Pods: React.FC<PodsProps> = ({ podsData, kuberneterSelectedNamespac
   };
 
   return (
-    <div className="flex-1 flex gap-4 min-h-0 min-w-0 py-2">
-      {/* Table & Toolbar Container */}
-      <div className="flex-1 flex flex-col gap-2 min-h-0 min-w-0 select-none">
-        <div className="px-4">
-          <PodsToolbar
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            useRegex={useRegex}
-            totalCount={filteredData.length}
-            selectedCount={selectedIds.size}
-            onSearchChange={setSearchQuery}
-            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-            onRegexToggle={() => setUseRegex((v) => !v)}
-            onDownload={handleDownloadCsv}
-          />
-        </div>
-        <PodsTable
-          filteredData={filteredData}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onSelectPod={handleSelectPod}
-          selectedPodId={selectedPodId}
+    <KubeWorkspaceLayout
+      header={
+        <PodsToolbar
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          useRegex={useRegex}
+          totalCount={filteredData.length}
+          selectedCount={selectedIds.size}
+          onSearchChange={setSearchQuery}
+          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+          onRegexToggle={() => setUseRegex((v) => !v)}
+          onDownload={handleDownloadCsv}
         />
-      </div>
-    </div>
+      }
+    >
+      <PodsTable
+        filteredData={filteredData}
+        selectedIds={selectedIds}
+        onSelectAll={handleSelectAll}
+        onSelectRow={handleSelectRow}
+        onSelectPod={handleSelectPod}
+        selectedPodId={selectedPodId}
+      />
+    </KubeWorkspaceLayout>
   );
 };
 export default Pods;

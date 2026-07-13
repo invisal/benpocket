@@ -4,6 +4,7 @@ import { StatefulSetsToolbar } from './StatefulSetsToolbar';
 import { StatefulSetsTable } from './StatefulSetsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 interface StatefulSetsProps {
   statefulSetsData: StatefulSetData[];
@@ -122,31 +123,29 @@ export const StatefulSets: React.FC<StatefulSetsProps> = ({
   };
 
   return (
-    <div className="flex-1 flex gap-4 min-h-0 min-w-0 py-2">
-      {/* Table & Toolbar Container */}
-      <div className="flex-1 flex flex-col gap-2 min-h-0 min-w-0 select-none">
-        <div className="px-4">
-          <StatefulSetsToolbar
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            useRegex={useRegex}
-            totalCount={filteredData.length}
-            selectedCount={selectedIds.size}
-            onSearchChange={setSearchQuery}
-            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-            onRegexToggle={() => setUseRegex((v) => !v)}
-            onDownload={handleDownloadCsv}
-          />
-        </div>
-        <StatefulSetsTable
-          filteredData={filteredData}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onSelectStatefulSet={handleSelectStatefulSet}
-          selectedStatefulSetId={selectedStatefulSetId}
+    <KubeWorkspaceLayout
+      header={
+        <StatefulSetsToolbar
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          useRegex={useRegex}
+          totalCount={filteredData.length}
+          selectedCount={selectedIds.size}
+          onSearchChange={setSearchQuery}
+          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+          onRegexToggle={() => setUseRegex((v) => !v)}
+          onDownload={handleDownloadCsv}
         />
-      </div>
-    </div>
+      }
+    >
+      <StatefulSetsTable
+        filteredData={filteredData}
+        selectedIds={selectedIds}
+        onSelectAll={handleSelectAll}
+        onSelectRow={handleSelectRow}
+        onSelectStatefulSet={handleSelectStatefulSet}
+        selectedStatefulSetId={selectedStatefulSetId}
+      />
+    </KubeWorkspaceLayout>
   );
 };

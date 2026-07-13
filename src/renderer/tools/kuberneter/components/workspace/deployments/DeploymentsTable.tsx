@@ -160,7 +160,7 @@ export const DeploymentsTable: React.FC<DeploymentsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectDeploy(row)}
       selectedRowKey={selectedDeployId}

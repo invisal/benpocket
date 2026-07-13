@@ -22,7 +22,6 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
-/** Recomputes a rect centered at the same point, honoring `ratio` (source-pixel width/height). */
 function centeredRectForAspect(
   current: CropRect,
   ratio: number | null,
@@ -232,7 +231,6 @@ export function CropOverlay({
           height: `${effectiveRect.height * 100}%`
         }}
       >
-        {/* Rule-of-thirds guide lines */}
         <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="border border-white/20" />

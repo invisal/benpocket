@@ -24,7 +24,6 @@ export const MAX_DURATION_MS = 10000;
 export const MIN_HOLD_TRANSITION_MS = 50;
 export const MAX_HOLD_TRANSITION_MS = 2000;
 
-/** Small uppercase label (+ optional one-line description) above a slider, matching the other tool panels' convention (e.g. CursorSettingsPanel). */
 function SliderField({
   label,
   valueLabel,

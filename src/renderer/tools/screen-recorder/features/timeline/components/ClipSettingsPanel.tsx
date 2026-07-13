@@ -49,11 +49,9 @@ function TimeField({
 }
 
 interface ClipSettingsPanelProps {
-  /** The currently selected timeline clip, or null if none is selected. */
   segment: TimelineSegment | null;
 }
 
-/** Right-hand tool panel for the selected clip's trim points and playback speed. */
 export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Element {
   const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);

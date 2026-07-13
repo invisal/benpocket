@@ -54,13 +54,6 @@ interface PanelResize {
  * component state) so this can be rendered independently of EditorPage,
  * e.g. as a full-width strip in ScreenRecorderApp that isn't nested under
  * (and therefore isn't squeezed by) the screen-recorder tool's sidebar.
- *
- * Interactions:
- *  - Click a clip to select it (crop applies to whichever clip is selected).
- *  - Double-click a clip to split it there.
- *  - Drag a clip to reorder it (native HTML5 drag and drop).
- *  - Drag a clip's left/right edge to trim its in/out point.
- *  - Trash icon ripple-deletes a clip (disabled once only one is left).
  */
 export function CutTimeline(): JSX.Element {
   const segments = useTimelineStore(
@@ -246,12 +239,10 @@ export function CutTimeline(): JSX.Element {
             </div>
 
             {/*
-              The real editable clip list -- drag/reorder, edge-resize/trim,
-              double-click to split, delete. Deliberately neutral (not
-              red/Scissors) since those now belong to TrimTrack's sparse
-              "this clip was trimmed" indicator below -- this row always
-              shows every clip, tiled edge-to-edge, which is a different
-              thing from that indicator.
+              Deliberately neutral (not red/Scissors) since those now belong
+              to TrimTrack's sparse "this clip was trimmed" indicator below --
+              this row always shows every clip, tiled edge-to-edge, which is
+              a different thing from that indicator.
             */}
             <div className="flex h-9 shrink-0 items-center gap-0.5 px-1">
               {segments.map((segment, index) => {

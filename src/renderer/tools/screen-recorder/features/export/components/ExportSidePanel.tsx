@@ -41,7 +41,6 @@ export function ExportSidePanel(): JSX.Element {
 
   return (
     <aside className="flex w-70 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface-sunken p-4">
-      {/* Estimated output */}
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">
@@ -75,7 +74,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Presets */}
       <section className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">Presets</span>
         <div className="grid grid-cols-2 gap-2">
@@ -103,7 +101,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Format */}
       <section className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">Format</span>
         <div className="grid grid-cols-4 gap-2">
@@ -124,7 +121,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Codec */}
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">Codec</span>
@@ -149,7 +145,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Quality */}
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">Quality</span>
@@ -173,7 +168,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Resolution / Frame rate */}
       <section className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">

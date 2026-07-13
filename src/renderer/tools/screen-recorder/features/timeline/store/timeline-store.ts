@@ -51,14 +51,12 @@ interface TimelineStoreState {
   setActiveTool: (tool: EditorTool | null) => void;
   requestSeek: (ms: number) => void;
   clearSeekRequest: () => void;
-  /** Resets the primary video track to one segment spanning the whole recording. */
   initializeFromDuration: (durationMs: number) => void;
   /** Splits whichever kept segment covers `atOutputMs` (in the ripple/output timeline) into two. */
   splitAt: (atOutputMs: number) => void;
   /** Ripple-removes a segment; no-ops if it's the last one (nothing to export). */
   deleteSegment: (segmentId: string) => void;
   reorderSegments: (fromIndex: number, toIndex: number) => void;
-  /** Adjusts one edge of a segment's own source in/out point. */
   resizeSegmentEdge: (segmentId: string, edge: 'start' | 'end', newSourceMs: number) => void;
   /** Crop is per-clip: each segment can be framed differently. */
   setSegmentCrop: (segmentId: string, crop: CropRect | null) => void;

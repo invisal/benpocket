@@ -30,7 +30,6 @@ interface ZoomStoreState {
   armPositioning: (id: string) => void;
   disarmPositioning: () => void;
   setSelectedKeyframeId: (id: string | null) => void;
-  /** Replaces every keyframe wholesale -- used to seed auto-generated keyframes (see auto-zoom-engine.ts) once a recording finishes. */
   setKeyframes: (keyframes: ZoomKeyframe[]) => void;
 }
 

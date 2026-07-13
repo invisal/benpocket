@@ -8,6 +8,7 @@ import { StatefulSets } from './statefulsets/StatefulSets';
 import { ReplicaSets } from './replicasets/ReplicaSets';
 import { Jobs } from './jobs/Jobs';
 import { CronJobs } from './cronjobs/CronJobs';
+import { WorkloadOverview } from './workload-overview/WorkloadOverview';
 import { ServicesTable } from './ServicesTable';
 import { ConfigMapsTable } from './ConfigMapsTable';
 import { Application } from './application/Application';
@@ -80,6 +81,8 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'home' && <KuberneterHomeView />}
 
           {resource === 'overview' && <ClusterOverview />}
+
+          {resource === 'workloads-overview' && <WorkloadOverview />}
 
           {resource === 'pods' && (
             <Pods podsData={podsData} kuberneterSelectedNamespace={kuberneterSelectedNamespace} />

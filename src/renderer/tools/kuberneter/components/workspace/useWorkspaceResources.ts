@@ -50,7 +50,8 @@ export function useWorkspaceResources(resource: string) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fetchResources = async (isBackground = false) => {
-    if (resource === 'home' || !kuberneterSelectedCluster) return;
+    if (resource === 'home' || resource === 'workloads-overview' || !kuberneterSelectedCluster)
+      return;
 
     if (!isBackground) {
       setIsLoading(true);

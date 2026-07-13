@@ -51,4 +51,20 @@ export interface K8sResource {
     };
   };
   data?: Record<string, unknown>;
+  // Kubernetes Event fields (core/v1 Event)
+  type?: string;
+  message?: string;
+  reason?: string;
+  count?: number;
+  firstTimestamp?: string;
+  lastTimestamp?: string;
+  source?: {
+    component?: string;
+    host?: string;
+  };
+  involvedObject?: {
+    kind?: string;
+    name?: string;
+    namespace?: string;
+  };
 }

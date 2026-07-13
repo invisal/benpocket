@@ -16,6 +16,10 @@ export interface BackgroundSettings {
   padding: number;
   /** 0-20px Gaussian blur applied to the background layer only (behind the recording). */
   blur: number;
+  /** 0-40, in `REFERENCE_CANVAS_WIDTH` units -- corner radius of the recording itself (not the background). */
+  cornerRadius: number;
+  /** 0-100 intensity of the drop shadow cast by the recording onto the background; 0 disables it. */
+  shadow: number;
 }
 
 export interface CursorSettings {

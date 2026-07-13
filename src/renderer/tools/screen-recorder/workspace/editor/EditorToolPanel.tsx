@@ -16,7 +16,6 @@ interface EditorToolPanelProps {
   selectedSegment: TimelineSegment | null;
 }
 
-/** Renders whichever tool's settings the EditorToolRail has selected. */
 export function EditorToolPanel({
   tool,
   currentTimeMs,

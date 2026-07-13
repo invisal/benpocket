@@ -15,8 +15,8 @@ interface DesktopVideoConstraint {
   mandatory: {
     chromeMediaSource: 'desktop';
     chromeMediaSourceId: string;
-    maxWidth: number;
-    maxHeight: number;
+    maxWidth?: number;
+    maxHeight?: number;
   };
 }
 
@@ -49,6 +49,26 @@ async function getDesktopStream(
   source: CaptureSource,
   wantSystemAudio: boolean
 ): Promise<MediaStream> {
+  const scale = window.devicePixelRatio || 1;
+
+  // A 'screen' source fills the full display, so bounding the capture to the
+  // display's own resolution is correct. A 'window' source (e.g. the iOS
+  // Simulator) is almost always much smaller than the display -- forcing the
+  // same full-display maxWidth/maxHeight there makes Chromium hand back a
+  // frame padded to that larger size, with the actual window content
+  // shrunk into a corner and the rest filled black. Sizing to the window's
+  // own bounds when known (or omitting the constraint entirely so Chromium
+  // just uses the window's native captured size) avoids the padding.
+  const sizeConstraint =
+    source.type === 'screen'
+      ? { maxWidth: window.screen.width * scale, maxHeight: window.screen.height * scale }
+      : source.displayBounds
+        ? {
+            maxWidth: Math.round(source.displayBounds.width * scale),
+            maxHeight: Math.round(source.displayBounds.height * scale)
+          }
+        : {};
+
   const constraints: MediaStreamConstraints = {
     audio: wantSystemAudio
       ? ({
@@ -59,8 +79,7 @@ async function getDesktopStream(
       mandatory: {
         chromeMediaSource: 'desktop',
         chromeMediaSourceId: source.id,
-        maxWidth: window.screen.width * (window.devicePixelRatio || 1),
-        maxHeight: window.screen.height * (window.devicePixelRatio || 1)
+        ...sizeConstraint
       }
     } as unknown as DesktopVideoConstraint as never
   };

@@ -12,7 +12,7 @@ export function ShortcutRecorder(): JSX.Element {
       {bindings.map((binding) => (
         <div
           key={binding.id}
-          className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-2"
+          className="flex items-center justify-between rounded-lg bg-surface-raised px-3 py-2"
         >
           <span>{binding.action}</span>
           <kbd className="rounded bg-white/10 px-2 py-1">{binding.accelerator}</kbd>

@@ -7,7 +7,6 @@ interface EditorToolRailProps {
   onSelect: (tool: EditorTool) => void;
 }
 
-/** Vertical icon rail that switches which contextual tool panel is shown next to the preview. */
 export function EditorToolRail({ active, onSelect }: EditorToolRailProps): JSX.Element {
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-line bg-surface-sunken py-3">

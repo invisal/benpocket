@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@renderer/components/ui/Button';
 
 // On macOS, recording without Screen Recording permission doesn't error --
 // desktopCapturer still lists sources, getUserMedia still resolves, and

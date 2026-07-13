@@ -7,7 +7,6 @@ import { EditorPage } from './workspace/editor/EditorPage';
 import { LibraryPage } from './workspace/library/LibraryPage';
 import { PresetsPage } from './workspace/presets/PresetsPage';
 import { SettingsPage } from './workspace/settings/SettingsPage';
-import { ExportButton } from './features/export/components/ExportButton';
 import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 import { CutTimeline } from './features/timeline/components/CutTimeline';
 
@@ -61,8 +60,6 @@ export function ScreenRecorderApp(): JSX.Element {
         >
           Editor
         </button>
-
-        <ExportButton />
       </nav>
 
       <div className="flex min-h-0 flex-1 flex-col">

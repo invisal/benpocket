@@ -15,12 +15,13 @@ import { registerEnvironmentHandlers } from './http-client/ipc/environments';
 import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
+import { registerTrayHandlers, destroyTray } from './screen-recorder/windows/tray';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
 import { registerNotificationHandlers } from './notification-handlers';
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -52,6 +53,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
+
+  return mainWindow;
 }
 
 // This method will be called when Electron has finished
@@ -180,6 +183,10 @@ app.whenReady().then(() => {
   // File Explorer tool: directory listing, native file icons, open-with-default-app
   registerFileExplorerHandlers();
 
+  // Tray icon is created on demand -- see TrayBridge, which registers it
+  // only while the Screen Recorder tool tab is open.
+  registerTrayHandlers(icon);
+
   createWindow();
 
   app.on('activate', function () {
@@ -197,6 +204,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  destroyTray();
 });
 
 // In this file you can include the rest of your app's specific main process

@@ -14,9 +14,12 @@ export interface CursorCaptureHandle {
 
 /**
  * Starts recording the system cursor's position and real mouse clicks
- * alongside a screen capture. Returns `null` (nothing to start) for 'window'
- * sources, since a window has no fixed screen bounds to normalize against --
- * see `CaptureSource.displayBounds`.
+ * alongside a screen capture. Returns `null` (nothing to start) if the
+ * source has no resolved bounds to normalize against -- see
+ * `CaptureSource.displayBounds`. That's normally only 'screen' sources, but
+ * a 'window' source can have bounds too (currently just the Simulator
+ * window, see screen-source-provider.ts), in which case it's tracked the
+ * same way.
  *
  * `onUpdate` (optional) fires after every sample/click with the running
  * counts, so callers can show a live "N points captured" readout instead of
@@ -27,9 +30,9 @@ export async function startCursorCapture(
   startedAt: number,
   onUpdate?: (counts: { cursorCount: number; clickCount: number }) => void
 ): Promise<CursorCaptureHandle | null> {
-  if (source.type !== 'screen' || !source.displayBounds) {
+  if (!source.displayBounds) {
     console.warn(
-      `[cursor-capture] skipping cursor tracking for "${source.name}" (type: ${source.type}, displayBounds: ${Boolean(source.displayBounds)}) -- only 'screen' sources with resolved display bounds are tracked.`
+      `[cursor-capture] skipping cursor tracking for "${source.name}" (type: ${source.type}) -- no resolved display bounds to normalize against.`
     );
     return null;
   }

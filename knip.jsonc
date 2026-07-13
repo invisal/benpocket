@@ -3,8 +3,10 @@
   // Typing entry only — electron-vite plugin auto-detects main/preload/HTML from electron.vite.config.ts
   "entry": ["src/preload/index.d.ts"],
   "project": ["src/**/*.{ts,tsx}"],
-  // Linux X11 clipboard helper invoked via execFile — system package, not npm
-  "ignoreBinaries": ["xclip"],
+  // System binaries invoked via spawn/execFile — not npm packages.
+  // xclip: Linux X11 clipboard helper.
+  // xcrun/osascript: macOS Xcode CLI tools / AppleScript, used for Simulator detection and window bounds.
+  "ignoreBinaries": ["xclip", "xcrun", "osascript"],
   // Pulled in via @import 'tailwindcss' in main.css and @tailwindcss/vite plugin
   "ignoreDependencies": ["tailwindcss"],
   // Skip exports that are only referenced within the same file

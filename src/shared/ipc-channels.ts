@@ -35,6 +35,12 @@ export const IpcChannels = {
   WindowMaximizeChanged: 'window:maximize-changed',
   GetScreenRecordingStatus: 'permissions:get-screen-recording-status',
   OpenScreenRecordingSettings: 'permissions:open-screen-recording-settings',
+  GetBootedSimulator: 'simulator:get-booted',
+  RefreshSimulatorWindowBounds: 'simulator:refresh-window-bounds',
+  TrayOpenRecordPicker: 'tray:open-record-picker',
+  TraySourceSelected: 'tray:source-selected',
+  TrayRegister: 'tray:register',
+  TrayUnregister: 'tray:unregister',
   ShowNotification: 'notification:show',
   PickOsCaptureSource: 'screenshot:pick-os-source'
 } as const;

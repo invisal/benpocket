@@ -57,11 +57,21 @@ export function resolveZoom(
   const active = keyframes.find((k) => atMs >= k.atMs && atMs <= k.atMs + k.durationMs);
   if (!active) return identity;
 
-  const progress = active.durationMs > 0 ? (atMs - active.atMs) / active.durationMs : 1;
+  // Per-keyframe: how long the ease-in/ease-out either side of the hold
+  // takes (see ZoomKeyframeEditor's "Hold transition" slider). Keyframes
+  // shorter than 2x this scale the ramps down instead of overlapping,
+  // degrading to a plain ease-in-then-out with no hold.
+  const rampMs = Math.min(active.holdTransitionMs, active.durationMs / 2);
+  const elapsed = atMs - active.atMs;
+  const remaining = active.durationMs - elapsed;
   const envelope =
-    progress < 0.5
-      ? easeZoom(progress * 2, active.easing)
-      : easeZoom((1 - progress) * 2, active.easing);
+    rampMs <= 0
+      ? 1
+      : elapsed < rampMs
+        ? easeZoom(elapsed / rampMs, active.easing)
+        : remaining < rampMs
+          ? easeZoom(remaining / rampMs, active.easing)
+          : 1;
   const depth = 1 + (active.depth - 1) * envelope;
   const focal =
     active.position === 'auto-cursor'

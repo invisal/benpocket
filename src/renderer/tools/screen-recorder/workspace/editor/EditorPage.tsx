@@ -104,23 +104,6 @@ export function EditorPage(): JSX.Element {
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* <div className="flex shrink-0 items-center gap-4 border-b border-line p-6">
-          <div>
-            <h1 className="text-xl font-semibold">Edit Recording</h1>
-            <p className="text-sm text-white/40">
-              Screen Recording {new Date(lastRecording.createdAt).toISOString().slice(0, 10)}
-            </p>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <StatBadge label="Duration" value={formatDuration(keptDurationMs / 1000)} />
-            <StatBadge
-              label="Resolution"
-              value={sourceResolution ? `${sourceResolution.height}p` : '--'}
-            />
-            <StatBadge label="Size" value={formatBytes(lastRecording.sizeBytes)} />
-          </div>
-        </div> */}
-
         <PreviewStage
           videoRef={videoRef}
           previewUrl={lastRecording.previewUrl}

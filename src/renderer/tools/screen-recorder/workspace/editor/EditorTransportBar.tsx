@@ -9,11 +9,13 @@ import {
   Plus,
   Scissors,
   SkipBack,
-  SkipForward
+  SkipForward,
+  ZoomIn
 } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import { useExportStore } from '../../features/export/store/export-store';
 import { useTimelineStore } from '../../features/timeline/store/timeline-store';
+import { useZoomStore } from '../../features/zoom/store/zoom-store';
 import { cn } from '../../lib/utils';
 
 const ASPECT_LABELS: Record<AspectRatio, string> = {
@@ -57,6 +59,19 @@ export function EditorTransportBar({
   const setAspectRatio = useExportStore((s) => s.setAspectRatio);
   const timelineZoom = useTimelineStore((s) => s.timelineZoom);
   const setTimelineZoom = useTimelineStore((s) => s.setTimelineZoom);
+  const setActiveTool = useTimelineStore((s) => s.setActiveTool);
+  const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
+  const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
+
+  // Drops a keyframe at the playhead with the default 'auto-cursor' target --
+  // no arm-and-click-the-preview step first, unlike the "Add keyframe"
+  // button in ZoomKeyframeEditor -- then opens the Zoom panel on it so it's
+  // immediately ready to tweak.
+  function addZoomKeyframeHere(): void {
+    const id = addZoomKeyframe(currentTimeMs);
+    setSelectedZoomKeyframeId(id);
+    setActiveTool('zoom');
+  }
 
   function togglePlay(): void {
     const video = videoRef.current;
@@ -87,6 +102,7 @@ export function EditorTransportBar({
 
       <button
         onClick={onToggleCrop}
+        title="Toggle crop tool"
         className={cn(
           'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
           cropToolActive
@@ -107,6 +123,7 @@ export function EditorTransportBar({
         </button>
         <button
           onClick={togglePlay}
+          title={isPlaying ? 'Pause' : 'Play'}
           className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"
         >
           {isPlaying ? <Pause size={15} /> : <Play size={15} />}
@@ -135,9 +152,18 @@ export function EditorTransportBar({
         <Scissors size={14} />
       </button>
 
+      <button
+        onClick={addZoomKeyframeHere}
+        title="Add a zoom keyframe at the playhead"
+        className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"
+      >
+        <ZoomIn size={14} />
+      </button>
+
       <div className="ml-auto flex items-center gap-2">
         <button
           onClick={() => setTimelineZoom(Math.max(1, timelineZoom - 0.5))}
+          title="Zoom out timeline"
           className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-white/10"
         >
           <Minus size={13} />
@@ -149,10 +175,12 @@ export function EditorTransportBar({
           step={0.5}
           value={timelineZoom}
           onChange={(e) => setTimelineZoom(Number(e.target.value))}
+          title="Timeline zoom"
           className="w-24 accent-accent"
         />
         <button
           onClick={() => setTimelineZoom(Math.min(4, timelineZoom + 0.5))}
+          title="Zoom in timeline"
           className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-white/10"
         >
           <Plus size={13} />

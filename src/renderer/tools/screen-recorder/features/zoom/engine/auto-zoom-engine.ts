@@ -1,5 +1,9 @@
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
-import { DEFAULT_ZOOM_DEPTH, DEFAULT_ZOOM_DURATION_MS } from '@shared/constants';
+import {
+  DEFAULT_ZOOM_DEPTH,
+  DEFAULT_ZOOM_DURATION_MS,
+  DEFAULT_ZOOM_HOLD_TRANSITION_MS
+} from '@shared/constants';
 
 export interface CursorSample {
   atMs: number;
@@ -41,7 +45,8 @@ export function generateAutoZoomKeyframes(clickSamples: CursorSample[]): ZoomKey
       durationMs: DEFAULT_ZOOM_DURATION_MS,
       depth: DEFAULT_ZOOM_DEPTH,
       easing: 'ease-in-out',
-      position: 'auto-cursor'
+      position: 'auto-cursor',
+      holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS
     });
   }
 

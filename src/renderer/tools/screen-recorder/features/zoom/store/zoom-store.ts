@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
-import { DEFAULT_ZOOM_DEPTH, DEFAULT_ZOOM_DURATION_MS } from '@shared/constants';
+import {
+  DEFAULT_ZOOM_DEPTH,
+  DEFAULT_ZOOM_DURATION_MS,
+  DEFAULT_ZOOM_HOLD_TRANSITION_MS
+} from '@shared/constants';
 
 interface ZoomStoreState {
   mode: 'auto' | 'manual';
@@ -26,7 +30,6 @@ interface ZoomStoreState {
   armPositioning: (id: string) => void;
   disarmPositioning: () => void;
   setSelectedKeyframeId: (id: string | null) => void;
-  /** Replaces every keyframe wholesale -- used to seed auto-generated keyframes (see auto-zoom-engine.ts) once a recording finishes. */
   setKeyframes: (keyframes: ZoomKeyframe[]) => void;
 }
 
@@ -47,7 +50,8 @@ export const useZoomStore = create<ZoomStoreState>((set) => ({
           durationMs: DEFAULT_ZOOM_DURATION_MS,
           depth: DEFAULT_ZOOM_DEPTH,
           easing: 'ease-in-out',
-          position: 'auto-cursor'
+          position: 'auto-cursor',
+          holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS
         }
       ]
     }));

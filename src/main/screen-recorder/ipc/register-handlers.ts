@@ -5,6 +5,7 @@ import { registerSettingsHandlers } from './settings-handlers';
 import { registerWindowHandlers } from './window-handlers';
 import { registerPermissionsHandlers } from './permissions-handlers';
 import { registerDialogHandlers } from './dialog-handlers';
+import { registerSimulatorHandlers } from './simulator-handlers';
 import { registerRegionHandlers } from './region-handlers';
 
 export function registerIpcHandlers(): void {
@@ -15,5 +16,6 @@ export function registerIpcHandlers(): void {
   registerWindowHandlers();
   registerPermissionsHandlers();
   registerDialogHandlers();
+  registerSimulatorHandlers();
   registerRegionHandlers();
 }

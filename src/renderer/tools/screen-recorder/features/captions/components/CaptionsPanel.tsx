@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { Sparkles, Trash2 } from 'lucide-react';
 import { useCaptionsStore } from '../store/captions-store';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
 
 function formatTime(ms: number): string {

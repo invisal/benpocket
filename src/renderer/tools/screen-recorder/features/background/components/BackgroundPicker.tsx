@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { WALLPAPER_PRESETS, cssGradient } from '@shared/wallpaper-presets';
 import { useBackgroundStore } from '../store/background-store';
 import { Slider } from '../../../components/ui/slider';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
 
 const GRADIENT_PRESETS: { angleDeg: number; colors: [string, string] }[] = [
@@ -46,8 +46,20 @@ function parseGradientValue(value: string): { angleDeg: number; color1: string; 
 }
 
 export function BackgroundPicker(): JSX.Element {
-  const { kind, value, padding, blur, setKind, setValue, setPadding, setBlur } =
-    useBackgroundStore();
+  const {
+    kind,
+    value,
+    padding,
+    blur,
+    cornerRadius,
+    shadow,
+    setKind,
+    setValue,
+    setPadding,
+    setBlur,
+    setCornerRadius,
+    setShadow
+  } = useBackgroundStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>): void {
@@ -226,6 +238,26 @@ export function BackgroundPicker(): JSX.Element {
           <span className="text-xs text-white/50">{padding}%</span>
         </div>
         <Slider value={padding} min={0} max={30} step={1} onChange={setPadding} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            Corner radius
+          </span>
+          <span className="text-xs text-white/50">{cornerRadius}px</span>
+        </div>
+        <Slider value={cornerRadius} min={0} max={40} step={1} onChange={setCornerRadius} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            Drop shadow
+          </span>
+          <span className="text-xs text-white/50">{shadow}</span>
+        </div>
+        <Slider value={shadow} min={0} max={100} step={1} onChange={setShadow} />
       </div>
     </div>
   );

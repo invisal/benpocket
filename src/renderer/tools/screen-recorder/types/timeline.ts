@@ -52,4 +52,6 @@ export interface ZoomKeyframe {
   depth: number;
   easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
   position: { x: number; y: number } | 'auto-cursor';
+  /** Fixed ease-in/ease-out time either side of the hold -- see zoom-resolve.ts's resolveZoom. */
+  holdTransitionMs: number;
 }

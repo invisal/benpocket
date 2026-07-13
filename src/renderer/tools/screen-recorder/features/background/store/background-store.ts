@@ -7,6 +7,8 @@ interface BackgroundStoreState extends BackgroundSettings {
   setValue: (value: string) => void;
   setPadding: (padding: number) => void;
   setBlur: (blur: number) => void;
+  setCornerRadius: (cornerRadius: number) => void;
+  setShadow: (shadow: number) => void;
 }
 
 export const useBackgroundStore = create<BackgroundStoreState>((set) => ({
@@ -14,8 +16,12 @@ export const useBackgroundStore = create<BackgroundStoreState>((set) => ({
   value: WALLPAPER_PRESETS[0].id,
   padding: 2,
   blur: 0,
+  cornerRadius: 12,
+  shadow: 40,
   setKind: (kind) => set({ kind }),
   setValue: (value) => set({ value }),
   setPadding: (padding) => set({ padding }),
-  setBlur: (blur) => set({ blur })
+  setBlur: (blur) => set({ blur }),
+  setCornerRadius: (cornerRadius) => set({ cornerRadius }),
+  setShadow: (shadow) => set({ shadow })
 }));

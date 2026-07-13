@@ -15,7 +15,7 @@ import {
   qualityLabel
 } from '../presets';
 import { cn } from '../../../lib/utils';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@renderer/components/ui/Button';
 
 function formatMb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -40,8 +40,7 @@ export function ExportSidePanel(): JSX.Element {
   });
 
   return (
-    <aside className="flex w-75 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface-sunken p-4">
-      {/* Estimated output */}
+    <aside className="flex w-70 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface-sunken p-4">
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">
@@ -75,7 +74,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Presets */}
       <section className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">Presets</span>
         <div className="grid grid-cols-2 gap-2">
@@ -103,7 +101,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Format */}
       <section className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">Format</span>
         <div className="grid grid-cols-4 gap-2">
@@ -124,7 +121,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Codec */}
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">Codec</span>
@@ -149,7 +145,6 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Quality */}
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">Quality</span>
@@ -173,22 +168,25 @@ export function ExportSidePanel(): JSX.Element {
         </div>
       </section>
 
-      {/* Resolution / Frame rate */}
       <section className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium uppercase tracking-wide text-white/40">
             Resolution
           </span>
           <select
-            value={`${store.resolution.width}x${store.resolution.height}`}
+            value={Math.max(store.resolution.width, store.resolution.height)}
             onChange={(e) => {
-              const [width, height] = e.target.value.split('x').map(Number);
-              store.setResolution({ width, height });
+              const longEdge = Number(e.target.value);
+              const option = RESOLUTION_OPTIONS.find((o) => o.width === longEdge);
+              if (option) store.setResolution({ width: option.width, height: option.height });
             }}
             className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs"
           >
+            {/* `option`s are authored as 16:9 pairs (long edge x short edge) --
+                the select always shows/picks by long edge ("quality tier"),
+                and the store reshapes it to the current aspect ratio. */}
             {RESOLUTION_OPTIONS.map((option) => (
-              <option key={option.label} value={`${option.width}x${option.height}`}>
+              <option key={option.label} value={option.width}>
                 {option.label} {option.width}×{option.height}
               </option>
             ))}
@@ -229,6 +227,7 @@ function ExportAction(): JSX.Element {
         </p>
       )}
       <Button
+        variant="primary"
         onClick={handleExport}
         disabled={status === 'exporting'}
         className="w-full justify-center py-1.5 text-xs"

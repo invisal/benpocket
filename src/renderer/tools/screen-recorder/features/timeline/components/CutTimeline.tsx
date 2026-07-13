@@ -5,6 +5,7 @@ import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import { useTimelineStore } from '../store/timeline-store';
 import { getSegmentOutputDurationMs, outputMsToSourceMs } from '../lib/segment-duration';
 import { useEdgeResize } from '../lib/use-edge-resize';
+import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
 import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
@@ -54,13 +55,6 @@ interface PanelResize {
  * component state) so this can be rendered independently of EditorPage,
  * e.g. as a full-width strip in ScreenRecorderApp that isn't nested under
  * (and therefore isn't squeezed by) the screen-recorder tool's sidebar.
- *
- * Interactions:
- *  - Click a clip to select it (crop applies to whichever clip is selected).
- *  - Double-click a clip to split it there.
- *  - Drag a clip to reorder it (native HTML5 drag and drop).
- *  - Drag a clip's left/right edge to trim its in/out point.
- *  - Trash icon ripple-deletes a clip (disabled once only one is left).
  */
 export function CutTimeline(): JSX.Element {
   const segments = useTimelineStore(
@@ -72,11 +66,9 @@ export function CutTimeline(): JSX.Element {
   const requestSeek = useTimelineStore((s) => s.requestSeek);
   const splitAt = useTimelineStore((s) => s.splitAt);
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
-  const reorderSegments = useTimelineStore((s) => s.reorderSegments);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);
 
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const dragIndexRef = useRef<number | null>(null);
+  const { dragOverIndex, getDragHandlers } = useSegmentReorderDrag();
   const { startResize } = useEdgeResize();
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const playheadDraggingRef = useRef(false);
@@ -227,7 +219,7 @@ export function CutTimeline(): JSX.Element {
             <div
               onClick={handleRulerClick}
               title="Click to scrub"
-              className="relative h-5 shrink-0 cursor-pointer select-none"
+              className="relative h-5 shrink-0 cursor-pointer select-none mx-3"
             >
               {ticks.map(({ atMs, major }) => (
                 <div
@@ -246,12 +238,10 @@ export function CutTimeline(): JSX.Element {
             </div>
 
             {/*
-              The real editable clip list -- drag/reorder, edge-resize/trim,
-              double-click to split, delete. Deliberately neutral (not
-              red/Scissors) since those now belong to TrimTrack's sparse
-              "this clip was trimmed" indicator below -- this row always
-              shows every clip, tiled edge-to-edge, which is a different
-              thing from that indicator.
+              Deliberately neutral (not red/Scissors) since those now belong
+              to TrimTrack's sparse "this clip was trimmed" indicator below --
+              this row always shows every clip, tiled edge-to-edge, which is
+              a different thing from that indicator.
             */}
             <div className="flex h-9 shrink-0 items-center gap-0.5 px-1">
               {segments.map((segment, index) => {
@@ -260,30 +250,11 @@ export function CutTimeline(): JSX.Element {
                 return (
                   <div
                     key={segment.id}
-                    draggable
-                    onDragStart={(e) => {
-                      dragIndexRef.current = index;
-                      e.dataTransfer.effectAllowed = 'move';
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDragOverIndex(index);
-                    }}
-                    onDragLeave={() =>
-                      setDragOverIndex((current) => (current === index ? null : current))
-                    }
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const from = dragIndexRef.current;
-                      setDragOverIndex(null);
-                      dragIndexRef.current = null;
-                      if (from === null) return;
-                      reorderSegments(from, index);
-                    }}
+                    {...getDragHandlers(index)}
                     onClick={() => setSelectedSegmentId(segment.id)}
                     onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
                     className={cn(
-                      'group relative flex h-7 min-w-9 cursor-grab items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/10 active:cursor-grabbing',
+                      'group relative flex h-7 min-w-9 cursor-grab items-center justify-center gap-1.5 rounded-md border border-white/15 bg-white/10 active:cursor-grabbing',
                       dragOverIndex === index && 'ring-2 ring-accent',
                       dragOverIndex !== index && isSelected && 'ring-2 ring-white/70'
                     )}
@@ -305,7 +276,7 @@ export function CutTimeline(): JSX.Element {
                         deleteSegment(segment.id);
                       }}
                       disabled={segments.length <= 1}
-                      className="absolute right-1 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
+                      className="absolute right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
                     >
                       <Trash2 size={11} />
                     </button>
@@ -316,7 +287,7 @@ export function CutTimeline(): JSX.Element {
                           e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
                         startResizeHandler(segment, 'start', width)(e);
                       }}
-                      className="absolute inset-y-0 left-0 w-2 cursor-ew-resize"
+                      className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-white/15 hover:bg-white/30"
                     />
                     <div
                       onPointerDown={(e) => {
@@ -324,7 +295,7 @@ export function CutTimeline(): JSX.Element {
                           e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
                         startResizeHandler(segment, 'end', width)(e);
                       }}
-                      className="absolute inset-y-0 right-0 w-2 cursor-ew-resize"
+                      className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-white/15 hover:bg-white/30"
                     />
                   </div>
                 );

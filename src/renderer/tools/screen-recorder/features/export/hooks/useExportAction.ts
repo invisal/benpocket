@@ -22,9 +22,7 @@ interface UseExportActionResult {
 
 /**
  * Shared export trigger: save-path dialog -> screenRecorder.export.start ->
- * live progress via onProgress -> error surfacing. Used by both the
- * top-nav ExportButton (quick export with current settings) and
- * ExportSidePanel's full config panel, so the flow only lives once.
+ * live progress via onProgress -> error surfacing.
  */
 export function useExportAction(): UseExportActionResult {
   const lastRecording = useAppStore((state) => state.lastRecording);

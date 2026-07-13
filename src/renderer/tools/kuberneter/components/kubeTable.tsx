@@ -115,7 +115,8 @@ export function KubeTable<T>({
             ? {
                 tableLayout: 'fixed',
                 width: Object.values(colWidths).reduce((a, b) => a + b, 0),
-                minWidth: '100%'
+                minWidth: '100%',
+                borderCollapse: 'collapse'
               }
             : { width: '100%', borderCollapse: 'collapse' }
         }
@@ -135,7 +136,7 @@ export function KubeTable<T>({
               'sticky top-0 z-10',
               isModern
                 ? 'bg-sidebar-bg text-zinc-455 text-[10px] font-bold uppercase tracking-wider'
-                : 'bg-surface-2/20 border border-border/20'
+                : 'bg-surface-2 border border-border/20'
             )}
           >
             <tr>
@@ -151,11 +152,11 @@ export function KubeTable<T>({
                   <th
                     key={col.key}
                     className={cn(
-                      'p-2 font-sans select-none relative overflow-hidden',
+                      'font-sans select-none relative',
                       alignClass,
                       isModern
-                        ? 'py-2.5 border-b border-border-dark/60 text-zinc-400 font-semibold'
-                        : 'border border-border/20',
+                        ? 'bg-sidebar-bg py-2.5 px-3 border-b border-border-dark/60 text-zinc-400 font-semibold'
+                        : 'bg-surface-2 py-2.5 px-2 border border-border/20',
                       col.headerClassName
                     )}
                     style={
@@ -168,7 +169,7 @@ export function KubeTable<T>({
                     {canResize && (
                       <div
                         onMouseDown={(e) => startResize(e, col.key)}
-                        className="absolute right-0 top-0 h-full w-4 z-20 cursor-col-resize flex items-center justify-center group/handle"
+                        className="absolute right-0 top-0 h-full w-4 z-20 cursor-col-resize flex items-center justify-end group/handle"
                         title="Drag to resize"
                       >
                         <div className="w-px h-4/5 bg-border-dark group-hover/handle:bg-accent transition-colors duration-100" />

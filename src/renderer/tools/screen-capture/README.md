@@ -186,7 +186,7 @@ Reuses the **`window.screenRecorder`** preload namespace (same as Screen Recorde
 | `screenshot.selectRegion`     | `ipc/region-handlers.ts` → `windows/region-select-window.ts`           | Yes — region overlay        |
 | `window.hide` / `restore`     | `ipc/window-handlers.ts` → `windows/window-visibility.ts`              | Yes                         |
 | `screenshot.copy`             | `ipc/dialog-handlers.ts` → `clipboard/copy-screenshot-to-clipboard.ts` | Yes                         |
-| `screenshot.save`             | `ipc/dialog-handlers.ts` (native save dialog → Pictures)               | Yes                         |
+| `screenshot.save`             | `ipc/dialog-handlers.ts` (native save dialog; remembers last save dir) | Yes                         |
 | `recording.start` / `stop`    | Screen Recorder pipeline                                               | **No**                      |
 
 App-wide notifications (not under `screenRecorder`):

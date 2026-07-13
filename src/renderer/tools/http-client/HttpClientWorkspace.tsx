@@ -19,6 +19,16 @@ import { SaveRequestPopover } from './components/SaveRequestPopover';
 import { EnvironmentSelector } from './components/EnvironmentSelector';
 import { CodeSnippetPopover } from './components/CodeSnippetPopover';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
+import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
+
+const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
+const DEFAULT_RESPONSE_PANEL_HEIGHT = 40;
+
+function readStoredResponsePanelHeight(): number {
+  const stored = window.localStorage.getItem(RESPONSE_PANEL_HEIGHT_KEY);
+  const parsed = stored ? Number(stored) : NaN;
+  return Number.isFinite(parsed) ? parsed : DEFAULT_RESPONSE_PANEL_HEIGHT;
+}
 
 // Mirrors the nav-item pattern in screen-recorder/ScreenRecorderApp.tsx, so every
 // tool's top-level mode switcher (record/library/... there, HTTP/WebSocket here)
@@ -241,6 +251,13 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   const renameTab = usePostmanTabsStore((s) => s.renameTab);
   const seed = tab?.meta as PostmanTabSeed | undefined;
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [responsePanelHeight, setResponsePanelHeight] = useState<number>(
+    readStoredResponsePanelHeight
+  );
+  const handleResponsePanelResize = (size: number): void => {
+    setResponsePanelHeight(size);
+    window.localStorage.setItem(RESPONSE_PANEL_HEIGHT_KEY, String(size));
+  };
 
   useEffect(() => {
     if (!saveError) return;
@@ -350,32 +367,44 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         </nav>
 
         <Tabs.Panel value="HTTP" className="flex flex-col gap-3 min-h-0 flex-1">
-          <RequestComposer
-            method={client.http.state.method}
-            onMethodChange={client.http.setMethod}
-            url={client.http.state.url}
-            onUrlChange={client.http.setUrl}
-            isLoading={client.http.state.isLoading}
-            onSend={client.http.send}
-          />
+          <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">
+            <RequestComposer
+              method={client.http.state.method}
+              onMethodChange={client.http.setMethod}
+              url={client.http.state.url}
+              onUrlChange={client.http.setUrl}
+              isLoading={client.http.state.isLoading}
+              onSend={client.http.send}
+            />
 
-          <RequestEditorPanel
-            params={client.http.state.params}
-            onUpdateParam={client.http.updateParamRow}
-            onRemoveParam={client.http.removeParamRow}
-            headers={client.http.state.headers}
-            onUpdateHeader={client.http.updateHeaderRow}
-            onRemoveHeader={client.http.removeHeaderRow}
-            bodyType={client.http.state.bodyType}
-            onBodyTypeChange={client.http.setBodyType}
-            body={client.http.state.body}
-            onBodyChange={client.http.setBody}
-          />
+            <RequestEditorPanel
+              params={client.http.state.params}
+              onUpdateParam={client.http.updateParamRow}
+              onRemoveParam={client.http.removeParamRow}
+              headers={client.http.state.headers}
+              onUpdateHeader={client.http.updateHeaderRow}
+              onRemoveHeader={client.http.removeHeaderRow}
+              bodyType={client.http.state.bodyType}
+              onBodyTypeChange={client.http.setBodyType}
+              body={client.http.state.body}
+              onBodyChange={client.http.setBody}
+            />
+          </div>
 
-          <ResponseInspector
-            response={client.http.state.response}
-            isLoading={client.http.state.isLoading}
-          />
+          <ResizablePanel
+            edge="top"
+            size={responsePanelHeight}
+            onResize={handleResponsePanelResize}
+            min={15}
+            max={75}
+            unit="%"
+            className="flex flex-col min-h-0"
+          >
+            <ResponseInspector
+              response={client.http.state.response}
+              isLoading={client.http.state.isLoading}
+            />
+          </ResizablePanel>
         </Tabs.Panel>
 
         <Tabs.Panel value="WEBSOCKET" className="flex flex-col gap-3 min-h-0 flex-1">

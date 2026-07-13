@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { WALLPAPER_PRESETS, cssGradient } from '@shared/wallpaper-presets';
 import { useBackgroundStore } from '../store/background-store';
 import { Slider } from '../../../components/ui/slider';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
 
 const GRADIENT_PRESETS: { angleDeg: number; colors: [string, string] }[] = [

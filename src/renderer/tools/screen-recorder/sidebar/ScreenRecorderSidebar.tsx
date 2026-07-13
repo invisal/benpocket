@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Play, Plus } from 'lucide-react';
-import { useToolTabs } from '@renderer/components/providers/ToolProvider';
+import { Circle, Square } from 'lucide-react';
 import { useAppStore } from '../app/app-store';
 import { useRecordingStore } from '../features/recording/store/recording-store';
 import { AudioSourceToggle } from '../features/recording/components/AudioSourceToggle';
@@ -16,27 +15,22 @@ import {
 } from '../features/cursor/engine/cursor-capture';
 import { generateAutoZoomKeyframes } from '../features/zoom/engine/auto-zoom-engine';
 import { useZoomStore } from '../features/zoom/store/zoom-store';
+import { Button } from '@renderer/components/ui/Button';
 
 export const ScreenRecorderSidebar: React.FC = () => {
-  const { openTab } = useToolTabs();
   const selectedSource = useRecordingStore((state) => state.selectedSource);
   const audio = useRecordingStore((state) => state.audio);
-  const route = useAppStore((state) => state.route);
   const isRecording = useAppStore((state) => state.isRecording);
   const setIsRecording = useAppStore((state) => state.setIsRecording);
   const setRoute = useAppStore((state) => state.setRoute);
   const setLastRecording = useAppStore((state) => state.setLastRecording);
-
+  const route = useAppStore((state) => state.route);
   const [error, setError] = useState<string | null>(null);
   const [liveCounts, setLiveCounts] = useState<{ cursorCount: number; clickCount: number } | null>(
     null
   );
   const captureRef = useRef<CaptureHandle | null>(null);
   const cursorCaptureRef = useRef<CursorCaptureHandle | null>(null);
-
-  function handleNewScreenRecorderSession(): void {
-    openTab('screen-recorder', {}, { title: 'Screen Recording' });
-  }
 
   async function handleStart(): Promise<void> {
     if (!selectedSource) {
@@ -123,29 +117,28 @@ export const ScreenRecorderSidebar: React.FC = () => {
     });
     setRoute('editor');
   }
-
+  const disabled = !selectedSource || route !== 'record-setup';
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
           ScreenRecorder
         </span>
-        <button
-          onClick={handleNewScreenRecorderSession}
-          title="New Session"
-          className="p-1 text-zinc-400 hover:text-white hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
-        >
-          <Plus size={16} />
-        </button>
       </div>
 
-      <button
-        onClick={handleNewScreenRecorderSession}
-        className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-editor-bg border border-border-dark hover:bg-border-dark/50 rounded text-xs text-zinc-300 hover:text-white cursor-pointer transition-all"
+      <Button
+        onClick={isRecording ? handleStop : handleStart}
+        variant="secondary"
+        className="w-full"
+        disabled={disabled}
       >
-        <Play size={12} className="text-zinc-500" />
-        <span>Launch Studio</span>
-      </button>
+        {isRecording ? (
+          <Square size={12} className="text-zinc-500" fill="currentColor" />
+        ) : (
+          <Circle size={12} className="text-red-500" fill="currentColor" />
+        )}
+        <span>{isRecording ? 'Stop Recording' : 'Start Recording'}</span>
+      </Button>
 
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-bold text-zinc-500 uppercase">Audio</span>
@@ -171,28 +164,6 @@ export const ScreenRecorderSidebar: React.FC = () => {
           {isRecording && liveCounts.cursorCount === 0 ? ' -- move your mouse to test' : ''}
         </p>
       )}
-
-      <div className="mt-1 border-t border-border-dark pt-3">
-        {isRecording ? (
-          <button
-            onClick={handleStop}
-            className="flex w-full items-center justify-center gap-1.5 rounded py-1.5 text-xs font-medium text-zinc-200 bg-editor-bg border border-border-dark hover:bg-border-dark/50 cursor-pointer transition-all"
-          >
-            Stop Recording
-          </button>
-        ) : (
-          <button
-            onClick={handleStart}
-            disabled={!selectedSource || route !== 'record-setup'}
-            title={
-              route !== 'record-setup' ? 'Go to New Recording to start a recording' : undefined
-            }
-            className="flex w-full items-center justify-center gap-1.5 rounded py-1.5 text-xs font-medium text-white bg-accent hover:brightness-110 cursor-pointer transition-all disabled:pointer-events-none disabled:opacity-40"
-          >
-            Start Recording
-          </button>
-        )}
-      </div>
     </div>
   );
 };

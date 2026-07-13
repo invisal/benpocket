@@ -4,7 +4,7 @@ import { Crosshair, Plus, Trash2 } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import { useZoomStore } from '../store/zoom-store';
 import { Slider } from '../../../components/ui/slider';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
 
 function formatTime(ms: number): string {

@@ -15,7 +15,7 @@ import {
   qualityLabel
 } from '../presets';
 import { cn } from '../../../lib/utils';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@renderer/components/ui/Button';
 
 function formatMb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -233,6 +233,7 @@ function ExportAction(): JSX.Element {
         </p>
       )}
       <Button
+        variant="primary"
         onClick={handleExport}
         disabled={status === 'exporting'}
         className="w-full justify-center py-1.5 text-xs"

@@ -38,6 +38,8 @@ export const IpcChannels = {
   RefreshSimulatorWindowBounds: 'simulator:refresh-window-bounds',
   TrayOpenRecordPicker: 'tray:open-record-picker',
   TraySourceSelected: 'tray:source-selected',
+  TrayRegister: 'tray:register',
+  TrayUnregister: 'tray:unregister',
   ShowNotification: 'notification:show',
   PickOsCaptureSource: 'screenshot:pick-os-source'
 } as const;

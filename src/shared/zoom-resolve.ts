@@ -39,6 +39,15 @@ export interface ResolvedZoom {
 }
 
 /**
+ * Fixed ease-in/ease-out time either side of a keyframe -- the zoom spends
+ * whatever's left of `durationMs` actually held at full depth on the focal
+ * point, rather than an instantaneous peak. Short keyframes (< 2x this)
+ * scale the ramps down instead of overlapping, degrading to a plain
+ * ease-in-then-out with no hold.
+ */
+const HOLD_TRANSITION_MS = 800;
+
+/**
  * `'auto-cursor'` keyframes track the *real* recorded cursor path (sampled
  * at `atMs`, same smoothing already applied by the caller) rather than a
  * fixed point -- this is what makes auto-zoom actually follow the mouse
@@ -57,11 +66,17 @@ export function resolveZoom(
   const active = keyframes.find((k) => atMs >= k.atMs && atMs <= k.atMs + k.durationMs);
   if (!active) return identity;
 
-  const progress = active.durationMs > 0 ? (atMs - active.atMs) / active.durationMs : 1;
+  const rampMs = Math.min(HOLD_TRANSITION_MS, active.durationMs / 2);
+  const elapsed = atMs - active.atMs;
+  const remaining = active.durationMs - elapsed;
   const envelope =
-    progress < 0.5
-      ? easeZoom(progress * 2, active.easing)
-      : easeZoom((1 - progress) * 2, active.easing);
+    rampMs <= 0
+      ? 1
+      : elapsed < rampMs
+        ? easeZoom(elapsed / rampMs, active.easing)
+        : remaining < rampMs
+          ? easeZoom(remaining / rampMs, active.easing)
+          : 1;
   const depth = 1 + (active.depth - 1) * envelope;
   const focal =
     active.position === 'auto-cursor'

@@ -12,9 +12,22 @@ import { useRecordingStore } from '../../tools/screen-recorder/features/recordin
  * click to actually begin -- not auto-started from the tray click itself,
  * since kicking off a recording with no on-screen confirmation felt like
  * too easy a way to record something by accident.
+ *
+ * Also owns the tray icon's lifecycle: it only exists (and only clutters
+ * the menu bar) while a Screen Recorder tab is actually open, rather than
+ * for the app's whole lifetime regardless of use.
  */
 export function TrayBridge(): null {
   const { tabs, openTab, selectTab } = useToolTabs();
+  const hasRecorderTab = tabs.some((t) => t.type === 'screen-recorder');
+
+  useEffect(() => {
+    if (!hasRecorderTab) return;
+    void window.screenRecorder.tray.register();
+    return () => {
+      void window.screenRecorder.tray.unregister();
+    };
+  }, [hasRecorderTab]);
 
   useEffect(() => {
     function goToRecordSetup(): void {

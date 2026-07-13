@@ -1,9 +1,10 @@
 import {
   app,
+  ipcMain,
   Tray,
   Menu,
   nativeImage,
-  type BrowserWindow,
+  BrowserWindow,
   type MenuItemConstructorOptions
 } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
@@ -20,10 +21,16 @@ import { listCaptureSources } from '../capture/screen-source-provider';
  * CleanShot, etc), just via a real OS menu instead of jumping straight into
  * the app window.
  *
- * The returned `Tray` must be kept referenced for the app's lifetime --
- * Electron destroys the OS-level tray icon if it gets garbage collected.
+ * Only lives while the Screen Recorder tool tab is open -- the renderer
+ * (TrayBridge) tells us via IPC when to create/destroy it, rather than the
+ * tray existing for the app's whole lifetime regardless of what's in use.
+ * Kept as module state (not the returned value of a function) because
+ * Electron destroys the OS-level tray icon if the `Tray` instance is
+ * garbage collected.
  */
-export function createRecorderTray(iconPath: string, mainWindow: BrowserWindow): Tray {
+let trayInstance: Tray | null = null;
+
+function createRecorderTray(iconPath: string, mainWindow: BrowserWindow): Tray {
   const image = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 });
   const tray = new Tray(image);
   tray.setToolTip('CraftBox -- click to record');
@@ -33,6 +40,27 @@ export function createRecorderTray(iconPath: string, mainWindow: BrowserWindow):
   });
 
   return tray;
+}
+
+/** Wires up the renderer-facing register/unregister IPC for the recorder tray. */
+export function registerTrayHandlers(iconPath: string): void {
+  ipcMain.handle(IpcChannels.TrayRegister, (event) => {
+    if (trayInstance) return;
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+    trayInstance = createRecorderTray(iconPath, win);
+  });
+
+  ipcMain.handle(IpcChannels.TrayUnregister, () => {
+    trayInstance?.destroy();
+    trayInstance = null;
+  });
+}
+
+/** Tears down the tray icon, if any. Call on app quit. */
+export function destroyTray(): void {
+  trayInstance?.destroy();
+  trayInstance = null;
 }
 
 function focusAndSend(mainWindow: BrowserWindow, channel: string, ...args: unknown[]): void {

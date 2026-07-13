@@ -90,6 +90,10 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.RefreshSimulatorWindowBounds)
   },
   tray: {
+    /** Creates the tray icon, if it doesn't already exist. */
+    register: (): Promise<void> => ipcRenderer.invoke(IpcChannels.TrayRegister),
+    /** Destroys the tray icon, if one exists. */
+    unregister: (): Promise<void> => ipcRenderer.invoke(IpcChannels.TrayUnregister),
     onOpenRecordPicker: (callback: () => void): (() => void) => {
       const listener = (): void => callback();
       ipcRenderer.on(IpcChannels.TrayOpenRecordPicker, listener);

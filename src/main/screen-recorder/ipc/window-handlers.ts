@@ -6,8 +6,7 @@ function windowFromEvent(event: Electron.IpcMainInvokeEvent): BrowserWindow | nu
   return BrowserWindow.fromWebContents(event.sender);
 }
 
-// Powers the custom, frameless titlebar in app/layout/TitleBar.tsx -- see
-// main-window.ts for why the window has no native frame/traffic lights.
+// Powers the custom, frameless titlebar in app/layout/TitleBar.tsx.
 export function registerWindowHandlers(): void {
   ipcMain.handle(IpcChannels.WindowMinimize, (event) => {
     windowFromEvent(event)?.minimize();
@@ -37,10 +36,4 @@ export function registerWindowHandlers(): void {
   ipcMain.handle(IpcChannels.WindowIsMaximized, (event) => {
     return windowFromEvent(event)?.isMaximized() ?? false;
   });
-}
-
-/** Wire a window's maximize/unmaximize events to push state to its renderer. */
-export function forwardMaximizeState(win: BrowserWindow): void {
-  win.on('maximize', () => win.webContents.send(IpcChannels.WindowMaximizeChanged, true));
-  win.on('unmaximize', () => win.webContents.send(IpcChannels.WindowMaximizeChanged, false));
 }

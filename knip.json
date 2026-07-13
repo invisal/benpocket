@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/renderer/index.html", "src/renderer/region-select.html"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreBinaries": ["xclip"],
+  "ignoreDependencies": ["tailwindcss"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/renderer/tools/**": ["duplicates"]
+  }
+}

@@ -1,8 +1,9 @@
-import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { KuberneterSidebar } from './components/sidebar/KuberneterSidebar';
 import { Workspace } from '@renderer/components/layout/Workspace';
 import { useLayoutStore } from '../../src/store/layout.store';
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 
 export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: string }>) {
   const { instanceId } = payload;

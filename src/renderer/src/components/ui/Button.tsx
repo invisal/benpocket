@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, Ref } from 'react';
+import { type ButtonHTMLAttributes, type Ref } from 'react';
 import { cn } from 'cnfast';
 
 type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost' | 'outline';

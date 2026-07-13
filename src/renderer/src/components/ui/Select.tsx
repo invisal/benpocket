@@ -1,7 +1,7 @@
 import { Select as SelectPrimitive } from '@base-ui/react';
 import { cn } from 'cnfast';
 import { Check, ChevronDown } from 'lucide-react';
-import { ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
 import { Button } from './Button';
 
 export function SelectTrigger({

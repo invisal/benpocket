@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import type React from 'react';
+import { useRef, useState } from 'react';
 import { Play, Plus } from 'lucide-react';
 import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { useAppStore } from '../app/app-store';

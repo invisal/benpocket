@@ -1,23 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
-import { PodData } from '../../types/PodData';
-import { DeployData } from '../../types/DeployData';
-import { ServiceData } from '../../types/ServiceData';
-import { ConfigMapData } from '../../types/ConfigMapData';
-import { ApplicationData } from '../../types/ApplicationData';
-import { NodeData } from '../../types/NodeData';
-import { DaemonSetData } from '../../types/DaemonSetData';
-import { StatefulSetData } from '../../types/StatefulSetData';
-import { ReplicaSetData } from '../../types/ReplicaSetData';
-import { JobData } from '../../types/JobData';
-import { CronJobData } from '../../types/CronJobData';
-import { K8sResource } from '../../types/K8sResource';
-import { TopNodeItem } from '../../types/TopNodeItem';
+import { type PodData } from '../../types/PodData';
+import { type DeployData } from '../../types/DeployData';
+import { type ServiceData } from '../../types/ServiceData';
+import { type ConfigMapData } from '../../types/ConfigMapData';
+import { type ApplicationData } from '../../types/ApplicationData';
+import { type NodeData } from '../../types/NodeData';
+import { type DaemonSetData } from '../../types/DaemonSetData';
+import { type StatefulSetData } from '../../types/StatefulSetData';
+import { type ReplicaSetData } from '../../types/ReplicaSetData';
+import { type JobData } from '../../types/JobData';
+import { type CronJobData } from '../../types/CronJobData';
+import { type K8sResource } from '../../types/K8sResource';
+import { type TopNodeItem } from '../../types/TopNodeItem';
 import { formatAge } from '../../ults/formatAge';
 import { formatAgeLong } from '../../ults/formatAgeLong';
 import { parseK8sCapacity, formatCapacity } from '../../ults/formatCapacity';
-import { PodResource, ContainerStatus } from '../../types/PodResource';
+import { type PodResource, type ContainerStatus } from '../../types/PodResource';
 
 export function useWorkspaceResources(resource: string) {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);

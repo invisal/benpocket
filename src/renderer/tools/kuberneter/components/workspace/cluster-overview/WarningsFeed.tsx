@@ -1,6 +1,6 @@
-import React from 'react';
+import type React from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { KubeTable, Column } from '../../kubeTable';
+import { KubeTable, type Column } from '../../kubeTable';
 
 interface EventResource {
   metadata?: {

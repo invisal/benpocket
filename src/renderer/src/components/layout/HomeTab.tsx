@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useLayoutStore } from '../../store/layout.store';
 import { Monitor, Send, Video } from 'lucide-react';
 import { Button } from '../ui/Button';

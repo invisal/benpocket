@@ -1,4 +1,4 @@
-import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { ScreenRecorderApp } from './ScreenRecorderApp';
 
 interface Props {}

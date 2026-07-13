@@ -1,14 +1,14 @@
 import {
-  KeyboardEvent,
-  MouseEvent,
-  ReactNode,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState
 } from 'react';
-import { flexRender, Table } from '@tanstack/react-table';
+import { flexRender, type Table } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from 'cnfast';
 import { ContextMenu } from './ContextMenu';

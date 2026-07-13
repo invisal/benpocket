@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo, useState } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { KubeSearchbox } from '../../KubeSearchbox';
 import { AlertTriangle, Download, Info } from 'lucide-react';
-import { EventData } from '../../../types/EventData';
+import { type EventData } from '../../../types/EventData';
 
 interface WorkloadEventsFeedProps {
   eventsData: EventData[];

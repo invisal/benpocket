@@ -1,5 +1,5 @@
-import React from 'react';
-import { RecentConnection } from '../../../store/kuberneter.store';
+import type React from 'react';
+import { type RecentConnection } from '../../../store/kuberneter.store';
 import { Globe } from 'lucide-react';
 
 interface RecentListProps {

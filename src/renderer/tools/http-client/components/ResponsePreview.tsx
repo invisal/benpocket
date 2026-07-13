@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { ImageOff } from 'lucide-react';
 import { isImageContentType } from '../lib/responseFormat';
 import type { ResponseFormat } from '../lib/responseFormat';

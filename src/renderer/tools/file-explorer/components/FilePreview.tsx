@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { AlertCircle, FileText, Loader2 } from 'lucide-react';
-import { FileEntry, formatBytes } from './columns';
+import { type FileEntry, formatBytes } from './columns';
 
 type PreviewKind = 'text';
 

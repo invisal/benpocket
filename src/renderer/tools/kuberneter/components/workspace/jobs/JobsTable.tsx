@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
-import { JobData } from '../../../types/JobData';
+import { type JobData } from '../../../types/JobData';
 
 interface JobsTableProps {
   filteredData: JobData[];

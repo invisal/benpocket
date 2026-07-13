@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical } from 'lucide-react';
 import { cn } from 'cnfast';
-import { ApplicationData } from '../../../types/ApplicationData';
+import { type ApplicationData } from '../../../types/ApplicationData';
 
 interface ApplicationsTableProps {
   filteredData: ApplicationData[];

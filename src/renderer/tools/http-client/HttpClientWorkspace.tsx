@@ -1,4 +1,5 @@
-import React, { useEffect, useState, type ComponentType } from 'react';
+import type React from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { FileText, Globe, Waves, X } from 'lucide-react';
 import { cn } from 'cnfast';

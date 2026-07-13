@@ -1,7 +1,7 @@
 import { Dialog as DialogPrimitive } from '@base-ui/react';
 import { cn } from 'cnfast';
 import { X } from 'lucide-react';
-import { ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
 
 export function DialogBackdrop({
   className,

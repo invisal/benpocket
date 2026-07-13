@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { Trash2 } from 'lucide-react';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import { useActiveEnvironmentVariables } from '../store/environments.store';

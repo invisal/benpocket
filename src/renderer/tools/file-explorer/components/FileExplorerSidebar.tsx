@@ -3,7 +3,7 @@ import { HardDrive } from 'lucide-react';
 import { cn } from 'cnfast';
 import type { SidebarItem, SidebarSections } from '../../../../preload/file-explorer/api';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
-import { getFavoriteIcon, IconComponent } from '../lib/sidebarIcons';
+import { getFavoriteIcon, type IconComponent } from '../lib/sidebarIcons';
 
 function normalize(target: string): string {
   return target.replace(/[\\/]+$/, '').toLowerCase();

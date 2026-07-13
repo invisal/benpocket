@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { JobData } from '../../../types/JobData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type JobData } from '../../../types/JobData';
 import { JobsToolbar } from './JobsToolbar';
 import { JobsTable } from './JobsTable';
 

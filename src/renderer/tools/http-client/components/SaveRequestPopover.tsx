@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import type React from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Save } from 'lucide-react';
 import { useCollectionsStore } from '../store/collections.store';

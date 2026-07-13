@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { NodeData } from '../../../types/NodeData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type NodeData } from '../../../types/NodeData';
 import { NodesToolbar } from './NodesToolbar';
 import { NodesTable } from './NodesTable';
 

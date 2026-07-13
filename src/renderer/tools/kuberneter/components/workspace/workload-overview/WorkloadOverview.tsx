@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { useWorkloadOverview } from './useWorkloadOverview';

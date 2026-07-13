@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { ChevronDown, Globe, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { KeyValuePair } from '../../../../preload/http-client/types';

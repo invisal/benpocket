@@ -1,8 +1,8 @@
-import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { Folder, GlobeIcon, PlusIcon, CameraIcon } from 'lucide-react';
 import { useLayoutStore } from '@renderer/store/layout.store';
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
 
 interface Props {}

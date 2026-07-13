@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { StatefulSetData } from '../../../types/StatefulSetData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type StatefulSetData } from '../../../types/StatefulSetData';
 import { StatefulSetsToolbar } from './StatefulSetsToolbar';
 import { StatefulSetsTable } from './StatefulSetsTable';
 

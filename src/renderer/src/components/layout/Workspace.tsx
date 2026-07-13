@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { FileText, X, Home } from 'lucide-react';
 import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { HomeTab } from './HomeTab';

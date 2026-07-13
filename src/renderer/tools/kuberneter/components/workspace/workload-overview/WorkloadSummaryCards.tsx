@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import {
   Layers2,
   Cpu,
@@ -9,13 +9,13 @@ import {
   Clock4,
   AlertTriangle
 } from 'lucide-react';
-import { PodData } from '../../../types/PodData';
-import { DeployData } from '../../../types/DeployData';
-import { DaemonSetData } from '../../../types/DaemonSetData';
-import { StatefulSetData } from '../../../types/StatefulSetData';
-import { ReplicaSetData } from '../../../types/ReplicaSetData';
-import { JobData } from '../../../types/JobData';
-import { CronJobData } from '../../../types/CronJobData';
+import { type PodData } from '../../../types/PodData';
+import { type DeployData } from '../../../types/DeployData';
+import { type DaemonSetData } from '../../../types/DaemonSetData';
+import { type StatefulSetData } from '../../../types/StatefulSetData';
+import { type ReplicaSetData } from '../../../types/ReplicaSetData';
+import { type JobData } from '../../../types/JobData';
+import { type CronJobData } from '../../../types/CronJobData';
 
 interface WorkloadCard {
   id: string;

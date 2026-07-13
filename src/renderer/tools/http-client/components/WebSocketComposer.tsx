@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { Plug, PlugZap, RefreshCw, Send } from 'lucide-react';
 import type { WsStatus } from '../hooks/useWebSocket';
 

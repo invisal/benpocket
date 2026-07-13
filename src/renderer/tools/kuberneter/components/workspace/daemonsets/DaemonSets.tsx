@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { DaemonSetData } from '../../../types/DaemonSetData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type DaemonSetData } from '../../../types/DaemonSetData';
 import { DaemonSetsToolbar } from './DaemonSetsToolbar';
 import { DaemonSetsTable } from './DaemonSetsTable';
 

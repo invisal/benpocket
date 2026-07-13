@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { ApplicationData } from '../../../types/ApplicationData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type ApplicationData } from '../../../types/ApplicationData';
 import { ApplicationsToolbar } from './ApplicationsToolbar';
 import { ApplicationsTable } from './ApplicationsTable';
 

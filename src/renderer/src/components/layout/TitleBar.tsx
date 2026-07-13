@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { X, Minus, Square, Copy, Sun, Moon } from 'lucide-react';
 import { useLayoutStore } from '../../store/layout.store';
 import { useKuberneterStore } from '../../../tools/kuberneter/store/kuberneter.store';

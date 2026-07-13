@@ -1,7 +1,7 @@
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react';
 import { cn } from 'cnfast';
 import { Check, ChevronRight, Circle } from 'lucide-react';
-import { ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
 import { formatShortcut } from '@renderer/lib/shortcut';
 
 export function ContextMenuContent({

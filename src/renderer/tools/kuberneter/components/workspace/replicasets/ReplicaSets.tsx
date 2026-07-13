@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { ReplicaSetData } from '../../../types/ReplicaSetData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type ReplicaSetData } from '../../../types/ReplicaSetData';
 import { ReplicaSetsToolbar } from './ReplicaSetsToolbar';
 import { ReplicaSetsTable } from './ReplicaSetsTable';
 

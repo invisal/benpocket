@@ -8,7 +8,8 @@ import type {
 import type { Project, CursorPathPoint } from '@screen-recorder/types/project';
 import type { ExportFormat, ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
-import type { ScreenRect } from '@shared/capture-region';
+import type { ScreenRect, CaptureRegionSelection } from '@shared/capture-region';
+import type { OsPickerSource } from '@shared/os-picker-source';
 
 export const screenRecorderApi = {
   recording: {
@@ -96,11 +97,9 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.CopyScreenshot, data),
     save: (data: ArrayBuffer, defaultFileName: string): Promise<string | null> =>
       ipcRenderer.invoke(IpcChannels.SaveScreenshot, data, defaultFileName),
-    selectRegion: (): Promise<import('@shared/capture-region').CaptureRegionSelection | null> =>
+    selectRegion: (): Promise<CaptureRegionSelection | null> =>
       ipcRenderer.invoke(IpcChannels.SelectCaptureRegion),
-    pickOsSource: (options?: {
-      monitorOnly?: boolean;
-    }): Promise<import('@shared/os-picker-source').OsPickerSource | null> =>
+    pickOsSource: (options?: { monitorOnly?: boolean }): Promise<OsPickerSource | null> =>
       ipcRenderer.invoke(IpcChannels.PickOsCaptureSource, options)
   },
   regionSelect: {

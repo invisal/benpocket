@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { Layout } from 'lucide-react';
 import { useLayoutStore } from '../../store/layout.store';
 

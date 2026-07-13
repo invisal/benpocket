@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useWorkspaceResources } from './useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
 import { Pods } from './pods/Pods';

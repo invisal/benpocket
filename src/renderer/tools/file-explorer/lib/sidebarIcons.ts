@@ -1,4 +1,4 @@
-import { ComponentType } from 'react';
+import { type ComponentType } from 'react';
 import { Download, FileText, Home, Monitor } from 'lucide-react';
 
 export type IconComponent = ComponentType<{ size?: number; className?: string }>;

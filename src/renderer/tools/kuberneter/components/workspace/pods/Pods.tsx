@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { PodData } from '../../../types/PodData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type PodData } from '../../../types/PodData';
 import { PodsToolbar } from './PodsToolbar';
 import { PodsTable } from './PodsTable';
 

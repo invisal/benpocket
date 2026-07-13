@@ -1,4 +1,5 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type React from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlignLeft, Check, Minimize2, X } from 'lucide-react';
 import type { HttpBodyType, KeyValuePair } from '../../../../preload/http-client/types';

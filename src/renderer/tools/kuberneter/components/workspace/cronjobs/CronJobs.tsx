@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { CronJobData } from '../../../types/CronJobData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type CronJobData } from '../../../types/CronJobData';
 import { CronJobsToolbar } from './CronJobsToolbar';
 import { CronJobsTable } from './CronJobsTable';
 

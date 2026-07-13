@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import type React from 'react';
+import { useMemo, useState } from 'react';
 import { Select } from '@renderer/components/ui/Select';
 import { Check, Copy, Eye, FileText } from 'lucide-react';
 import { getPrettyText, getTokens } from '../lib/formatters/index';

@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
 import { Select } from '@renderer/components/ui/Select';

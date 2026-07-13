@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useLayoutStore } from '../../store/layout.store';
 import { KuberneterSidebar } from '../../../tools/kuberneter/components/sidebar/KuberneterSidebar';
 import { ScreenRecorderSidebar } from '../../../tools/screen-recorder/sidebar/ScreenRecorderSidebar';

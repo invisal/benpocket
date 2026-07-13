@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Annotation } from '@screen-recorder/types/project';
+import { type Annotation } from '@screen-recorder/types/project';
 interface AnnotationsStoreState {
   annotations: Annotation[];
   addAnnotation: (annotation: Annotation) => void;

@@ -3,8 +3,8 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  SortingState,
-  ColumnSizingState
+  type SortingState,
+  type ColumnSizingState
 } from '@tanstack/react-table';
 import { FileText, FolderPlus } from 'lucide-react';
 import { ListView } from '@renderer/components/ui/ListView';
@@ -12,7 +12,7 @@ import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
-import { columns, compareEntries, extensionKey, FileEntry, FileRow } from './columns';
+import { columns, compareEntries, extensionKey, type FileEntry, type FileRow } from './columns';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
 
 const DEFAULT_NEW_TEXT_FILE_NAME = 'New Text Document.txt';

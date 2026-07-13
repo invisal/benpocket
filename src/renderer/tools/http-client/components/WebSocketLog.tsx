@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Info, Trash2 } from 'lucide-react';
 import type { WsLogEntry } from '../hooks/useWebSocket';
 

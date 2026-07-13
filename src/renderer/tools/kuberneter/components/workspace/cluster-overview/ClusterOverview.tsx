@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { MetricGauge } from './MetricGauge';
 import { HistoryChart } from './HistoryChart';
 import { WarningsFeed } from './WarningsFeed';
 import { ClusterOverviewHeader } from './ClusterOverviewHeader';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { cn } from 'cnfast';
 
 // Quantity parsers for Kubernetes resource values
 function parseCpu(val: string | undefined | null): number {
@@ -287,12 +288,14 @@ export const ClusterOverview: React.FC = () => {
 
     try {
       const configPathArg = activeConfigPath === 'default' ? undefined : activeConfigPath;
+      const nsArg =
+        kuberneterSelectedNamespace === 'All Namespaces' ? undefined : kuberneterSelectedNamespace;
 
       // Fetch all required resources in parallel (Deployments, Services, and Configmaps are not required by Cluster Pulse)
       const [nodesRes, podsRes, eventsRes, topNodesRes] = await Promise.all([
         window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'nodes'),
-        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'pods'),
-        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'events'),
+        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'pods', nsArg),
+        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'events', nsArg),
         window.kuberneter.getTopNodes(configPathArg, kuberneterSelectedCluster)
       ]);
 
@@ -448,9 +451,8 @@ export const ClusterOverview: React.FC = () => {
   const filteredHistory = history.slice(-maxPoints);
 
   return (
-    <div className={cn('flex-1 flex flex-col gap-3 min-h-0 overflow-hidden py-4')}>
-      {/* Sleek dashboard header toolbar controls */}
-      <div className="px-4">
+    <KubeWorkspaceLayout
+      header={
         <ClusterOverviewHeader
           timeRange={timeRange}
           setTimeRange={setTimeRange}
@@ -459,70 +461,66 @@ export const ClusterOverview: React.FC = () => {
           isRefreshing={isRefreshing}
           onSync={() => fetchData(true)}
         />
-      </div>
+      }
+    >
+      <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto overflow-x-hidden min-h-0 pr-1 pb-4">
+        {/* Row 1: ECharts Concentric gauges */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 shrink-0 px-4">
+          <MetricGauge
+            title="CPU Allocation"
+            unit=" Cores"
+            capacity={capacities.capacityCpu}
+            allocatable={capacities.allocatableCpu}
+            usage={utilization.usageCpu}
+            requests={workloads.requestsCpu}
+            limits={workloads.limitsCpu}
+            colors={{
+              usage: '#10b981', // Emerald (live usage)
+              requests: '#8b5cf6', // Violet (reservations)
+              limits: '#06b6d4', // Cyan (limits ceiling)
+              bg: '#27272a' // Gauge background track
+            }}
+          />
 
-      {/* Main dashboard panels container */}
-      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden px-0">
-        {/* Scrollable Dashboard Panel */}
-        <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto overflow-x-hidden min-h-0 pr-1 pb-2">
-          {/* Row 1: ECharts Concentric gauges */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 shrink-0 px-4">
-            <MetricGauge
-              title="CPU Allocation"
-              unit=" Cores"
-              capacity={capacities.capacityCpu}
-              allocatable={capacities.allocatableCpu}
-              usage={utilization.usageCpu}
-              requests={workloads.requestsCpu}
-              limits={workloads.limitsCpu}
-              colors={{
-                usage: '#10b981', // Emerald (live usage)
-                requests: '#8b5cf6', // Violet (reservations)
-                limits: '#06b6d4', // Cyan (limits ceiling)
-                bg: '#27272a' // Gauge background track
-              }}
-            />
+          <MetricGauge
+            title="Memory Allocation"
+            unit=" GiB"
+            capacity={capacities.capacityMem}
+            allocatable={capacities.allocatableMem}
+            usage={utilization.usageMem}
+            requests={workloads.requestsMem}
+            limits={workloads.limitsMem}
+            colors={{
+              usage: '#10b981',
+              requests: '#8b5cf6',
+              limits: '#06b6d4',
+              bg: '#27272a'
+            }}
+          />
 
-            <MetricGauge
-              title="Memory Allocation"
-              unit=" GiB"
-              capacity={capacities.capacityMem}
-              allocatable={capacities.allocatableMem}
-              usage={utilization.usageMem}
-              requests={workloads.requestsMem}
-              limits={workloads.limitsMem}
-              colors={{
-                usage: '#10b981',
-                requests: '#8b5cf6',
-                limits: '#06b6d4',
-                bg: '#27272a'
-              }}
-            />
+          <MetricGauge
+            title="Pods Scheduled"
+            unit=""
+            capacity={capacities.capacityPods}
+            allocatable={capacities.allocatablePods}
+            usage={workloads.podsStatus.total}
+            colors={{
+              usage: '#10b981',
+              bg: '#27272a'
+            }}
+          />
+        </div>
 
-            <MetricGauge
-              title="Pods Scheduled"
-              unit=""
-              capacity={capacities.capacityPods}
-              allocatable={capacities.allocatablePods}
-              usage={workloads.podsStatus.total}
-              colors={{
-                usage: '#10b981',
-                bg: '#27272a'
-              }}
-            />
-          </div>
+        {/* Row 2: Live Utilization Timeline */}
+        <div className="shrink-0 px-4">
+          <HistoryChart history={filteredHistory} />
+        </div>
 
-          {/* Row 2: Live Utilization Timeline */}
-          <div className="shrink-0 px-4">
-            <HistoryChart history={filteredHistory} />
-          </div>
-
-          {/* Row 3: Live Warnings Feed */}
-          <div className="shrink-0">
-            <WarningsFeed events={events} namespace={kuberneterSelectedNamespace} />
-          </div>
+        {/* Row 3: Live Warnings Feed */}
+        <div className="shrink-0">
+          <WarningsFeed events={events} namespace={kuberneterSelectedNamespace} />
         </div>
       </div>
-    </div>
+    </KubeWorkspaceLayout>
   );
 };

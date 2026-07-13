@@ -21,6 +21,7 @@ export const IpcChannels = {
   SelectCaptureRegion: 'screenshot:select-region',
   RegionSelectComplete: 'region-select:complete',
   RegionSelectCancel: 'region-select:cancel',
+  RegionSelectGetContentOrigin: 'region-select:get-content-origin',
   GetSettings: 'settings:get',
   SetSettings: 'settings:set',
   RegisterShortcut: 'shortcuts:register',
@@ -37,5 +38,3 @@ export const IpcChannels = {
   ShowNotification: 'notification:show',
   PickOsCaptureSource: 'screenshot:pick-os-source'
 } as const;
-
-export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];

@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical } from 'lucide-react';
 import { cn } from 'cnfast';
-import { ApplicationData } from '../../../types/ApplicationData';
+import { type ApplicationData } from '../../../types/ApplicationData';
 
 interface ApplicationsTableProps {
   filteredData: ApplicationData[];
@@ -148,7 +149,7 @@ export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       emptyMessage="No applications match the search filters."
     />

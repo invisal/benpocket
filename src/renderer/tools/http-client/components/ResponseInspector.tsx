@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import type React from 'react';
+import { useMemo, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import type { HttpResponsePayload } from '../../../../preload/http-client/types';

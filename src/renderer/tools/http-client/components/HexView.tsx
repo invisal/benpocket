@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import { HEX_ROW_LIMIT, toHexRows } from '../lib/formatters/hex';
 
 interface HexViewProps {

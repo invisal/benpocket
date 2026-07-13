@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
-import { ReplicaSetData } from '../../../types/ReplicaSetData';
+import { type ReplicaSetData } from '../../../types/ReplicaSetData';
 
 interface ReplicaSetsTableProps {
   filteredData: ReplicaSetData[];
@@ -145,7 +146,7 @@ export const ReplicaSetsTable: React.FC<ReplicaSetsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectReplicaSet(row)}
       selectedRowKey={selectedReplicaSetId}

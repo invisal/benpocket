@@ -3,7 +3,6 @@ import type { Project } from './project';
 
 export type ExportFormat = 'mp4' | 'webm' | 'mov' | 'gif';
 export type ExportCodec = 'h264' | 'h265' | 'av1';
-export type ExportQualityPreset = 'draft' | 'balanced' | 'high' | 'lossless';
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 
 /** One kept clip: its source range, crop, and speed (all per-clip, not global). */

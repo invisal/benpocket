@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
-import { StatefulSetData } from '../../../types/StatefulSetData';
+import { type StatefulSetData } from '../../../types/StatefulSetData';
 
 interface StatefulSetsTableProps {
   filteredData: StatefulSetData[];
@@ -141,7 +142,7 @@ export const StatefulSetsTable: React.FC<StatefulSetsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectStatefulSet(row)}
       selectedRowKey={selectedStatefulSetId}

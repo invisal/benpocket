@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { FileText, X, Home } from 'lucide-react';
 import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { HomeTab } from './HomeTab';
 import { KuberneterWorkspace } from '../../../tools/kuberneter/components/workspace/KuberneterWorkspace';
 import { HttpClientWorkspace } from '../../../tools/http-client/HttpClientWorkspace';
+import { KubeDetailDrawer } from '../../../tools/kuberneter/components/workspace/details/KubeDetailDrawer';
 import { ScreenRecorderWorkspace } from './workspaces/ScreenRecorderWorkspace';
 
 export const Workspace: React.FC = () => {
@@ -53,9 +55,10 @@ export const Workspace: React.FC = () => {
           return (
             <div
               key={tab.id}
-              className={`flex-1 overflow-hidden flex flex-col min-h-0 min-w-0 bg-surface${isActive ? '' : ' hidden'}`}
+              className={`relative flex-1 overflow-hidden flex flex-col min-h-0 min-w-0 bg-surface${isActive ? '' : ' hidden'}`}
             >
               <KuberneterWorkspace resource={resource} />
+              <KubeDetailDrawer tabId={tab.id} />
             </div>
           );
         })}

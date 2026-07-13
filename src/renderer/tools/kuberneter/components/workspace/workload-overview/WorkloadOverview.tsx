@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { useWorkloadOverview } from './useWorkloadOverview';
@@ -7,6 +7,7 @@ import { WorkloadEventsFeed } from './WorkloadEventsFeed';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from 'cnfast';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 export const WorkloadOverview: React.FC = () => {
   const { activeInstanceId, openTab } = useLayoutStore();
@@ -74,20 +75,19 @@ export const WorkloadOverview: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden py-4">
-      {/* Header */}
-      <div className="px-4 flex items-center justify-between shrink-0 mb-4">
-        <div>
-          <h2 className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40">
+    <KubeWorkspaceLayout
+      header={
+        <div className="flex items-center justify-between w-full">
+          <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans">
             Workloads Overview
-          </h2>
+          </span>
+          <Button onClick={refresh} variant="outline" size="sm" className="gap-1.5 h-7 text-[10px]">
+            <RefreshCw className={cn('size-3 text-accent')} />
+            <span>Sync</span>
+          </Button>
         </div>
-        <Button onClick={refresh} variant="outline" size="sm" className="gap-1.5 h-7 text-[10px]">
-          <RefreshCw className={cn('size-3 text-accent')} />
-          <span>Sync</span>
-        </Button>
-      </div>
-
+      }
+    >
       {/* Scrollable content — flex-1 so it fills remaining height with no trailing gap */}
       <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-h-0">
         {/* Resource Summary */}
@@ -114,6 +114,6 @@ export const WorkloadOverview: React.FC = () => {
           <WorkloadEventsFeed eventsData={eventsData} kuberneterSelectedNamespace={ns} />
         </div>
       </div>
-    </div>
+    </KubeWorkspaceLayout>
   );
 };

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { ChevronDown, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useWorkspacesStore } from '../store/workspaces.store';

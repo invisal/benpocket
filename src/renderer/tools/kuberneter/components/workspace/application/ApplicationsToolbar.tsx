@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { cn } from 'cnfast';
 import { KubeSearchbox } from '../../KubeSearchbox';
 
@@ -22,7 +22,7 @@ export const ApplicationsToolbar: React.FC<ApplicationsToolbarProps> = ({
   onRegexToggle
 }) => {
   return (
-    <div className="flex items-center justify-between shrink-0">
+    <div className="flex items-center justify-between w-full">
       <KubeSearchbox
         value={searchQuery}
         placeholder="Search Applications..."

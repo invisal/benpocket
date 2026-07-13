@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { RefreshCw, Send } from 'lucide-react';
 import type { HttpMethod } from '../../../../preload/http-client/types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';

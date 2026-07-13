@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import type React from 'react';
+import { useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Check, Code2, Copy } from 'lucide-react';
 import type { HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';

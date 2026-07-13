@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import type React from 'react';
+import { useMemo, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 
 const COPY_FEEDBACK_MS = 1500;

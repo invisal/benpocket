@@ -1,7 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { DaemonSetData } from '../../../types/DaemonSetData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type DaemonSetData } from '../../../types/DaemonSetData';
 import { DaemonSetsToolbar } from './DaemonSetsToolbar';
 import { DaemonSetsTable } from './DaemonSetsTable';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 interface DaemonSetsProps {
   daemonSetsData: DaemonSetData[];
@@ -16,7 +20,30 @@ export const DaemonSets: React.FC<DaemonSetsProps> = ({
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [selectedDaemonSet, setSelectedDaemonSet] = useState<DaemonSetData | null>(null);
+
+  const activeTabId = useLayoutStore((s) => s.activeTabId);
+  const setDrawerState = useKuberneterStore((s) => s.setKuberneterTabDrawerState);
+  const drawerState = useKuberneterStore((s) =>
+    activeTabId ? s.kuberneterTabDrawers[activeTabId] : null
+  );
+
+  const selectedDaemonSetId =
+    drawerState?.isOpen && drawerState?.contentType === 'daemonset'
+      ? (drawerState?.payload as DaemonSetData)?.id
+      : undefined;
+
+  const handleSelectDaemonSet = useCallback(
+    (ds: DaemonSetData) => {
+      if (activeTabId) {
+        setDrawerState(activeTabId, {
+          isOpen: true,
+          contentType: 'daemonset',
+          payload: ds
+        });
+      }
+    },
+    [activeTabId, setDrawerState]
+  );
 
   // Filter rows by namespace + search query
   const filteredData = useMemo(() => {
@@ -112,99 +139,29 @@ export const DaemonSets: React.FC<DaemonSetsProps> = ({
   };
 
   return (
-    <div className="flex-1 flex gap-4 min-h-0 min-w-0 py-4">
-      {/* Table & Toolbar Container */}
-      <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0 select-none">
-        <div className="px-4">
-          <DaemonSetsToolbar
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            useRegex={useRegex}
-            totalCount={filteredData.length}
-            selectedCount={selectedIds.size}
-            onSearchChange={setSearchQuery}
-            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-            onRegexToggle={() => setUseRegex((v) => !v)}
-            onDownload={handleDownloadCsv}
-          />
-        </div>
-        <DaemonSetsTable
-          filteredData={filteredData}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onSelectDaemonSet={setSelectedDaemonSet}
-          selectedDaemonSetId={selectedDaemonSet?.id}
+    <KubeWorkspaceLayout
+      header={
+        <DaemonSetsToolbar
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          useRegex={useRegex}
+          totalCount={filteredData.length}
+          selectedCount={selectedIds.size}
+          onSearchChange={setSearchQuery}
+          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+          onRegexToggle={() => setUseRegex((v) => !v)}
+          onDownload={handleDownloadCsv}
         />
-      </div>
-
-      {/* Daemon Set details sliding side drawer panel */}
-      {selectedDaemonSet && (
-        <div className="w-80 bg-sidebar-bg border border-border-dark rounded-lg p-4 flex flex-col gap-3.5 shrink-0 overflow-y-auto select-none animate-in slide-in-from-right duration-200 mr-4 mb-4 mt-0">
-          <div className="flex items-center justify-between border-b border-border-dark pb-2">
-            <span className="text-xs font-bold text-white uppercase tracking-wider">
-              Daemon Set Details
-            </span>
-            <button
-              onClick={() => setSelectedDaemonSet(null)}
-              className="text-zinc-550 hover:text-white cursor-pointer text-xs border-none bg-transparent"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-2.5 text-xs text-zinc-350">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Resource Name</span>
-              <span className="font-mono text-zinc-200 break-all">{selectedDaemonSet.name}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Namespace</span>
-              <span className="font-mono text-zinc-300">{selectedDaemonSet.ns}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Node Selector</span>
-              <span className="font-mono text-zinc-350 bg-editor-bg px-2 py-1.5 rounded border border-border-dark/60 break-all select-text selection:bg-accent/30 selection:text-white leading-relaxed">
-                {selectedDaemonSet.nodeSelector || 'N/A'}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Scheduling Details</span>
-              <span className="font-mono text-zinc-300">
-                Desired: {selectedDaemonSet.desired} | Current: {selectedDaemonSet.current} | Ready:{' '}
-                {selectedDaemonSet.ready}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Up-to-Date / Available</span>
-              <span className="font-mono text-zinc-300">
-                Up-to-Date: {selectedDaemonSet.upToDate} | Available: {selectedDaemonSet.available}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Warning State / Age</span>
-              <span className="font-mono text-zinc-300">
-                {selectedDaemonSet.hasWarning ? 'Warning' : 'OK'} ({selectedDaemonSet.age})
-              </span>
-            </div>
-          </div>
-
-          {/* Event Logs Drawer Mockup */}
-          <div className="flex flex-col gap-1.5 mt-2 flex-1 border-t border-border-dark/60 pt-3">
-            <span className="text-[10px] font-bold text-zinc-455 uppercase">EVENT HISTORY</span>
-            <div className="flex flex-col gap-1.5 font-mono text-[10px] text-zinc-500">
-              <div className="flex gap-1">
-                <span className="text-emerald-500 font-bold">45s ago</span>
-                <span>Created pod for DaemonSet nodes</span>
-              </div>
-              <div className="flex gap-1">
-                <span className="text-emerald-500 font-bold">40s ago</span>
-                <span>Successful scheduling on active nodes</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      }
+    >
+      <DaemonSetsTable
+        filteredData={filteredData}
+        selectedIds={selectedIds}
+        onSelectAll={handleSelectAll}
+        onSelectRow={handleSelectRow}
+        onSelectDaemonSet={handleSelectDaemonSet}
+        selectedDaemonSetId={selectedDaemonSetId}
+      />
+    </KubeWorkspaceLayout>
   );
 };

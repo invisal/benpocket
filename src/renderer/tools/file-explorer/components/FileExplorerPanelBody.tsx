@@ -1,10 +1,10 @@
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Breadcrumb } from './Breadcrumb';
 import { FileTable } from './FileTable';
-import { FileEntry } from './columns';
+import { type FileEntry } from './columns';
 import { getParentPath } from '../lib/paths';
 import { useDirectoryListing } from '../lib/useDirectoryListing';
-import { useFileExplorerStore, Panel2Mode } from '../store/fileExplorer.store';
+import { useFileExplorerStore, type Panel2Mode } from '../store/fileExplorer.store';
 
 interface FileExplorerPanelBodyProps {
   path: string | null;

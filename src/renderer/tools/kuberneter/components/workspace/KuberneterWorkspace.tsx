@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useWorkspaceResources } from './useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
 import { Pods } from './pods/Pods';
@@ -15,6 +15,8 @@ import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { useLayoutStore } from '../../../../src/store/layout.store';
+import { DetailContent } from './details/DetailContent';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -23,6 +25,9 @@ interface KuberneterWorkspaceProps {
 }
 
 export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resource }) => {
+  const { openTabs, activeTabId } = useLayoutStore();
+  const activeTab = openTabs.find((t) => t.id === activeTabId);
+
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
@@ -56,7 +61,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   }
 
   return (
-    <div className="flex-1 flex flex-col gap-4 min-h-0 min-w-0">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0">
       {isLoading && (
         <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
           <Loader2 className="size-6 text-accent animate-spin" />
@@ -78,6 +83,16 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
 
       {!isLoading && !errorMsg && (
         <>
+          {resource.endsWith('-detail') && activeTab && (
+            <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-surface p-4 overflow-y-auto">
+              <DetailContent
+                contentType={resource.replace('-detail', '')}
+                payload={(activeTab.meta as { payload?: unknown })?.payload}
+                isTab
+              />
+            </div>
+          )}
+
           {resource === 'home' && <KuberneterHomeView />}
 
           {resource === 'overview' && <ClusterOverview />}

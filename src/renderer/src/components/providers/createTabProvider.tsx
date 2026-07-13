@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Activity, ComponentType, lazy, ReactNode, Suspense } from 'react';
+import { Activity, type ComponentType, lazy, type ReactNode, Suspense } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 

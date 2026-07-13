@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
-import { PodData } from '../../../types/PodData';
-import { DeployData } from '../../../types/DeployData';
-import { DaemonSetData } from '../../../types/DaemonSetData';
-import { StatefulSetData } from '../../../types/StatefulSetData';
-import { ReplicaSetData } from '../../../types/ReplicaSetData';
-import { JobData } from '../../../types/JobData';
-import { CronJobData } from '../../../types/CronJobData';
-import { EventData } from '../../../types/EventData';
-import { K8sResource } from '../../../types/K8sResource';
-import { formatAge } from '../../../ults/formatAge';
-import { PodResource, ContainerStatus } from '../../../types/PodResource';
+import { type PodData } from '../../../types/PodData';
+import { type DeployData } from '../../../types/DeployData';
+import { type DaemonSetData } from '../../../types/DaemonSetData';
+import { type StatefulSetData } from '../../../types/StatefulSetData';
+import { type ReplicaSetData } from '../../../types/ReplicaSetData';
+import { type JobData } from '../../../types/JobData';
+import { type CronJobData } from '../../../types/CronJobData';
+import { type EventData } from '../../../types/EventData';
+import { type K8sResource } from '../../../types/K8sResource';
+import { formatAge } from '../../../utils/formatAge';
+import { type PodResource, type ContainerStatus } from '../../../types/PodResource';
 
 // ─── parsers ────────────────────────────────────────────────────────────────
 

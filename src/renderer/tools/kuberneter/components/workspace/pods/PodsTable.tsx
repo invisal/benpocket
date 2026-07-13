@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
 import { cn } from 'cnfast';
-import { PodData } from '../../../types/PodData';
+import { type PodData } from '../../../types/PodData';
 
 interface PodsTableProps {
   filteredData: PodData[];
@@ -235,7 +236,7 @@ export const PodsTable: React.FC<PodsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectPod(row)}
       selectedRowKey={selectedPodId}

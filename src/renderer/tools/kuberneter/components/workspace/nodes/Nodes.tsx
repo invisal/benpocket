@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { NodeData } from '../../../types/NodeData';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { type NodeData } from '../../../types/NodeData';
 import { NodesToolbar } from './NodesToolbar';
 import { NodesTable } from './NodesTable';
+import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
 
 interface NodesProps {
   nodesData: NodeData[];
@@ -95,8 +97,8 @@ export const Nodes: React.FC<NodesProps> = ({ nodesData }) => {
   }, [filteredData]);
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0 select-none py-4">
-      <div className="px-4">
+    <KubeWorkspaceLayout
+      header={
         <NodesToolbar
           searchQuery={searchQuery}
           caseSensitive={caseSensitive}
@@ -107,13 +109,14 @@ export const Nodes: React.FC<NodesProps> = ({ nodesData }) => {
           onRegexToggle={() => setUseRegex((v) => !v)}
           onDownload={handleExportCSV}
         />
-      </div>
+      }
+    >
       <NodesTable
         filteredData={filteredData}
         selectedIds={selectedIds}
         onSelectAll={handleSelectAll}
         onSelectRow={handleSelectRow}
       />
-    </div>
+    </KubeWorkspaceLayout>
   );
 };

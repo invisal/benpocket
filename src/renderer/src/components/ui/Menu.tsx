@@ -1,6 +1,6 @@
 import { Menu as MenuPrimitive } from '@base-ui/react';
 import { cn } from 'cnfast';
-import { ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
 
 export function MenuContent({
   className,

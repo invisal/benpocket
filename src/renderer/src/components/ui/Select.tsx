@@ -1,17 +1,30 @@
 import { Select as SelectPrimitive } from '@base-ui/react';
 import { cn } from 'cnfast';
 import { Check, ChevronDown } from 'lucide-react';
-import { ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
 import { Button } from './Button';
 
 export function SelectTrigger({
   children,
+  variant,
+  size,
+  icon,
   ...props
-}: ComponentProps<typeof SelectPrimitive.Trigger>) {
+}: ComponentProps<typeof SelectPrimitive.Trigger> & {
+  variant?: 'primary' | 'secondary' | 'destructive' | 'ghost' | 'outline';
+  size?: 'lg' | 'md' | 'sm';
+  icon?: React.ReactNode;
+}) {
   return (
-    <SelectPrimitive.Trigger render={<Button type="button" />} {...props}>
-      {children}
-      <SelectPrimitive.Icon className="flex items-center text-text-dim">
+    <SelectPrimitive.Trigger
+      render={<Button type="button" variant={variant} size={size} />}
+      {...props}
+    >
+      <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+        {icon && <span className="flex items-center shrink-0">{icon}</span>}
+        {children}
+      </div>
+      <SelectPrimitive.Icon className="flex items-center text-text-dim shrink-0">
         <ChevronDown className="size-3.5" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>

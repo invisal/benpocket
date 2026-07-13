@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { FileExplorerPanelBody } from './components/FileExplorerPanelBody';
 import { FilePreview } from './components/FilePreview';
 import { FileExplorerSidebar } from './components/FileExplorerSidebar';

@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
 import { KubeSearchbox } from '../KubeSearchbox';
+import { Select } from '@renderer/components/ui/Select';
 import {
   ChevronDown,
   ChevronRight,
@@ -15,7 +17,8 @@ import {
   Clock,
   ShieldCheck,
   Package,
-  Boxes
+  Boxes,
+  Server
 } from 'lucide-react';
 
 interface SidebarCategory {
@@ -24,6 +27,17 @@ interface SidebarCategory {
   icon: React.ComponentType<{ className?: string }>;
   subItems?: Array<{ id: string; label: string }>;
 }
+
+const NamespaceIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    viewBox="0 0 16 16"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    fill="currentColor"
+  >
+    <path d="M5.78414398,3.49727599 C6.06028398,3.02157176 6.67187398,2.85858768 7.15016398,3.1332348 C7.59429041,3.38826426 7.76731842,3.93097006 7.56867762,4.38807373 L7.51619398,4.49186972 L2.86619398,12.5023475 C2.59004398,12.9780617 1.97845398,13.1410756 1.50016398,12.8663688 C1.05603755,12.6113763 0.883012992,12.0686646 1.08165909,11.6115519 L1.13414398,11.5077538 L5.78414398,3.49727599 Z M8,11 C8.55229,11 9,11.4477 9,12 C9,12.5523 8.55229,13 8,13 C7.44772,13 7,12.5523 7,12 C7,11.4477 7.44772,11 8,11 Z M11.00004,11 C11.55224,11 12.00004,11.4477 12.00004,12 C12.00004,12.5523 11.55224,13 11.00004,13 C10.44774,13 10,12.5523 10,12 C10,11.4477 10.44774,11 11.00004,11 Z M14,11 C14.5522,11 15,11.4477 15,12 C15,12.5523 14.5522,13 14,13 C13.4477,13 13,12.5523 13,12 C13,11.4477 13.4477,11 14,11 Z" />
+  </svg>
+);
 
 function highlightText(text: string, search: string): React.ReactNode {
   if (!search) return text;
@@ -46,11 +60,48 @@ function highlightText(text: string, search: string): React.ReactNode {
 
 export const KuberneterSidebar: React.FC = () => {
   const { openTab, openTabs, activeTabId, activeInstanceId } = useLayoutStore();
-  const { kuberneterInstanceCluster, kuberneterInstanceResource, setKuberneterInstanceResource } =
-    useKuberneterStore();
+  const {
+    kuberneterInstanceCluster,
+    kuberneterInstanceResource,
+    setKuberneterInstanceResource,
+    kuberneterInstanceNamespace,
+    setKuberneterInstanceNamespace,
+    kuberneterInstanceConfigPath
+  } = useKuberneterStore();
 
   const cluster = kuberneterInstanceCluster[activeInstanceId] || '';
+  const namespace = kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces';
+  const configPath = kuberneterInstanceConfigPath[activeInstanceId] || 'default';
   const activeResource = kuberneterInstanceResource[activeInstanceId] || 'overview';
+
+  const [namespaces, setNamespaces] = useState<string[]>([
+    'All Namespaces',
+    'default',
+    'kube-system',
+    'ingress-nginx',
+    'database'
+  ]);
+
+  useEffect(() => {
+    if (!cluster || !activeInstanceId) return;
+
+    const fetchNamespaces = async () => {
+      try {
+        const configPathArg = configPath === 'default' ? undefined : configPath;
+        const res = await window.kuberneter.getResources(configPathArg, cluster, 'namespaces');
+        if (res && Array.isArray(res.items)) {
+          const names = (res.items as { metadata?: { name?: string } }[])
+            .map((item) => item.metadata?.name)
+            .filter(Boolean) as string[];
+          setNamespaces(['All Namespaces', ...names]);
+        }
+      } catch (err) {
+        console.error('Failed to load namespaces in sidebar:', err);
+      }
+    };
+
+    fetchNamespaces();
+  }, [cluster, configPath, activeInstanceId]);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -229,20 +280,49 @@ export const KuberneterSidebar: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 h-full text-zinc-300 select-none animate-in fade-in duration-300">
-      {/* Search Navigation Bar */}
-      <div className="shrink-0 px-1 mb-1">
+    <div className="flex flex-col h-full text-zinc-300 select-none animate-in fade-in duration-300">
+      {/* 1. Namespace header — same height as tab bar (h-9) */}
+      <div className="h-9 shrink-0 flex items-center mx-[-12px] mt-[-12px] px-3 border-b border-border-dark">
+        <Select.Root
+          value={namespace}
+          onValueChange={(val) => val && setKuberneterInstanceNamespace(activeInstanceId, val)}
+        >
+          <Select.Trigger
+            variant="ghost"
+            size="sm"
+            icon={<NamespaceIcon className="size-3.5 text-zinc-500" />}
+            className="w-full flex items-center justify-between text-xs font-sans h-7 px-1.5 hover:bg-border-dark/30"
+          >
+            <Select.Value />
+          </Select.Trigger>
+          <Select.Content side="bottom" align="start">
+            {namespaces.map((ns) => (
+              <Select.Item key={ns} value={ns}>
+                <Select.ItemText>{ns}</Select.ItemText>
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      </div>
+
+      {/* 2. Search section — same height as workspace header (h-11) */}
+      <div className="h-11 shrink-0 flex items-center border-b border-border-dark mx-[-12px] px-3">
         <KubeSearchbox
           value={searchTerm}
           placeholder="Search navigation..."
           onChange={setSearchTerm}
+          className="flex-1 [&_input]:bg-surface-1"
         />
       </div>
 
-      {/* Navigation Tree */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 pr-1">
-        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-1 mb-1.5 font-sans">
-          Navigation
+      {/* 3. Navigation section — remaining height */}
+      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 pr-1 pt-2">
+        <span
+          className="text-xs font-bold text-zinc-200 uppercase tracking-wider px-1 mb-1.5 font-sans flex items-center gap-2 truncate"
+          title={cluster}
+        >
+          <Server className="size-4 shrink-0 text-zinc-400" />
+          <span>{cluster}</span>
         </span>
 
         {categories

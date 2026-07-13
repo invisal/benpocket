@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { Camera, ClipboardCopy, Download, Scan } from 'lucide-react';
 import { cn } from 'cnfast';
-import { ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { Button } from '@renderer/components/ui/Button';
 import { notifyError, notifySuccess } from '@renderer/lib/notify';
 import type { CaptureSource } from '@screen-recorder/types/recording';

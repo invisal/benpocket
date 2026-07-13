@@ -8,6 +8,13 @@ export interface RecentConnection {
   timestamp: number;
 }
 
+export interface DrawerState {
+  isOpen: boolean;
+  width: number;
+  contentType: string | null;
+  payload: unknown;
+}
+
 interface KuberneterState {
   kuberneterInstanceCluster: Record<string, string>;
   kuberneterInstanceNamespace: Record<string, string>;
@@ -17,12 +24,15 @@ interface KuberneterState {
 
   kuberneterKubeconfigs: string[];
   kuberneterRecentConnections: RecentConnection[];
+  kuberneterTabDrawers: Record<string, DrawerState>;
 
   setKuberneterInstanceCluster: (instanceId: string, cluster: string) => void;
   setKuberneterInstanceNamespace: (instanceId: string, ns: string) => void;
   setKuberneterInstanceResource: (instanceId: string, resource: string) => void;
   setKuberneterInstanceConfigPath: (instanceId: string, path: string) => void;
   setKuberneterInstanceRefreshInterval: (instanceId: string, interval: string) => void;
+
+  setKuberneterTabDrawerState: (tabId: string, state: Partial<DrawerState>) => void;
 
   addKuberneterKubeconfig: (filePath: string) => void;
   removeKuberneterKubeconfig: (filePath: string) => void;
@@ -43,6 +53,23 @@ export const useKuberneterStore = create<KuberneterState>()(
       kuberneterInstanceConfigPath: {},
       kuberneterInstanceRefreshInterval: {},
       kuberneterKubeconfigs: [],
+      kuberneterTabDrawers: {},
+
+      setKuberneterTabDrawerState: (tabId, state) =>
+        set((prev) => {
+          const current = prev.kuberneterTabDrawers[tabId] || {
+            isOpen: false,
+            width: 320,
+            contentType: null,
+            payload: null
+          };
+          return {
+            kuberneterTabDrawers: {
+              ...prev.kuberneterTabDrawers,
+              [tabId]: { ...current, ...state }
+            }
+          };
+        }),
       kuberneterRecentConnections: [],
 
       setKuberneterInstanceCluster: (instanceId, cluster) =>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileEntry } from '../components/columns';
+import { type FileEntry } from '../components/columns';
 
 export type DirectoryListingStatus = 'loading' | 'ready' | 'error';
 

@@ -2,7 +2,11 @@ import { ipcMain, app, shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { readFilesFromClipboard, writeFilesToClipboard, ClipboardMode } from './nativeClipboard';
+import {
+  readFilesFromClipboard,
+  writeFilesToClipboard,
+  type ClipboardMode
+} from './nativeClipboard';
 
 export interface FileEntry {
   name: string;

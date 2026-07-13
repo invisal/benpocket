@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { KubeTable, Column } from '../../kubeTable';
+import type React from 'react';
+import { useMemo } from 'react';
+import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
-import { CronJobData } from '../../../types/CronJobData';
+import { type CronJobData } from '../../../types/CronJobData';
 
 interface CronJobsTableProps {
   filteredData: CronJobData[];
@@ -183,7 +184,7 @@ export const CronJobsTable: React.FC<CronJobsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="modern"
+      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectCronJob(row)}
       selectedRowKey={selectedCronJobId}

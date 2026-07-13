@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { Search } from 'lucide-react';
 import { cn } from 'cnfast';
 import { Input } from '../../../src/components/ui/Input';

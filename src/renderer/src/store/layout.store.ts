@@ -19,12 +19,8 @@ export interface ActivityInstance {
 
 interface LayoutState {
   activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null;
-  isLeftPanelOpen: boolean;
-  leftPanelWidth: number;
   isRightPanelOpen: boolean;
   rightPanelWidth: number;
-  isBottomPanelOpen: boolean;
-  bottomPanelHeight: number;
   openTabs: Tab[];
   activeTabId: string | null;
 
@@ -33,12 +29,8 @@ interface LayoutState {
   activeInstanceId: string | 'home';
 
   // Layout Toggle Actions
-  toggleLeftPanel: () => void;
-  setLeftPanelWidth: (width: number) => void;
   toggleRightPanel: () => void;
   setRightPanelWidth: (width: number) => void;
-  toggleBottomPanel: () => void;
-  setBottomPanelHeight: (height: number) => void;
 
   // Tab Actions
   openTab: (tab: Tab) => void;
@@ -60,27 +52,16 @@ export const useLayoutStore = create<LayoutState>()(
   persist(
     (set) => ({
       activeActivity: null,
-      isLeftPanelOpen: true,
-      leftPanelWidth: 260,
       isRightPanelOpen: false,
       rightPanelWidth: 260,
-      isBottomPanelOpen: true,
-      bottomPanelHeight: 200,
       openTabs: [],
       activeTabId: null,
 
       activeInstances: [],
       activeInstanceId: 'home',
 
-      toggleLeftPanel: () => set((state) => ({ isLeftPanelOpen: !state.isLeftPanelOpen })),
-      setLeftPanelWidth: (width) => set({ leftPanelWidth: Math.max(150, Math.min(width, 600)) }),
-
       toggleRightPanel: () => set((state) => ({ isRightPanelOpen: !state.isRightPanelOpen })),
       setRightPanelWidth: (width) => set({ rightPanelWidth: Math.max(150, Math.min(width, 500)) }),
-
-      toggleBottomPanel: () => set((state) => ({ isBottomPanelOpen: !state.isBottomPanelOpen })),
-      setBottomPanelHeight: (height) =>
-        set({ bottomPanelHeight: Math.max(80, Math.min(height, 500)) }),
 
       openTab: (tab) =>
         set((state) => {
@@ -170,8 +151,7 @@ export const useLayoutStore = create<LayoutState>()(
             activeInstanceId: instanceId,
             activeActivity: type,
             openTabs: [...state.openTabs, defaultTab],
-            activeTabId: defaultTabId,
-            isLeftPanelOpen: true
+            activeTabId: defaultTabId
           };
         }),
 
@@ -216,11 +196,6 @@ export const useLayoutStore = create<LayoutState>()(
 
       setActiveInstanceId: (id) =>
         set((state) => {
-          // Toggle Left Panel if clicking the already active application instance
-          if (state.activeInstanceId === id && id !== 'home') {
-            return { isLeftPanelOpen: !state.isLeftPanelOpen };
-          }
-
           let activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null = null;
           let nextActiveTabId: string | null = null;
 
@@ -239,8 +214,7 @@ export const useLayoutStore = create<LayoutState>()(
           return {
             activeInstanceId: id,
             activeActivity,
-            activeTabId: nextActiveTabId,
-            isLeftPanelOpen: id !== 'home' ? true : state.isLeftPanelOpen
+            activeTabId: nextActiveTabId
           };
         })
     }),

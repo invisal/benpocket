@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, Ref } from 'react';
+import { type InputHTMLAttributes, type Ref } from 'react';
 import { cn } from 'cnfast';
 
 type InputSize = 'lg' | 'md' | 'sm';

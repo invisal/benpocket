@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, type BrowserWindow } from 'electron';
 
 async function waitForWindowHidden(win: BrowserWindow): Promise<void> {
   if (!win.isVisible()) return;

@@ -122,4 +122,3 @@ export const KuberneterHomeView: React.FC = () => {
     </div>
   );
 };
-export default KuberneterHomeView;

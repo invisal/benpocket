@@ -1,6 +1,5 @@
 import { type ElectronAPI } from '@electron-toolkit/preload';
 import type { ScreenRecorderApi } from './screen-recorder/api';
-import type { PostmanBridge } from './postman/api';
 import type { KuberneterApi } from './kuberneter/api';
 import type { PostmanBridge } from './http-client/api';
 import type { FileExplorerApi } from './file-explorer/api';

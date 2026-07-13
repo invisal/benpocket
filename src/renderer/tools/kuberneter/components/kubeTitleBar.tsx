@@ -80,4 +80,3 @@ export const KubeTitleBar: React.FC = () => {
     </div>
   );
 };
-export default KubeTitleBar;

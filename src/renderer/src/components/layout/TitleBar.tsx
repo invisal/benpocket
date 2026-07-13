@@ -11,14 +11,7 @@ export const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const isMac = window.api?.platform === 'darwin';
 
-  const {
-    isLeftPanelOpen,
-    toggleLeftPanel,
-    isRightPanelOpen,
-    toggleRightPanel,
-    isBottomPanelOpen,
-    toggleBottomPanel
-  } = useLayoutStore();
+  const { isRightPanelOpen, toggleRightPanel } = useLayoutStore();
 
   const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
 
@@ -81,32 +74,6 @@ export const TitleBar: React.FC = () => {
       <div className="flex items-center h-full titlebar-nodrag gap-1">
         {/* Layout panel toggles */}
         <div className="flex items-center h-full mr-1 gap-0.5">
-          {/* Left Panel Toggle */}
-          <button
-            onClick={toggleLeftPanel}
-            title="Toggle Primary Side Bar"
-            className={`w-8 h-6.5 rounded hover:bg-border-dark flex items-center justify-center transition-colors cursor-pointer border-none bg-transparent ${
-              isLeftPanelOpen ? 'text-accent' : 'text-zinc-500 hover:text-zinc-200'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M14 2H2c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zM5 13H2V4h3v9zm9 0H6V4h8v9z" />
-            </svg>
-          </button>
-
-          {/* Bottom Panel Toggle */}
-          <button
-            onClick={toggleBottomPanel}
-            title="Toggle Panel"
-            className={`w-8 h-6.5 rounded hover:bg-border-dark flex items-center justify-center transition-colors cursor-pointer border-none bg-transparent ${
-              isBottomPanelOpen ? 'text-accent' : 'text-zinc-500 hover:text-zinc-200'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M14 2H2c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm0 7H2V4h12v5zm0 4H2v-3h12v3z" />
-            </svg>
-          </button>
-
           {/* Right Panel Toggle */}
           <button
             onClick={toggleRightPanel}

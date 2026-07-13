@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Typing entry only — electron-vite plugin auto-detects main/preload/HTML from electron.vite.config.ts
+  "entry": ["src/preload/index.d.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  // Linux X11 clipboard helper invoked via execFile — system package, not npm
+  "ignoreBinaries": ["xclip"],
+  // Pulled in via @import 'tailwindcss' in main.css and @tailwindcss/vite plugin
+  "ignoreDependencies": ["tailwindcss"],
+  // Skip exports that are only referenced within the same file
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    // Lazy tools: export function X + export default X for loadComponent: () => import('...')
+    "src/renderer/tools/**": ["duplicates"]
+  }
+}

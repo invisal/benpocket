@@ -38,6 +38,9 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Knip
+        run: npm run knip
+
   build:
     name: Build (${{ matrix.os }})
     strategy:

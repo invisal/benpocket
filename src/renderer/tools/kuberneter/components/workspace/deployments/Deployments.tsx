@@ -198,4 +198,3 @@ export const Deployments: React.FC<DeploymentsProps> = ({
     </div>
   );
 };
-export default Deployments;

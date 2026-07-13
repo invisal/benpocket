@@ -240,4 +240,3 @@ export const Pods: React.FC<PodsProps> = ({ podsData, kuberneterSelectedNamespac
     </div>
   );
 };
-export default Pods;

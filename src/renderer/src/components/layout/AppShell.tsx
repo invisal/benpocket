@@ -24,10 +24,7 @@ export const AppShell: React.FC = () => {
         {/* Left Side: Activity Bar */}
         <ActivityBar />
 
-        {/* Collapsible Left Side: Submenu Menus */}
-        {/* <LeftPanel /> */}
-
-        {/* Center: Editor Workspace & Bottom Panel split */}
+        {/* Center: Editor Workspace */}
         <div className="flex-1 min-h-0 min-w-0 relative">
           <ToolTabContents />
         </div>

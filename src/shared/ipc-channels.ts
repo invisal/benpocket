@@ -38,5 +38,3 @@ export const IpcChannels = {
   ShowNotification: 'notification:show',
   PickOsCaptureSource: 'screenshot:pick-os-source'
 } as const;
-
-export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];

@@ -27,6 +27,8 @@ export type ReadFileContentResponse =
   | { error: 'unsupported-extension' }
   | { error: string };
 
+export type WriteFileContentResponse = { success: true } | { error: string };
+
 export type ClipboardMode = 'copy' | 'cut';
 export type ClipboardFiles = { paths: string[]; mode: ClipboardMode };
 
@@ -37,6 +39,7 @@ export interface FileExplorerApi {
   openPath: (targetPath: string) => Promise<{ success: true } | { error: string }>;
   getSidebarSections: () => Promise<SidebarSections>;
   readFileContent: (filePath: string) => Promise<ReadFileContentResponse>;
+  writeFileContent: (filePath: string, content: string) => Promise<WriteFileContentResponse>;
   deleteEntries: (paths: string[]) => Promise<{ success: true } | { error: string }>;
   copyEntries: (
     sourcePaths: string[],
@@ -66,6 +69,8 @@ export const fileExplorerApi: FileExplorerApi = {
   openPath: (targetPath) => ipcRenderer.invoke('file-explorer:open-path', targetPath),
   getSidebarSections: () => ipcRenderer.invoke('file-explorer:get-sidebar-sections'),
   readFileContent: (filePath) => ipcRenderer.invoke('file-explorer:read-file-content', filePath),
+  writeFileContent: (filePath, content) =>
+    ipcRenderer.invoke('file-explorer:write-file-content', filePath, content),
   deleteEntries: (paths) => ipcRenderer.invoke('file-explorer:delete-entries', paths),
   copyEntries: (sourcePaths, destDir) =>
     ipcRenderer.invoke('file-explorer:copy-entries', sourcePaths, destDir),

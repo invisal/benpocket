@@ -216,6 +216,31 @@ export function registerFileExplorerHandlers(): void {
   );
 
   ipcMain.handle(
+    'file-explorer:write-file-content',
+    async (
+      _,
+      filePath: string,
+      content: string
+    ): Promise<{ success: true } | { error: string }> => {
+      const extension = path.extname(filePath).replace(/^\./, '').toLowerCase();
+      if (!PREVIEWABLE_EXTENSIONS.has(extension)) {
+        return { error: 'unsupported-extension' };
+      }
+
+      try {
+        const stats = await fs.promises.stat(filePath);
+        if (stats.isDirectory()) return { error: 'Cannot write to a folder' };
+
+        await fs.promises.writeFile(filePath, content, 'utf-8');
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: message };
+      }
+    }
+  );
+
+  ipcMain.handle(
     'file-explorer:delete-entries',
     async (_, paths: string[]): Promise<{ success: true } | { error: string }> => {
       try {

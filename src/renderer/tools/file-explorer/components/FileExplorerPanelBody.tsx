@@ -4,7 +4,7 @@ import { FileTable } from './FileTable';
 import { FileEntry } from './columns';
 import { getParentPath } from '../lib/paths';
 import { useDirectoryListing } from '../lib/useDirectoryListing';
-import { useFileExplorerStore, Panel2Mode } from '../store/fileExplorer.store';
+import { useFileExplorerStore, PanelMode } from '../store/fileExplorer.store';
 
 interface FileExplorerPanelBodyProps {
   path: string | null;
@@ -12,8 +12,8 @@ interface FileExplorerPanelBodyProps {
   onSelectionChange?: (selected: FileEntry[]) => void;
   onActivate?: () => void;
   modeSwitch?: {
-    value: Panel2Mode;
-    onChange: (mode: Panel2Mode) => void;
+    value: PanelMode;
+    onChange: (mode: PanelMode) => void;
   };
 }
 

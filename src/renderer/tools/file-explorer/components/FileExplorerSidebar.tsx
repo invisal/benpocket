@@ -13,10 +13,8 @@ export function FileExplorerSidebar() {
   const [sections, setSections] = useState<SidebarSections | null>(null);
 
   const activePanel = useFileExplorerStore((s) => s.activePanel);
-  const panel1Path = useFileExplorerStore((s) => s.panel1Path);
-  const panel2Path = useFileExplorerStore((s) => s.panel2Path);
-  const setPanel1Path = useFileExplorerStore((s) => s.setPanel1Path);
-  const setPanel2Path = useFileExplorerStore((s) => s.setPanel2Path);
+  const panels = useFileExplorerStore((s) => s.panels);
+  const setPanelPath = useFileExplorerStore((s) => s.setPanelPath);
 
   useEffect(() => {
     window.fileExplorer.getSidebarSections().then(setSections);
@@ -24,8 +22,9 @@ export function FileExplorerSidebar() {
 
   if (!sections) return null;
 
-  const activePath = activePanel === 'panel1' ? panel1Path : panel2Path;
-  const navigateActive = activePanel === 'panel1' ? setPanel1Path : setPanel2Path;
+  const activeIndex = activePanel === 'panel1' ? 0 : 1;
+  const activePath = panels[activeIndex].path;
+  const navigateActive = (path: string) => setPanelPath(activeIndex, path);
 
   return (
     <div className="flex flex-col gap-4">

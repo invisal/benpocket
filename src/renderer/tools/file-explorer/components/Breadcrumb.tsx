@@ -6,11 +6,11 @@ import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { splitPathSegments } from '../lib/paths';
 import { getFavoriteIcon } from '../lib/sidebarIcons';
 import type { SidebarSections } from '../../../../preload/file-explorer/api';
-import type { Panel2Mode } from '../store/fileExplorer.store';
+import type { PanelMode } from '../store/fileExplorer.store';
 
 interface BreadcrumbModeSwitch {
-  value: Panel2Mode;
-  onChange: (mode: Panel2Mode) => void;
+  value: PanelMode;
+  onChange: (mode: PanelMode) => void;
 }
 
 interface BreadcrumbProps {
@@ -117,10 +117,10 @@ function BreadcrumbModeSwitch({ modeSwitch }: { modeSwitch: BreadcrumbModeSwitch
   return (
     <div className="flex items-center gap-0.5 shrink-0 p-0.5 rounded border border-border bg-surface-2">
       <button
-        onClick={() => onChange('table')}
+        onClick={() => onChange('explorer')}
         className={cn(
           'px-2 h-6 rounded text-xs cursor-pointer transition-colors', // Layout
-          value === 'table'
+          value === 'explorer'
             ? 'bg-surface-4 text-text-base'
             : 'text-text-dim hover:bg-surface-3 hover:text-text-base'
         )}

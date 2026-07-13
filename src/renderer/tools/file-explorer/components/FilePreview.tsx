@@ -1,6 +1,7 @@
-import { ReactNode, useEffect, useState } from 'react';
-import { AlertCircle, FileText, Loader2 } from 'lucide-react';
-import { FileEntry, formatBytes } from './columns';
+import { ReactNode, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { AlertCircle, FileText, Loader2, Save } from 'lucide-react';
+import { cn } from 'cnfast';
+import { formatBytes } from './columns';
 
 type PreviewKind = 'text';
 
@@ -11,8 +12,25 @@ const PREVIEWABLE_EXTENSIONS: Record<string, PreviewKind> = {
   ini: 'text'
 };
 
+export type PreviewUnavailableReason = 'no-selection' | 'multiple-selection' | 'directory';
+
+export interface PreviewEditorHandle {
+  /** Writes the current buffer to disk. Resolves false (and leaves the buffer untouched) on failure. */
+  save: () => Promise<boolean>;
+}
+
 interface FilePreviewProps {
-  selection: FileEntry[];
+  /** Path of the file currently loaded into the preview/edit buffer, or null if nothing valid is targeted. */
+  previewFile: string | null;
+  /** Why `previewFile` is null -- only read when `previewFile` is null. */
+  unavailableReason: PreviewUnavailableReason;
+  onDirtyChange: (dirty: boolean) => void;
+}
+
+function getExtension(filePath: string): string {
+  const base = filePath.split(/[\\/]/).pop() ?? filePath;
+  const dotIndex = base.lastIndexOf('.');
+  return dotIndex > 0 ? base.slice(dotIndex + 1).toLowerCase() : '';
 }
 
 function PreviewMessage({ children }: { children: ReactNode }) {
@@ -24,52 +42,65 @@ function PreviewMessage({ children }: { children: ReactNode }) {
   );
 }
 
-export function FilePreview({ selection }: FilePreviewProps) {
-  if (selection.length === 0) {
+export const FilePreview = forwardRef<PreviewEditorHandle, FilePreviewProps>(function FilePreview(
+  { previewFile, unavailableReason, onDirtyChange },
+  ref
+) {
+  if (!previewFile) {
+    if (unavailableReason === 'multiple-selection') {
+      return <PreviewMessage>Select a single file to preview it.</PreviewMessage>;
+    }
+    if (unavailableReason === 'directory') {
+      return <PreviewMessage>Folders can&apos;t be previewed.</PreviewMessage>;
+    }
     return <PreviewMessage>Select a file in the left panel to preview it.</PreviewMessage>;
   }
 
-  if (selection.length > 1) {
-    return <PreviewMessage>Select a single file to preview it.</PreviewMessage>;
-  }
-
-  const entry = selection[0];
-
-  if (entry.isDirectory) {
-    return <PreviewMessage>Folders can&apos;t be previewed.</PreviewMessage>;
-  }
-
-  const kind = PREVIEWABLE_EXTENSIONS[entry.extension];
+  const extension = getExtension(previewFile);
+  const kind = PREVIEWABLE_EXTENSIONS[extension];
 
   if (!kind) {
     return (
       <PreviewMessage>
-        {entry.extension
-          ? `Preview not available for .${entry.extension} files.`
+        {extension
+          ? `Preview not available for .${extension} files.`
           : 'Preview not available for this file.'}
       </PreviewMessage>
     );
   }
 
-  return <TextFilePreview key={entry.path} entry={entry} />;
-}
+  return (
+    <TextFileEditor
+      key={previewFile}
+      ref={ref}
+      filePath={previewFile}
+      onDirtyChange={onDirtyChange}
+    />
+  );
+});
 
-function TextFilePreview({ entry }: { entry: FileEntry }) {
+const TextFileEditor = forwardRef<
+  PreviewEditorHandle,
+  { filePath: string; onDirtyChange: (dirty: boolean) => void }
+>(function TextFileEditor({ filePath, onDirtyChange }, ref) {
   const [state, setState] = useState<
     | { status: 'loading' }
-    | { status: 'ready'; content: string }
+    | { status: 'ready'; original: string; content: string }
     | { status: 'error'; message: string }
   >({ status: 'loading' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setState({ status: 'loading' });
+    setSaveError(null);
 
-    window.fileExplorer.readFileContent(entry.path).then((res) => {
+    window.fileExplorer.readFileContent(filePath).then((res) => {
       if (cancelled) return;
       if ('content' in res) {
-        setState({ status: 'ready', content: res.content });
+        setState({ status: 'ready', original: res.content, content: res.content });
       } else if ('maxBytes' in res) {
         setState({
           status: 'error',
@@ -85,7 +116,31 @@ function TextFilePreview({ entry }: { entry: FileEntry }) {
     return () => {
       cancelled = true;
     };
-  }, [entry.path]);
+  }, [filePath]);
+
+  const isDirty = state.status === 'ready' && state.content !== state.original;
+
+  useEffect(() => {
+    onDirtyChange(isDirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty]);
+
+  async function handleSave(): Promise<boolean> {
+    if (state.status !== 'ready') return false;
+    const contentToSave = state.content;
+    setIsSaving(true);
+    setSaveError(null);
+    const res = await window.fileExplorer.writeFileContent(filePath, contentToSave);
+    setIsSaving(false);
+    if ('success' in res) {
+      setState((s) => (s.status === 'ready' ? { ...s, original: contentToSave } : s));
+      return true;
+    }
+    setSaveError(`Couldn't save this file: ${res.error}`);
+    return false;
+  }
+
+  useImperativeHandle(ref, () => ({ save: handleSave }));
 
   if (state.status === 'loading') {
     return (
@@ -104,9 +159,48 @@ function TextFilePreview({ entry }: { entry: FileEntry }) {
     );
   }
 
+  const fileName = filePath.split(/[\\/]/).pop() ?? filePath;
+
   return (
-    <pre className="flex-1 overflow-auto p-3 font-mono text-xs whitespace-pre-wrap text-zinc-200">
-      {state.content}
-    </pre>
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border-dark text-xs text-text-dim">
+        <span className="truncate">{fileName}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {saveError && <span className="text-red-500">{saveError}</span>}
+          {isDirty && !saveError && <span className="text-amber-500">Unsaved changes</span>}
+          <button
+            onClick={() => {
+              void handleSave();
+            }}
+            disabled={!isDirty || isSaving}
+            className={cn(
+              'flex items-center gap-1 h-6 px-2 rounded text-xs cursor-pointer transition-colors',
+              'border border-border',
+              isDirty && !isSaving
+                ? 'bg-surface-4 text-text-base hover:bg-surface-3'
+                : 'text-text-dim opacity-50 cursor-not-allowed'
+            )}
+          >
+            <Save size={12} />
+            {isSaving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+      <textarea
+        value={state.content}
+        onChange={(e) => {
+          const value = e.target.value;
+          setState((s) => (s.status === 'ready' ? { ...s, content: value } : s));
+        }}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+            e.preventDefault();
+            void handleSave();
+          }
+        }}
+        spellCheck={false}
+        className="flex-1 overflow-auto p-3 font-mono text-xs whitespace-pre-wrap text-zinc-200 bg-transparent outline-none resize-none"
+      />
+    </div>
   );
-}
+});

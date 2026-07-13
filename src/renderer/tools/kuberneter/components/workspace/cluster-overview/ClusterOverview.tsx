@@ -287,12 +287,14 @@ export const ClusterOverview: React.FC = () => {
 
     try {
       const configPathArg = activeConfigPath === 'default' ? undefined : activeConfigPath;
+      const nsArg =
+        kuberneterSelectedNamespace === 'All Namespaces' ? undefined : kuberneterSelectedNamespace;
 
       // Fetch all required resources in parallel (Deployments, Services, and Configmaps are not required by Cluster Pulse)
       const [nodesRes, podsRes, eventsRes, topNodesRes] = await Promise.all([
         window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'nodes'),
-        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'pods'),
-        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'events'),
+        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'pods', nsArg),
+        window.kuberneter.getResources(configPathArg, kuberneterSelectedCluster, 'events', nsArg),
         window.kuberneter.getTopNodes(configPathArg, kuberneterSelectedCluster)
       ]);
 

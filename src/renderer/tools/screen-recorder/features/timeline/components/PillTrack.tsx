@@ -85,7 +85,7 @@ export function PillTrack<T extends { id: string }>({
   if (laned.length === 0) return null;
 
   return (
-    <div className="flex shrink-0 items-center py-1">
+    <div className="flex shrink-0 items-center py-1 px-1">
       <div ref={containerRef} className="relative flex-1" style={{ height: trackHeightPx }}>
         {laned.map(({ item, position, lane }) => {
           const startMs = getStartMs(item);

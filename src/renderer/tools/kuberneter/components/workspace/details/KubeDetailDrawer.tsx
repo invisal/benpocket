@@ -95,7 +95,13 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     statefulset: 'Stateful Set Details',
     replicaset: 'Replica Set Details',
     job: 'Job Details',
-    cronjob: 'Cron Job Details'
+    cronjob: 'Cron Job Details',
+    configmap: 'Config Map Details',
+    secret: 'Secret Details',
+    resourcequota: 'Resource Quota Details',
+    limitrange: 'Limit Range Details',
+    horizontalpodautoscaler: 'Horizontal Pod Autoscaler Details',
+    poddisruptionbudget: 'Pod Disruption Budget Details'
   };
 
   return (

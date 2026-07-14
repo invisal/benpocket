@@ -5,6 +5,14 @@ import { type PodData } from '../../types/PodData';
 import { type DeployData } from '../../types/DeployData';
 import { type ServiceData } from '../../types/ServiceData';
 import { type ConfigMapData } from '../../types/ConfigMapData';
+import { type SecretData } from '../../types/SecretData';
+import { type ResourceQuotaData } from '../../types/ResourceQuotaData';
+import { type LimitRangeData, type LimitRangeItem } from '../../types/LimitRangeData';
+import {
+  type HorizontalPodAutoscalerData,
+  type HpaMetric
+} from '../../types/HorizontalPodAutoscalerData';
+import { type PodDisruptionBudgetData } from '../../types/PodDisruptionBudgetData';
 import { type ApplicationData } from '../../types/ApplicationData';
 import { type NodeData } from '../../types/NodeData';
 import { type DaemonSetData } from '../../types/DaemonSetData';
@@ -43,6 +51,11 @@ export function useWorkspaceResources(resource: string) {
   const [cronJobsData, setCronJobsData] = useState<CronJobData[]>([]);
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
   const [configMapsData, setConfigMapsData] = useState<ConfigMapData[]>([]);
+  const [secretsData, setSecretsData] = useState<SecretData[]>([]);
+  const [resourceQuotasData, setResourceQuotasData] = useState<ResourceQuotaData[]>([]);
+  const [limitRangesData, setLimitRangesData] = useState<LimitRangeData[]>([]);
+  const [hpasData, setHpasData] = useState<HorizontalPodAutoscalerData[]>([]);
+  const [pdbsData, setPdbsData] = useState<PodDisruptionBudgetData[]>([]);
   const [applicationsData, setApplicationsData] = useState<ApplicationData[]>([]);
   const [nodesData, setNodesData] = useState<NodeData[]>([]);
 
@@ -70,6 +83,11 @@ export function useWorkspaceResources(resource: string) {
       else if (resource === 'cronjobs') queryResource = 'cronjobs';
       else if (resource === 'services') queryResource = 'services';
       else if (resource === 'configmaps') queryResource = 'configmaps';
+      else if (resource === 'secrets') queryResource = 'secrets';
+      else if (resource === 'resourcequotas') queryResource = 'resourcequotas';
+      else if (resource === 'limitranges') queryResource = 'limitranges';
+      else if (resource === 'hpas') queryResource = 'horizontalpodautoscalers';
+      else if (resource === 'pdbs') queryResource = 'poddisruptionbudgets';
       else if (resource === 'apps') queryResource = 'deployments,statefulsets,daemonsets';
       else if (resource === 'nodes') queryResource = 'nodes';
       else return;
@@ -406,15 +424,327 @@ export function useWorkspaceResources(resource: string) {
         setServicesData(transformed);
       } else if (resource === 'configmaps') {
         const transformed = items.map((item) => {
-          const keys = Object.keys(item.data || {}).length;
+          const keysList = Object.keys(item.data || {});
           return {
+            id: `${item.metadata?.namespace || ''}/${item.metadata?.name || ''}`,
             name: item.metadata?.name || '',
             ns: item.metadata?.namespace || '',
-            keys,
+            keysCount: keysList.length,
+            keysList,
+            data: item.data as Record<string, string> | undefined,
+            binaryData: item.binaryData,
+            labels: item.metadata?.labels,
+            annotations: item.metadata?.annotations,
             age: formatAge(item.metadata?.creationTimestamp || '')
           };
         });
         setConfigMapsData(transformed);
+      } else if (resource === 'secrets') {
+        const transformed = items.map((item) => {
+          const keysList = Object.keys(item.data || {});
+          return {
+            id: `${item.metadata?.namespace || ''}/${item.metadata?.name || ''}`,
+            name: item.metadata?.name || '',
+            ns: item.metadata?.namespace || '',
+            type: item.type || 'Opaque',
+            keysCount: keysList.length,
+            keysList,
+            data: item.data as Record<string, string> | undefined,
+            labels: item.metadata?.labels,
+            annotations: item.metadata?.annotations,
+            age: formatAge(item.metadata?.creationTimestamp || '')
+          };
+        });
+        setSecretsData(transformed);
+      } else if (resource === 'resourcequotas') {
+        const transformed = items.map((item) => {
+          const rqItem = item as unknown as {
+            metadata?: K8sResource['metadata'];
+            spec?: { hard?: Record<string, string> };
+            status?: { hard?: Record<string, string>; used?: Record<string, string> };
+          };
+          const name = rqItem.metadata?.name || '';
+          const ns = rqItem.metadata?.namespace || '';
+
+          const specHard = rqItem.spec?.hard || {};
+          const statusHard = rqItem.status?.hard || {};
+          const statusUsed = rqItem.status?.used || {};
+
+          const resourceKeys = Array.from(
+            new Set([...Object.keys(specHard), ...Object.keys(statusHard)])
+          );
+
+          const quotas = resourceKeys.map((key) => {
+            const hardVal = statusHard[key] || specHard[key] || '0';
+            const usedVal = statusUsed[key] || '0';
+            return {
+              resourceName: key,
+              used: usedVal,
+              hard: hardVal
+            };
+          });
+
+          const creationTimestamp = rqItem.metadata?.creationTimestamp || '';
+
+          return {
+            id: `${ns}/${name}`,
+            name,
+            ns,
+            labels: rqItem.metadata?.labels,
+            annotations: rqItem.metadata?.annotations,
+            age: formatAge(creationTimestamp),
+            createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+            quotas
+          };
+        });
+        setResourceQuotasData(transformed);
+      } else if (resource === 'limitranges') {
+        const transformed = items.map((item) => {
+          const lrItem = item as unknown as {
+            metadata?: K8sResource['metadata'];
+            spec?: {
+              limits?: Array<{
+                type: string;
+                default?: Record<string, string>;
+                defaultRequest?: Record<string, string>;
+                max?: Record<string, string>;
+                min?: Record<string, string>;
+                maxLimitRequestRatio?: Record<string, string>;
+              }>;
+            };
+          };
+
+          const name = lrItem.metadata?.name || '';
+          const ns = lrItem.metadata?.namespace || '';
+
+          const specLimits = lrItem.spec?.limits || [];
+          const limits: LimitRangeItem[] = [];
+
+          specLimits.forEach((limit) => {
+            const limitType = limit.type || '';
+            const resourceKeys = Array.from(
+              new Set([
+                ...Object.keys(limit.min || {}),
+                ...Object.keys(limit.max || {}),
+                ...Object.keys(limit.default || {}),
+                ...Object.keys(limit.defaultRequest || {}),
+                ...Object.keys(limit.maxLimitRequestRatio || {})
+              ])
+            );
+
+            resourceKeys.forEach((resKey) => {
+              limits.push({
+                type: limitType,
+                resource: resKey,
+                min: limit.min?.[resKey],
+                max: limit.max?.[resKey],
+                defaultLimit: limit.default?.[resKey],
+                defaultRequest: limit.defaultRequest?.[resKey],
+                maxLimitRequestRatio: limit.maxLimitRequestRatio?.[resKey]
+              });
+            });
+          });
+
+          const creationTimestamp = lrItem.metadata?.creationTimestamp || '';
+
+          return {
+            id: `${ns}/${name}`,
+            name,
+            ns,
+            labels: lrItem.metadata?.labels,
+            annotations: lrItem.metadata?.annotations,
+            age: formatAge(creationTimestamp),
+            createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+            limits
+          };
+        });
+        setLimitRangesData(transformed);
+      } else if (resource === 'hpas') {
+        const transformed = items.map((item) => {
+          const hpaItem = item as unknown as {
+            metadata?: K8sResource['metadata'];
+            spec?: {
+              scaleTargetRef?: {
+                apiVersion?: string;
+                kind?: string;
+                name?: string;
+              };
+              minReplicas?: number;
+              maxReplicas?: number;
+              targetCPUUtilizationPercentage?: number;
+              metrics?: Array<{
+                type: string;
+                resource?: {
+                  name: string;
+                  target?: {
+                    type: string;
+                    averageUtilization?: number;
+                    averageValue?: string;
+                  };
+                };
+              }>;
+            };
+            status?: {
+              currentReplicas?: number;
+              desiredReplicas?: number;
+              currentCPUUtilizationPercentage?: number;
+              currentMetrics?: Array<{
+                type: string;
+                resource?: {
+                  name: string;
+                  current?: {
+                    averageUtilization?: number;
+                    averageValue?: string;
+                  };
+                };
+              }>;
+              conditions?: Array<{
+                type: string;
+                status: string;
+                reason?: string;
+                message?: string;
+              }>;
+            };
+          };
+
+          const name = hpaItem.metadata?.name || '';
+          const ns = hpaItem.metadata?.namespace || '';
+
+          const refKind = hpaItem.spec?.scaleTargetRef?.kind || '';
+          const refName = hpaItem.spec?.scaleTargetRef?.name || '';
+
+          const minPods = hpaItem.spec?.minReplicas ?? 1;
+          const maxPods = hpaItem.spec?.maxReplicas ?? 1;
+          const replicas = hpaItem.status?.currentReplicas ?? 0;
+
+          const metricsList: HpaMetric[] = [];
+
+          if (hpaItem.spec?.targetCPUUtilizationPercentage !== undefined) {
+            const currentVal =
+              hpaItem.status?.currentCPUUtilizationPercentage !== undefined
+                ? `${hpaItem.status.currentCPUUtilizationPercentage}%`
+                : 'unknown';
+            metricsList.push({
+              name: 'Resource cpu on Pods',
+              current: currentVal,
+              target: `${hpaItem.spec.targetCPUUtilizationPercentage}%`
+            });
+          }
+
+          const specMetrics = hpaItem.spec?.metrics || [];
+          const statusMetrics = hpaItem.status?.currentMetrics || [];
+
+          specMetrics.forEach((m) => {
+            if (m.type === 'Resource' && m.resource) {
+              const resName = m.resource.name;
+
+              let targetVal = '—';
+              if (m.resource.target) {
+                if (m.resource.target.type === 'Utilization') {
+                  targetVal = `${m.resource.target.averageUtilization || 0}%`;
+                } else if (m.resource.target.type === 'AverageValue') {
+                  targetVal = m.resource.target.averageValue || '0';
+                }
+              }
+
+              let currentVal = 'unknown';
+              const matchingStatus = statusMetrics.find(
+                (sm) => sm.type === 'Resource' && sm.resource?.name === resName
+              );
+              if (matchingStatus && matchingStatus.resource?.current) {
+                if (matchingStatus.resource.current.averageUtilization !== undefined) {
+                  currentVal = `${matchingStatus.resource.current.averageUtilization}%`;
+                } else if (matchingStatus.resource.current.averageValue !== undefined) {
+                  currentVal = matchingStatus.resource.current.averageValue;
+                }
+              }
+
+              metricsList.push({
+                name: `Resource ${resName} on Pods`,
+                current: currentVal,
+                target: targetVal
+              });
+            }
+          });
+
+          const conditions = hpaItem.status?.conditions || [];
+          const trueCondition = conditions.find((c) => c.status === 'True');
+          const statusText = trueCondition ? trueCondition.type : '—';
+
+          const creationTimestamp = hpaItem.metadata?.creationTimestamp || '';
+
+          return {
+            id: `${ns}/${name}`,
+            name,
+            ns,
+            labels: hpaItem.metadata?.labels,
+            annotations: hpaItem.metadata?.annotations,
+            age: formatAge(creationTimestamp),
+            createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+            referenceKind: refKind,
+            referenceName: refName,
+            minPods,
+            maxPods,
+            replicas,
+            statusText,
+            metrics: metricsList
+          };
+        });
+        setHpasData(transformed);
+      } else if (resource === 'pdbs') {
+        const transformed = items.map((item) => {
+          const pdbItem = item as unknown as {
+            metadata?: K8sResource['metadata'];
+            spec?: {
+              minAvailable?: number | string;
+              maxUnavailable?: number | string;
+              selector?: {
+                matchLabels?: Record<string, string>;
+              };
+            };
+            status?: {
+              currentHealthy?: number;
+              desiredHealthy?: number;
+            };
+          };
+
+          const name = pdbItem.metadata?.name || '';
+          const ns = pdbItem.metadata?.namespace || '';
+
+          const minAvailable =
+            pdbItem.spec?.minAvailable !== undefined ? String(pdbItem.spec.minAvailable) : 'N/A';
+          const maxUnavailable =
+            pdbItem.spec?.maxUnavailable !== undefined
+              ? String(pdbItem.spec.maxUnavailable)
+              : 'N/A';
+
+          const matchLabels = pdbItem.spec?.selector?.matchLabels || {};
+          const selector =
+            Object.entries(matchLabels)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(', ') || '';
+
+          const currentHealthy = pdbItem.status?.currentHealthy ?? 0;
+          const desiredHealthy = pdbItem.status?.desiredHealthy ?? 0;
+
+          const creationTimestamp = pdbItem.metadata?.creationTimestamp || '';
+
+          return {
+            id: `${ns}/${name}`,
+            name,
+            ns,
+            labels: pdbItem.metadata?.labels,
+            annotations: pdbItem.metadata?.annotations,
+            age: formatAge(creationTimestamp),
+            createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+            selector,
+            minAvailable,
+            maxUnavailable,
+            currentHealthy,
+            desiredHealthy
+          };
+        });
+        setPdbsData(transformed);
       } else if (resource === 'apps') {
         const transformed = items
           .map((item) => {
@@ -611,6 +941,11 @@ export function useWorkspaceResources(resource: string) {
     cronJobsData,
     servicesData,
     configMapsData,
+    secretsData,
+    resourceQuotasData,
+    limitRangesData,
+    hpasData,
+    pdbsData,
     applicationsData,
     nodesData,
     isLoading,

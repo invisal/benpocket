@@ -10,7 +10,12 @@ import { Jobs } from './jobs/Jobs';
 import { CronJobs } from './cronjobs/CronJobs';
 import { WorkloadOverview } from './workload-overview/WorkloadOverview';
 import { ServicesTable } from './ServicesTable';
-import { ConfigMapsTable } from './ConfigMapsTable';
+import { ConfigMaps } from './configmaps/ConfigMaps';
+import { Secrets } from './secrets/Secrets';
+import { ResourceQuotas } from './resourcequotas/ResourceQuotas';
+import { LimitRanges } from './limitranges/LimitRanges';
+import { HorizontalPodAutoscalers } from './hpas/HorizontalPodAutoscalers';
+import { PodDisruptionBudgets } from './pdbs/PodDisruptionBudgets';
 import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
@@ -40,6 +45,11 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     cronJobsData,
     servicesData,
     configMapsData,
+    secretsData,
+    resourceQuotasData,
+    limitRangesData,
+    hpasData,
+    pdbsData,
     applicationsData,
     nodesData,
     isLoading,
@@ -150,8 +160,43 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           )}
 
           {resource === 'configmaps' && (
-            <ConfigMapsTable
+            <ConfigMaps
               configMapsData={configMapsData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'secrets' && (
+            <Secrets
+              secretsData={secretsData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'resourcequotas' && (
+            <ResourceQuotas
+              resourceQuotasData={resourceQuotasData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'limitranges' && (
+            <LimitRanges
+              limitRangesData={limitRangesData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'hpas' && (
+            <HorizontalPodAutoscalers
+              hpasData={hpasData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'pdbs' && (
+            <PodDisruptionBudgets
+              pdbsData={pdbsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}

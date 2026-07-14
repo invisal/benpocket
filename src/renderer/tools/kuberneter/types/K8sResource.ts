@@ -51,6 +51,7 @@ export interface K8sResource {
     };
   };
   data?: Record<string, unknown>;
+  binaryData?: Record<string, string>;
   // Kubernetes Event fields (core/v1 Event)
   type?: string;
   message?: string;

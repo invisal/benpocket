@@ -10,6 +10,7 @@ import type {
   Project,
   BackgroundSettings,
   Annotation,
+  ArrowAnnotation,
   CursorSettings
 } from '@screen-recorder/types/project';
 import type { WebcamOptions } from '@screen-recorder/types/recording';
@@ -343,16 +344,24 @@ function drawArrow(
   y1: number,
   x2: number,
   y2: number,
-  scale: number
+  scale: number,
+  annotation: ArrowAnnotation
 ): void {
+  const lineWidth = Math.max(2, annotation.thickness * scale);
   const headLength = 14 * scale;
   const angle = Math.atan2(y2 - y1, x2 - x1);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = Math.max(2, 3 * scale);
+  ctx.save();
+  ctx.strokeStyle = annotation.color;
+  ctx.lineWidth = lineWidth;
+  // Dashing only applies to the shaft -- the head is always solid so it
+  // reads as a clean arrowhead regardless of line style, matching the live
+  // preview (AnnotationOverlay draws the head with no strokeDasharray).
+  if (annotation.style === 'dashed') ctx.setLineDash([lineWidth * 2.5, lineWidth * 1.8]);
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
+  ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(x2, y2);
   ctx.lineTo(
@@ -365,6 +374,7 @@ function drawArrow(
     y2 - headLength * Math.sin(angle + Math.PI / 6)
   );
   ctx.stroke();
+  ctx.restore();
 }
 
 function drawAnnotations(
@@ -385,7 +395,7 @@ function drawAnnotations(
       ctx.font = `${Math.round(28 * scale)}px sans-serif`;
       ctx.fillText(annotation.text, x, y);
     } else if (annotation.kind === 'arrow') {
-      drawArrow(ctx, x, y, annotation.to.x * scale, annotation.to.y * scale, scale);
+      drawArrow(ctx, x, y, annotation.to.x * scale, annotation.to.y * scale, scale, annotation);
     } else if (annotation.kind === 'image') {
       const image = images.get(annotation.assetPath);
       if (image) ctx.drawImage(image, x, y, image.width * scale, image.height * scale);

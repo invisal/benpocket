@@ -43,7 +43,7 @@ workspace/                 One folder per ScreenRecorderRoute page:
   presets/                    export preset picker, jumps into the editor
   editor/                     EditorPage + PreviewStage + EditorTransportBar +
                                EditorToolRail/EditorToolPanel (the tool-panel switcher for
-                               Background/Cursor/Webcam/Captions/Zoom/Export)
+                               Background/Cursor/Webcam/Captions/Annotations/Zoom/Clip/Export)
   settings/                   shortcut rebinding (ShortcutRecorder)
   recording-hud/               unwired — see "Known gaps"
 features/                  One folder per concern, each typically store/ + components/
@@ -78,7 +78,7 @@ CSP is set dynamically per-response from `main/screen-recorder/security/content-
 
 ## Editor tool panel
 
-`EditorToolRail` (icon rail) + `EditorToolPanel` (the panel body) is a single mutually-exclusive switcher over `EditorTool = 'background' | 'cursor' | 'webcam' | 'captions' | 'zoom' | 'export'`. Every panel is self-contained — no props from `EditorPage`, each reads its own feature store directly — **except** it's still worth checking `ExportSidePanel` if you're touching this, since it's the newest addition and pulls from `app-store`/`timeline-store` directly rather than the feature's own store (there is no dedicated UI store for export beyond `export-store`'s format/codec/quality fields).
+`EditorToolRail` (icon rail) + `EditorToolPanel` (the panel body) is a single mutually-exclusive switcher over `EditorTool = 'background' | 'cursor' | 'webcam' | 'captions' | 'annotations' | 'zoom' | 'clip' | 'export'`. Every panel is self-contained — no props from `EditorPage`, each reads its own feature store directly — **except** it's still worth checking `ExportSidePanel` if you're touching this, since it's the newest addition and pulls from `app-store`/`timeline-store` directly rather than the feature's own store (there is no dedicated UI store for export beyond `export-store`'s format/codec/quality fields).
 
 The export flow itself (save-path dialog → `export.start` → live progress via `export.onProgress` → error surfacing) lives once in `features/export/hooks/useExportAction.ts` and is shared by both `ExportButton` (quick top-nav export using whatever's currently in `export-store`) and `ExportSidePanel`'s full config panel — don't duplicate that flow a third time.
 
@@ -91,9 +91,9 @@ These exist in the tree but nothing calls them — don't assume they're live jus
 - **`hooks/useStore.ts`** (`useScreenRecorderStore`) — an earlier/parallel version of `app/app-store.ts`'s state (same shape, different route typing). Nothing imports it. Use `app/app-store.ts`.
 - **`main/screen-recorder/shortcuts/global-shortcuts.ts`** — registers global hotkeys with no-op callbacks (`// TODO: dispatch binding.action`); not called from `main/index.ts`. Registering it as-is would just grab system-wide shortcuts that do nothing.
 - **`features/recording/hooks/useRecordingSession.ts`**, **`lib/use-electron-api.ts`** — thin convenience wrappers around `window.screenRecorder`, unused (current code calls `window.screenRecorder.recording.*` directly).
-- **`features/cursor/engine/cursor-smoothing-engine.ts`**, **`features/zoom/engine/auto-zoom-engine.ts`**, **`features/captions/engine/on-device-transcriber.ts`**, **`features/annotations/presets/text-animation-presets.ts`** — stub implementations for post-processing that hasn't been built yet (cursor jitter smoothing, auto-zoom keyframe generation, on-device transcription, annotation enter/exit animations). All explicitly marked `TODO` and return no-ops.
+- **`features/cursor/engine/cursor-smoothing-engine.ts`**, **`features/zoom/engine/auto-zoom-engine.ts`**, **`features/captions/engine/on-device-transcriber.ts`** — stub implementations for post-processing that hasn't been built yet (cursor jitter smoothing, auto-zoom keyframe generation, on-device transcription). All explicitly marked `TODO` and return no-ops.
 - **`features/export/components/ExportDialog.tsx`** — an earlier, incomplete export UI (no output-path picker, no progress) superseded by `ExportSidePanel`. Unreferenced.
-- **Annotation rendering** (`features/annotations/components/{Arrow,Image,Text}Annotation.tsx`) — type-checked components with `// TODO: render an SVG arrow / render this image / render this text` bodies; the annotations feature has a store and types but no actual on-canvas rendering yet.
+- **Annotation enter/exit animation baking** — `TextAnnotation.animationPreset` (picked in `AnnotationsPanel`, see `features/annotations/presets/text-animation-presets.ts`) only plays as a CSS entrance animation in the live editor preview (`AnnotationOverlay`); `main/screen-recorder/export/frame-compositor.ts`'s `drawAnnotations` draws text/arrow/image annotations as static frames and does not read this field, so exported video doesn't animate them yet.
 
 ## Type-checking & building
 

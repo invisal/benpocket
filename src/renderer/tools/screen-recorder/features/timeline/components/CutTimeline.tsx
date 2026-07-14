@@ -9,6 +9,7 @@ import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
 import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
+import { AnnotationTrack } from '../../annotations/components/AnnotationTrack';
 import { TrimTrack } from './TrimTrack';
 import { SpeedTrack } from './SpeedTrack';
 import { Playhead } from './Playhead';
@@ -305,6 +306,7 @@ export function CutTimeline(): JSX.Element {
             <ZoomTrack />
             <TrimTrack />
             <CaptionTrack />
+            <AnnotationTrack />
             <SpeedTrack />
             <CropTrack />
 

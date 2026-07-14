@@ -16,6 +16,7 @@ import {
 import { useAppStore } from '../../app/app-store';
 import { CropOverlay } from '../../features/crop/components/CropOverlay';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
+import { AnnotationOverlay } from '../../features/annotations/components/AnnotationOverlay';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { resolveZoom } from '@shared/zoom-resolve';
 import { smoothCursorPath } from '@shared/cursor-path';
@@ -366,6 +367,10 @@ export function PreviewStage({
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Webcam
               </span>
             </div>
+          )}
+
+          {!cropToolActive && (
+            <AnnotationOverlay currentTimeMs={zoomTimeMs} stageWidthPx={stageWidthPx} />
           )}
         </div>
 

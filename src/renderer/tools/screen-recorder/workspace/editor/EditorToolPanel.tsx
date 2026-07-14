@@ -4,6 +4,7 @@ import { BackgroundPicker } from '../../features/background/components/Backgroun
 import { CursorSettingsPanel } from '../../features/cursor/components/CursorSettingsPanel';
 import { WebcamPanel } from '../../features/webcam/components/WebcamPanel';
 import { CaptionsPanel } from '../../features/captions/components/CaptionsPanel';
+import { AnnotationsPanel } from '../../features/annotations/components/AnnotationsPanel';
 import { ZoomKeyframeEditor } from '../../features/zoom/components/ZoomKeyframeEditor';
 import { ClipSettingsPanel } from '../../features/timeline/components/ClipSettingsPanel';
 import { ExportSidePanel } from '../../features/export/components/ExportSidePanel';
@@ -33,6 +34,7 @@ export function EditorToolPanel({
       {tool === 'cursor' && <CursorSettingsPanel />}
       {tool === 'webcam' && <WebcamPanel />}
       {tool === 'captions' && <CaptionsPanel />}
+      {tool === 'annotations' && <AnnotationsPanel currentTimeMs={currentTimeMs} />}
       {tool === 'zoom' && (
         <ZoomKeyframeEditor currentTimeMs={currentTimeMs} sourceResolution={sourceResolution} />
       )}

@@ -61,6 +61,11 @@ export interface TextAnnotation extends AnnotationBase {
 export interface ArrowAnnotation extends AnnotationBase {
   kind: 'arrow';
   to: { x: number; y: number };
+  /** CSS hex color for the shaft/head stroke. */
+  color: string;
+  /** Stroke width, in REFERENCE_CANVAS_WIDTH units (same convention as position). */
+  thickness: number;
+  style: 'solid' | 'dashed';
 }
 
 export interface ImageAnnotation extends AnnotationBase {

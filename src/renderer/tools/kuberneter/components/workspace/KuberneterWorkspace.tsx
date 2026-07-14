@@ -11,6 +11,7 @@ import { CronJobs } from './cronjobs/CronJobs';
 import { WorkloadOverview } from './workload-overview/WorkloadOverview';
 import { ServicesTable } from './ServicesTable';
 import { ConfigMaps } from './configmaps/ConfigMaps';
+import { Secrets } from './secrets/Secrets';
 import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
@@ -40,6 +41,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     cronJobsData,
     servicesData,
     configMapsData,
+    secretsData,
     applicationsData,
     nodesData,
     isLoading,
@@ -152,6 +154,13 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'configmaps' && (
             <ConfigMaps
               configMapsData={configMapsData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'secrets' && (
+            <Secrets
+              secretsData={secretsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}

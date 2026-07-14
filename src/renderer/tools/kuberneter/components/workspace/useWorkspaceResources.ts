@@ -5,6 +5,7 @@ import { type PodData } from '../../types/PodData';
 import { type DeployData } from '../../types/DeployData';
 import { type ServiceData } from '../../types/ServiceData';
 import { type ConfigMapData } from '../../types/ConfigMapData';
+import { type SecretData } from '../../types/SecretData';
 import { type ApplicationData } from '../../types/ApplicationData';
 import { type NodeData } from '../../types/NodeData';
 import { type DaemonSetData } from '../../types/DaemonSetData';
@@ -43,6 +44,7 @@ export function useWorkspaceResources(resource: string) {
   const [cronJobsData, setCronJobsData] = useState<CronJobData[]>([]);
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
   const [configMapsData, setConfigMapsData] = useState<ConfigMapData[]>([]);
+  const [secretsData, setSecretsData] = useState<SecretData[]>([]);
   const [applicationsData, setApplicationsData] = useState<ApplicationData[]>([]);
   const [nodesData, setNodesData] = useState<NodeData[]>([]);
 
@@ -70,6 +72,7 @@ export function useWorkspaceResources(resource: string) {
       else if (resource === 'cronjobs') queryResource = 'cronjobs';
       else if (resource === 'services') queryResource = 'services';
       else if (resource === 'configmaps') queryResource = 'configmaps';
+      else if (resource === 'secrets') queryResource = 'secrets';
       else if (resource === 'apps') queryResource = 'deployments,statefulsets,daemonsets';
       else if (resource === 'nodes') queryResource = 'nodes';
       else return;
@@ -421,6 +424,23 @@ export function useWorkspaceResources(resource: string) {
           };
         });
         setConfigMapsData(transformed);
+      } else if (resource === 'secrets') {
+        const transformed = items.map((item) => {
+          const keysList = Object.keys(item.data || {});
+          return {
+            id: `${item.metadata?.namespace || ''}/${item.metadata?.name || ''}`,
+            name: item.metadata?.name || '',
+            ns: item.metadata?.namespace || '',
+            type: item.type || 'Opaque',
+            keysCount: keysList.length,
+            keysList,
+            data: item.data as Record<string, string> | undefined,
+            labels: item.metadata?.labels,
+            annotations: item.metadata?.annotations,
+            age: formatAge(item.metadata?.creationTimestamp || '')
+          };
+        });
+        setSecretsData(transformed);
       } else if (resource === 'apps') {
         const transformed = items
           .map((item) => {
@@ -617,6 +637,7 @@ export function useWorkspaceResources(resource: string) {
     cronJobsData,
     servicesData,
     configMapsData,
+    secretsData,
     applicationsData,
     nodesData,
     isLoading,

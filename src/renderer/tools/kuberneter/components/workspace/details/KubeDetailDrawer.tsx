@@ -96,7 +96,8 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     replicaset: 'Replica Set Details',
     job: 'Job Details',
     cronjob: 'Cron Job Details',
-    configmap: 'Config Map Details'
+    configmap: 'Config Map Details',
+    secret: 'Secret Details'
   };
 
   return (

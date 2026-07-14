@@ -7,6 +7,7 @@ import { ReplicaSetDetail } from './ReplicaSetDetail';
 import { JobDetail } from './JobDetail';
 import { CronJobDetail } from './CronJobDetail';
 import { ConfigMapDetail } from './ConfigMapDetail';
+import { SecretDetail } from './SecretDetail';
 
 import { type PodData } from '../../../types/PodData';
 import { type DeployData } from '../../../types/DeployData';
@@ -16,6 +17,7 @@ import { type ReplicaSetData } from '../../../types/ReplicaSetData';
 import { type JobData } from '../../../types/JobData';
 import { type CronJobData } from '../../../types/CronJobData';
 import { type ConfigMapData } from '../../../types/ConfigMapData';
+import { type SecretData } from '../../../types/SecretData';
 
 interface DetailContentProps {
   contentType: string;
@@ -45,6 +47,8 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       return <CronJobDetail payload={payload as CronJobData} isTab={isTab} />;
     case 'configmap':
       return <ConfigMapDetail payload={payload as ConfigMapData} isTab={isTab} />;
+    case 'secret':
+      return <SecretDetail payload={payload as SecretData} isTab={isTab} />;
     default:
       return (
         <div className="p-4 text-xs text-zinc-500">

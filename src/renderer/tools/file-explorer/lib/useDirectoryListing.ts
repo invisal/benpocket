@@ -32,16 +32,24 @@ export function useDirectoryListing(
       setStatus('loading');
     }
 
-    window.fileExplorer.listDirectory(path).then((res) => {
-      if (cancelled) return;
-      if ('error' in res) {
-        setErrorMessage(res.error);
-        setStatus('error');
-      } else {
-        setEntries(res.entries);
-        setStatus('ready');
+    (async () => {
+      const accumulated: FileEntry[] = [];
+      let cursor: string | undefined;
+      for (;;) {
+        const res = await window.fileExplorer.listDirectory(path, cursor);
+        if (cancelled) return;
+        if ('error' in res) {
+          setErrorMessage(res.error);
+          setStatus('error');
+          return;
+        }
+        accumulated.push(...res.entries);
+        if (res.nextCursor === null) break;
+        cursor = res.nextCursor;
       }
-    });
+      setEntries(accumulated);
+      setStatus('ready');
+    })();
 
     return () => {
       cancelled = true;

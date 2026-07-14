@@ -1,5 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table';
-import { File as FileIcon, Folder } from 'lucide-react';
+import { Folder } from 'lucide-react';
+import { ExtensionIcon } from './ExtensionIcon';
 
 export interface FileEntry {
   name: string;
@@ -62,7 +63,7 @@ export const columns: ColumnDef<FileRow>[] = [
           ) : entry.iconDataUrl ? (
             <img src={entry.iconDataUrl} className="size-4 shrink-0" alt="" />
           ) : (
-            <FileIcon className="size-4 text-zinc-600 shrink-0" />
+            <ExtensionIcon extension={entry.extension} className="size-4 text-zinc-600 shrink-0" />
           )}
           <span className="truncate text-xs text-zinc-200">{entry.name}</span>
         </div>

@@ -7,6 +7,19 @@ export type PanelIndex = 0 | 1;
 export type ActivePanelId = 'panel1' | 'panel2';
 export type FileClipboard = { paths: string[]; mode: 'copy' | 'cut' } | null;
 
+/** A predicted change to a directory listing, applied immediately under 'optimistic' sync. */
+export type EntriesPatch =
+  { type: 'remove'; paths: string[] } | { type: 'insert'; entry: FileEntry };
+
+export function applyEntriesPatch(entries: FileEntry[], patch: EntriesPatch): FileEntry[] {
+  switch (patch.type) {
+    case 'remove':
+      return entries.filter((entry) => !patch.paths.includes(entry.path));
+    case 'insert':
+      return [...entries, patch.entry];
+  }
+}
+
 export interface FileExplorerPanelState {
   path: string | null;
   selection: FileEntry[];

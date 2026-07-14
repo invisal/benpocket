@@ -14,6 +14,8 @@ import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
 import { columns, compareEntries, extensionKey, type FileEntry, type FileRow } from './columns';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
+import { dispatchMutation } from '../lib/syncDispatcher';
+import { getCapabilitiesForLocation } from '../lib/capabilities';
 
 const DEFAULT_NEW_TEXT_FILE_NAME = 'New Text Document.txt';
 const DEFAULT_NEW_FOLDER_NAME = 'New Folder';
@@ -43,6 +45,8 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   const [newFolderName, setNewFolderName] = useState(DEFAULT_NEW_FOLDER_NAME);
   const [newFolderError, setNewFolderError] = useState<string | null>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
+  const [pendingDeletePaths, setPendingDeletePaths] = useState<string[] | null>(null);
+  const capabilities = getCapabilitiesForLocation(currentPath);
   const clipboard = useFileExplorerStore((s) => s.clipboard);
   const setClipboard = useFileExplorerStore((s) => s.setClipboard);
   const bumpRefresh = useFileExplorerStore((s) => s.bumpRefresh);
@@ -67,6 +71,10 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
     }
     setIconByKey({});
 
+    // No native icon lookup for this location (e.g. R2) -- columns.tsx already
+    // falls back to an extension-based generic icon when iconByKey has nothing.
+    if (!capabilities.nativeIcons) return;
+
     const uniqueFiles = new Map<string, FileEntry>();
     for (const entry of entries) {
       if (entry.isDirectory) continue;
@@ -85,7 +93,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
     return () => {
       cancelled = true;
     };
-  }, [entries]);
+  }, [entries, capabilities.nativeIcons]);
 
   useEffect(() => {
     if (!newFileDialogOpen) return;
@@ -168,22 +176,44 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
     const files = await window.fileExplorer.readClipboardFiles();
     if (!files || files.paths.length === 0) return;
 
-    const result =
-      files.mode === 'cut'
-        ? await window.fileExplorer.moveEntries(files.paths, currentPath)
-        : await window.fileExplorer.copyEntries(files.paths, currentPath);
-
-    if ('success' in result) {
-      bumpRefresh();
-      if (files.mode === 'cut') setClipboard(null);
-    }
+    await dispatchMutation({
+      locationUri: currentPath,
+      run: () =>
+        files.mode === 'cut'
+          ? window.fileExplorer.moveEntries(files.paths, currentPath)
+          : window.fileExplorer.copyEntries(files.paths, currentPath),
+      onSuccess: () => {
+        if (files.mode === 'cut') setClipboard(null);
+      },
+      onRefetch: bumpRefresh
+    });
   };
 
-  const handleDelete = async (paths: string[]) => {
+  const runDelete = (paths: string[]) => {
+    void dispatchMutation({
+      locationUri: currentPath,
+      run: () => window.fileExplorer.deleteEntries(paths),
+      onSuccess: () => {
+        pendingSelectionRef.current = 'first';
+      },
+      onRefetch: bumpRefresh
+    });
+  };
+
+  const handleDelete = (paths: string[]) => {
     if (paths.length === 0) return;
-    await window.fileExplorer.deleteEntries(paths);
-    pendingSelectionRef.current = 'first';
-    bumpRefresh();
+    // No trash for this location -- deletion is permanent, so confirm first
+    // instead of firing it immediately like the recoverable-trash path does.
+    if (!capabilities.trash) {
+      setPendingDeletePaths(paths);
+      return;
+    }
+    runDelete(paths);
+  };
+
+  const confirmDelete = () => {
+    if (pendingDeletePaths) runDelete(pendingDeletePaths);
+    setPendingDeletePaths(null);
   };
 
   const openNewFileDialog = () => {
@@ -199,17 +229,18 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
       return;
     }
 
-    const result = await window.fileExplorer.createFile(currentPath, name);
-    if ('error' in result) {
-      setNewFileError(
-        result.error === 'exists' ? 'A file with this name already exists.' : result.error
-      );
-      return;
-    }
-
-    pendingSelectionRef.current = result.path;
-    setNewFileDialogOpen(false);
-    bumpRefresh();
+    await dispatchMutation<{ path: string }>({
+      locationUri: currentPath,
+      run: () => window.fileExplorer.createFile(currentPath, name),
+      onSuccess: (result) => {
+        pendingSelectionRef.current = result.path;
+        setNewFileDialogOpen(false);
+      },
+      onError: (message) => {
+        setNewFileError(message === 'exists' ? 'A file with this name already exists.' : message);
+      },
+      onRefetch: bumpRefresh
+    });
   };
 
   const openNewFolderDialog = () => {
@@ -225,17 +256,20 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
       return;
     }
 
-    const result = await window.fileExplorer.createFolder(currentPath, name);
-    if ('error' in result) {
-      setNewFolderError(
-        result.error === 'exists' ? 'A folder with this name already exists.' : result.error
-      );
-      return;
-    }
-
-    pendingSelectionRef.current = result.path;
-    setNewFolderDialogOpen(false);
-    bumpRefresh();
+    await dispatchMutation<{ path: string }>({
+      locationUri: currentPath,
+      run: () => window.fileExplorer.createFolder(currentPath, name),
+      onSuccess: (result) => {
+        pendingSelectionRef.current = result.path;
+        setNewFolderDialogOpen(false);
+      },
+      onError: (message) => {
+        setNewFolderError(
+          message === 'exists' ? 'A folder with this name already exists.' : message
+        );
+      },
+      onRefetch: bumpRefresh
+    });
   };
 
   // Shared between the row and background context menus.
@@ -246,7 +280,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
         <ContextMenu.Item onClick={openNewFolderDialog}>
           <span className="flex items-center gap-2">
             <FolderPlus size={14} className="text-text-dim" />
-            Folder
+            {capabilities.realFolders ? 'Folder' : 'Folder (placeholder)'}
           </span>
         </ContextMenu.Item>
         <ContextMenu.Item onClick={openNewFileDialog}>
@@ -380,7 +414,11 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
       >
         <Dialog.Content className="max-w-sm">
           <Dialog.Title>New Folder</Dialog.Title>
-          <Dialog.Description>Enter a name for the new folder.</Dialog.Description>
+          <Dialog.Description>
+            {capabilities.realFolders
+              ? 'Enter a name for the new folder.'
+              : "This location doesn't have real folders -- this creates a placeholder object that behaves like one."}
+          </Dialog.Description>
           <Input
             ref={newFolderInputRef}
             className="mt-3"
@@ -403,6 +441,28 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
             </Button>
             <Button variant="primary" size="sm" onClick={confirmCreateFolder}>
               Create
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Root>
+      <Dialog.Root
+        open={pendingDeletePaths !== null}
+        onOpenChange={(open) => !open && setPendingDeletePaths(null)}
+      >
+        <Dialog.Content className="max-w-sm">
+          <Dialog.Title>Permanently delete?</Dialog.Title>
+          <Dialog.Description>
+            {pendingDeletePaths && pendingDeletePaths.length > 1
+              ? `${pendingDeletePaths.length} items`
+              : 'This item'}{' '}
+            will be permanently deleted. This can&apos;t be undone.
+          </Dialog.Description>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setPendingDeletePaths(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" onClick={confirmDelete}>
+              Delete
             </Button>
           </div>
         </Dialog.Content>

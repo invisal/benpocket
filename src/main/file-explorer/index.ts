@@ -7,17 +7,19 @@ import {
   writeFilesToClipboard,
   type ClipboardMode
 } from './nativeClipboard';
+import { pathExists } from './localFileDriver';
+import { getDriverForLocation } from './driverRegistry';
+import { getR2Credential, registerR2CredentialHandlers } from './r2Credential';
+import { listR2Buckets } from './r2FileDriver';
+import {
+  type CreateResult,
+  type ListDirectoryResult,
+  type MutationResult,
+  type ReadFileResult,
+  type WriteFileResult
+} from './fileDriver';
 
-export interface FileEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  size: number;
-  modifiedMs: number;
-  extension: string;
-}
-
-export type ListDirectoryResponse = { entries: FileEntry[] } | { error: string };
+export type { FileEntry } from './fileDriver';
 
 export interface SidebarItem {
   label: string;
@@ -27,40 +29,10 @@ export interface SidebarItem {
 export interface SidebarSections {
   favorites: SidebarItem[];
   locations: SidebarItem[];
+  r2Buckets: SidebarItem[];
 }
-
-export type ReadFileContentResponse =
-  | { content: string }
-  | { error: 'too-large'; maxBytes: number }
-  | { error: 'unsupported-extension' }
-  | { error: string };
-
-const PREVIEWABLE_EXTENSIONS = new Set(['txt', 'md', 'json', 'ini']);
-const MAX_PREVIEW_FILE_BYTES = 5 * 1024 * 1024;
 
 const iconCache = new Map<string, string>();
-
-function pathExists(target: string): boolean {
-  try {
-    fs.accessSync(target);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function getAvailableName(destDir: string, baseName: string): Promise<string> {
-  const extension = path.extname(baseName);
-  const stem = path.basename(baseName, extension);
-
-  let candidate = baseName;
-  let attempt = 1;
-  while (pathExists(path.join(destDir, candidate))) {
-    attempt += 1;
-    candidate = `${stem} (${attempt})${extension}`;
-  }
-  return candidate;
-}
 
 function getFavorites(): SidebarItem[] {
   const candidates: SidebarItem[] = [
@@ -126,46 +98,36 @@ function getLocations(): SidebarItem[] {
   }
 }
 
+async function getR2BucketSidebarItems(): Promise<SidebarItem[]> {
+  // Not configured -- R2 stays entirely absent from the sidebar rather than
+  // showing an error state, matching Step 7's "opt-in, not an error" design.
+  if (!getR2Credential()) return [];
+
+  const buckets = await listR2Buckets();
+  if ('error' in buckets) return [];
+
+  return buckets.map((bucket) => ({ label: bucket.name, path: `r2://${bucket.name}/` }));
+}
+
 export function registerFileExplorerHandlers(): void {
+  registerR2CredentialHandlers();
+
   ipcMain.handle('file-explorer:get-home-dir', () => {
     return app.getPath('home');
   });
 
-  ipcMain.handle('file-explorer:get-sidebar-sections', (): SidebarSections => {
-    return { favorites: getFavorites(), locations: getLocations() };
+  ipcMain.handle('file-explorer:get-sidebar-sections', async (): Promise<SidebarSections> => {
+    return {
+      favorites: getFavorites(),
+      locations: getLocations(),
+      r2Buckets: await getR2BucketSidebarItems()
+    };
   });
 
   ipcMain.handle(
     'file-explorer:list-directory',
-    async (_, dirPath: string): Promise<ListDirectoryResponse> => {
-      try {
-        const names = await fs.promises.readdir(dirPath);
-        const entries = await Promise.all(
-          names.map(async (name): Promise<FileEntry | null> => {
-            const fullPath = path.join(dirPath, name);
-            try {
-              const stats = await fs.promises.stat(fullPath);
-              const extension = stats.isDirectory()
-                ? ''
-                : path.extname(name).replace(/^\./, '').toLowerCase();
-              return {
-                name,
-                path: fullPath,
-                isDirectory: stats.isDirectory(),
-                size: stats.isDirectory() ? 0 : stats.size,
-                modifiedMs: stats.mtimeMs,
-                extension
-              };
-            } catch {
-              return null;
-            }
-          })
-        );
-        return { entries: entries.filter((entry): entry is FileEntry => entry !== null) };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, uri: string, cursor?: string): Promise<ListDirectoryResult> => {
+      return getDriverForLocation(uri).listDirectory(uri, cursor);
     }
   );
 
@@ -197,114 +159,37 @@ export function registerFileExplorerHandlers(): void {
 
   ipcMain.handle(
     'file-explorer:read-file-content',
-    async (_, filePath: string): Promise<ReadFileContentResponse> => {
-      const extension = path.extname(filePath).replace(/^\./, '').toLowerCase();
-      if (!PREVIEWABLE_EXTENSIONS.has(extension)) {
-        return { error: 'unsupported-extension' };
-      }
-
-      try {
-        const stats = await fs.promises.stat(filePath);
-        if (stats.isDirectory()) return { error: 'Cannot preview a folder' };
-        if (stats.size > MAX_PREVIEW_FILE_BYTES) {
-          return { error: 'too-large', maxBytes: MAX_PREVIEW_FILE_BYTES };
-        }
-
-        const content = await fs.promises.readFile(filePath, 'utf-8');
-        return { content };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, uri: string): Promise<ReadFileResult> => {
+      return getDriverForLocation(uri).readFile(uri);
     }
   );
 
   ipcMain.handle(
     'file-explorer:write-file-content',
-    async (
-      _,
-      filePath: string,
-      content: string
-    ): Promise<{ success: true } | { error: string }> => {
-      const extension = path.extname(filePath).replace(/^\./, '').toLowerCase();
-      if (!PREVIEWABLE_EXTENSIONS.has(extension)) {
-        return { error: 'unsupported-extension' };
-      }
-
-      try {
-        const stats = await fs.promises.stat(filePath);
-        if (stats.isDirectory()) return { error: 'Cannot write to a folder' };
-
-        await fs.promises.writeFile(filePath, content, 'utf-8');
-        return { success: true };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, uri: string, content: string): Promise<WriteFileResult> => {
+      return getDriverForLocation(uri).writeFile(uri, content);
     }
   );
 
   ipcMain.handle(
     'file-explorer:delete-entries',
-    async (_, paths: string[]): Promise<{ success: true } | { error: string }> => {
-      try {
-        for (const target of paths) {
-          await shell.trashItem(target);
-        }
-        return { success: true };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, uris: string[]): Promise<MutationResult> => {
+      if (uris.length === 0) return { success: true };
+      return getDriverForLocation(uris[0]).deleteEntries(uris);
     }
   );
 
   ipcMain.handle(
     'file-explorer:copy-entries',
-    async (
-      _,
-      sourcePaths: string[],
-      destDir: string
-    ): Promise<{ success: true } | { error: string }> => {
-      try {
-        for (const source of sourcePaths) {
-          const name = await getAvailableName(destDir, path.basename(source));
-          await fs.promises.cp(source, path.join(destDir, name), { recursive: true });
-        }
-        return { success: true };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, sourceUris: string[], destDirUri: string): Promise<MutationResult> => {
+      return getDriverForLocation(destDirUri).copyEntries(sourceUris, destDirUri);
     }
   );
 
   ipcMain.handle(
     'file-explorer:move-entries',
-    async (
-      _,
-      sourcePaths: string[],
-      destDir: string
-    ): Promise<{ success: true } | { error: string }> => {
-      try {
-        for (const source of sourcePaths) {
-          const name = await getAvailableName(destDir, path.basename(source));
-          const destination = path.join(destDir, name);
-          try {
-            await fs.promises.rename(source, destination);
-          } catch (err) {
-            if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
-            // Source and destination are on different filesystems/devices --
-            // rename can't cross that boundary, so fall back to copy + remove.
-            await fs.promises.cp(source, destination, { recursive: true });
-            await fs.promises.rm(source, { recursive: true });
-          }
-        }
-        return { success: true };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, sourceUris: string[], destDirUri: string): Promise<MutationResult> => {
+      return getDriverForLocation(destDirUri).moveEntries(sourceUris, destDirUri);
     }
   );
 
@@ -321,41 +206,15 @@ export function registerFileExplorerHandlers(): void {
 
   ipcMain.handle(
     'file-explorer:create-file',
-    async (
-      _,
-      destDir: string,
-      name: string
-    ): Promise<{ success: true; path: string } | { error: 'exists' } | { error: string }> => {
-      const fullPath = path.join(destDir, name);
-      try {
-        // The 'wx' flag fails atomically if the file already exists, avoiding a
-        // separate existence-check race between checking and writing.
-        await fs.promises.writeFile(fullPath, '', { flag: 'wx' });
-        return { success: true, path: fullPath };
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'EEXIST') return { error: 'exists' };
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, destDirUri: string, name: string): Promise<CreateResult> => {
+      return getDriverForLocation(destDirUri).createFile(destDirUri, name);
     }
   );
 
   ipcMain.handle(
     'file-explorer:create-folder',
-    async (
-      _,
-      destDir: string,
-      name: string
-    ): Promise<{ success: true; path: string } | { error: 'exists' } | { error: string }> => {
-      const fullPath = path.join(destDir, name);
-      try {
-        await fs.promises.mkdir(fullPath);
-        return { success: true, path: fullPath };
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'EEXIST') return { error: 'exists' };
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
-      }
+    async (_, destDirUri: string, name: string): Promise<CreateResult> => {
+      return getDriverForLocation(destDirUri).createFolder(destDirUri, name);
     }
   );
 }

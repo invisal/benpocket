@@ -24,6 +24,7 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1087.0",
     "@base-ui/react": "^1.6.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
@@ -31,6 +32,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.5",
     "canvas": "^3.2.3",
+    "cloudflare": "^7.0.0",
     "cnfast": "^0.0.8",
     "echarts": "^6.1.0",
     "electron-store": "^8.2.0",

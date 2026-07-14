@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HardDrive } from 'lucide-react';
+import { CloudIcon, HardDrive } from 'lucide-react';
 import { cn } from 'cnfast';
 import type { SidebarItem, SidebarSections } from '../../../../preload/file-explorer/api';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
@@ -41,6 +41,13 @@ export function FileExplorerSidebar() {
         currentPath={activePath ?? ''}
         onNavigate={navigateActive}
         getIcon={() => HardDrive}
+      />
+      <SidebarSection
+        title="R2"
+        items={sections.r2Buckets}
+        currentPath={activePath ?? ''}
+        onNavigate={navigateActive}
+        getIcon={() => CloudIcon}
       />
     </div>
   );

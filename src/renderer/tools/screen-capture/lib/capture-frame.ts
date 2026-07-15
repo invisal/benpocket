@@ -539,45 +539,25 @@ export async function selectAndCaptureRegion(
       return await cropImageBitmap(frameBitmap, selection);
     }
 
+    // Windows/X11 (macOS and Wayland handled above): both platforms give apps
+    // global screen coordinates and a fullscreen always-on-top window, so the
+    // overlay dims the *live* desktop (no frozen screenshot). After the drag,
+    // capture the matched display while the app + overlay are still gone, then
+    // crop. Capturing before the finally re-shows the app keeps CraftBox out of
+    // the grab.
     await hideMainWindow();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
-
-    const screens = sources.filter((source) => source.type === 'screen');
-    if (screens.length === 1 && screens[0]?.displayBounds) {
-      const source = screens[0];
-      const fullBlob = await captureFromSource(source, { hideApp: false });
-      frameBitmap = await createImageBitmap(fullBlob);
-      const jpegBlob = await (async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = frameBitmap!.width;
-        canvas.height = frameBitmap!.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Failed to encode backdrop');
-        ctx.drawImage(frameBitmap!, 0, 0);
-        return canvasToBlob(canvas, 'image/jpeg', 0.92);
-      })();
-
-      onStep?.('region');
-      const selection =
-        (await window.screenRecorder?.screenshot.selectRegion({
-          backdropJpeg: await jpegBlob.arrayBuffer(),
-          bounds: source.displayBounds
-        })) ?? null;
-      if (!selection) return null;
-      onStep?.('processing');
-      return await cropImageBitmap(frameBitmap, selection);
-    }
 
     onStep?.('region');
     const selection = (await window.screenRecorder?.screenshot.selectRegion()) ?? null;
     if (!selection) return null;
 
-    await showApp({ focus: false });
-
     const source = findScreenSourceForRegion(sources, selection);
     if (!source) return null;
 
     onStep?.('processing');
+    // Let the overlay window finish tearing down so it is not in the grab.
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
     const fullBlob = await captureFromSource(source, { hideApp: false });
     return await cropPngBlob(fullBlob, selection);
   } catch (err) {

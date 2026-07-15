@@ -267,7 +267,7 @@ async function getDesktopVideoStream(
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-async function captureDisplayPng(
+async function captureNativePng(
   source: CaptureSource,
   options: { hideBeforeCapture: boolean }
 ): Promise<Blob> {
@@ -286,13 +286,29 @@ export async function captureFromSource(
 ): Promise<Blob> {
   const shouldHideApp = options?.hideApp ?? source.type === 'screen';
 
-  // Full-display capture uses main-process desktopCapturer (macOS/Windows/X11).
-  // Atomic hide → grab → restore avoids macOS renderer suspension during IPC.
+  // Full-display capture uses the main process (macOS screencapture /
+  // elsewhere desktopCapturer). Atomic hide → grab → restore avoids macOS
+  // renderer suspension during IPC.
   if (source.type === 'screen') {
-    return captureDisplayPng(source, { hideBeforeCapture: shouldHideApp });
+    return captureNativePng(source, { hideBeforeCapture: shouldHideApp });
   }
 
   try {
+    // macOS window stills: main-process `screencapture -l` gives a P3-tagged
+    // PNG with no YUV round trip. Falls back to the stream grab on failure.
+    if (window.api?.platform === 'darwin') {
+      try {
+        return await captureNativePng(source, { hideBeforeCapture: false });
+      } catch (err) {
+        console.warn('[capture] native window capture failed, using stream grab:', err);
+      }
+    }
+
+    // Windows/X11 window stills keep the stream path despite its I420 chroma
+    // subsampling: the only in-Electron alternative (desktopCapturer window
+    // thumbnails) upscales to fit thumbnailSize (measured: an 800x536 px
+    // window returned a 10000x7500 thumbnail), which looks worse. Fixing this
+    // properly needs native capture (Windows.Graphics.Capture / XGetImage).
     const stream = await getDesktopVideoStream(source);
     return await grabPngFromStream(stream);
   } finally {

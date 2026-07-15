@@ -40,6 +40,19 @@ function pickSupportedMimeType(): string {
 }
 
 /**
+ * Chromium's MediaRecorder defaults to a flat 2.5 Mbps when no bitrate is
+ * given, regardless of resolution -- a Retina display capture gets the same
+ * bandwidth as a 480p webcam, which is why recordings look blurry next to
+ * native recorders. Target ~3 bits per pixel per second (~0.1 bpp at the
+ * ~30 fps Chromium captures desktops at): 1080p lands on the 8 Mbps floor,
+ * 4K ~25 Mbps, 5K Retina hits the 40 Mbps cap. The intermediate WebM is a
+ * scratch file that export re-encodes, so err on the high side.
+ */
+function videoBitsPerSecondFor(width: number, height: number): number {
+  return Math.min(Math.max(width * height * 3, 8_000_000), 40_000_000);
+}
+
+/**
  * Captures the chosen screen/window as a video track, plus (best-effort)
  * system audio as a loopback audio track. System audio via this mechanism
  * only works reliably on Windows/Linux -- see
@@ -133,7 +146,16 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
     finalStream.addTrack(track);
   }
 
-  const recorder = new MediaRecorder(finalStream, { mimeType: pickSupportedMimeType() });
+  const scale = window.devicePixelRatio || 1;
+  const {
+    width = Math.round(window.screen.width * scale),
+    height = Math.round(window.screen.height * scale)
+  } = desktopStream.getVideoTracks()[0]?.getSettings() ?? {};
+
+  const recorder = new MediaRecorder(finalStream, {
+    mimeType: pickSupportedMimeType(),
+    videoBitsPerSecond: videoBitsPerSecondFor(width, height)
+  });
   const chunks: BlobPart[] = [];
 
   recorder.ondataavailable = (event): void => {

@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Download,
   Folder,
   FolderOpen,
   FolderPlus,
   Move,
+  MoreHorizontal,
   Pencil,
   Plus,
   Send,
@@ -29,6 +31,8 @@ import {
   collectAllFolderIds,
   countRequestsRecursive,
   findFolderById,
+  findFolderChainForRequest,
+  findRequestInContainer,
   flattenFolderOptions,
   isFolderOrDescendant
 } from './lib/collectionTree';
@@ -70,7 +74,7 @@ function methodBadgeClass(method: string): string {
 }
 
 export const HttpClientSidebar: React.FC = () => {
-  const { openTab, openNewRequestTab } = usePostmanTabsStore();
+  const { tabs, activeTabId, openTab, openNewRequestTab } = usePostmanTabsStore();
   const {
     collections,
     isLoaded,
@@ -89,6 +93,7 @@ export const HttpClientSidebar: React.FC = () => {
     importCollection
   } = useCollectionsStore();
 
+  // Collections and folders default to collapsed; nothing auto-expands on load.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [draftCollectionName, setDraftCollectionName] = useState('');
@@ -97,26 +102,29 @@ export const HttpClientSidebar: React.FC = () => {
     text: string;
   } | null>(null);
 
-  // Newly loaded collections default to expanded (folders inside default to
-  // collapsed). Adjusted directly during render (rather than in an effect) so
-  // it applies before paint and doesn't trigger an extra render pass; guarded
-  // by `knownCollectionIds` so it only reacts to genuinely new collections,
-  // not to the user manually collapsing one.
-  const [knownCollectionIds, setKnownCollectionIds] = useState<Set<string>>(new Set());
-  const unseenCollectionIds = collections
-    .map((c) => c.id)
-    .filter((id) => !knownCollectionIds.has(id));
-  if (unseenCollectionIds.length > 0) {
-    setKnownCollectionIds((prev) => {
-      const next = new Set(prev);
-      for (const id of unseenCollectionIds) next.add(id);
-      return next;
-    });
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      for (const id of unseenCollectionIds) next.add(id);
-      return next;
-    });
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeCollectionId = activeTab?.meta?.savedCollectionId ?? null;
+  const activeRequestId = activeTab?.meta?.savedRequestId ?? null;
+
+  // When the active tab switches to point at a (different) saved request, reveal it
+  // in the tree by expanding its collection and folder chain, so the user can always
+  // see where the currently selected tab lives. Adjusted directly during render
+  // (rather than in an effect) so it applies before paint; guarded by `lastRevealedRequestId`
+  // so it only reacts to the active request genuinely changing, not to the user
+  // manually re-collapsing a folder on that path afterwards.
+  const [lastRevealedRequestId, setLastRevealedRequestId] = useState<string | null>(null);
+  if (activeRequestId && activeRequestId !== lastRevealedRequestId) {
+    setLastRevealedRequestId(activeRequestId);
+    const collection = collections.find((c) => c.id === activeCollectionId);
+    const chain = collection ? findFolderChainForRequest(collection, activeRequestId) : null;
+    if (collection && chain) {
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        next.add(collection.id);
+        for (const id of chain) next.add(id);
+        return next;
+      });
+    }
   }
 
   useEffect(() => {
@@ -355,6 +363,7 @@ export const HttpClientSidebar: React.FC = () => {
                 runMutation(() => moveFolder(collection.id, folderId, targetParentFolderId))
               }
               onInvalidDrop={handleInvalidDrop}
+              activeRequestId={activeCollectionId === collection.id ? activeRequestId : null}
             />
           ))}
         </div>
@@ -363,68 +372,161 @@ export const HttpClientSidebar: React.FC = () => {
   );
 };
 
-interface MoveToFolderPopoverProps {
+interface MenuButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}
+
+const MenuButton: React.FC<MenuButtonProps> = ({ icon, label, onClick, danger }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center gap-2 text-left px-2 py-1.5 rounded hover:bg-editor-bg cursor-pointer ${
+      danger ? 'text-red-400 hover:text-red-300' : 'text-zinc-300 hover:text-white'
+    }`}
+  >
+    {icon}
+    <span className="truncate">{label}</span>
+  </button>
+);
+
+interface ActionsMenuAction {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}
+
+interface ActionsMenuMoveTarget {
   /** The whole collection's root folder tree — options are computed across all of it, not just siblings. */
   folders: CollectionFolder[];
   /** Exclude this folder (and its descendants) from the target list — used when moving a folder itself. */
   excludeId?: string;
-  title: string;
   onSelect: (targetFolderId: string | null) => void;
 }
 
-const MoveToFolderPopover: React.FC<MoveToFolderPopoverProps> = ({
-  folders,
-  excludeId,
-  title,
-  onSelect
+interface ActionsMenuProps {
+  actions: ActionsMenuAction[];
+  moveTo?: ActionsMenuMoveTarget;
+  triggerTitle?: string;
+  triggerClassName?: string;
+}
+
+/**
+ * A single "..." trigger that pops open a stacked menu of actions for a collection, folder or
+ * request item, instead of a row of always-competing hover icons.
+ *
+ * Owns the `hidden group-hover:flex` reveal-on-hover wrapper itself (rather than leaving it to the
+ * caller) because it must force itself visible while the popover is open: the popup renders in a
+ * portal outside the hovered row, so moving the mouse into the popup drops the row's `:hover`. If
+ * the trigger were still `display:none` at that point, its bounding rect would collapse to
+ * (0,0) and the floating-positioned popup would jump to the top-left corner mid-interaction.
+ */
+const ActionsMenu: React.FC<ActionsMenuProps> = ({
+  actions,
+  moveTo,
+  triggerTitle = 'More actions',
+  triggerClassName = 'p-0.5 text-zinc-555 hover:text-white cursor-pointer'
 }) => {
   const [open, setOpen] = useState(false);
-  const options = useMemo(() => flattenFolderOptions(folders, 0, excludeId), [folders, excludeId]);
+  const [view, setView] = useState<'menu' | 'move'>('menu');
+  const moveOptions = useMemo(
+    () => (moveTo ? flattenFolderOptions(moveTo.folders, 0, moveTo.excludeId) : []),
+    [moveTo]
+  );
+
+  const close = (): void => {
+    setOpen(false);
+    setView('menu');
+  };
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger
-        onClick={(e) => e.stopPropagation()}
-        title={title}
-        className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
+    <div
+      className={`items-center shrink-0 ${open ? 'flex' : 'hidden group-hover:flex'}`}
+      onClick={(e) => e.stopPropagation()}
+      draggable={false}
+    >
+      <Popover.Root
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setView('menu');
+        }}
       >
-        <Move size={11} />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner sideOffset={6} align="start" className="z-50">
-          <Popover.Popup
-            onClick={(e) => e.stopPropagation()}
-            className="bg-sidebar-bg border border-border-dark rounded-lg shadow-xl p-1 w-56 max-h-64 overflow-y-auto flex flex-col gap-0.5 text-xs outline-none"
-          >
-            <button
-              onClick={() => {
-                onSelect(null);
-                setOpen(false);
-              }}
-              className="text-left px-2 py-1 rounded hover:bg-editor-bg text-zinc-300 hover:text-white cursor-pointer"
+        <Popover.Trigger title={triggerTitle} className={triggerClassName}>
+          <MoreHorizontal size={13} />
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner sideOffset={4} align="start" className="z-50">
+            <Popover.Popup
+              onClick={(e) => e.stopPropagation()}
+              className="bg-sidebar-bg border border-border-dark rounded-lg shadow-xl p-1 w-48 max-h-72 overflow-y-auto flex flex-col gap-0.5 text-xs outline-none"
             >
-              Collection Root
-            </button>
-            {options.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => {
-                  onSelect(opt.id);
-                  setOpen(false);
-                }}
-                style={{ paddingLeft: 8 + opt.depth * 12 }}
-                className="text-left px-2 py-1 rounded hover:bg-editor-bg text-zinc-300 hover:text-white cursor-pointer truncate"
-              >
-                {opt.name}
-              </button>
-            ))}
-            {options.length === 0 && (
-              <div className="px-2 py-1 text-zinc-600 italic">No other folders</div>
-            )}
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
+              {view === 'menu' ? (
+                <>
+                  {actions.map((action) => (
+                    <MenuButton
+                      key={action.label}
+                      icon={action.icon}
+                      label={action.label}
+                      danger={action.danger}
+                      onClick={() => {
+                        close();
+                        action.onClick();
+                      }}
+                    />
+                  ))}
+                  {moveTo && (
+                    <MenuButton
+                      icon={<Move size={12} />}
+                      label="Move to..."
+                      onClick={() => setView('move')}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setView('menu')}
+                    className="flex items-center gap-1 text-left px-2 py-1.5 rounded hover:bg-editor-bg text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    <ChevronLeft size={12} />
+                    <span>Back</span>
+                  </button>
+                  <div className="h-px bg-border-dark my-0.5" />
+                  <button
+                    onClick={() => {
+                      close();
+                      moveTo!.onSelect(null);
+                    }}
+                    className="text-left px-2 py-1.5 rounded hover:bg-editor-bg text-zinc-300 hover:text-white cursor-pointer"
+                  >
+                    Collection Root
+                  </button>
+                  {moveOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        close();
+                        moveTo!.onSelect(opt.id);
+                      }}
+                      style={{ paddingLeft: 8 + opt.depth * 12 }}
+                      className="text-left px-2 py-1.5 rounded hover:bg-editor-bg text-zinc-300 hover:text-white cursor-pointer truncate"
+                    >
+                      {opt.name}
+                    </button>
+                  ))}
+                  {moveOptions.length === 0 && (
+                    <div className="px-2 py-1.5 text-zinc-600 italic">No other folders</div>
+                  )}
+                </>
+              )}
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
   );
 };
 
@@ -447,6 +549,8 @@ interface CollectionItemProps {
   onDeleteFolder: (folderId: string) => void;
   onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
   onInvalidDrop: (message: string) => void;
+  /** The saved request id backing the currently active tab, if it lives in this collection. */
+  activeRequestId: string | null;
 }
 
 const CollectionItem: React.FC<CollectionItemProps> = ({
@@ -467,7 +571,8 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
   onRenameFolder,
   onDeleteFolder,
   onMoveFolder,
-  onInvalidDrop
+  onInvalidDrop,
+  activeRequestId
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(collection.name);
@@ -521,6 +626,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
   );
 
   const totalCount = useMemo(() => countRequestsRecursive(collection), [collection]);
+  const containsActive = activeRequestId !== null;
 
   return (
     <div className="flex flex-col">
@@ -530,7 +636,11 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
         onDrop={handleRootDrop}
         title="Drop here to move to collection root"
         className={`flex items-center gap-1 group px-1 py-1 rounded hover:bg-editor-bg/60 ${
-          isRootDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''
+          isRootDropTarget
+            ? 'ring-1 ring-accent bg-accent/10'
+            : containsActive
+              ? 'bg-editor-bg/40'
+              : ''
         }`}
       >
         <button
@@ -572,49 +682,34 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
         )}
 
         {!isRenaming && (
-          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-            <button
-              onClick={() => onNewRequest(null)}
-              title="New request in this collection"
-              className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-            >
-              <Send size={11} />
-            </button>
-            <button
-              onClick={() => {
-                setIsCreatingFolder(true);
-                setDraftFolderName('');
-              }}
-              title="New folder"
-              className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-            >
-              <FolderPlus size={11} />
-            </button>
-            <button
-              onClick={() => {
-                setDraftName(collection.name);
-                setIsRenaming(true);
-              }}
-              title="Rename collection"
-              className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-            >
-              <Pencil size={11} />
-            </button>
-            <button
-              onClick={onExport}
-              title="Export collection (.json)"
-              className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-            >
-              <Download size={11} />
-            </button>
-            <button
-              onClick={onDelete}
-              title="Delete collection"
-              className="p-0.5 text-zinc-555 hover:text-red-400 cursor-pointer"
-            >
-              <Trash2 size={11} />
-            </button>
-          </div>
+          <ActionsMenu
+            triggerTitle="Collection actions"
+            actions={[
+              {
+                icon: <Send size={12} />,
+                label: 'New Request',
+                onClick: () => onNewRequest(null)
+              },
+              {
+                icon: <FolderPlus size={12} />,
+                label: 'New Folder',
+                onClick: () => {
+                  setIsCreatingFolder(true);
+                  setDraftFolderName('');
+                }
+              },
+              {
+                icon: <Pencil size={12} />,
+                label: 'Rename',
+                onClick: () => {
+                  setDraftName(collection.name);
+                  setIsRenaming(true);
+                }
+              },
+              { icon: <Download size={12} />, label: 'Export', onClick: onExport },
+              { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
+            ]}
+          />
         )}
       </div>
 
@@ -669,6 +764,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               onDeleteFolder={onDeleteFolder}
               onMoveFolder={onMoveFolder}
               onInvalidDrop={onInvalidDrop}
+              activeRequestId={activeRequestId}
             />
           ))}
 
@@ -680,15 +776,9 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               onOpen={() => onOpenRequest(request)}
               onRename={(name) => onRenameRequest(request.id, name)}
               onDelete={() => onDeleteRequest(request.id)}
-              moveAction={
-                collection.folders.length > 0 ? (
-                  <MoveToFolderPopover
-                    folders={collection.folders}
-                    title="Move request to folder"
-                    onSelect={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
-                  />
-                ) : undefined
-              }
+              moveFolders={collection.folders}
+              onMove={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
+              isActive={request.id === activeRequestId}
             />
           ))}
         </div>
@@ -714,6 +804,8 @@ interface FolderItemProps {
   onDeleteFolder: (folderId: string) => void;
   onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
   onInvalidDrop: (message: string) => void;
+  /** The saved request id backing the currently active tab, if it lives in this collection. */
+  activeRequestId: string | null;
 }
 
 const FolderItem: React.FC<FolderItemProps> = ({
@@ -732,7 +824,8 @@ const FolderItem: React.FC<FolderItemProps> = ({
   onRenameFolder,
   onDeleteFolder,
   onMoveFolder,
-  onInvalidDrop
+  onInvalidDrop,
+  activeRequestId
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(folder.name);
@@ -748,6 +841,9 @@ const FolderItem: React.FC<FolderItemProps> = ({
     () => [...folder.requests].sort((a, b) => b.updatedAt - a.updatedAt),
     [folder.requests]
   );
+
+  const containsActive =
+    activeRequestId !== null && findRequestInContainer(folder, activeRequestId) !== undefined;
 
   const commitRename = (): void => {
     setIsRenaming(false);
@@ -822,7 +918,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
         title={isExpanded ? 'Collapse folder' : 'Expand folder'}
         className={`flex items-center gap-1 group px-1 py-1 rounded hover:bg-editor-bg/60 cursor-grab active:cursor-grabbing ${
           isDragging ? 'opacity-40' : ''
-        } ${isDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''}`}
+        } ${isDropTarget ? 'ring-1 ring-accent bg-accent/10' : containsActive ? 'bg-editor-bg/40' : ''}`}
       >
         <span className="text-zinc-500 hover:text-white shrink-0">
           {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -866,56 +962,43 @@ const FolderItem: React.FC<FolderItemProps> = ({
         )}
 
         {!isRenaming && (
-          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onNewRequest(folder.id);
-              }}
-              title="New request in this folder"
-              className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-            >
-              <Send size={11} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreatingSubfolder(true);
-                setDraftSubfolderName('');
-              }}
-              title="New subfolder"
-              className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-            >
-              <FolderPlus size={11} />
-            </button>
-            <MoveToFolderPopover
-              folders={rootFolders}
-              excludeId={folder.id}
-              title="Move folder"
-              onSelect={(targetFolderId) => onMoveFolder(folder.id, targetFolderId)}
-            />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setDraftName(folder.name);
-                setIsRenaming(true);
-              }}
-              title="Rename folder"
-              className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-            >
-              <Pencil size={11} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteFolder(folder.id);
-              }}
-              title="Delete folder"
-              className="p-0.5 text-zinc-555 hover:text-red-400 cursor-pointer"
-            >
-              <Trash2 size={11} />
-            </button>
-          </div>
+          <ActionsMenu
+            triggerTitle="Folder actions"
+            actions={[
+              {
+                icon: <Send size={12} />,
+                label: 'New Request',
+                onClick: () => onNewRequest(folder.id)
+              },
+              {
+                icon: <FolderPlus size={12} />,
+                label: 'New Subfolder',
+                onClick: () => {
+                  setIsCreatingSubfolder(true);
+                  setDraftSubfolderName('');
+                }
+              },
+              {
+                icon: <Pencil size={12} />,
+                label: 'Rename',
+                onClick: () => {
+                  setDraftName(folder.name);
+                  setIsRenaming(true);
+                }
+              },
+              {
+                icon: <Trash2 size={12} />,
+                label: 'Delete',
+                danger: true,
+                onClick: () => onDeleteFolder(folder.id)
+              }
+            ]}
+            moveTo={{
+              folders: rootFolders,
+              excludeId: folder.id,
+              onSelect: (targetFolderId) => onMoveFolder(folder.id, targetFolderId)
+            }}
+          />
         )}
       </div>
 
@@ -974,6 +1057,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               onDeleteFolder={onDeleteFolder}
               onMoveFolder={onMoveFolder}
               onInvalidDrop={onInvalidDrop}
+              activeRequestId={activeRequestId}
             />
           ))}
 
@@ -986,13 +1070,9 @@ const FolderItem: React.FC<FolderItemProps> = ({
               onOpen={() => onOpenRequest(request)}
               onRename={(name) => onRenameRequest(request.id, name)}
               onDelete={() => onDeleteRequest(request.id)}
-              moveAction={
-                <MoveToFolderPopover
-                  folders={rootFolders}
-                  title="Move request to folder"
-                  onSelect={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
-                />
-              }
+              moveFolders={rootFolders}
+              onMove={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
+              isActive={request.id === activeRequestId}
             />
           ))}
         </div>
@@ -1008,7 +1088,11 @@ interface RequestItemProps {
   onOpen: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
-  moveAction?: React.ReactNode;
+  /** The collection's whole folder tree — used to build the "Move to..." target list. */
+  moveFolders: CollectionFolder[];
+  onMove: (targetFolderId: string | null) => void;
+  /** Whether this request backs the currently active tab — highlighted so the user can see where they are. */
+  isActive: boolean;
 }
 
 const RequestItem: React.FC<RequestItemProps> = ({
@@ -1018,7 +1102,9 @@ const RequestItem: React.FC<RequestItemProps> = ({
   onOpen,
   onRename,
   onDelete,
-  moveAction
+  moveFolders,
+  onMove,
+  isActive
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(request.name);
@@ -1084,40 +1170,40 @@ const RequestItem: React.FC<RequestItemProps> = ({
       onDragEnd={handleDragEnd}
       title={request.url}
       style={style}
-      className={`flex items-center gap-2 p-1.5 bg-editor-bg/40 hover:bg-editor-bg rounded text-xs cursor-grab active:cursor-grabbing border border-transparent hover:border-border-dark transition-all group ${
+      className={`flex items-center gap-2 p-1.5 hover:bg-editor-bg rounded text-xs cursor-grab active:cursor-grabbing border transition-all group ${
         isDragging ? 'opacity-40' : ''
+      } ${
+        isActive
+          ? 'bg-accent/10 border-accent/60'
+          : 'bg-editor-bg/40 border-transparent hover:border-border-dark'
       }`}
     >
+      {isActive && <span className="w-1 h-1 rounded-full bg-accent shrink-0" />}
       <span
         className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}
       >
         {request.method}
       </span>
-      <span className="truncate text-zinc-300 group-hover:text-white flex-1">{request.name}</span>
-      <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-        {moveAction}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setDraftName(request.name);
-            setIsRenaming(true);
-          }}
-          title="Rename request"
-          className="p-0.5 text-zinc-555 hover:text-white cursor-pointer"
-        >
-          <Pencil size={11} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          title="Delete request"
-          className="p-0.5 text-zinc-555 hover:text-red-400 cursor-pointer"
-        >
-          <Trash2 size={11} />
-        </button>
-      </div>
+      <span
+        className={`truncate flex-1 ${isActive ? 'text-white' : 'text-zinc-300 group-hover:text-white'}`}
+      >
+        {request.name}
+      </span>
+      <ActionsMenu
+        triggerTitle="Request actions"
+        actions={[
+          {
+            icon: <Pencil size={12} />,
+            label: 'Rename',
+            onClick: () => {
+              setDraftName(request.name);
+              setIsRenaming(true);
+            }
+          },
+          { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
+        ]}
+        moveTo={{ folders: moveFolders, onSelect: onMove }}
+      />
     </div>
   );
 };

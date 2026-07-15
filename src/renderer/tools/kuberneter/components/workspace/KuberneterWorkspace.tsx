@@ -16,6 +16,7 @@ import { ResourceQuotas } from './resourcequotas/ResourceQuotas';
 import { LimitRanges } from './limitranges/LimitRanges';
 import { HorizontalPodAutoscalers } from './hpas/HorizontalPodAutoscalers';
 import { PodDisruptionBudgets } from './pdbs/PodDisruptionBudgets';
+import { PriorityClasses } from './priorityclasses/PriorityClasses';
 import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
@@ -50,6 +51,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     limitRangesData,
     hpasData,
     pdbsData,
+    priorityClassesData,
     applicationsData,
     nodesData,
     isLoading,
@@ -199,6 +201,10 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
               pdbsData={pdbsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
+          )}
+
+          {resource === 'priorityclasses' && (
+            <PriorityClasses priorityClassesData={priorityClassesData} />
           )}
 
           {resource === 'apps' && (

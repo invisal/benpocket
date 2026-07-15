@@ -101,7 +101,8 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     resourcequota: 'Resource Quota Details',
     limitrange: 'Limit Range Details',
     horizontalpodautoscaler: 'Horizontal Pod Autoscaler Details',
-    poddisruptionbudget: 'Pod Disruption Budget Details'
+    poddisruptionbudget: 'Pod Disruption Budget Details',
+    priorityclass: 'Priority Class Details'
   };
 
   return (

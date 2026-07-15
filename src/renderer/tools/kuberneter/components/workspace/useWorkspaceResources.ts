@@ -13,6 +13,7 @@ import {
   type HpaMetric
 } from '../../types/HorizontalPodAutoscalerData';
 import { type PodDisruptionBudgetData } from '../../types/PodDisruptionBudgetData';
+import { type PriorityClassData } from '../../types/PriorityClassData';
 import { type ApplicationData } from '../../types/ApplicationData';
 import { type NodeData } from '../../types/NodeData';
 import { type DaemonSetData } from '../../types/DaemonSetData';
@@ -56,6 +57,7 @@ export function useWorkspaceResources(resource: string) {
   const [limitRangesData, setLimitRangesData] = useState<LimitRangeData[]>([]);
   const [hpasData, setHpasData] = useState<HorizontalPodAutoscalerData[]>([]);
   const [pdbsData, setPdbsData] = useState<PodDisruptionBudgetData[]>([]);
+  const [priorityClassesData, setPriorityClassesData] = useState<PriorityClassData[]>([]);
   const [applicationsData, setApplicationsData] = useState<ApplicationData[]>([]);
   const [nodesData, setNodesData] = useState<NodeData[]>([]);
 
@@ -88,6 +90,7 @@ export function useWorkspaceResources(resource: string) {
       else if (resource === 'limitranges') queryResource = 'limitranges';
       else if (resource === 'hpas') queryResource = 'horizontalpodautoscalers';
       else if (resource === 'pdbs') queryResource = 'poddisruptionbudgets';
+      else if (resource === 'priorityclasses') queryResource = 'priorityclasses';
       else if (resource === 'apps') queryResource = 'deployments,statefulsets,daemonsets';
       else if (resource === 'nodes') queryResource = 'nodes';
       else return;
@@ -745,6 +748,35 @@ export function useWorkspaceResources(resource: string) {
           };
         });
         setPdbsData(transformed);
+      } else if (resource === 'priorityclasses') {
+        const transformed = items.map((item) => {
+          const pcItem = item as unknown as {
+            metadata?: K8sResource['metadata'];
+            value?: number;
+            globalDefault?: boolean;
+            description?: string;
+          };
+
+          const name = pcItem.metadata?.name || '';
+          const value = pcItem.value ?? 0;
+          const globalDefault = pcItem.globalDefault ?? false;
+          const description = pcItem.description || '';
+
+          const creationTimestamp = pcItem.metadata?.creationTimestamp || '';
+
+          return {
+            id: name,
+            name,
+            labels: pcItem.metadata?.labels,
+            annotations: pcItem.metadata?.annotations,
+            age: formatAge(creationTimestamp),
+            createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+            value,
+            globalDefault,
+            description
+          };
+        });
+        setPriorityClassesData(transformed);
       } else if (resource === 'apps') {
         const transformed = items
           .map((item) => {
@@ -946,6 +978,7 @@ export function useWorkspaceResources(resource: string) {
     limitRangesData,
     hpasData,
     pdbsData,
+    priorityClassesData,
     applicationsData,
     nodesData,
     isLoading,

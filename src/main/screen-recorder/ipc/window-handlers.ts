@@ -36,4 +36,8 @@ export function registerWindowHandlers(): void {
   ipcMain.handle(IpcChannels.WindowIsMaximized, (event) => {
     return windowFromEvent(event)?.isMaximized() ?? false;
   });
+
+  ipcMain.handle(IpcChannels.WindowSetBackgroundThrottling, (event, allowed: boolean) => {
+    windowFromEvent(event)?.webContents.setBackgroundThrottling(allowed);
+  });
 }

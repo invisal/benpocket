@@ -1,10 +1,9 @@
 import '../preload/index.d.ts';
-import type { ScreenRect } from '@shared/capture-region';
+import type { RegionSelectCompletePayload, ScreenRect } from '@shared/capture-region';
 
-const params = new URLSearchParams(window.location.search);
-let offsetX = Number(params.get('ox') ?? 0);
-let offsetY = Number(params.get('oy') ?? 0);
 let overlayReady = false;
+let backdrop: HTMLImageElement | null = null;
+let backdropObjectUrl: string | null = null;
 
 function requireCanvas(): HTMLCanvasElement {
   const el = document.getElementById('canvas');
@@ -29,23 +28,44 @@ function resizeCanvas(): void {
   redraw();
 }
 
+function drawBackdrop(): void {
+  if (!backdrop) return;
+  ctx.drawImage(backdrop, 0, 0, canvas.width, canvas.height);
+}
+
 function redraw(active?: ScreenRect): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackdrop();
   ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   if (!active) return;
 
-  ctx.clearRect(active.x, active.y, active.width, active.height);
+  if (backdrop) {
+    ctx.drawImage(
+      backdrop,
+      (active.x / canvas.width) * backdrop.naturalWidth,
+      (active.y / canvas.height) * backdrop.naturalHeight,
+      (active.width / canvas.width) * backdrop.naturalWidth,
+      (active.height / canvas.height) * backdrop.naturalHeight,
+      active.x,
+      active.y,
+      active.width,
+      active.height
+    );
+  } else {
+    ctx.clearRect(active.x, active.y, active.width, active.height);
+  }
+
   ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 2;
   ctx.strokeRect(active.x + 0.5, active.y + 0.5, active.width - 1, active.height - 1);
 }
 
-let dragStart: { x: number; y: number } | null = null;
+let dragStartClient: { x: number; y: number } | null = null;
 let activeRect: ScreenRect | null = null;
 
-function clientRect(startX: number, startY: number, endX: number, endY: number): ScreenRect {
+function normalizedRect(startX: number, startY: number, endX: number, endY: number): ScreenRect {
   const x = Math.min(startX, endX);
   const y = Math.min(startY, endY);
   return {
@@ -56,32 +76,57 @@ function clientRect(startX: number, startY: number, endX: number, endY: number):
   };
 }
 
-function toScreenRect(rect: ScreenRect): ScreenRect {
+function clientToImageRect(rect: ScreenRect): ScreenRect {
+  if (!backdrop) return rect;
+  const sx = backdrop.naturalWidth / canvas.width;
+  const sy = backdrop.naturalHeight / canvas.height;
   return {
-    x: offsetX + rect.x,
-    y: offsetY + rect.y,
-    width: rect.width,
-    height: rect.height
+    x: Math.round(rect.x * sx),
+    y: Math.round(rect.y * sy),
+    width: Math.round(rect.width * sx),
+    height: Math.round(rect.height * sy)
   };
 }
 
-function complete(rect: ScreenRect): void {
-  window.screenRecorder?.regionSelect.complete(toScreenRect(rect));
+function complete(payload: RegionSelectCompletePayload): void {
+  window.screenRecorder?.regionSelect.complete(payload);
 }
 
 function cancel(): void {
   window.screenRecorder?.regionSelect.cancel();
 }
 
+async function loadBackdropFromPayload(payload: ArrayBuffer | string): Promise<HTMLImageElement> {
+  const image = new Image();
+  image.decoding = 'async';
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('Failed to load region backdrop'));
+    if (typeof payload === 'string') {
+      image.src = payload;
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([payload], { type: 'image/jpeg' }));
+    backdropObjectUrl = url;
+    image.src = url;
+  });
+  return image;
+}
+
 async function initOverlay(): Promise<void> {
   document.body.style.pointerEvents = 'none';
 
-  const origin = await window.screenRecorder?.regionSelect.getContentOrigin();
-  if (origin) {
-    offsetX = origin.x;
-    offsetY = origin.y;
+  const payload = await window.screenRecorder?.regionSelect.getBackdrop();
+  if (payload) {
+    backdrop = await loadBackdropFromPayload(payload);
+    // Image-space crop needs no content-origin settle wait.
+    overlayReady = true;
+    document.body.style.pointerEvents = 'auto';
+    resizeCanvas();
+    return;
   }
 
+  await window.screenRecorder?.regionSelect.getContentOrigin();
   overlayReady = true;
   document.body.style.pointerEvents = 'auto';
   resizeCanvas();
@@ -89,33 +134,43 @@ async function initOverlay(): Promise<void> {
 
 canvas.addEventListener('pointerdown', (event) => {
   if (!overlayReady) return;
-  dragStart = { x: event.clientX, y: event.clientY };
+  dragStartClient = { x: event.clientX, y: event.clientY };
   activeRect = { x: event.clientX, y: event.clientY, width: 0, height: 0 };
   canvas.setPointerCapture(event.pointerId);
   redraw(activeRect);
 });
 
 canvas.addEventListener('pointermove', (event) => {
-  if (!dragStart) return;
-  activeRect = clientRect(dragStart.x, dragStart.y, event.clientX, event.clientY);
+  if (!dragStartClient) return;
+  activeRect = normalizedRect(dragStartClient.x, dragStartClient.y, event.clientX, event.clientY);
   redraw(activeRect);
 });
 
 canvas.addEventListener('pointerup', (event) => {
-  if (!dragStart) return;
-  const start = dragStart;
-  dragStart = null;
-  const rect = clientRect(start.x, start.y, event.clientX, event.clientY);
-  activeRect = rect;
+  if (!dragStartClient) return;
+  const start = dragStartClient;
+  dragStartClient = null;
+  const clientRect = normalizedRect(start.x, start.y, event.clientX, event.clientY);
   canvas.releasePointerCapture(event.pointerId);
 
-  if (rect.width >= 4 && rect.height >= 4) {
-    complete(rect);
+  if (clientRect.width < 4 || clientRect.height < 4) {
+    activeRect = null;
+    redraw();
     return;
   }
 
-  activeRect = null;
-  redraw();
+  if (backdrop) {
+    const imageRect = clientToImageRect(clientRect);
+    complete({
+      rect: imageRect,
+      imageSpace: true,
+      imageWidth: backdrop.naturalWidth,
+      imageHeight: backdrop.naturalHeight
+    });
+    return;
+  }
+
+  complete(clientRect);
 });
 
 window.addEventListener('keydown', (event) => {
@@ -123,4 +178,7 @@ window.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('pagehide', () => {
+  if (backdropObjectUrl) URL.revokeObjectURL(backdropObjectUrl);
+});
 void initOverlay();

@@ -44,6 +44,12 @@ export async function hideCaptureWindow(
   const hidden = waitForWindowHidden(win);
   win.hide();
   await hidden;
+
+  // Wayland/X11: window hide is async in the compositor — give capture a beat
+  // so the next PipeWire/desktopCapturer frame does not still include us.
+  if (process.platform === 'linux') {
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 export async function restoreCaptureWindow(

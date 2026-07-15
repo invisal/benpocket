@@ -166,10 +166,12 @@ async function grabFrameFromStream(
     }
     ctx.drawImage(video, 0, 0);
 
-    // Keep bitmap for crop; JPEG only for the overlay (skip full-screen PNG encode).
+    // Keep bitmap for crop; JPEG only for the overlay (skip full-screen PNG
+    // encode). 0.92: at 0.7 the backdrop shows ringing around text, which
+    // reads as "the preview is lower quality than the final crop".
     const [bitmap, jpegBlob] = await Promise.all([
       createImageBitmap(canvas),
-      canvasToBlob(canvas, 'image/jpeg', 0.7)
+      canvasToBlob(canvas, 'image/jpeg', 0.92)
     ]);
     const jpeg = await jpegBlob.arrayBuffer();
     return { bitmap, jpeg };
@@ -533,7 +535,7 @@ export async function selectAndCaptureRegion(
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('Failed to encode backdrop');
         ctx.drawImage(frameBitmap!, 0, 0);
-        return canvasToBlob(canvas, 'image/jpeg', 0.7);
+        return canvasToBlob(canvas, 'image/jpeg', 0.92);
       })();
 
       onStep?.('region');

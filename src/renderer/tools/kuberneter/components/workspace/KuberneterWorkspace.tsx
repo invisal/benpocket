@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useWorkspaceResources } from './useWorkspaceResources';
+import { useWorkspaceResources } from '../../hooks/useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
 import { Pods } from './pods/Pods';
 import { Deployments } from './deployments/Deployments';

@@ -14,6 +14,7 @@ import {
 } from '../../types/HorizontalPodAutoscalerData';
 import { type PodDisruptionBudgetData } from '../../types/PodDisruptionBudgetData';
 import { type PriorityClassData } from '../../types/PriorityClassData';
+import { type RuntimeClassData } from '../../types/RuntimeClassData';
 import { type ApplicationData } from '../../types/ApplicationData';
 import { type NodeData } from '../../types/NodeData';
 import { type DaemonSetData } from '../../types/DaemonSetData';
@@ -58,6 +59,7 @@ export function useWorkspaceResources(resource: string) {
   const [hpasData, setHpasData] = useState<HorizontalPodAutoscalerData[]>([]);
   const [pdbsData, setPdbsData] = useState<PodDisruptionBudgetData[]>([]);
   const [priorityClassesData, setPriorityClassesData] = useState<PriorityClassData[]>([]);
+  const [runtimeClassesData, setRuntimeClassesData] = useState<RuntimeClassData[]>([]);
   const [applicationsData, setApplicationsData] = useState<ApplicationData[]>([]);
   const [nodesData, setNodesData] = useState<NodeData[]>([]);
 
@@ -91,6 +93,7 @@ export function useWorkspaceResources(resource: string) {
       else if (resource === 'hpas') queryResource = 'horizontalpodautoscalers';
       else if (resource === 'pdbs') queryResource = 'poddisruptionbudgets';
       else if (resource === 'priorityclasses') queryResource = 'priorityclasses';
+      else if (resource === 'runtimeclasses') queryResource = 'runtimeclasses';
       else if (resource === 'apps') queryResource = 'deployments,statefulsets,daemonsets';
       else if (resource === 'nodes') queryResource = 'nodes';
       else return;
@@ -777,6 +780,43 @@ export function useWorkspaceResources(resource: string) {
           };
         });
         setPriorityClassesData(transformed);
+      } else if (resource === 'runtimeclasses') {
+        const transformed = items.map((item) => {
+          const rcItem = item as unknown as {
+            metadata?: K8sResource['metadata'];
+            handler?: string;
+            scheduling?: {
+              nodeSelector?: Record<string, string>;
+              tolerations?: unknown[];
+            };
+          };
+
+          const name = rcItem.metadata?.name || '';
+          const handler = rcItem.handler || '';
+
+          const nodeSelectorMap = rcItem.scheduling?.nodeSelector || {};
+          const nodeSelector =
+            Object.entries(nodeSelectorMap)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ') || '';
+
+          const tolerationsCount = rcItem.scheduling?.tolerations?.length ?? 0;
+
+          const creationTimestamp = rcItem.metadata?.creationTimestamp || '';
+
+          return {
+            id: name,
+            name,
+            labels: rcItem.metadata?.labels,
+            annotations: rcItem.metadata?.annotations,
+            age: formatAge(creationTimestamp),
+            createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+            handler,
+            nodeSelector,
+            tolerationsCount
+          };
+        });
+        setRuntimeClassesData(transformed);
       } else if (resource === 'apps') {
         const transformed = items
           .map((item) => {
@@ -979,6 +1019,7 @@ export function useWorkspaceResources(resource: string) {
     hpasData,
     pdbsData,
     priorityClassesData,
+    runtimeClassesData,
     applicationsData,
     nodesData,
     isLoading,

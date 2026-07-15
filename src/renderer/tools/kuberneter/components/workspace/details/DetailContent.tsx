@@ -13,6 +13,7 @@ import { LimitRangeDetail } from './LimitRangeDetail';
 import { HorizontalPodAutoscalerDetail } from './HorizontalPodAutoscalerDetail';
 import { PodDisruptionBudgetDetail } from './PodDisruptionBudgetDetail';
 import { PriorityClassDetail } from './PriorityClassDetail';
+import { RuntimeClassDetail } from './RuntimeClassDetail';
 
 import { type PodData } from '../../../types/PodData';
 import { type DeployData } from '../../../types/DeployData';
@@ -28,6 +29,7 @@ import { type LimitRangeData } from '../../../types/LimitRangeData';
 import { type HorizontalPodAutoscalerData } from '../../../types/HorizontalPodAutoscalerData';
 import { type PodDisruptionBudgetData } from '../../../types/PodDisruptionBudgetData';
 import { type PriorityClassData } from '../../../types/PriorityClassData';
+import { type RuntimeClassData } from '../../../types/RuntimeClassData';
 
 interface DetailContentProps {
   contentType: string;
@@ -76,6 +78,8 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       );
     case 'priorityclass':
       return <PriorityClassDetail payload={payload as PriorityClassData} isTab={isTab} />;
+    case 'runtimeclass':
+      return <RuntimeClassDetail payload={payload as RuntimeClassData} isTab={isTab} />;
     default:
       return (
         <div className="p-4 text-xs text-zinc-500">

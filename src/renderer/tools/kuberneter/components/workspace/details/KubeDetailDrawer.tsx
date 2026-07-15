@@ -102,7 +102,8 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     limitrange: 'Limit Range Details',
     horizontalpodautoscaler: 'Horizontal Pod Autoscaler Details',
     poddisruptionbudget: 'Pod Disruption Budget Details',
-    priorityclass: 'Priority Class Details'
+    priorityclass: 'Priority Class Details',
+    runtimeclass: 'Runtime Class Details'
   };
 
   return (

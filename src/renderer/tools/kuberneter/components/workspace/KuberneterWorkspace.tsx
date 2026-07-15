@@ -19,6 +19,7 @@ import { PodDisruptionBudgets } from './pdbs/PodDisruptionBudgets';
 import { PriorityClasses } from './priorityclasses/PriorityClasses';
 import { RuntimeClasses } from './runtimeclasses/RuntimeClasses';
 import { Leases } from './leases/Leases';
+import { MutatingWebhooks } from './mutatingwebhooks/MutatingWebhooks';
 import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
@@ -56,6 +57,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     priorityClassesData,
     runtimeClassesData,
     leasesData,
+    mutatingWebhooksData,
     applicationsData,
     nodesData,
     isLoading,
@@ -220,6 +222,10 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
               leasesData={leasesData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
+          )}
+
+          {resource === 'mutatingwebhooks' && (
+            <MutatingWebhooks mutatingWebhooksData={mutatingWebhooksData} />
           )}
 
           {resource === 'apps' && (

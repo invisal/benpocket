@@ -15,6 +15,7 @@ import { PodDisruptionBudgetDetail } from './PodDisruptionBudgetDetail';
 import { PriorityClassDetail } from './PriorityClassDetail';
 import { RuntimeClassDetail } from './RuntimeClassDetail';
 import { LeaseDetail } from './LeaseDetail';
+import { MutatingWebhookDetail } from './MutatingWebhookDetail';
 
 import { type PodData } from '../../../types/PodData';
 import { type DeployData } from '../../../types/DeployData';
@@ -32,6 +33,7 @@ import { type PodDisruptionBudgetData } from '../../../types/PodDisruptionBudget
 import { type PriorityClassData } from '../../../types/PriorityClassData';
 import { type RuntimeClassData } from '../../../types/RuntimeClassData';
 import { type LeaseData } from '../../../types/LeaseData';
+import { type MutatingWebhookConfigurationData } from '../../../types/MutatingWebhookConfigurationData';
 
 interface DetailContentProps {
   contentType: string;
@@ -84,6 +86,13 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       return <RuntimeClassDetail payload={payload as RuntimeClassData} isTab={isTab} />;
     case 'lease':
       return <LeaseDetail payload={payload as LeaseData} isTab={isTab} />;
+    case 'mutatingwebhook':
+      return (
+        <MutatingWebhookDetail
+          payload={payload as MutatingWebhookConfigurationData}
+          isTab={isTab}
+        />
+      );
     default:
       return (
         <div className="p-4 text-xs text-zinc-500">

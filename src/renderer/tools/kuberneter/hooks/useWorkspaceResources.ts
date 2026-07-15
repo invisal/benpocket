@@ -17,6 +17,7 @@ import { usePdbs } from './usePdbs';
 import { usePriorityClasses } from './usePriorityClasses';
 import { useRuntimeClasses } from './useRuntimeClasses';
 import { useLeases } from './useLeases';
+import { useMutatingWebhooks } from './useMutatingWebhooks';
 import { useApplications } from './useApplications';
 import { useNodes } from './useNodes';
 
@@ -46,6 +47,7 @@ export function useWorkspaceResources(resource: string) {
   const priorityclasses = usePriorityClasses(resource === 'priorityclasses');
   const runtimeclasses = useRuntimeClasses(resource === 'runtimeclasses');
   const leases = useLeases(resource === 'leases');
+  const mutatingwebhooks = useMutatingWebhooks(resource === 'mutatingwebhooks');
   const apps = useApplications(resource === 'apps');
   const nodes = useNodes(resource === 'nodes');
 
@@ -67,6 +69,7 @@ export function useWorkspaceResources(resource: string) {
   else if (resource === 'priorityclasses') activeQuery = priorityclasses;
   else if (resource === 'runtimeclasses') activeQuery = runtimeclasses;
   else if (resource === 'leases') activeQuery = leases;
+  else if (resource === 'mutatingwebhooks') activeQuery = mutatingwebhooks;
   else if (resource === 'apps') activeQuery = apps;
   else if (resource === 'nodes') activeQuery = nodes;
 
@@ -90,6 +93,7 @@ export function useWorkspaceResources(resource: string) {
     priorityClassesData: priorityclasses.data,
     runtimeClassesData: runtimeclasses.data,
     leasesData: leases.data,
+    mutatingWebhooksData: mutatingwebhooks.data,
     applicationsData: apps.data,
     nodesData: nodes.data,
     isLoading: activeQuery ? activeQuery.isLoading : false,

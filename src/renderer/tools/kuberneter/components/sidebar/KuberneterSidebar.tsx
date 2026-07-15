@@ -151,6 +151,7 @@ export const KuberneterSidebar: React.FC = () => {
     priorityclasses: 'config',
     runtimeclasses: 'config',
     leases: 'config',
+    mutatingwebhooks: 'config',
     services: 'network',
     endpoints: 'network',
     ingresses: 'network',
@@ -216,7 +217,8 @@ export const KuberneterSidebar: React.FC = () => {
         { id: 'pdbs', label: 'Pod Disruption Budgets' },
         { id: 'priorityclasses', label: 'Priority Classes' },
         { id: 'runtimeclasses', label: 'Runtime Classes' },
-        { id: 'leases', label: 'Leases' }
+        { id: 'leases', label: 'Leases' },
+        { id: 'mutatingwebhooks', label: 'Mutating Webhook Configurations' }
       ]
     },
     {

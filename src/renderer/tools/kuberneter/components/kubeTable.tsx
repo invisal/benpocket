@@ -29,6 +29,8 @@ interface KubeTableProps<T> {
   variant?: 'standard' | 'modern';
   /** Enable column resizing by drag. Default: true */
   resizable?: boolean;
+  /** Fixed row height for virtualization. Optional */
+  rowHeight?: number;
 }
 
 const DEFAULT_COL_WIDTH = 140;
@@ -45,7 +47,8 @@ export function KubeTable<T>({
   hideHeaderWhenEmpty,
   className,
   variant = 'standard',
-  resizable = true
+  resizable = true,
+  rowHeight
 }: KubeTableProps<T>) {
   const isModern = variant === 'modern';
 
@@ -53,6 +56,35 @@ export function KubeTable<T>({
   const [colWidths, setColWidths] = useState<Record<string, number>>(() =>
     Object.fromEntries(columns.map((col) => [col.key, col.initialWidth ?? DEFAULT_COL_WIDTH]))
   );
+
+  // Scroll state & height measurement for windowing/virtualization
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(400);
+
+  const rHeight = rowHeight ?? (isModern ? 38 : 36);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    setContainerHeight(el.clientHeight);
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerHeight(entry.contentRect.height || el.clientHeight);
+      }
+    });
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  };
 
   // Ref to track active resize state without causing re-renders during drag
   const resizingRef = useRef<{
@@ -101,8 +133,22 @@ export function KubeTable<T>({
 
   const isColResizable = (col: Column<T>) => resizable && col.resizable !== false;
 
+  // Windowing calculation
+  const buffer = 8;
+  const startIndex = Math.max(0, Math.floor(scrollTop / rHeight) - buffer);
+  const endIndex = Math.min(
+    data.length,
+    Math.ceil((scrollTop + containerHeight) / rHeight) + buffer
+  );
+  const visibleData = data.slice(startIndex, endIndex);
+
+  const spacerTopHeight = startIndex * rHeight;
+  const spacerBottomHeight = (data.length - endIndex) * rHeight;
+
   return (
     <div
+      ref={containerRef}
+      onScroll={handleScroll}
       className={cn(
         'overflow-auto flex-1 relative kube-table-container bg-transparent',
         isModern && 'border-t border-border-dark',
@@ -202,55 +248,67 @@ export function KubeTable<T>({
               </td>
             </tr>
           ) : (
-            data.map((row) => {
-              const key = getRowKey(row);
-              const isSelected = selectedRowKey !== undefined && selectedRowKey === key;
-              return (
-                <tr
-                  key={key}
-                  onClick={() => onRowClick?.(row)}
-                  className={cn(
-                    'transition-colors duration-100',
-                    onRowClick && 'cursor-pointer',
-                    isModern
-                      ? cn(
-                          'hover:bg-surface-2/45 border-b border-border-dark/30 last:border-b-0',
-                          isSelected && 'bg-surface-3/80 text-white font-medium'
-                        )
-                      : cn('hover:bg-border/20', isSelected && 'bg-border/30 text-zinc-150')
-                  )}
-                >
-                  {columns.map((col) => {
-                    const alignClass =
-                      col.align === 'center'
-                        ? 'text-center'
-                        : col.align === 'right'
-                          ? 'text-right'
-                          : 'text-left';
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const content = col.render ? col.render(row) : (row as any)[col.key];
-                    return (
-                      <td
-                        key={col.key}
-                        className={cn(
-                          'p-2 align-middle font-sans select-text overflow-hidden',
-                          alignClass,
-                          isModern ? 'py-2.5 border-none' : 'border border-border/20',
-                          col.className
-                        )}
-                        style={
-                          resizable
-                            ? { maxWidth: colWidths[col.key] ?? DEFAULT_COL_WIDTH }
-                            : undefined
-                        }
-                      >
-                        <div className="truncate">{content}</div>
-                      </td>
-                    );
-                  })}
+            <>
+              {spacerTopHeight > 0 && (
+                <tr style={{ height: spacerTopHeight }}>
+                  <td colSpan={columns.length} style={{ padding: 0, height: spacerTopHeight }} />
                 </tr>
-              );
-            })
+              )}
+              {visibleData.map((row) => {
+                const key = getRowKey(row);
+                const isSelected = selectedRowKey !== undefined && selectedRowKey === key;
+                return (
+                  <tr
+                    key={key}
+                    onClick={() => onRowClick?.(row)}
+                    className={cn(
+                      'transition-colors duration-100',
+                      onRowClick && 'cursor-pointer',
+                      isModern
+                        ? cn(
+                            'hover:bg-surface-2/45 border-b border-border-dark/30 last:border-b-0',
+                            isSelected && 'bg-surface-3/80 text-white font-medium'
+                          )
+                        : cn('hover:bg-border/20', isSelected && 'bg-border/30 text-zinc-150')
+                    )}
+                  >
+                    {columns.map((col) => {
+                      const alignClass =
+                        col.align === 'center'
+                          ? 'text-center'
+                          : col.align === 'right'
+                            ? 'text-right'
+                            : 'text-left';
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const content = col.render ? col.render(row) : (row as any)[col.key];
+                      return (
+                        <td
+                          key={col.key}
+                          className={cn(
+                            'p-2 align-middle font-sans select-text overflow-hidden',
+                            alignClass,
+                            isModern ? 'py-2.5 border-none' : 'border border-border/20',
+                            col.className
+                          )}
+                          style={
+                            resizable
+                              ? { maxWidth: colWidths[col.key] ?? DEFAULT_COL_WIDTH }
+                              : undefined
+                          }
+                        >
+                          <div className="truncate">{content}</div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              {spacerBottomHeight > 0 && (
+                <tr style={{ height: spacerBottomHeight }}>
+                  <td colSpan={columns.length} style={{ padding: 0, height: spacerBottomHeight }} />
+                </tr>
+              )}
+            </>
           )}
         </tbody>
       </table>

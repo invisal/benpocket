@@ -32,6 +32,7 @@ export function KubeTable<T>({
 
   // Scroll state & height measurement for windowing/virtualization
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(400);
 
@@ -57,6 +58,10 @@ export function KubeTable<T>({
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     setScrollTop(e.currentTarget.scrollTop);
+    // Synchronize horizontal scrolling of header and body tables
+    if (headerRef.current) {
+      headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
   };
 
   // Ref to track active resize state without causing re-renders during drag
@@ -118,96 +123,122 @@ export function KubeTable<T>({
   const spacerTopHeight = startIndex * rHeight;
   const spacerBottomHeight = (data.length - endIndex) * rHeight;
 
+  const tableWidth =
+    resizable && data.length > 0 ? Object.values(colWidths).reduce((a, b) => a + b, 0) : undefined;
+
+  const tableStyle: React.CSSProperties =
+    tableWidth !== undefined
+      ? {
+          tableLayout: 'fixed',
+          width: tableWidth,
+          minWidth: '100%',
+          borderCollapse: 'collapse'
+        }
+      : { width: '100%', borderCollapse: 'collapse' };
+
   return (
     <div
-      ref={containerRef}
-      onScroll={handleScroll}
       className={cn(
-        'overflow-auto flex-1 relative kube-table-container bg-transparent',
-        isModern && 'border-t border-border-dark',
+        'flex flex-col flex-1 min-h-0 bg-transparent border-t border-border-dark/60',
         className
       )}
     >
-      <table
-        className="text-left text-xs bg-transparent"
-        style={
-          resizable && data.length > 0
-            ? {
-                tableLayout: 'fixed',
-                width: Object.values(colWidths).reduce((a, b) => a + b, 0),
-                minWidth: '100%',
-                borderCollapse: 'collapse'
-              }
-            : { width: '100%', borderCollapse: 'collapse' }
-        }
-      >
-        {/* colgroup defines fixed widths per column */}
-        {resizable && (
-          <colgroup>
-            {columns.map((col) => (
-              <col key={col.key} style={{ width: colWidths[col.key] ?? DEFAULT_COL_WIDTH }} />
-            ))}
-          </colgroup>
-        )}
-
-        <KubeTableHeader
-          columns={columns}
-          colWidths={colWidths}
-          isModern={isModern}
-          hideHeaderWhenEmpty={hideHeaderWhenEmpty}
-          dataLength={data.length}
-          resizable={resizable}
-          startResize={startResize}
-          isColResizable={isColResizable}
-        />
-
-        <tbody className="text-zinc-350 bg-transparent">
-          {data.length === 0 ? (
-            <tr className="bg-transparent">
-              <td
-                colSpan={columns.length}
-                className={cn(
-                  'p-8 text-center text-zinc-550 italic font-sans bg-transparent',
-                  isModern ? 'border-b border-border-dark/30' : 'border border-border/20'
-                )}
-              >
-                {emptyState || (
-                  <div className="w-full flex flex-col items-center justify-center text-zinc-550 gap-2 py-10 font-sans not-italic">
-                    <AlertCircle className="size-8 text-zinc-650" />
-                    <span className="text-xs">{emptyMessage || 'No data available'}</span>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ) : (
-            <>
-              {spacerTopHeight > 0 && (
-                <tr style={{ height: spacerTopHeight }}>
-                  <td colSpan={columns.length} style={{ padding: 0, height: spacerTopHeight }} />
-                </tr>
-              )}
-              {visibleData.map((row) => (
-                <KubeTableRow<T>
-                  key={getRowKey(row)}
-                  row={row}
-                  columns={columns}
-                  getRowKey={getRowKey}
-                  onRowClick={onRowClick}
-                  selectedRowKey={selectedRowKey}
-                  colWidths={colWidths}
-                  isModern={isModern}
-                  resizable={resizable}
-                />
-              ))}
-              {spacerBottomHeight > 0 && (
-                <tr style={{ height: spacerBottomHeight }}>
-                  <td colSpan={columns.length} style={{ padding: 0, height: spacerBottomHeight }} />
-                </tr>
-              )}
-            </>
+      {/* 1. Dedicated Header Container (fixed vertical position) */}
+      {(!hideHeaderWhenEmpty || data.length > 0) && (
+        <div
+          ref={headerRef}
+          className={cn(
+            'shrink-0 overflow-hidden select-none bg-sidebar-bg border-b border-border-dark/60'
           )}
-        </tbody>
-      </table>
+        >
+          <table className="text-left text-xs bg-transparent" style={tableStyle}>
+            {resizable && (
+              <colgroup>
+                {columns.map((col) => (
+                  <col key={col.key} style={{ width: colWidths[col.key] ?? DEFAULT_COL_WIDTH }} />
+                ))}
+              </colgroup>
+            )}
+            <KubeTableHeader
+              columns={columns}
+              colWidths={colWidths}
+              isModern={isModern}
+              hideHeaderWhenEmpty={hideHeaderWhenEmpty}
+              dataLength={data.length}
+              resizable={resizable}
+              startResize={startResize}
+              isColResizable={isColResizable}
+            />
+          </table>
+        </div>
+      )}
+
+      {/* 2. Scrollable Body Container (scrollbar resides entirely by table rows) */}
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="overflow-auto flex-1 relative kube-table-container bg-transparent"
+      >
+        <table className="text-left text-xs bg-transparent" style={tableStyle}>
+          {resizable && (
+            <colgroup>
+              {columns.map((col) => (
+                <col key={col.key} style={{ width: colWidths[col.key] ?? DEFAULT_COL_WIDTH }} />
+              ))}
+            </colgroup>
+          )}
+
+          <tbody className="text-zinc-350 bg-transparent">
+            {data.length === 0 ? (
+              <tr className="bg-transparent">
+                <td
+                  colSpan={columns.length}
+                  className={cn(
+                    'p-8 text-center text-zinc-550 italic font-sans bg-transparent',
+                    isModern ? 'border-b border-border-dark/30' : 'border border-border/20'
+                  )}
+                >
+                  {emptyState || (
+                    <div className="w-full flex flex-col items-center justify-center text-zinc-550 gap-2 py-10 font-sans not-italic">
+                      <AlertCircle className="size-8 text-zinc-650" />
+                      <span className="text-xs">{emptyMessage || 'No data available'}</span>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ) : (
+              <>
+                {spacerTopHeight > 0 && (
+                  <tr style={{ height: spacerTopHeight }}>
+                    <td colSpan={columns.length} style={{ padding: 0, height: spacerTopHeight }} />
+                  </tr>
+                )}
+                {visibleData.map((row) => (
+                  <KubeTableRow<T>
+                    key={getRowKey(row)}
+                    row={row}
+                    columns={columns}
+                    getRowKey={getRowKey}
+                    onRowClick={onRowClick}
+                    selectedRowKey={selectedRowKey}
+                    colWidths={colWidths}
+                    isModern={isModern}
+                    resizable={resizable}
+                  />
+                ))}
+                {spacerBottomHeight > 0 && (
+                  <tr style={{ height: spacerBottomHeight }}>
+                    <td
+                      colSpan={columns.length}
+                      style={{ padding: 0, height: spacerBottomHeight }}
+                    />
+                  </tr>
+                )}
+              </>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

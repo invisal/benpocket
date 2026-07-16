@@ -42,19 +42,11 @@ const fileExplorerTool = registerTool({
   label: ''
 });
 
-const settingsTool = registerTool({
-  name: 'settings' as const,
-  loadComponent: () => import('./../../../tools/settings'),
-  generateName: () => 'Settings',
-  label: ''
-});
-
 export const allTools = [
   homeTool,
   httpClientTool,
   screenRecordTool,
   screenCaptureTool,
   kuberneterTool,
-  fileExplorerTool,
-  settingsTool
+  fileExplorerTool
 ];

@@ -35,20 +35,13 @@ export const TitleBar: React.FC = () => {
           <svg className="w-4 h-4 text-accent" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="12,2 2,22 22,22" />
           </svg>
-          <span className="font-semibold text-zinc-350">CraftBox</span>
-          <div className="hidden md:flex items-center gap-3 ml-4 text-zinc-500">
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">File</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">Edit</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">Selection</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">View</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">Go</span>
-          </div>
+          <span className="font-semibold text-zinc-350">benpocket</span>
         </div>
       )}
 
       {/* Middle: Workspace Title / Search Bar */}
       <div className="flex-1 max-w-sm mx-auto h-5 bg-editor-bg border border-border-dark rounded flex items-center justify-center text-zinc-500 text-[10px] titlebar-nodrag hover:bg-sidebar-bg/60 cursor-pointer transition-colors">
-        <span>craftbox (Workspace) - Search</span>
+        <span>benpocket (Workspace) - Search</span>
       </div>
 
       {/* Right side: Layout toggles and OS window controls */}

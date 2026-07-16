@@ -1,17 +1,11 @@
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { useLayoutStore } from '@renderer/store/layout.store';
-import {
-  CameraIcon,
-  FolderOpen,
-  GlobeIcon,
-  SearchIcon,
-  SettingsIcon,
-  VideoIcon
-} from 'lucide-react';
+import { CameraIcon, CloudIcon, FolderOpen, GlobeIcon, SearchIcon, VideoIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { cn } from 'cnfast';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
+import { ConnectCloudflareDialog } from '@renderer/components/dialog/ConnectCloudflareDialog';
 
 interface Props {}
 
@@ -27,6 +21,7 @@ interface ToolEntry {
 export function HomeMain({}: ToolComponentProps<Props>) {
   const { openTab } = useToolTabs();
   const [query, setQuery] = useState('');
+  const [cloudflareDialogOpen, setCloudflareDialogOpen] = useState(false);
 
   const tools: ToolEntry[] = useMemo(
     () => [
@@ -70,12 +65,11 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         onClick: () => openTab('file-explorer', {})
       },
       {
-        id: 'settings',
-        name: 'Settings',
-        description: 'Manage app-wide connections and credentials.',
-        category: 'General',
-        icon: <SettingsIcon size={20} />,
-        onClick: () => openTab('settings', {})
+        id: 'cloudflare',
+        name: 'Connect Cloudflare',
+        description: 'Link your Cloudflare account to browse R2 buckets and more.',
+        icon: <CloudIcon size={20} />,
+        onClick: () => setCloudflareDialogOpen(true)
       }
     ],
     [openTab]
@@ -129,6 +123,8 @@ export function HomeMain({}: ToolComponentProps<Props>) {
           </div>
         )}
       </div>
+
+      <ConnectCloudflareDialog open={cloudflareDialogOpen} onOpenChange={setCloudflareDialogOpen} />
     </div>
   );
 }

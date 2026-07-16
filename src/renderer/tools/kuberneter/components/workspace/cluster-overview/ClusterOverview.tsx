@@ -463,7 +463,7 @@ export const ClusterOverview: React.FC = () => {
         />
       }
     >
-      <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto overflow-x-hidden min-h-0 pr-1 pb-4">
+      <div className="flex-1 flex flex-col gap-3.5 min-h-0">
         {/* Row 1: ECharts Concentric gauges */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 shrink-0 px-4">
           <MetricGauge
@@ -517,7 +517,7 @@ export const ClusterOverview: React.FC = () => {
         </div>
 
         {/* Row 3: Live Warnings Feed */}
-        <div className="shrink-0">
+        <div className="flex-1 flex flex-col min-h-0">
           <WarningsFeed events={events} namespace={kuberneterSelectedNamespace} />
         </div>
       </div>

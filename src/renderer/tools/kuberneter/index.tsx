@@ -3,12 +3,13 @@ import { KuberneterSidebar } from './components/sidebar/KuberneterSidebar';
 import { Workspace } from '@renderer/components/layout/Workspace';
 import { useLayoutStore } from '../../src/store/layout.store';
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: string }>) {
   const { instanceId } = payload;
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [isSidebarOpen] = useState(true);
+  const sidebarRef = useRef<HTMLDivElement | null>(null);
 
   const setActiveInstanceId = useLayoutStore((s) => s.setActiveInstanceId);
 
@@ -22,15 +23,20 @@ export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: str
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = sidebarWidth;
+    let finalWidth = sidebarWidth;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const newWidth = startWidth + (moveEvent.clientX - startX);
-      setSidebarWidth(Math.max(150, Math.min(newWidth, 400)));
+      finalWidth = Math.max(150, Math.min(newWidth, 400));
+      if (sidebarRef.current) {
+        sidebarRef.current.style.width = `${finalWidth}px`;
+      }
     };
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      setSidebarWidth(finalWidth);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -42,6 +48,7 @@ export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: str
       {/* Tool-specific Collapsible Left Panel */}
       {isSidebarOpen && (
         <div
+          ref={sidebarRef}
           style={{ width: `${sidebarWidth}px` }}
           className="relative bg-surface-2 border-r border-border-dark flex flex-col h-full shrink-0 p-3"
         >

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Info } from 'lucide-react';
 import { KubeTable, type Column } from '../../kubeTable';
 
 interface EventResource {
@@ -12,6 +12,9 @@ interface EventResource {
     kind?: string;
     name?: string;
     namespace?: string;
+  };
+  source?: {
+    component?: string;
   };
   reason?: string;
   message?: string;
@@ -41,7 +44,7 @@ function formatEventAge(timestamp: string | undefined): string {
 }
 
 export const WarningsFeed: React.FC<WarningsFeedProps> = ({ events, namespace }) => {
-  // Filter and limit to top 5 warning events to prevent infinite height expansion
+  // Filter and limit to warning events
   const warningEvents = events
     .filter((e) => {
       // 1. Namespace filter matching kubectl behavior
@@ -60,92 +63,126 @@ export const WarningsFeed: React.FC<WarningsFeedProps> = ({ events, namespace })
       const timeA = new Date(a.lastTimestamp || a.metadata?.creationTimestamp || 0).getTime();
       const timeB = new Date(b.lastTimestamp || b.metadata?.creationTimestamp || 0).getTime();
       return timeB - timeA;
-    })
-    .slice(0, 5);
+    });
 
   const columns: Column<EventResource>[] = [
     {
-      key: 'reason',
-      header: 'Reason',
+      key: 'type',
+      header: 'Type',
+      render: (evt) =>
+        evt.type === 'Warning' ? (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+            <AlertTriangle className="size-2.5" />
+            Warning
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-800/60 text-zinc-500 border border-border-dark/40">
+            <Info className="size-2.5" />
+            Normal
+          </span>
+        ),
+      initialWidth: 96,
+      resizable: false
+    },
+    {
+      key: 'source',
+      header: 'Source',
       render: (evt) => (
-        <span className="font-mono text-[11px] font-semibold text-rose-400 whitespace-nowrap">
-          {evt.reason || 'Warning'}
+        <span
+          className="font-mono text-[11px] text-zinc-400 truncate"
+          title={evt.source?.component}
+        >
+          {evt.source?.component || '-'}
         </span>
-      )
+      ),
+      initialWidth: 160
+    },
+    {
+      key: 'namespace',
+      header: 'Namespace',
+      render: (evt) => (
+        <span className="font-mono text-[11px] text-accent">
+          {evt.involvedObject?.namespace || evt.metadata?.namespace || '-'}
+        </span>
+      ),
+      initialWidth: 110
+    },
+    {
+      key: 'involvedObject',
+      header: 'Involved Object',
+      render: (evt) => (
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[9px] px-1 py-0.5 rounded bg-surface-4 text-zinc-500 border border-border-dark/40 shrink-0 font-mono uppercase">
+            {evt.involvedObject?.kind || '-'}
+          </span>
+          <span
+            className="font-mono text-[11px] text-accent hover:underline cursor-pointer truncate"
+            title={evt.involvedObject?.name}
+          >
+            {evt.involvedObject?.name || '-'}
+          </span>
+        </div>
+      ),
+      initialWidth: 220
     },
     {
       key: 'message',
       header: 'Message',
       render: (evt) => (
-        <p
-          className="text-zinc-400 font-sans text-[11px] truncate max-w-[400px]"
-          title={evt.message}
-        >
+        <span className="text-[11px] text-zinc-350 truncate block" title={evt.message}>
           {evt.message}
-        </p>
-      )
-    },
-    {
-      key: 'object',
-      header: 'Object',
-      render: (evt) => (
-        <span
-          className="font-mono text-zinc-300 truncate max-w-[200px]"
-          title={evt.involvedObject?.name}
-        >
-          {evt.involvedObject?.name || 'unknown'}
         </span>
-      )
-    },
-    {
-      key: 'type',
-      header: 'Type',
-      render: (evt) => (
-        <span className="text-zinc-450 font-sans whitespace-nowrap">
-          {evt.involvedObject?.kind || 'Resource'}
-        </span>
-      )
+      ),
+      className: 'max-w-[360px]',
+      initialWidth: 360
     },
     {
       key: 'count',
       header: 'Count',
-      align: 'center',
-      render: (evt) => <span className="font-mono text-zinc-400 text-[11px]">{evt.count || 1}</span>
+      render: (evt) => (
+        <span className="font-mono text-[11px] text-zinc-500">{evt.count ?? 1}</span>
+      ),
+      initialWidth: 60,
+      resizable: false
     },
     {
       key: 'age',
       header: 'Age',
       render: (evt) => (
-        <span className="font-mono text-zinc-500 shrink-0 whitespace-nowrap">
+        <span className="font-mono text-[11px] text-zinc-650">
           {formatEventAge(evt.firstTimestamp || evt.metadata?.creationTimestamp)}
         </span>
-      )
+      ),
+      initialWidth: 80,
+      resizable: false
     },
     {
       key: 'lastSeen',
       header: 'Last Seen',
       render: (evt) => (
-        <span className="font-mono text-zinc-500 shrink-0 whitespace-nowrap">
+        <span className="font-mono text-[11px] text-zinc-555">
           {formatEventAge(evt.lastTimestamp || evt.metadata?.creationTimestamp)}
         </span>
-      )
+      ),
+      initialWidth: 80,
+      resizable: false
     }
   ];
 
   return (
-    <div className="flex flex-col gap-2 select-none min-w-0 w-full relative">
+    <div className="flex-1 flex flex-col gap-2 select-none min-w-0 w-full relative min-h-0">
       <div className="px-4">
         <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
           Warning Events Log
         </span>
       </div>
 
-      <div className="mt-2">
+      <div className="flex-1 min-h-0 flex flex-col mt-2">
         <KubeTable
           columns={columns}
           data={warningEvents}
           getRowKey={(evt) => evt.metadata?.name || Math.random().toString()}
-          className="mt-2 overflow-visible flex-initial"
+          className="flex-1 overflow-x-auto"
           hideHeaderWhenEmpty
           emptyState={
             <div className="w-full flex flex-col items-center justify-center text-zinc-550 gap-2 py-8 select-none">

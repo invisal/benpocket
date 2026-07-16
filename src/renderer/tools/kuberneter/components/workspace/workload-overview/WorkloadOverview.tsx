@@ -88,8 +88,8 @@ export const WorkloadOverview: React.FC = () => {
         </div>
       }
     >
-      {/* Scrollable content — flex-1 so it fills remaining height with no trailing gap */}
-      <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-h-0">
+      {/* Scrollable content inside table — flex-1 so it fills remaining height */}
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Resource Summary */}
         <div className="shrink-0 px-4 mb-5">
           <WorkloadSummaryCards
@@ -104,8 +104,8 @@ export const WorkloadOverview: React.FC = () => {
           />
         </div>
 
-        {/* Events Feed — shrink-0 so it takes only its content height; outer container scrolls */}
-        <div className="flex flex-col shrink-0">
+        {/* Events Feed — flex-1 to fill the remaining screen height; scroll inside table */}
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="px-4 shrink-0 mb-2">
             <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
               Kubernetes Events

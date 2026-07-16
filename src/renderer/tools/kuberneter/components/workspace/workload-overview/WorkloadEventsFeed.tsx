@@ -167,7 +167,7 @@ export const WorkloadEventsFeed: React.FC<WorkloadEventsFeedProps> = ({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex-1 flex flex-col gap-3 min-h-0">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 shrink-0 px-4">
         <div className="flex items-center gap-2.5">
@@ -205,7 +205,7 @@ export const WorkloadEventsFeed: React.FC<WorkloadEventsFeedProps> = ({
         data={filteredData}
         getRowKey={(row) => row.id}
         variant="modern"
-        className="flex-initial overflow-x-auto"
+        className="flex-1 overflow-x-auto"
         emptyMessage={
           warningsOnly
             ? 'No warning events found.'

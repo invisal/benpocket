@@ -94,6 +94,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     daemonset: 'Daemon Set Details',
     statefulset: 'Stateful Set Details',
     replicaset: 'Replica Set Details',
+    service: 'Service Details',
     job: 'Job Details',
     cronjob: 'Cron Job Details',
     configmap: 'Config Map Details',
@@ -101,7 +102,12 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     resourcequota: 'Resource Quota Details',
     limitrange: 'Limit Range Details',
     horizontalpodautoscaler: 'Horizontal Pod Autoscaler Details',
-    poddisruptionbudget: 'Pod Disruption Budget Details'
+    poddisruptionbudget: 'Pod Disruption Budget Details',
+    priorityclass: 'Priority Class Details',
+    runtimeclass: 'Runtime Class Details',
+    lease: 'Lease Details',
+    mutatingwebhook: 'Mutating Webhook Configuration Details',
+    validatingwebhook: 'Validating Webhook Configuration Details'
   };
 
   return (

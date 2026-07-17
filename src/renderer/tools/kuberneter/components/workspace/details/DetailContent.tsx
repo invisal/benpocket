@@ -12,6 +12,12 @@ import { ResourceQuotaDetail } from './ResourceQuotaDetail';
 import { LimitRangeDetail } from './LimitRangeDetail';
 import { HorizontalPodAutoscalerDetail } from './HorizontalPodAutoscalerDetail';
 import { PodDisruptionBudgetDetail } from './PodDisruptionBudgetDetail';
+import { PriorityClassDetail } from './PriorityClassDetail';
+import { RuntimeClassDetail } from './RuntimeClassDetail';
+import { LeaseDetail } from './LeaseDetail';
+import { ServiceDetail } from './ServiceDetail';
+import { MutatingWebhookDetail } from './MutatingWebhookDetail';
+import { ValidatingWebhookDetail } from './ValidatingWebhookDetail';
 
 import { type PodData } from '../../../types/PodData';
 import { type DeployData } from '../../../types/DeployData';
@@ -26,6 +32,12 @@ import { type ResourceQuotaData } from '../../../types/ResourceQuotaData';
 import { type LimitRangeData } from '../../../types/LimitRangeData';
 import { type HorizontalPodAutoscalerData } from '../../../types/HorizontalPodAutoscalerData';
 import { type PodDisruptionBudgetData } from '../../../types/PodDisruptionBudgetData';
+import { type PriorityClassData } from '../../../types/PriorityClassData';
+import { type RuntimeClassData } from '../../../types/RuntimeClassData';
+import { type LeaseData } from '../../../types/LeaseData';
+import { type ServiceData } from '../../../types/ServiceData';
+import { type MutatingWebhookConfigurationData } from '../../../types/MutatingWebhookConfigurationData';
+import { type ValidatingWebhookConfigurationData } from '../../../types/ValidatingWebhookConfigurationData';
 
 interface DetailContentProps {
   contentType: string;
@@ -71,6 +83,28 @@ export const DetailContent: React.FC<DetailContentProps> = ({
     case 'poddisruptionbudget':
       return (
         <PodDisruptionBudgetDetail payload={payload as PodDisruptionBudgetData} isTab={isTab} />
+      );
+    case 'priorityclass':
+      return <PriorityClassDetail payload={payload as PriorityClassData} isTab={isTab} />;
+    case 'runtimeclass':
+      return <RuntimeClassDetail payload={payload as RuntimeClassData} isTab={isTab} />;
+    case 'lease':
+      return <LeaseDetail payload={payload as LeaseData} isTab={isTab} />;
+    case 'service':
+      return <ServiceDetail payload={payload as ServiceData} isTab={isTab} />;
+    case 'mutatingwebhook':
+      return (
+        <MutatingWebhookDetail
+          payload={payload as MutatingWebhookConfigurationData}
+          isTab={isTab}
+        />
+      );
+    case 'validatingwebhook':
+      return (
+        <ValidatingWebhookDetail
+          payload={payload as ValidatingWebhookConfigurationData}
+          isTab={isTab}
+        />
       );
     default:
       return (

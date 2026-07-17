@@ -47,6 +47,19 @@ export function findRequestInContainer(
   return undefined;
 }
 
+/** Finds the ancestor folder ids (outermost first) that contain the given request, or null if it isn't in this container. */
+export function findFolderChainForRequest(
+  container: RequestContainer,
+  requestId: string
+): string[] | null {
+  if (container.requests.some((r) => r.id === requestId)) return [];
+  for (const folder of container.folders) {
+    const chain = findFolderChainForRequest(folder, requestId);
+    if (chain) return [folder.id, ...chain];
+  }
+  return null;
+}
+
 export interface FolderOption {
   id: string;
   name: string;

@@ -100,6 +100,11 @@ export function decodeFrames(opts: DecodeFramesOptions): DecodeFramesResult {
   const startSec = trimRange.startMs / 1000;
   const durationSec = (trimRange.endMs - trimRange.startMs) / 1000;
 
+  // No in_color_matrix pin on the YUV->RGBA conversion, deliberately:
+  // Chromium's MediaRecorder tags its WebM bt709/tv (verified via ffprobe on
+  // real recordings), and swscale's default `auto` follows those tags.
+  // Forcing a matrix here would break any correctly-tagged source. The
+  // untagged direction (RGBA->YUV) is pinned in video-encoder.ts instead.
   const filters: string[] = [];
   if (cropRect) {
     filters.push(`crop=${cropRect.width}:${cropRect.height}:${cropRect.x}:${cropRect.y}`);

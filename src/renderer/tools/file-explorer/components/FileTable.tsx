@@ -20,6 +20,15 @@ import { getCapabilitiesForLocation } from '../lib/capabilities';
 const DEFAULT_NEW_TEXT_FILE_NAME = 'New Text Document.txt';
 const DEFAULT_NEW_FOLDER_NAME = 'New Folder';
 
+/** Progress for a copy/move that streams bytes between local disk and R2. */
+interface TransferProgress {
+  currentFile: string;
+  filesCompleted: number;
+  totalFiles: number;
+  bytesTransferred: number;
+  totalBytes: number;
+}
+
 // Extensions that open straight into a viewer app and pose no meaningful
 // "run something unexpected" risk, so they skip the confirmation prompt.
 const DIRECT_OPEN_EXTENSIONS = new Set(['pdf', 'xlsx', 'docx']);
@@ -46,6 +55,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   const [newFolderError, setNewFolderError] = useState<string | null>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
   const [pendingDeletePaths, setPendingDeletePaths] = useState<string[] | null>(null);
+  const [transferProgress, setTransferProgress] = useState<TransferProgress | null>(null);
   const capabilities = getCapabilitiesForLocation(currentPath);
   const clipboard = useFileExplorerStore((s) => s.clipboard);
   const setClipboard = useFileExplorerStore((s) => s.setClipboard);
@@ -163,30 +173,49 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   const handleCopy = (paths: string[]) => {
     if (paths.length === 0) return;
     setClipboard({ paths, mode: 'copy' });
-    window.fileExplorer.writeClipboardFiles(paths, 'copy');
+    // The native OS clipboard can only hold real filesystem paths -- an
+    // r2:// URI has no valid native representation, so skip mirroring it
+    // there and rely on the in-app store for those.
+    if (paths.every((p) => !p.startsWith('r2://'))) {
+      window.fileExplorer.writeClipboardFiles(paths, 'copy');
+    }
   };
 
   const handleCut = (paths: string[]) => {
     if (paths.length === 0) return;
     setClipboard({ paths, mode: 'cut' });
-    window.fileExplorer.writeClipboardFiles(paths, 'cut');
+    if (paths.every((p) => !p.startsWith('r2://'))) {
+      window.fileExplorer.writeClipboardFiles(paths, 'cut');
+    }
   };
 
   const handlePaste = async () => {
-    const files = await window.fileExplorer.readClipboardFiles();
+    // Prefer the in-app clipboard (authoritative for cross-panel copies,
+    // including R2 sources the native clipboard can't represent). Only fall
+    // back to the native OS clipboard when nothing was copied/cut in-app --
+    // e.g. pasting files copied from the system file manager.
+    const files = clipboard ?? (await window.fileExplorer.readClipboardFiles());
     if (!files || files.paths.length === 0) return;
 
-    await dispatchMutation({
-      locationUri: currentPath,
-      run: () =>
-        files.mode === 'cut'
-          ? window.fileExplorer.moveEntries(files.paths, currentPath)
-          : window.fileExplorer.copyEntries(files.paths, currentPath),
-      onSuccess: () => {
-        if (files.mode === 'cut') setClipboard(null);
-      },
-      onRefetch: bumpRefresh
-    });
+    // Only relevant when the copy/move streams bytes between local disk and
+    // R2 (same-scheme ops are fast enough that a progress UI would just flash).
+    const unsubscribe = window.fileExplorer.onTransferProgress(setTransferProgress);
+    try {
+      await dispatchMutation({
+        locationUri: currentPath,
+        run: () =>
+          files.mode === 'cut'
+            ? window.fileExplorer.moveEntries(files.paths, currentPath)
+            : window.fileExplorer.copyEntries(files.paths, currentPath),
+        onSuccess: () => {
+          if (files.mode === 'cut') setClipboard(null);
+        },
+        onRefetch: bumpRefresh
+      });
+    } finally {
+      unsubscribe();
+      setTransferProgress(null);
+    }
   };
 
   const runDelete = (paths: string[]) => {
@@ -294,7 +323,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   );
 
   return (
-    <>
+    <div className="relative flex-1 flex flex-col min-h-0">
       <ListView
         table={table}
         getRowId={(entry) => entry.path}
@@ -355,6 +384,16 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
           </div>
         }
       />
+      {transferProgress && (
+        <div className="absolute bottom-2 left-2 right-2 z-10 rounded border border-border bg-surface-2/95 px-3 py-2 text-xs text-text-dim shadow-sm">
+          Transferring {transferProgress.currentFile.split('/').pop()} ·{' '}
+          {transferProgress.filesCompleted}/{transferProgress.totalFiles} files
+          {transferProgress.totalBytes > 0 &&
+            ` · ${Math.round(
+              (transferProgress.bytesTransferred / transferProgress.totalBytes) * 100
+            )}%`}
+        </div>
+      )}
       <Dialog.Root
         open={pendingEntry !== null}
         onOpenChange={(open) => !open && setPendingEntry(null)}
@@ -467,6 +506,6 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
           </div>
         </Dialog.Content>
       </Dialog.Root>
-    </>
+    </div>
   );
 }

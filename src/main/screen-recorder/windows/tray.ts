@@ -33,7 +33,7 @@ let trayInstance: Tray | null = null;
 function createRecorderTray(iconPath: string, mainWindow: BrowserWindow): Tray {
   const image = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 });
   const tray = new Tray(image);
-  tray.setToolTip('CraftBox -- click to record');
+  tray.setToolTip('benpocket -- click to record');
 
   tray.on('click', () => {
     void showRecordMenu(tray, mainWindow);
@@ -114,7 +114,7 @@ async function showRecordMenu(tray: Tray, mainWindow: BrowserWindow): Promise<vo
     template.push({ label: 'No sources available', enabled: false });
   }
 
-  template.push({ type: 'separator' }, { label: 'Quit CraftBox', click: () => app.quit() });
+  template.push({ type: 'separator' }, { label: 'Quit benpocket', click: () => app.quit() });
 
   tray.popUpContextMenu(Menu.buildFromTemplate(template));
 }

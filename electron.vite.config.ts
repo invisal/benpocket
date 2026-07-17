@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { version } from './package.json';
 
 export default defineConfig({
   main: {
@@ -35,6 +36,9 @@ export default defineConfig({
           regionSelect: resolve('src/renderer/region-select.html')
         }
       }
+    },
+    define: {
+      __APP_VERSION__: JSON.stringify(version)
     },
     plugins: [react(), tailwindcss()]
   }

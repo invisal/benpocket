@@ -172,6 +172,11 @@ body {
     color 0.15s ease;
 }
 
+@utility bg-dotted {
+  background-image: radial-gradient(circle at 1px 1px, var(--color-surface-3) 1px, #0000 0);
+  background-size: 16px 16px;
+}
+
 /* Titlebar dragging configurations */
 .titlebar-drag {
   -webkit-app-region: drag;
@@ -179,4 +184,23 @@ body {
 
 .titlebar-nodrag {
   -webkit-app-region: no-drag;
+}
+
+/* Sidebar scrollbar: only visible on hover, aligned to right edge */
+.kuberneter-sidebar-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.kuberneter-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kuberneter-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2.5px;
+}
+.kuberneter-sidebar:hover .kuberneter-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+}
+.kuberneter-sidebar:hover .kuberneter-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
 }

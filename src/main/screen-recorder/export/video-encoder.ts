@@ -161,7 +161,26 @@ export async function createEncoder(opts: CreateEncoderOptions): Promise<Encoder
     command.outputOptions(['-map', '0:v']);
   }
 
-  command.videoCodec(encoder).outputOptions(['-pix_fmt', 'yuv420p']);
+  // The RGBA->YUV conversion must be pinned to BT.709: swscale otherwise
+  // converts with untagged BT.601 coefficients while players assume BT.709
+  // for HD, visibly shifting colors. `scale` (no resize) sets the matrix,
+  // `format` forces the conversion to happen inside that scale instance, and
+  // the flags write the colr/VUI metadata so players stop guessing.
+  command
+    .videoCodec(encoder)
+    .videoFilters(['scale=out_color_matrix=bt709:out_range=tv', 'format=yuv420p'])
+    .outputOptions([
+      '-pix_fmt',
+      'yuv420p',
+      '-colorspace',
+      'bt709',
+      '-color_primaries',
+      'bt709',
+      '-color_trc',
+      'bt709',
+      '-color_range',
+      'tv'
+    ]);
   if (encoder === 'libvpx-vp9') {
     command.outputOptions(['-crf', `${crf}`, '-b:v', '0']);
   } else {

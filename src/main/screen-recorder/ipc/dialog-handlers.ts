@@ -5,11 +5,13 @@ import { IpcChannels } from '@shared/ipc-channels';
 import type { ExportFormat } from '@screen-recorder/types/export';
 import { copyScreenshotToClipboard } from '../clipboard/copy-screenshot-to-clipboard';
 import {
+  captureRegionPngDarwin,
   captureScreenPngWithHide,
   type ScreenshotCaptureRequest
 } from '../capture/screenshot-capture';
 import { pickOsCaptureSource } from '../capture/pick-os-capture-source';
 import type { OsPickerSource } from '@shared/os-picker-source';
+import type { ScreenRect } from '@shared/capture-region';
 import { getLastScreenshotSaveDir, setLastScreenshotSaveDir } from '../store/screen-capture-store';
 
 export function registerDialogHandlers(): void {
@@ -41,6 +43,11 @@ export function registerDialogHandlers(): void {
       return captureScreenPngWithHide(win, request);
     }
   );
+
+  ipcMain.handle(IpcChannels.CaptureRegion, async (_event, rect: ScreenRect): Promise<Buffer> => {
+    // Screen Capture tool, macOS only — native rectangle grab after the live overlay drag.
+    return captureRegionPngDarwin(rect);
+  });
 
   ipcMain.handle(
     IpcChannels.PickOsCaptureSource,

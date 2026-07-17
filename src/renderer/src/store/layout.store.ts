@@ -105,13 +105,12 @@ export const useLayoutStore = create<LayoutState>()(
       addActivityInstance: (type, customId, context) =>
         set((state) => {
           const instanceId = customId || `${type}-${Date.now()}`;
-          const typeCount = state.activeInstances.filter((i) => i.type === type).length + 1;
           const appNames = {
             kuberneter: 'Kuberneter',
             postman: 'HTTP Client',
             screenrecorder: 'ScreenRecorder'
           };
-          const title = `${appNames[type]} (${typeCount})`;
+          const title = appNames[type];
 
           const newInstance: ActivityInstance = {
             id: instanceId,

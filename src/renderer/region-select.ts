@@ -22,32 +22,43 @@ function requireContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 const canvas = requireCanvas();
 const ctx = requireContext(canvas);
 
+// Drawing math stays in CSS pixels; the backing store is devicePixelRatio-
+// scaled. Without this the native-resolution backdrop is downsampled to CSS
+// resolution (half on 2x displays), making the preview visibly blurrier than
+// the final crop.
+let cssWidth = window.innerWidth;
+let cssHeight = window.innerHeight;
+
 function resizeCanvas(): void {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  cssWidth = window.innerWidth;
+  cssHeight = window.innerHeight;
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   redraw();
 }
 
 function drawBackdrop(): void {
   if (!backdrop) return;
-  ctx.drawImage(backdrop, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(backdrop, 0, 0, cssWidth, cssHeight);
 }
 
 function redraw(active?: ScreenRect): void {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
   drawBackdrop();
   ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
 
   if (!active) return;
 
   if (backdrop) {
     ctx.drawImage(
       backdrop,
-      (active.x / canvas.width) * backdrop.naturalWidth,
-      (active.y / canvas.height) * backdrop.naturalHeight,
-      (active.width / canvas.width) * backdrop.naturalWidth,
-      (active.height / canvas.height) * backdrop.naturalHeight,
+      (active.x / cssWidth) * backdrop.naturalWidth,
+      (active.y / cssHeight) * backdrop.naturalHeight,
+      (active.width / cssWidth) * backdrop.naturalWidth,
+      (active.height / cssHeight) * backdrop.naturalHeight,
       active.x,
       active.y,
       active.width,
@@ -78,8 +89,8 @@ function normalizedRect(startX: number, startY: number, endX: number, endY: numb
 
 function clientToImageRect(rect: ScreenRect): ScreenRect {
   if (!backdrop) return rect;
-  const sx = backdrop.naturalWidth / canvas.width;
-  const sy = backdrop.naturalHeight / canvas.height;
+  const sx = backdrop.naturalWidth / cssWidth;
+  const sy = backdrop.naturalHeight / cssHeight;
   return {
     x: Math.round(rect.x * sx),
     y: Math.round(rect.y * sy),

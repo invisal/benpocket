@@ -14,7 +14,7 @@ import {
 } from '../httpClientFormat';
 
 const SUPPORTED_SCHEMAS_MESSAGE =
-  'Craftbox supports Postman Collection Format v2.0 and v2.1 (.json exports from Postman).';
+  'benpocket supports Postman Collection Format v2.0 and v2.1 (.json exports from Postman).';
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'collection';

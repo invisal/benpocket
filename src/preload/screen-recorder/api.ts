@@ -123,6 +123,8 @@ export const screenRecorderApi = {
       }
     ): Promise<ArrayBuffer> =>
       ipcRenderer.invoke(IpcChannels.CaptureScreenshot, { sourceId, ...options }),
+    captureRegion: (rect: ScreenRect): Promise<ArrayBuffer> =>
+      ipcRenderer.invoke(IpcChannels.CaptureRegion, rect),
     copy: (data: ArrayBuffer): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.CopyScreenshot, data),
     save: (data: ArrayBuffer, defaultFileName: string): Promise<string | null> =>

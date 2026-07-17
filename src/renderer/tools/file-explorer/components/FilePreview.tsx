@@ -3,13 +3,26 @@ import { AlertCircle, FileText, Loader2, Save } from 'lucide-react';
 import { formatBytes } from './columns';
 import cn from 'cnfast';
 
-type PreviewKind = 'text';
+type PreviewKind = 'text' | 'image' | 'video';
 
 const PREVIEWABLE_EXTENSIONS: Record<string, PreviewKind> = {
   txt: 'text',
   md: 'text',
   json: 'text',
-  ini: 'text'
+  ini: 'text',
+  png: 'image',
+  jpg: 'image',
+  jpeg: 'image',
+  gif: 'image',
+  webp: 'image',
+  bmp: 'image',
+  svg: 'image',
+  ico: 'image',
+  mp4: 'video',
+  webm: 'video',
+  mov: 'video',
+  mkv: 'video',
+  avi: 'video'
 };
 
 export type PreviewUnavailableReason = 'no-selection' | 'multiple-selection' | 'directory';
@@ -35,7 +48,11 @@ function getExtension(filePath: string): string {
 
 function PreviewMessage({ children }: { children: ReactNode }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center">
+    <div
+      className={
+        'flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center bg-dotted'
+      }
+    >
       <FileText size={20} className="text-zinc-600" />
       <span>{children}</span>
     </div>
@@ -69,6 +86,10 @@ export const FilePreview = forwardRef<PreviewEditorHandle, FilePreviewProps>(fun
     );
   }
 
+  if (kind === 'image' || kind === 'video') {
+    return <MediaFileViewer key={previewFile} ref={ref} filePath={previewFile} kind={kind} />;
+  }
+
   return (
     <TextFileEditor
       key={previewFile}
@@ -76,6 +97,78 @@ export const FilePreview = forwardRef<PreviewEditorHandle, FilePreviewProps>(fun
       filePath={previewFile}
       onDirtyChange={onDirtyChange}
     />
+  );
+});
+
+const MediaFileViewer = forwardRef<
+  PreviewEditorHandle,
+  { filePath: string; kind: 'image' | 'video' }
+>(function MediaFileViewer({ filePath, kind }, ref) {
+  const [state, setState] = useState<
+    | { status: 'loading' }
+    | { status: 'ready'; objectUrl: string }
+    | { status: 'error'; message: string }
+  >({ status: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState({ status: 'loading' });
+
+    window.fileExplorer.readFileBinary(filePath).then((res) => {
+      if (cancelled) return;
+      if ('data' in res) {
+        objectUrl = URL.createObjectURL(
+          new Blob([new Uint8Array(res.data)], { type: res.mimeType })
+        );
+        setState({ status: 'ready', objectUrl });
+      } else if ('maxBytes' in res) {
+        setState({
+          status: 'error',
+          message: `This file is too large to preview (${formatBytes(res.maxBytes)} limit).`
+        });
+      } else if (res.error === 'unsupported-extension') {
+        setState({ status: 'error', message: 'Preview not available for this file.' });
+      } else {
+        setState({ status: 'error', message: `Couldn't read this file: ${res.error}` });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [filePath]);
+
+  // Media previews are read-only -- nothing to write back.
+  useImperativeHandle(ref, () => ({ save: () => Promise.resolve(true) }));
+
+  if (state.status === 'loading') {
+    return (
+      <div className="flex-1 flex items-center justify-center text-text-dim">
+        <Loader2 size={20} className="animate-spin" />
+      </div>
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center">
+        <AlertCircle size={20} className="text-red-500" />
+        <span>{state.message}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex items-center justify-center overflow-auto bg-dotted p-3">
+      {kind === 'image' ? (
+        <img src={state.objectUrl} alt="" className="max-w-full max-h-full object-contain" />
+      ) : (
+        <video src={state.objectUrl} controls className="max-w-full max-h-full" />
+      )}
+    </div>
   );
 });
 
@@ -87,6 +180,7 @@ const TextFileEditor = forwardRef<
     | { status: 'loading' }
     | { status: 'ready'; original: string; content: string }
     | { status: 'error'; message: string }
+    | { status: 'unsupported'; message: string }
   >({ status: 'loading' });
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -107,7 +201,7 @@ const TextFileEditor = forwardRef<
           message: `This file is too large to preview (${formatBytes(res.maxBytes)} limit).`
         });
       } else if (res.error === 'unsupported-extension') {
-        setState({ status: 'error', message: 'Preview not available for this file.' });
+        setState({ status: 'unsupported', message: 'Preview not available for this file.' });
       } else {
         setState({ status: 'error', message: `Couldn't read this file: ${res.error}` });
       }
@@ -148,6 +242,10 @@ const TextFileEditor = forwardRef<
         <Loader2 size={20} className="animate-spin" />
       </div>
     );
+  }
+
+  if (state.status === 'unsupported') {
+    return <PreviewMessage>{state.message}</PreviewMessage>;
   }
 
   if (state.status === 'error') {

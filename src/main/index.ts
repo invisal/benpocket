@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
@@ -44,6 +44,26 @@ function createWindow(): BrowserWindow {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
     return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    // Chromium doesn't build a menu on its own for plain (non-editable)
+    // areas, so the native right-click menu is suppressed there. Editable
+    // fields always get Cut/Copy/Paste/Select All since nothing else
+    // provides that.
+    event.preventDefault();
+
+    if (!params.isEditable) return;
+
+    const template: Electron.MenuItemConstructorOptions[] = [
+      { label: 'Cut', role: 'cut', enabled: params.editFlags.canCut },
+      { label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy },
+      { label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste },
+      { type: 'separator' },
+      { label: 'Select All', role: 'selectAll' }
+    ];
+
+    Menu.buildFromTemplate(template).popup({ window: mainWindow });
   });
 
   // HMR for renderer base on electron-vite cli.

@@ -52,6 +52,71 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to encode screenshot'));
+      },
+      type,
+      quality
+    );
+  });
+}
+
+/** One PipeWire frame as a bitmap plus JPEG for the static region backdrop. */
+async function grabFrameFromStream(
+  stream: MediaStream,
+  options?: { skipFrames?: number; staleFrameMs?: number }
+): Promise<{ bitmap: ImageBitmap; jpeg: ArrayBuffer }> {
+  const track = stream.getVideoTracks()[0];
+  if (!track) throw new Error('No video track in capture stream.');
+  if (track.readyState === 'ended') throw new Error('Capture cancelled.');
+
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.srcObject = stream;
+  Object.assign(video.style, {
+    position: 'fixed',
+    opacity: '0',
+    width: '1px',
+    height: '1px',
+    pointerEvents: 'none'
+  });
+  document.body.appendChild(video);
+
+  try {
+    await video.play();
+    await waitForVideoFrame(video);
+
+    const skipFrames = options?.skipFrames ?? 1;
+    const staleFrameMs = options?.staleFrameMs ?? 150;
+    for (let i = 0; i < skipFrames; i += 1) {
+      await waitForNextVideoFrame(video, staleFrameMs);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || canvas.width === 0 || canvas.height === 0) {
+      throw new Error('Captured screenshot is empty.');
+    }
+    ctx.drawImage(video, 0, 0);
+
+    const [bitmap, jpegBlob] = await Promise.all([
+      createImageBitmap(canvas),
+      canvasToBlob(canvas, 'image/jpeg', 0.92)
+    ]);
+    return { bitmap, jpeg: await jpegBlob.arrayBuffer() };
+  } finally {
+    stream.getTracks().forEach((item) => item.stop());
+    video.remove();
+  }
+}
+
 function waitForVideoFrame(video: HTMLVideoElement, timeoutMs = 2000): Promise<void> {
   if (video.videoWidth > 0 && video.videoHeight > 0) {
     return Promise.resolve();
@@ -110,73 +175,6 @@ function waitForNextVideoFrame(video: HTMLVideoElement, staleOkMs?: number): Pro
 
     video.addEventListener('playing', done, { once: true });
   });
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Failed to encode screenshot'));
-      },
-      type,
-      quality
-    );
-  });
-}
-
-async function grabFrameFromStream(
-  stream: MediaStream,
-  options?: { skipFrames?: number; staleFrameMs?: number }
-): Promise<{ bitmap: ImageBitmap; jpeg: ArrayBuffer }> {
-  const track = stream.getVideoTracks()[0];
-  if (!track) throw new Error('No video track in capture stream.');
-  if (track.readyState === 'ended') throw new Error('Capture cancelled.');
-
-  const video = document.createElement('video');
-  video.muted = true;
-  video.playsInline = true;
-  video.srcObject = stream;
-  Object.assign(video.style, {
-    position: 'fixed',
-    opacity: '0',
-    width: '1px',
-    height: '1px',
-    pointerEvents: 'none'
-  });
-  document.body.appendChild(video);
-
-  try {
-    // Caller must hide the app before this — priming while visible caches dirty frames.
-    await video.play();
-    await waitForVideoFrame(video);
-
-    const skipFrames = options?.skipFrames ?? 2;
-    const staleFrameMs = options?.staleFrameMs ?? 150;
-    for (let i = 0; i < skipFrames; i += 1) {
-      await waitForNextVideoFrame(video, staleFrameMs);
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx || canvas.width === 0 || canvas.height === 0) {
-      throw new Error('Captured screenshot is empty.');
-    }
-    ctx.drawImage(video, 0, 0);
-
-    // Keep bitmap for crop; JPEG only for the overlay (skip full-screen PNG encode).
-    const [bitmap, jpegBlob] = await Promise.all([
-      createImageBitmap(canvas),
-      canvasToBlob(canvas, 'image/jpeg', 0.7)
-    ]);
-    const jpeg = await jpegBlob.arrayBuffer();
-    return { bitmap, jpeg };
-  } finally {
-    stream.getTracks().forEach((item) => item.stop());
-    video.remove();
-  }
 }
 
 /** Legacy PNG grab for non-region callers. */
@@ -267,7 +265,7 @@ async function getDesktopVideoStream(
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-async function captureDisplayPng(
+async function captureNativePng(
   source: CaptureSource,
   options: { hideBeforeCapture: boolean }
 ): Promise<Blob> {
@@ -286,13 +284,29 @@ export async function captureFromSource(
 ): Promise<Blob> {
   const shouldHideApp = options?.hideApp ?? source.type === 'screen';
 
-  // Full-display capture uses main-process desktopCapturer (macOS/Windows/X11).
-  // Atomic hide → grab → restore avoids macOS renderer suspension during IPC.
+  // Full-display capture uses the main process (macOS screencapture /
+  // elsewhere desktopCapturer). Atomic hide → grab → restore avoids macOS
+  // renderer suspension during IPC.
   if (source.type === 'screen') {
-    return captureDisplayPng(source, { hideBeforeCapture: shouldHideApp });
+    return captureNativePng(source, { hideBeforeCapture: shouldHideApp });
   }
 
   try {
+    // macOS window stills: main-process `screencapture -l` gives a P3-tagged
+    // PNG with no YUV round trip. Falls back to the stream grab on failure.
+    if (window.api?.platform === 'darwin') {
+      try {
+        return await captureNativePng(source, { hideBeforeCapture: false });
+      } catch (err) {
+        console.warn('[capture] native window capture failed, using stream grab:', err);
+      }
+    }
+
+    // Windows/X11 window stills keep the stream path despite its I420 chroma
+    // subsampling: the only in-Electron alternative (desktopCapturer window
+    // thumbnails) upscales to fit thumbnailSize (measured: an 800x536 px
+    // window returned a 10000x7500 thumbnail), which looks worse. Fixing this
+    // properly needs native capture (Windows.Graphics.Capture / XGetImage).
     const stream = await getDesktopVideoStream(source);
     return await grabPngFromStream(stream);
   } finally {
@@ -466,7 +480,28 @@ export async function selectAndCaptureRegion(
   };
 
   try {
+    // macOS: dim the live desktop with the transparent overlay (no frozen
+    // screenshot), then grab just the dragged rectangle natively. screencapture
+    // -R returns Display P3 pixels straight from the OS, so what the user framed
+    // on the real screen is exactly what gets captured.
+    if (window.api?.platform === 'darwin') {
+      await hideMainWindow();
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+
+      onStep?.('region');
+      const selection = (await window.screenRecorder?.screenshot.selectRegion()) ?? null;
+      if (!selection) return null;
+
+      onStep?.('processing');
+      // Let the overlay window finish tearing down so it is not in the grab.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
+      const buffer = await window.screenRecorder!.screenshot.captureRegion(selection.rect);
+      return new Blob([buffer], { type: 'image/png' });
+    }
+
     if (usesOsPicker) {
+      // Wayland: grab one frame while hidden, show it as a static backdrop under
+      // the dim mask, then crop in image space (no live overlay in PipeWire).
       onStep?.('picker');
       picked = await pickOsCaptureSource(true);
       if (!picked) return null;
@@ -478,15 +513,8 @@ export async function selectAndCaptureRegion(
         nativeResolution: true
       });
 
-      // Same order as full capture: hide first, then attach video — priming while
-      // visible caches frames that still contain CraftBox.
       await hideMainWindow();
-      await new Promise<void>((resolve) => window.setTimeout(resolve, 200));
-
-      const frame = await grabFrameFromStream(portalStream, {
-        skipFrames: 3,
-        staleFrameMs: 150
-      });
+      const frame = await grabFrameFromStream(portalStream, { skipFrames: 1, staleFrameMs: 150 });
       stopPortalStream();
       frameBitmap = frame.bitmap;
 
@@ -499,48 +527,29 @@ export async function selectAndCaptureRegion(
       if (!selection) return null;
 
       onStep?.('processing');
+      await showApp({ focus: true });
       return await cropImageBitmap(frameBitmap, selection);
     }
 
+    // Windows/X11 (macOS and Wayland handled above): both platforms give apps
+    // global screen coordinates and a fullscreen always-on-top window, so the
+    // overlay dims the *live* desktop (no frozen screenshot). After the drag,
+    // capture the matched display while the app + overlay are still gone, then
+    // crop. Capturing before the finally re-shows the app keeps CraftBox out of
+    // the grab.
     await hideMainWindow();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
-
-    const screens = sources.filter((source) => source.type === 'screen');
-    if (screens.length === 1 && screens[0]?.displayBounds) {
-      const source = screens[0];
-      const fullBlob = await captureFromSource(source, { hideApp: false });
-      frameBitmap = await createImageBitmap(fullBlob);
-      const jpegBlob = await (async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = frameBitmap!.width;
-        canvas.height = frameBitmap!.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Failed to encode backdrop');
-        ctx.drawImage(frameBitmap!, 0, 0);
-        return canvasToBlob(canvas, 'image/jpeg', 0.7);
-      })();
-
-      onStep?.('region');
-      const selection =
-        (await window.screenRecorder?.screenshot.selectRegion({
-          backdropJpeg: await jpegBlob.arrayBuffer(),
-          bounds: source.displayBounds
-        })) ?? null;
-      if (!selection) return null;
-      onStep?.('processing');
-      return await cropImageBitmap(frameBitmap, selection);
-    }
 
     onStep?.('region');
     const selection = (await window.screenRecorder?.screenshot.selectRegion()) ?? null;
     if (!selection) return null;
 
-    await showApp({ focus: false });
-
     const source = findScreenSourceForRegion(sources, selection);
     if (!source) return null;
 
     onStep?.('processing');
+    // Let the overlay window finish tearing down so it is not in the grab.
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
     const fullBlob = await captureFromSource(source, { hideApp: false });
     return await cropPngBlob(fullBlob, selection);
   } catch (err) {

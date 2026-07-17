@@ -11,10 +11,14 @@ import { pathExists } from './localFileDriver';
 import { getDriverForLocation } from './driverRegistry';
 import { getR2Credential, registerR2CredentialHandlers } from './r2Credential';
 import { listR2Buckets } from './r2FileDriver';
+import { transferEntries } from './crossSchemeTransfer';
+import { parseLocation } from './location';
+import { IpcChannels } from '@shared/ipc-channels';
 import {
   type CreateResult,
   type ListDirectoryResult,
   type MutationResult,
+  type ReadBinaryFileResult,
   type ReadFileResult,
   type WriteFileResult
 } from './fileDriver';
@@ -109,6 +113,40 @@ async function getR2BucketSidebarItems(): Promise<SidebarItem[]> {
   return buckets.map((bucket) => ({ label: bucket.name, path: `r2://${bucket.name}/` }));
 }
 
+/**
+ * Same-scheme sources (destination's driver already handles them) go through
+ * the existing per-driver copy/move; sources whose scheme differs from the
+ * destination's go through `transferEntries`, which streams bytes between
+ * local disk and R2 -- something neither driver can do on its own.
+ */
+async function runCopyOrMove(
+  event: Electron.IpcMainInvokeEvent,
+  sourceUris: string[],
+  destDirUri: string,
+  move: boolean
+): Promise<MutationResult> {
+  const destScheme = parseLocation(destDirUri).scheme;
+  const sameScheme = sourceUris.filter((uri) => parseLocation(uri).scheme === destScheme);
+  const crossScheme = sourceUris.filter((uri) => parseLocation(uri).scheme !== destScheme);
+
+  if (crossScheme.length > 0) {
+    const result = await transferEntries(crossScheme, destDirUri, { move }, (progress) => {
+      event.sender.send(IpcChannels.FileExplorerTransferProgress, progress);
+    });
+    if ('error' in result) return result;
+  }
+
+  if (sameScheme.length > 0) {
+    const driver = getDriverForLocation(destDirUri);
+    const result = move
+      ? await driver.moveEntries(sameScheme, destDirUri)
+      : await driver.copyEntries(sameScheme, destDirUri);
+    if ('error' in result) return result;
+  }
+
+  return { success: true };
+}
+
 export function registerFileExplorerHandlers(): void {
   registerR2CredentialHandlers();
 
@@ -165,6 +203,13 @@ export function registerFileExplorerHandlers(): void {
   );
 
   ipcMain.handle(
+    'file-explorer:read-file-binary',
+    async (_, uri: string): Promise<ReadBinaryFileResult> => {
+      return getDriverForLocation(uri).readBinaryFile(uri);
+    }
+  );
+
+  ipcMain.handle(
     'file-explorer:write-file-content',
     async (_, uri: string, content: string): Promise<WriteFileResult> => {
       return getDriverForLocation(uri).writeFile(uri, content);
@@ -181,15 +226,15 @@ export function registerFileExplorerHandlers(): void {
 
   ipcMain.handle(
     'file-explorer:copy-entries',
-    async (_, sourceUris: string[], destDirUri: string): Promise<MutationResult> => {
-      return getDriverForLocation(destDirUri).copyEntries(sourceUris, destDirUri);
+    async (event, sourceUris: string[], destDirUri: string): Promise<MutationResult> => {
+      return runCopyOrMove(event, sourceUris, destDirUri, false);
     }
   );
 
   ipcMain.handle(
     'file-explorer:move-entries',
-    async (_, sourceUris: string[], destDirUri: string): Promise<MutationResult> => {
-      return getDriverForLocation(destDirUri).moveEntries(sourceUris, destDirUri);
+    async (event, sourceUris: string[], destDirUri: string): Promise<MutationResult> => {
+      return runCopyOrMove(event, sourceUris, destDirUri, true);
     }
   );
 

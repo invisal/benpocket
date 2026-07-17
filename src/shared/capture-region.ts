@@ -29,6 +29,15 @@ export interface SelectCaptureRegionOptions {
   backdropDataUrl?: string;
   /** Size/position the overlay for this display (defaults to virtual desktop). */
   bounds?: ScreenRect;
+  /**
+   * Report the drag relative to the overlay's own content box (0-based) with
+   * `displayBounds` set to the overlay's size, instead of adding the window's
+   * global origin. Wayland hides a window's absolute position, so the global
+   * origin is unreliable there; this keeps the crop math purely in
+   * overlay-local space. Requires the overlay to cover exactly the captured
+   * display (pass `bounds`).
+   */
+  overlayRelative?: boolean;
 }
 
 /** Payload from the overlay renderer when the user finishes a drag. */

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useWorkspaceResources } from './useWorkspaceResources';
+import { useWorkspaceResources } from '../../hooks/useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
 import { Pods } from './pods/Pods';
 import { Deployments } from './deployments/Deployments';
@@ -9,13 +9,18 @@ import { ReplicaSets } from './replicasets/ReplicaSets';
 import { Jobs } from './jobs/Jobs';
 import { CronJobs } from './cronjobs/CronJobs';
 import { WorkloadOverview } from './workload-overview/WorkloadOverview';
-import { ServicesTable } from './ServicesTable';
+import { Services } from './services/Services';
 import { ConfigMaps } from './configmaps/ConfigMaps';
 import { Secrets } from './secrets/Secrets';
 import { ResourceQuotas } from './resourcequotas/ResourceQuotas';
 import { LimitRanges } from './limitranges/LimitRanges';
 import { HorizontalPodAutoscalers } from './hpas/HorizontalPodAutoscalers';
 import { PodDisruptionBudgets } from './pdbs/PodDisruptionBudgets';
+import { PriorityClasses } from './priorityclasses/PriorityClasses';
+import { RuntimeClasses } from './runtimeclasses/RuntimeClasses';
+import { Leases } from './leases/Leases';
+import { MutatingWebhooks } from './mutatingwebhooks/MutatingWebhooks';
+import { ValidatingWebhooks } from './validatingwebhooks/ValidatingWebhooks';
 import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
@@ -50,6 +55,11 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     limitRangesData,
     hpasData,
     pdbsData,
+    priorityClassesData,
+    runtimeClassesData,
+    leasesData,
+    mutatingWebhooksData,
+    validatingWebhooksData,
     applicationsData,
     nodesData,
     isLoading,
@@ -153,7 +163,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           )}
 
           {resource === 'services' && (
-            <ServicesTable
+            <Services
               servicesData={servicesData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
@@ -199,6 +209,29 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
               pdbsData={pdbsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
+          )}
+
+          {resource === 'priorityclasses' && (
+            <PriorityClasses priorityClassesData={priorityClassesData} />
+          )}
+
+          {resource === 'runtimeclasses' && (
+            <RuntimeClasses runtimeClassesData={runtimeClassesData} />
+          )}
+
+          {resource === 'leases' && (
+            <Leases
+              leasesData={leasesData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'mutatingwebhooks' && (
+            <MutatingWebhooks mutatingWebhooksData={mutatingWebhooksData} />
+          )}
+
+          {resource === 'validatingwebhooks' && (
+            <ValidatingWebhooks validatingWebhooksData={validatingWebhooksData} />
           )}
 
           {resource === 'apps' && (

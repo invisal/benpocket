@@ -1,14 +1,11 @@
 import type React from 'react';
 import { useState } from 'react';
 import { X, Minus, Square, Copy, Sun, Moon } from 'lucide-react';
-import { useLayoutStore } from '../../store/layout.store';
 import { useThemeStore } from '../../store/theme.store';
 
 export const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const isMac = window.api?.platform === 'darwin';
-
-  const { isRightPanelOpen, toggleRightPanel } = useLayoutStore();
 
   const { theme, toggleTheme } = useThemeStore();
 
@@ -35,39 +32,15 @@ export const TitleBar: React.FC = () => {
           <svg className="w-4 h-4 text-accent" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="12,2 2,22 22,22" />
           </svg>
-          <span className="font-semibold text-zinc-350">CraftBox</span>
-          <div className="hidden md:flex items-center gap-3 ml-4 text-zinc-500">
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">File</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">Edit</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">Selection</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">View</span>
-            <span className="hover:text-zinc-350 cursor-pointer transition-colors">Go</span>
-          </div>
+          <span className="font-semibold text-zinc-350">benpocket</span>
         </div>
       )}
 
-      {/* Middle: Workspace Title / Search Bar */}
-      <div className="flex-1 max-w-sm mx-auto h-5 bg-editor-bg border border-border-dark rounded flex items-center justify-center text-zinc-500 text-[10px] titlebar-nodrag hover:bg-sidebar-bg/60 cursor-pointer transition-colors">
-        <span>craftbox (Workspace) - Search</span>
-      </div>
+      <div className="flex-1" />
 
-      {/* Right side: Layout toggles and OS window controls */}
+      {/* Right side: Theme toggle and OS window controls */}
       <div className="flex items-center h-full titlebar-nodrag gap-1">
-        {/* Layout panel toggles */}
         <div className="flex items-center h-full mr-1 gap-0.5">
-          {/* Right Panel Toggle */}
-          <button
-            onClick={toggleRightPanel}
-            title="Toggle Secondary Side Bar"
-            className={`w-8 h-6.5 rounded hover:bg-border-dark flex items-center justify-center transition-colors cursor-pointer border-none bg-transparent ${
-              isRightPanelOpen ? 'text-accent' : 'text-zinc-500 hover:text-zinc-200'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M14 2H2c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zM10 13H2V4h8v9zm4 0h-3V4h3v9z" />
-            </svg>
-          </button>
-
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}

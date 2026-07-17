@@ -9,7 +9,7 @@ import type {
 } from '../../preload/http-client/types';
 
 // --- Minimal Postman Collection v2.0 / v2.1 shapes (permissive; only the fields we read/write) ---
-// Craftbox supports importing/exporting the Postman Collection Format v2.0.0 and v2.1.0.
+// benpocket supports importing/exporting the Postman Collection Format v2.0.0 and v2.1.0.
 // Legacy Collection Format v1 (top-level "requests"/"folders" arrays, no "item" tree) is not supported.
 
 interface PostmanHeader {

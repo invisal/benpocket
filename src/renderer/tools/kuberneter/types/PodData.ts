@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface PodContainer {
   name: string;
   ready: boolean;
@@ -18,4 +20,5 @@ export interface PodData {
   node: string;
   qos: string;
   hasWarning: boolean;
+  rawItem?: K8sResource;
 }

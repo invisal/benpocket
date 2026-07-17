@@ -1,4 +1,4 @@
-const APP_TITLE = 'CraftBox';
+const APP_TITLE = 'benpocket';
 
 function notify(body: string): void {
   void window.api.showNotification(APP_TITLE, body);

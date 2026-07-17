@@ -53,9 +53,9 @@ export async function dispatchMutation<T extends object = object>(
 
   onSuccess?.(result);
 
-  if (sync === 'sync') {
+  if (sync === 'sync' || (sync === 'optimistic' && !optimisticPatch)) {
     onRefetch();
   }
-  // 'optimistic': the applied patch already reflects the change; no refetch.
+  // 'optimistic' with a patch supplied: the applied patch already reflects the change; no refetch.
   // 'watch': the change stream is the source of truth; mutations don't drive refresh.
 }

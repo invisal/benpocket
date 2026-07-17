@@ -41,6 +41,8 @@ let selectionFinished = false;
 /** JPEG bytes or legacy data-URL string for the overlay backdrop. */
 let backdropPayload: ArrayBuffer | string | null = null;
 let exclusiveFullscreen = false;
+/** Wayland: map the drag in overlay-local space rather than global screen coords. */
+let overlayRelative = false;
 
 function finishSelection(value: CaptureRegionSelection | null): void {
   if (selectionFinished) return;
@@ -50,6 +52,7 @@ function finishSelection(value: CaptureRegionSelection | null): void {
   regionWindow = null;
   backdropPayload = null;
   exclusiveFullscreen = false;
+  overlayRelative = false;
   const resolve = resolveSelection;
   resolveSelection = null;
 
@@ -97,7 +100,27 @@ function onRegionComplete(
     return;
   }
 
+  if (payload.width < 2 || payload.height < 2) {
+    finishSelection(null);
+    return;
+  }
+
   const win = regionWindow;
+
+  // Wayland: the window's absolute position is not knowable, so keep the drag
+  // in overlay-local pixels and hand back the overlay's own size as the
+  // reference box. The renderer then scales by capturedFrame/overlaySize --
+  // no global-coordinate hop, which is what caused the offset.
+  if (overlayRelative) {
+    const size = win?.getContentBounds() ?? { width: payload.width, height: payload.height };
+    finishSelection({
+      rect: { x: payload.x, y: payload.y, width: payload.width, height: payload.height },
+      displayBounds: { x: 0, y: 0, width: size.width, height: size.height },
+      scaleFactor: 1
+    });
+    return;
+  }
+
   const origin = win?.getContentBounds() ?? { x: 0, y: 0 };
   const rect: ScreenRect = {
     x: origin.x + payload.x,
@@ -105,11 +128,6 @@ function onRegionComplete(
     width: payload.width,
     height: payload.height
   };
-
-  if (rect.width < 2 || rect.height < 2) {
-    finishSelection(null);
-    return;
-  }
 
   const display = screen.getDisplayMatching(rect);
   finishSelection({
@@ -184,10 +202,15 @@ export function selectCaptureRegion(
       options?.backdropJpeg != null
         ? options.backdropJpeg.slice(0)
         : (options?.backdropDataUrl ?? null);
+    overlayRelative = options?.overlayRelative ?? false;
     const bounds = options?.bounds ?? getVirtualDesktopBounds();
     const hasBackdrop = Boolean(backdropPayload);
-    exclusiveFullscreen =
-      hasBackdrop || (process.platform === 'linux' && screen.getAllDisplays().length === 1);
+    // Fullscreen ONLY for an opaque backdrop overlay. A transparent overlay
+    // (the live dim-the-desktop mode) must never be fullscreen: transparent +
+    // fullscreen on Linux/Wayland renders as solid black, hiding the desktop
+    // the user is trying to select. Non-fullscreen + setBounds still covers the
+    // display.
+    exclusiveFullscreen = hasBackdrop;
 
     regionWindow = new BrowserWindow({
       x: bounds.x,

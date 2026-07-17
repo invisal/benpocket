@@ -1,4 +1,12 @@
-# CraftBox
+# BenPocket
+
+BenPocket — a personal multi-purpose toolkit (Swiss Army knife) combining small tools:
+
+- `file-explorer` — browse, edit, and manage local files (and R2/S3, in progress)
+- `http-client` — Postman-style tool for building and sending HTTP/WebSocket requests
+- `kuberneter` — Kubernetes GUI client for browsing cluster resources (pods, deployments, services, etc.)
+- `screen-capture` — take screenshots
+- `screen-recorder` — record, edit, and export screen recordings
 
 ## Workflow
 
@@ -19,3 +27,4 @@ Topic-specific reference docs live in `docs/receipts/`. Check the relevant one b
 touching that area of the code:
 
 - [colors.md](docs/receipts/colors.md) — Tailwind color tokens
+- [tools.md](docs/receipts/tools.md) — folder structure for `renderer/tools/*`

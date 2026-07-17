@@ -1,5 +1,6 @@
 export const IpcChannels = {
   GetCaptureSources: 'capture:get-sources',
+  GetNativePickerSupport: 'capture:get-native-picker-support',
   StartRecording: 'recording:start',
   StopRecording: 'recording:stop',
   PauseRecording: 'recording:pause',
@@ -44,6 +45,14 @@ export const IpcChannels = {
   TraySourceSelected: 'tray:source-selected',
   TrayRegister: 'tray:register',
   TrayUnregister: 'tray:unregister',
+  FocusToolbarOpen: 'focus-toolbar:open',
+  FocusToolbarCancel: 'focus-toolbar:cancel',
+  FocusToolbarStart: 'focus-toolbar:start',
+  FocusToolbarStartRequested: 'focus-toolbar:start-requested',
+  FocusToolbarStop: 'focus-toolbar:stop',
+  FocusToolbarStopRequested: 'focus-toolbar:stop-requested',
+  FocusToolbarRecordingStarted: 'focus-toolbar:recording-started',
+  FocusToolbarRecordingStopped: 'focus-toolbar:recording-stopped',
   ShowNotification: 'notification:show',
   PickOsCaptureSource: 'screenshot:pick-os-source',
   FileExplorerTransferProgress: 'file-explorer:transfer-progress'

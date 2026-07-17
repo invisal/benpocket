@@ -1,0 +1,237 @@
+import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { join } from 'path';
+import { IpcChannels } from '@shared/ipc-channels';
+import type {
+  FocusToolbarOpenPayload,
+  FocusToolbarStartPayload,
+  FocusToolbarRecordingResult
+} from '@shared/focus-toolbar';
+import type { ScreenRect } from '@shared/capture-region';
+import { preloadScriptPath } from '../lib/preload-path';
+import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
+
+// Fixed rather than measured -- a window sized to fit whatever content is
+// currently rendered turned out to be more fragile than it was worth (a
+// resize round-trip on every mode/content change, racing with other
+// window-management calls). Wide enough for the setup toolbar's full row
+// (grip, close, Display/Window/Area, camera, mic, system audio, Start
+// Recording) without a per-source filmstrip -- that's the one element here
+// that scales with user data (could be a dozen windows) rather than a fixed
+// label set, so it isn't rendered at all now rather than fought over width.
+const TOOLBAR_WIDTH = 880;
+const TOOLBAR_HEIGHT = 110;
+const BOTTOM_MARGIN = 48;
+const GAP_FROM_TARGET = 16;
+
+let toolbarWindow: BrowserWindow | null = null;
+// The window that opened the toolbar -- hidden for the duration and the one
+// that receives the start/stop/cancel relays, since it owns the actual
+// recording-controller/store state. Tracked separately from `toolbarWindow`
+// because the "restore" side of a close needs it even after the toolbar
+// itself has already been torn down.
+let ownerWindow: BrowserWindow | null = null;
+// Screen-space rect of what's actually being recorded, set the moment the
+// toolbar's Start Recording is clicked (see FocusToolbarStart below) and
+// used to reposition the toolbar right then, so it reads as attached to
+// that display/window/area instead of always sitting at the bottom of the
+// primary display. Null before a start attempt, and cleared whenever the
+// toolbar closes so a fresh session doesn't inherit it.
+let lastTargetBounds: ScreenRect | null = null;
+
+function loadToolbarPage(win: BrowserWindow, payload: FocusToolbarOpenPayload): void {
+  const init = JSON.stringify(payload);
+
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
+    void win.loadURL(
+      `${process.env['ELECTRON_RENDERER_URL']}/focus-toolbar.html?init=${encodeURIComponent(init)}`
+    );
+    return;
+  }
+
+  void win.loadFile(join(__dirname, '../renderer/focus-toolbar.html'), { query: { init } });
+}
+
+/**
+ * Where the (fixed-size) window should sit. Anchored to `lastTargetBounds`
+ * once known -- `screen.getDisplayMatching` finds the display it's
+ * actually on, in case that's not the primary one. A rect that's basically
+ * the whole display gets the usual bottom-center treatment; a smaller one
+ * (a window with resolvable bounds, or an Area selection) gets the toolbar
+ * tucked just below it instead -- or above, if there's no room below -- so
+ * it reads as attached to the thing being recorded rather than floating
+ * disconnected at the bottom of whichever screen happens to be primary.
+ * Falls back to primary-display-bottom-center when nothing has started
+ * recording yet.
+ */
+function computePosition(): { x: number; y: number } {
+  if (!lastTargetBounds) {
+    const display = screen.getPrimaryDisplay();
+    return {
+      x: Math.round(display.workArea.x + (display.workArea.width - TOOLBAR_WIDTH) / 2),
+      y: Math.round(display.workArea.y + display.workArea.height - TOOLBAR_HEIGHT - BOTTOM_MARGIN)
+    };
+  }
+
+  const target = lastTargetBounds;
+  const display = screen.getDisplayMatching({
+    x: Math.round(target.x),
+    y: Math.round(target.y),
+    width: Math.round(target.width),
+    height: Math.round(target.height)
+  });
+
+  const isFullDisplay =
+    target.width >= display.workArea.width - 4 && target.height >= display.workArea.height - 4;
+  if (isFullDisplay) {
+    return {
+      x: Math.round(display.workArea.x + (display.workArea.width - TOOLBAR_WIDTH) / 2),
+      y: Math.round(display.workArea.y + display.workArea.height - TOOLBAR_HEIGHT - BOTTOM_MARGIN)
+    };
+  }
+
+  const centeredX = target.x + target.width / 2 - TOOLBAR_WIDTH / 2;
+  const minX = display.workArea.x;
+  const maxX = display.workArea.x + display.workArea.width - TOOLBAR_WIDTH;
+  const x = Math.round(Math.min(Math.max(centeredX, minX), maxX));
+
+  const belowY = target.y + target.height + GAP_FROM_TARGET;
+  const fitsBelow = belowY + TOOLBAR_HEIGHT <= display.workArea.y + display.workArea.height;
+  const y = Math.round(
+    fitsBelow ? belowY : Math.max(display.workArea.y, target.y - TOOLBAR_HEIGHT - GAP_FROM_TARGET)
+  );
+
+  return { x, y };
+}
+
+/** Re-centers the window on its current anchor (see computePosition) without touching its size. */
+function repositionToolbar(): void {
+  if (!toolbarWindow || toolbarWindow.isDestroyed()) return;
+  const { x, y } = computePosition();
+  toolbarWindow.setPosition(x, y);
+}
+
+function createToolbarWindow(): BrowserWindow {
+  const { x, y } = computePosition();
+
+  const win = new BrowserWindow({
+    x,
+    y,
+    width: TOOLBAR_WIDTH,
+    height: TOOLBAR_HEIGHT,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    // Draggable by its own background (see the `app-region: drag` styling
+    // on the pill in FocusToolbarApp.tsx) rather than fixed in place.
+    movable: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    show: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: preloadScriptPath(),
+      sandbox: false,
+      contextIsolation: true
+    }
+  });
+
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setAlwaysOnTop(true, 'screen-saver');
+  // Excludes this window from screen/window capture (including our own
+  // desktopCapturer-based recording) so the toolbar never ends up baked
+  // into the video it's controlling. Note: per Electron's docs, macOS apps
+  // that capture via ScreenCaptureKit can still see the window despite this
+  // -- Screen Recorder's own capture path (chromeMediaSourceId, not
+  // getDisplayMedia) isn't one of those, so this covers the case that
+  // actually matters here.
+  win.setContentProtection(true);
+  win.once('ready-to-show', () => win.show());
+  win.on('closed', () => {
+    if (toolbarWindow === win) toolbarWindow = null;
+  });
+
+  return win;
+}
+
+async function openFocusToolbar(
+  event: Electron.IpcMainInvokeEvent,
+  payload: FocusToolbarOpenPayload
+): Promise<void> {
+  const owner = BrowserWindow.fromWebContents(event.sender);
+  if (!owner) return;
+  ownerWindow = owner;
+
+  // `mainOnly` -- only the owning window hides. The toolbar is a separate
+  // window and must stay visible; the darwin `app.hide()` path (no
+  // `mainOnly`) would take it down too.
+  await hideCaptureWindow(owner, { mainOnly: true });
+
+  if (!toolbarWindow) toolbarWindow = createToolbarWindow();
+  loadToolbarPage(toolbarWindow, payload);
+}
+
+/** Tears down the toolbar and brings the owning window back. */
+function closeFocusToolbar(): void {
+  void restoreCaptureWindow(ownerWindow, { focus: true });
+  lastTargetBounds = null;
+
+  const win = toolbarWindow;
+  toolbarWindow = null;
+  if (win && !win.isDestroyed()) win.close();
+}
+
+export function registerFocusToolbarHandlers(): void {
+  ipcMain.handle(IpcChannels.FocusToolbarOpen, openFocusToolbar);
+
+  // User backed out (Esc / close button) before starting a recording. Only
+  // the two windows involved need to know -- the owner's store never
+  // tracked "a toolbar is open" in the first place, so there's nothing to
+  // clear on that side.
+  ipcMain.on(IpcChannels.FocusToolbarCancel, () => {
+    closeFocusToolbar();
+  });
+
+  // Toolbar -> owner: apply this config and start capturing. The owner
+  // renderer keeps running while hidden (see capture-engine.ts /
+  // useRecordingController), so it can still open getUserMedia + drive
+  // MediaRecorder without ever being shown. Also latches the target bounds
+  // and repositions right away, on the click itself, rather than waiting
+  // for confirmation that the recording actually started.
+  ipcMain.on(IpcChannels.FocusToolbarStart, (_event, payload: FocusToolbarStartPayload) => {
+    lastTargetBounds = payload.targetBounds ?? null;
+    repositionToolbar();
+    ownerWindow?.webContents.send(IpcChannels.FocusToolbarStartRequested, payload);
+  });
+
+  // Owner -> toolbar: whether that start actually succeeded, so the toolbar
+  // can switch to its "Recording / Stop" mode or show the error and let the
+  // user retry instead of being stuck on a dead "Starting..." button.
+  ipcMain.on(
+    IpcChannels.FocusToolbarRecordingStarted,
+    (_event, result: FocusToolbarRecordingResult) => {
+      toolbarWindow?.webContents.send(IpcChannels.FocusToolbarRecordingStarted, result);
+    }
+  );
+
+  // Toolbar's Stop button -> owner: run the real stop/save/editor-navigate
+  // flow (useRecordingController.stop).
+  ipcMain.on(IpcChannels.FocusToolbarStop, () => {
+    ownerWindow?.webContents.send(IpcChannels.FocusToolbarStopRequested);
+  });
+
+  // Owner reports the recording is fully stopped and saved -- close the
+  // toolbar and bring the owner (now on the editor route) back to front.
+  ipcMain.on(IpcChannels.FocusToolbarRecordingStopped, () => {
+    closeFocusToolbar();
+  });
+}
+
+/** Best-effort cleanup on app quit -- mirrors destroyTray(). */
+export function destroyFocusToolbar(): void {
+  const win = toolbarWindow;
+  toolbarWindow = null;
+  ownerWindow = null;
+  lastTargetBounds = null;
+  if (win && !win.isDestroyed()) win.destroy();
+}

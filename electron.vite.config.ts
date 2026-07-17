@@ -33,7 +33,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('src/renderer/index.html'),
-          regionSelect: resolve('src/renderer/region-select.html')
+          regionSelect: resolve('src/renderer/region-select.html'),
+          focusToolbar: resolve('src/renderer/focus-toolbar.html')
         }
       }
     },

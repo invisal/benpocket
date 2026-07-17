@@ -1,57 +1,70 @@
 import type { JSX } from 'react';
-import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Smartphone } from 'lucide-react';
-import type { CaptureSource } from '@screen-recorder/types/recording';
+import { useEffect, useState } from 'react';
+import { Monitor, RefreshCw, Smartphone } from 'lucide-react';
+import type { CaptureSource, CaptureTargetType } from '@screen-recorder/types/recording';
+import { useCaptureSources } from '../hooks/useCaptureSources';
 import { useRecordingStore } from '../store/recording-store';
+import { useWebcamStore } from '../../webcam/store/webcam-store';
 
-// Should only be missing if the preload script failed to load -- see
-// main/windows/main-window.ts's preload-error listener for the corresponding
-// main-process log.
-const PRELOAD_MISSING_ERROR =
-  'Recording API unavailable (preload script did not load). Check the console.';
+/** Chrome's Screen Capture API adds this to MediaTrackSettings; lib.dom doesn't have it yet. */
+interface DisplaySurfaceSettings extends MediaTrackSettings {
+  displaySurface?: 'monitor' | 'window' | 'browser' | 'application';
+}
 
 export function SourcePicker(): JSX.Element {
-  const [sources, setSources] = useState<CaptureSource[]>([]);
-  const [bootedSimulatorName, setBootedSimulatorName] = useState<string | null>(null);
-  // Starts true (the mount effect below fetches immediately) rather than
-  // being set synchronously inside that effect -- an effect body setting
-  // state directly (vs. inside an async callback) triggers a cascading
-  // extra render, which is what react-hooks/set-state-in-effect flags.
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(() =>
-    window.screenRecorder ? null : PRELOAD_MISSING_ERROR
-  );
+  const { sources, bootedSimulatorName, loading, error, refresh } = useCaptureSources();
   const selectedSource = useRecordingStore((state) => state.selectedSource);
   const setSelectedSource = useRecordingStore((state) => state.setSelectedSource);
-
-  const fetchSources = useCallback(() => {
-    if (!window.screenRecorder) return;
-    Promise.all([
-      window.screenRecorder.recording.getCaptureSources(),
-      // Just for the "iOS Simulator" badge below -- the Simulator window
-      // records like any other window source (see screen-source-provider.ts,
-      // which is what actually tags it with cursor-trackable displayBounds).
-      // xcrun/simctl being unavailable, or nothing booted, just means no
-      // badge shows -- not an error.
-      window.screenRecorder.simulator.getBootedName().catch(() => null)
-    ])
-      .then(([nextSources, nextBootedSimulatorName]) => {
-        setSources(nextSources);
-        setBootedSimulatorName(nextBootedSimulatorName);
-        if (!selectedSource && nextSources.length > 0) setSelectedSource(nextSources[0]);
-      })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const audio = useRecordingStore((state) => state.audio);
+  const [systemPickerSupported, setSystemPickerSupported] = useState(false);
+  const [systemPickerError, setSystemPickerError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
+    window.screenRecorder.recording
+      .supportsNativeSystemPicker()
+      .then(setSystemPickerSupported)
+      .catch(() => setSystemPickerSupported(false));
+  }, []);
 
-  function refresh(): void {
-    setLoading(true);
-    fetchSources();
+  // Hides this window and opens a small always-on-top settings bar floating
+  // over the real desktop -- see main/screen-recorder/windows/
+  // focus-toolbar-window.ts. Reveals the actual picked window/screen instead
+  // of a copy rendered inside the app.
+  function openFocusToolbar(source: CaptureSource): void {
+    setSelectedSource(source);
+    const { enabled, deviceId, shape, mirrored, position, size } = useWebcamStore.getState();
+    void window.screenRecorder.focusToolbar.open({
+      sourceId: source.id,
+      audio,
+      webcam: { enabled, deviceId, shape, mirrored, position, size }
+    });
+  }
+
+  // macOS 15+ only (gated by supportsNativeSystemPicker/registerDisplayMediaHandler).
+  // Hands source selection to the real ScreenCaptureKit dialog instead of our
+  // grid -- but the resulting stream has no chromeMediaSourceId to re-request
+  // later, so it's kept alive and reused as-is at recording start (see
+  // recording-store's nativePickerStream / capture-engine's
+  // existingVideoStream), and doesn't get cursor tracking or the focus-toolbar
+  // flow, neither of which can key off an id that doesn't exist.
+  async function useSystemPicker(): Promise<void> {
+    setSystemPickerError(null);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const settings = stream.getVideoTracks()[0]?.getSettings() as
+        DisplaySurfaceSettings | undefined;
+      const type: CaptureTargetType = settings?.displaySurface === 'monitor' ? 'screen' : 'window';
+      useRecordingStore.getState().setNativePickerSelection(stream, {
+        id: 'native-picker',
+        name: stream.getVideoTracks()[0]?.label || 'System Picker Selection',
+        type,
+        thumbnailDataUrl: ''
+      });
+    } catch (err) {
+      // User dismissed the native dialog -- not an error worth surfacing.
+      if (err instanceof DOMException && err.name === 'NotAllowedError') return;
+      setSystemPickerError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   if (error) {
@@ -72,16 +85,32 @@ export function SourcePicker(): JSX.Element {
         <span className="text-xs font-medium uppercase tracking-wide text-white/40">
           Pick a source
         </span>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          title="Refresh sources"
-          className="flex items-center gap-1 rounded px-1.5 py-1 text-[10px] text-white/40 hover:bg-white/10 hover:text-white/70 disabled:opacity-40"
-        >
-          <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-1">
+          {systemPickerSupported && (
+            <button
+              onClick={useSystemPicker}
+              title="Choose a screen or window from the native macOS picker"
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-[10px] text-white/40 hover:bg-white/10 hover:text-white/70"
+            >
+              <Monitor size={11} />
+              Use System Picker
+            </button>
+          )}
+          <button
+            onClick={refresh}
+            disabled={loading}
+            title="Refresh sources"
+            className="flex items-center gap-1 rounded px-1.5 py-1 text-[10px] text-white/40 hover:bg-white/10 hover:text-white/70 disabled:opacity-40"
+          >
+            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {systemPickerError && (
+        <p className="text-xs text-red-400">System picker failed: {systemPickerError}</p>
+      )}
 
       {simulatorWindowMissing && (
         <p className="rounded-md bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-300">
@@ -101,6 +130,8 @@ export function SourcePicker(): JSX.Element {
             <button
               key={source.id}
               onClick={() => setSelectedSource(source)}
+              onDoubleClick={() => openFocusToolbar(source)}
+              title="Double-click to focus this source and record from a floating toolbar"
               className={`rounded-xl border p-2 text-left ${
                 selectedSource?.id === source.id
                   ? 'border-accent bg-surface-raised'

@@ -5,6 +5,8 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
     "src/renderer/region-select.ts",
+    "src/renderer/focus-toolbar.tsx",
+    "src/renderer/focus-toolbar/**/*",
     "src/renderer/tools/**/*",
     "src/preload/**/*.d.ts",
     "src/shared/**/*",

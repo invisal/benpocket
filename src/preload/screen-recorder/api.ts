@@ -15,11 +15,19 @@ import type {
   RegionSelectCompletePayload
 } from '@shared/capture-region';
 import type { OsPickerSource } from '@shared/os-picker-source';
+import type {
+  FocusToolbarOpenPayload,
+  FocusToolbarStartPayload,
+  FocusToolbarRecordingResult
+} from '@shared/focus-toolbar';
 
 export const screenRecorderApi = {
   recording: {
     getCaptureSources: (): Promise<CaptureSource[]> =>
       ipcRenderer.invoke(IpcChannels.GetCaptureSources),
+    /** Whether getDisplayMedia() can hand off to the native macOS 15+ ScreenCaptureKit picker. */
+    supportsNativeSystemPicker: (): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.GetNativePickerSupport),
     start: (request: RecordingRequest): Promise<RecordingSession> =>
       ipcRenderer.invoke(IpcChannels.StartRecording, request),
     stop: (): Promise<void> => ipcRenderer.invoke(IpcChannels.StopRecording),
@@ -142,6 +150,43 @@ export const screenRecorderApi = {
     complete: (payload: RegionSelectCompletePayload): void =>
       ipcRenderer.send(IpcChannels.RegionSelectComplete, payload),
     cancel: (): void => ipcRenderer.send(IpcChannels.RegionSelectCancel)
+  },
+  focusToolbar: {
+    /** Called by the main window when a source is double-clicked. */
+    open: (payload: FocusToolbarOpenPayload): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.FocusToolbarOpen, payload),
+    /** Called by the toolbar window itself (Esc / close button). */
+    cancel: (): void => ipcRenderer.send(IpcChannels.FocusToolbarCancel),
+    /** Called by the toolbar window's Start Recording button. */
+    requestStart: (payload: FocusToolbarStartPayload): void =>
+      ipcRenderer.send(IpcChannels.FocusToolbarStart, payload),
+    /** Called by the toolbar window's Stop button once recording. */
+    requestStop: (): void => ipcRenderer.send(IpcChannels.FocusToolbarStop),
+    /** Called by the main window once its start attempt settles. */
+    reportRecordingStarted: (result: FocusToolbarRecordingResult): void =>
+      ipcRenderer.send(IpcChannels.FocusToolbarRecordingStarted, result),
+    /** Called by the main window once stop/save/editor-navigate finishes. */
+    reportRecordingStopped: (): void => ipcRenderer.send(IpcChannels.FocusToolbarRecordingStopped),
+    /** Main window: the toolbar wants a recording started with this config. */
+    onStartRequested: (callback: (payload: FocusToolbarStartPayload) => void): (() => void) => {
+      const listener = (_event: unknown, payload: FocusToolbarStartPayload): void =>
+        callback(payload);
+      ipcRenderer.on(IpcChannels.FocusToolbarStartRequested, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.FocusToolbarStartRequested, listener);
+    },
+    /** Main window: the toolbar's Stop button was clicked. */
+    onStopRequested: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.FocusToolbarStopRequested, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.FocusToolbarStopRequested, listener);
+    },
+    /** Toolbar window: whether the main window's start attempt succeeded. */
+    onRecordingResult: (callback: (result: FocusToolbarRecordingResult) => void): (() => void) => {
+      const listener = (_event: unknown, result: FocusToolbarRecordingResult): void =>
+        callback(result);
+      ipcRenderer.on(IpcChannels.FocusToolbarRecordingStarted, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.FocusToolbarRecordingStarted, listener);
+    }
   }
 };
 

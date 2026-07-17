@@ -7,6 +7,7 @@ import { registerPermissionsHandlers } from './permissions-handlers';
 import { registerDialogHandlers } from './dialog-handlers';
 import { registerSimulatorHandlers } from './simulator-handlers';
 import { registerRegionHandlers } from './region-handlers';
+import { registerFocusToolbarHandlers } from '../windows/focus-toolbar-window';
 
 export function registerIpcHandlers(): void {
   registerRecordingHandlers();
@@ -18,4 +19,5 @@ export function registerIpcHandlers(): void {
   registerDialogHandlers();
   registerSimulatorHandlers();
   registerRegionHandlers();
+  registerFocusToolbarHandlers();
 }

@@ -172,6 +172,11 @@ body {
     color 0.15s ease;
 }
 
+@utility bg-dotted {
+  background-image: radial-gradient(circle at 1px 1px, var(--color-surface-3) 1px, #0000 0);
+  background-size: 16px 16px;
+}
+
 /* Titlebar dragging configurations */
 .titlebar-drag {
   -webkit-app-region: drag;

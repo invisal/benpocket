@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
@@ -20,6 +20,13 @@ import { registerDisplayMediaHandler } from './screen-recorder/security/display-
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
 import { registerNotificationHandlers } from './notification-handlers';
+
+// Native (Chromium-built) right-click menu is suppressed by default so it
+// doesn't clash with the app's custom context menus — except on editable
+// fields, which always get Cut/Copy/Paste/Select All since nothing else
+// provides that. The debug toggle (StatusBar) additionally enables the menu
+// everywhere else, plus "Inspect Element".
+let nativeContextMenuEnabled = false;
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -44,6 +51,39 @@ function createWindow(): BrowserWindow {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
     return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    // Chromium doesn't build a menu on its own for plain (non-editable)
+    // areas, and never offers "Inspect Element" unless we ask for it — so
+    // when the debug toggle is on, construct one ourselves instead of
+    // relying on Chromium's default. Editable fields always get their menu,
+    // debug toggle or not, since there's no other way to Cut/Copy/Paste.
+    event.preventDefault();
+
+    const template: Electron.MenuItemConstructorOptions[] = [];
+
+    if (params.isEditable) {
+      template.push(
+        { label: 'Cut', role: 'cut', enabled: params.editFlags.canCut },
+        { label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy },
+        { label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste },
+        { type: 'separator' },
+        { label: 'Select All', role: 'selectAll' }
+      );
+    } else if (nativeContextMenuEnabled && params.selectionText) {
+      template.push({ label: 'Copy', role: 'copy' });
+    }
+
+    if (nativeContextMenuEnabled) {
+      if (template.length > 0) template.push({ type: 'separator' });
+      template.push({
+        label: 'Inspect Element',
+        click: () => mainWindow.webContents.inspectElement(params.x, params.y)
+      });
+    }
+
+    if (template.length > 0) Menu.buildFromTemplate(template).popup({ window: mainWindow });
   });
 
   // HMR for renderer base on electron-vite cli.
@@ -101,6 +141,17 @@ app.whenReady().then(() => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.close();
   });
+
+  ipcMain.handle('debug:toggle-devtools', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.webContents.toggleDevTools();
+  });
+
+  ipcMain.handle('debug:toggle-context-menu', () => {
+    nativeContextMenuEnabled = !nativeContextMenuEnabled;
+    return nativeContextMenuEnabled;
+  });
+
+  ipcMain.handle('debug:get-context-menu-enabled', () => nativeContextMenuEnabled);
 
   ipcMain.handle('open-directory', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);

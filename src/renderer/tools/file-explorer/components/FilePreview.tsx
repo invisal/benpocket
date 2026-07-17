@@ -35,7 +35,11 @@ function getExtension(filePath: string): string {
 
 function PreviewMessage({ children }: { children: ReactNode }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center">
+    <div
+      className={
+        'flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center bg-dotted'
+      }
+    >
       <FileText size={20} className="text-zinc-600" />
       <span>{children}</span>
     </div>
@@ -87,6 +91,7 @@ const TextFileEditor = forwardRef<
     | { status: 'loading' }
     | { status: 'ready'; original: string; content: string }
     | { status: 'error'; message: string }
+    | { status: 'unsupported'; message: string }
   >({ status: 'loading' });
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -107,7 +112,7 @@ const TextFileEditor = forwardRef<
           message: `This file is too large to preview (${formatBytes(res.maxBytes)} limit).`
         });
       } else if (res.error === 'unsupported-extension') {
-        setState({ status: 'error', message: 'Preview not available for this file.' });
+        setState({ status: 'unsupported', message: 'Preview not available for this file.' });
       } else {
         setState({ status: 'error', message: `Couldn't read this file: ${res.error}` });
       }
@@ -148,6 +153,10 @@ const TextFileEditor = forwardRef<
         <Loader2 size={20} className="animate-spin" />
       </div>
     );
+  }
+
+  if (state.status === 'unsupported') {
+    return <PreviewMessage>{state.message}</PreviewMessage>;
   }
 
   if (state.status === 'error') {

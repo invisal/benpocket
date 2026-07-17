@@ -29,6 +29,11 @@ declare global {
         tree: FileTreeNode | null;
       } | null>;
       showNotification: (title: string, body: string) => Promise<boolean>;
+      debug: {
+        toggleDevTools: () => Promise<void>;
+        toggleContextMenu: () => Promise<boolean>;
+        getContextMenuEnabled: () => Promise<boolean>;
+      };
     } & PostmanBridge;
   }
 }

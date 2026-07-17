@@ -17,6 +17,12 @@ const api = {
   openDirectory: () => ipcRenderer.invoke('open-directory'),
   showNotification: (title: string, body: string): Promise<boolean> =>
     ipcRenderer.invoke(IpcChannels.ShowNotification, title, body),
+  debug: {
+    toggleDevTools: (): Promise<void> => ipcRenderer.invoke('debug:toggle-devtools'),
+    toggleContextMenu: (): Promise<boolean> => ipcRenderer.invoke('debug:toggle-context-menu'),
+    getContextMenuEnabled: (): Promise<boolean> =>
+      ipcRenderer.invoke('debug:get-context-menu-enabled')
+  },
   ...postmanApi
 };
 

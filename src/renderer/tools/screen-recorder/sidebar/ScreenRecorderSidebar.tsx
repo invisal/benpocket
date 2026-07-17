@@ -12,7 +12,15 @@ export const ScreenRecorderSidebar: React.FC = () => {
   const { error } = useRecordingControllerContext();
   async function handleNewRecord(): Promise<void> {
     const sources = await window.screenRecorder.recording.getCaptureSources();
-    const defaultSource = sources.find((s) => s.type === 'screen') ?? sources[0];
+    // Prefer the primary display -- desktopCapturer doesn't enumerate
+    // screens in any guaranteed order, so falling back to "the first screen
+    // source" would otherwise flip to whichever monitor the OS happened to
+    // list first (e.g. a newly-connected external one) rather than actually
+    // meaning "the main screen".
+    const defaultSource =
+      sources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ??
+      sources.find((s) => s.type === 'screen') ??
+      sources[0];
     if (defaultSource) await openFocusToolbarFor(defaultSource);
   }
   const disabled = route === 'editor' || isRecording;

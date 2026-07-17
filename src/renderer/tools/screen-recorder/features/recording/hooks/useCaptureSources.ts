@@ -49,7 +49,14 @@ export function useCaptureSources(): UseCaptureSourcesResult {
       .then(([nextSources, nextBootedSimulatorName]) => {
         setSources(nextSources);
         setBootedSimulatorName(nextBootedSimulatorName);
-        if (!selectedSource && nextSources.length > 0) setSelectedSource(nextSources[0]);
+        if (!selectedSource && nextSources.length > 0) {
+          // Prefer the primary display over "whichever screen source
+          // desktopCapturer happened to list first" -- see
+          // CaptureSource.isPrimaryDisplay.
+          const defaultSource =
+            nextSources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ?? nextSources[0];
+          setSelectedSource(defaultSource);
+        }
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));

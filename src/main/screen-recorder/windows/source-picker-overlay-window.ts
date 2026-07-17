@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
 import type {
@@ -7,7 +7,6 @@ import type {
 } from '@shared/source-picker-overlay';
 import { preloadScriptPath } from '../lib/preload-path';
 import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
-import { getVirtualDesktopBounds } from './region-select-window';
 
 let overlayWindow: BrowserWindow | null = null;
 // The focus-toolbar window that requested the overlay -- hidden while it's
@@ -15,6 +14,20 @@ let overlayWindow: BrowserWindow | null = null;
 // gets relayed back to, since it owns the audio/webcam config a pick needs
 // to actually start a recording.
 let toolbarWindow: BrowserWindow | null = null;
+
+/**
+ * The display to open the overlay on -- wherever the cursor actually is
+ * right now, since that's the one piece of state that reliably tells us
+ * which monitor the user is currently looking at (they just clicked
+ * Display/Window on the toolbar with the mouse). Previously this window
+ * spanned every connected display at once, but macOS/Electron was only
+ * actually rendering its content on one of them -- and not consistently the
+ * one the user was on -- so a "click any monitor" overlay silently became
+ * "the overlay only works on whichever monitor happens to win that render".
+ */
+function getCurrentDisplay(): Display {
+  return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+}
 
 function loadOverlayPage(win: BrowserWindow, init: SourcePickerOverlayInit): void {
   const query = JSON.stringify(init);
@@ -31,8 +44,8 @@ function loadOverlayPage(win: BrowserWindow, init: SourcePickerOverlayInit): voi
   });
 }
 
-function createOverlayWindow(): BrowserWindow {
-  const bounds = getVirtualDesktopBounds();
+function createOverlayWindow(display: Display): BrowserWindow {
+  const { bounds } = display;
 
   const win = new BrowserWindow({
     x: bounds.x,
@@ -48,15 +61,6 @@ function createOverlayWindow(): BrowserWindow {
     hasShadow: false,
     show: false,
     backgroundColor: '#00000000',
-    // Without this, macOS silently clamps a window's bounds to fit within
-    // a single display -- fatal here since `bounds` spans the whole
-    // multi-monitor virtual desktop (see region-select-window.ts, which
-    // needs the exact same flag for the exact same reason). Without it,
-    // every display past the first renders outside the (clamped) window
-    // and its panel is just never shown.
-    ...(process.platform === 'darwin'
-      ? { enableLargerThanScreen: true, roundedCorners: false }
-      : {}),
     webPreferences: {
       preload: preloadScriptPath(),
       sandbox: false,
@@ -86,12 +90,24 @@ async function openSourcePickerOverlay(
 
   await hideCaptureWindow(toolbar, { mainOnly: true });
 
-  if (!overlayWindow) overlayWindow = createOverlayWindow();
+  // Re-resolved on every open (not just at creation) -- the cursor, and so
+  // the "current" display, can easily be on a different monitor from the
+  // last time this overlay was shown, and the window is reused rather than
+  // recreated.
+  const display = getCurrentDisplay();
+  if (!overlayWindow) {
+    overlayWindow = createOverlayWindow(display);
+  } else {
+    overlayWindow.setBounds(display.bounds);
+  }
   const win = overlayWindow;
   win.once('ready-to-show', () => win.show());
 
-  const bounds = getVirtualDesktopBounds();
-  loadOverlayPage(win, { ...options, origin: { x: bounds.x, y: bounds.y } });
+  loadOverlayPage(win, {
+    ...options,
+    origin: { x: display.bounds.x, y: display.bounds.y },
+    targetDisplayId: String(display.id)
+  });
 }
 
 /** Tears down the overlay and brings the toolbar back. */

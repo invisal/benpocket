@@ -18,8 +18,26 @@ import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
 // Recording) without a per-source filmstrip -- that's the one element here
 // that scales with user data (could be a dozen windows) rather than a fixed
 // label set, so it isn't rendered at all now rather than fought over width.
+// Taller than the pill itself needs (it's bottom-anchored within this via
+// `justify-end`, see FocusToolbarApp.tsx) -- the Camera/Device popovers open
+// upward from the pill and, since this window is transparent/fixed-size
+// with nothing else to clip against, any room they need has to already
+// exist inside these bounds or Base UI's collision handling just shrinks
+// them into an unusably short scroll area instead of actually being cut off
+// invisibly. The extra space above the pill stays fully transparent when no
+// popover is open, so this is a no-op visually until one opens.
 const TOOLBAR_WIDTH = 880;
-const TOOLBAR_HEIGHT = 110;
+const TOOLBAR_HEIGHT = 280;
+// What TOOLBAR_HEIGHT was before popovers needed headroom above the pill --
+// still the right anchor for the "tucked below the target" placement below,
+// since the pill sits flush against the window's *bottom* edge either way.
+// The bottom-center and "above" placements don't need this: both already
+// derive their y from `-TOOLBAR_HEIGHT`, which cancels back out once you
+// add TOOLBAR_HEIGHT to find the window's bottom edge, so growing the
+// constant doesn't move their pill. "below" computes y (the window's *top*)
+// directly instead, so without this offset the pill would drift down by the
+// exact amount of headroom added.
+const PILL_FOOTER_HEIGHT = 110;
 const BOTTOM_MARGIN = 48;
 const GAP_FROM_TARGET = 16;
 
@@ -94,7 +112,7 @@ function computePosition(): { x: number; y: number } {
   const maxX = display.workArea.x + display.workArea.width - TOOLBAR_WIDTH;
   const x = Math.round(Math.min(Math.max(centeredX, minX), maxX));
 
-  const belowY = target.y + target.height + GAP_FROM_TARGET;
+  const belowY = target.y + target.height + GAP_FROM_TARGET - (TOOLBAR_HEIGHT - PILL_FOOTER_HEIGHT);
   const fitsBelow = belowY + TOOLBAR_HEIGHT <= display.workArea.y + display.workArea.height;
   const y = Math.round(
     fitsBelow ? belowY : Math.max(display.workArea.y, target.y - TOOLBAR_HEIGHT - GAP_FROM_TARGET)

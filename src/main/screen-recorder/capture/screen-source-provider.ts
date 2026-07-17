@@ -23,6 +23,7 @@ export async function listCaptureSources(): Promise<CaptureSource[]> {
   // the previous version of this code had exactly that bug.
   const displays = screen.getAllDisplays();
   const usedDisplayIds = new Set<number>();
+  const primaryDisplayId = screen.getPrimaryDisplay().id;
 
   // If a Simulator is booted, its window source gets tagged with real
   // on-screen bounds (see window-bounds.ts) so it gets the same cursor/click
@@ -59,7 +60,8 @@ export async function listCaptureSources(): Promise<CaptureSource[]> {
       type,
       thumbnailDataUrl: source.thumbnail.toDataURL(),
       displayId: display ? String(display.id) : undefined,
-      displayBounds: display?.bounds
+      displayBounds: display?.bounds,
+      isPrimaryDisplay: display ? display.id === primaryDisplayId : undefined
     };
   });
 

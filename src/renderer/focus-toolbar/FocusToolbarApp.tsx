@@ -6,12 +6,14 @@ import {
   Mic,
   MicOff,
   Monitor,
+  Smartphone,
   Square,
   Video,
   VideoOff,
   X
 } from 'lucide-react';
 import { cn } from 'cnfast';
+import { Popover } from '@renderer/components/ui/Popover';
 import type {
   AudioInputOptions,
   CaptureSource,
@@ -90,7 +92,12 @@ export function FocusToolbarApp(): JSX.Element | null {
   const [activeTab, setActiveTab] = useState<CaptureTargetType | null>(null);
   const [mode, setMode] = useState<Mode>('setup');
   const [error, setError] = useState<string | null>(null);
-  const [openPopover, setOpenPopover] = useState<'camera' | null>(null);
+  const [openPopover, setOpenPopover] = useState<'camera' | 'device' | null>(null);
+  // Which device kind the user picked via the Device popover below, purely
+  // to highlight the right label on the button -- the actual selection lives
+  // in sourceId/cropRegion like every other pick.
+  const [selectedDevice, setSelectedDevice] = useState<'simulator' | 'emulator' | null>(null);
+  const [bootedSimulatorName, setBootedSimulatorName] = useState<string | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -99,6 +106,17 @@ export function FocusToolbarApp(): JSX.Element | null {
       .getCaptureSources()
       .then(setSources)
       .catch(() => setSources([]));
+  }, []);
+
+  // Same booted-Simulator lookup the main window's SourcePicker uses (see
+  // simulator-detection.ts) -- reused here rather than re-implemented, just
+  // to know its device name so we can match it against the window sources
+  // above and light up the Device popover's Simulator option.
+  useEffect(() => {
+    window.screenRecorder.simulator
+      .getBootedName()
+      .then(setBootedSimulatorName)
+      .catch(() => setBootedSimulatorName(null));
   }, []);
 
   useEffect(
@@ -133,6 +151,7 @@ export function FocusToolbarApp(): JSX.Element | null {
         setSourceId(source.id);
         setCropRegion(null);
         setActiveTab(source.type);
+        setSelectedDevice(null);
         startRecording(source);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,6 +179,31 @@ export function FocusToolbarApp(): JSX.Element | null {
 
   const focusedSource = sources.find((s) => s.id === sourceId) ?? null;
 
+  // No on-screen position for either, same as any other 'window' source --
+  // matched purely by name against the window list, same heuristic
+  // screen-source-provider.ts already uses for the Simulator. There's no
+  // adb-based detection for the emulator (nothing else in this codebase
+  // shells out to adb), so it's just a name match against Android Studio's
+  // emulator window title.
+  const simulatorSource = sources.find(
+    (s) =>
+      s.type === 'window' && bootedSimulatorName !== null && s.name.includes(bootedSimulatorName)
+  );
+  const emulatorSource = sources.find((s) => s.type === 'window' && /emulator/i.test(s.name));
+
+  // Device popover picks: unlike the Display/Window tabs, there's no overlay
+  // step -- a booted Simulator/Emulator is a single known window, so picking
+  // it here both selects and highlights it directly (Record still needs an
+  // explicit click, same as picking any other source).
+  function pickDevice(kind: 'simulator' | 'emulator', source: CaptureSource | undefined): void {
+    if (!source) return;
+    setSourceId(source.id);
+    setCropRegion(null);
+    setActiveTab(null);
+    setSelectedDevice(kind);
+    setOpenPopover(null);
+  }
+
   // Drag-select a sub-rectangle of a display to record instead of the whole
   // thing. Reuses the same fullscreen overlay window Screen Capture's region
   // screenshot flow uses (main/screen-recorder/windows/region-select-window.ts)
@@ -177,8 +221,9 @@ export function FocusToolbarApp(): JSX.Element | null {
         setSourceId(screenSource.id);
         setCropRegion(selection);
         // Area has its own highlight (driven by cropRegion) -- clear
-        // Display/Window's so only one control ever reads as active.
+        // Display/Window's and Device's so only one control ever reads as active.
         setActiveTab(null);
+        setSelectedDevice(null);
         setOpenPopover(null);
       }
     } finally {
@@ -280,6 +325,7 @@ export function FocusToolbarApp(): JSX.Element | null {
               key={type}
               onClick={() => {
                 setActiveTab(type);
+                setSelectedDevice(null);
                 void openSourcePicker(type);
               }}
               className={cn(
@@ -311,29 +357,80 @@ export function FocusToolbarApp(): JSX.Element | null {
               ? `${Math.round(cropRegion.rect.width)}×${Math.round(cropRegion.rect.height)}`
               : 'Area'}
           </button>
-        </div>
 
-        <div className="relative flex items-center gap-1 border-r border-white/10 px-1.5">
-          <button
-            onClick={() => setOpenPopover(openPopover === 'camera' ? null : 'camera')}
-            className={cn(
-              NO_DRAG,
-              'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
-              webcam.enabled
-                ? 'bg-white/15 text-white'
-                : 'text-white/50 hover:bg-white/10 hover:text-white/80'
-            )}
+          <Popover.Root
+            open={openPopover === 'device'}
+            onOpenChange={(open) => setOpenPopover(open ? 'device' : null)}
           >
-            {webcam.enabled ? <Video size={14} /> : <VideoOff size={14} />}
-            {webcam.enabled ? 'Camera on' : 'Camera off'}
-          </button>
-
-          {openPopover === 'camera' && (
-            <div
+            <Popover.Trigger
+              title="Record a booted iOS Simulator or Android Emulator"
               className={cn(
                 NO_DRAG,
-                'absolute bottom-full left-0 mb-2 w-48 rounded-xl border border-white/10 bg-zinc-900 p-3 shadow-2xl'
+                'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
+                selectedDevice
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/50 hover:bg-white/10 hover:text-white/80'
               )}
+            >
+              <Smartphone size={15} />
+              {selectedDevice === 'simulator'
+                ? 'Simulator'
+                : selectedDevice === 'emulator'
+                  ? 'Emulator'
+                  : 'Device'}
+            </Popover.Trigger>
+
+            <Popover.Content
+              side="top"
+              align="start"
+              className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-1.5 text-white')}
+            >
+              <button
+                onClick={() => pickDevice('simulator', simulatorSource)}
+                disabled={!simulatorSource}
+                className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                Simulator
+                <span className="text-[10px] text-white/40">
+                  {simulatorSource ? bootedSimulatorName : 'None booted'}
+                </span>
+              </button>
+              <button
+                onClick={() => pickDevice('emulator', emulatorSource)}
+                disabled={!emulatorSource}
+                className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                Emulator
+                <span className="text-[10px] text-white/40">
+                  {emulatorSource ? emulatorSource.name : 'None running'}
+                </span>
+              </button>
+            </Popover.Content>
+          </Popover.Root>
+        </div>
+
+        <div className="flex items-center gap-1 border-r border-white/10 px-1.5">
+          <Popover.Root
+            open={openPopover === 'camera'}
+            onOpenChange={(open) => setOpenPopover(open ? 'camera' : null)}
+          >
+            <Popover.Trigger
+              className={cn(
+                NO_DRAG,
+                'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
+                webcam.enabled
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+              )}
+            >
+              {webcam.enabled ? <Video size={14} /> : <VideoOff size={14} />}
+              {webcam.enabled ? 'Camera on' : 'Camera off'}
+            </Popover.Trigger>
+
+            <Popover.Content
+              side="top"
+              align="start"
+              className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-3 text-white')}
             >
               <label className="mb-2 flex items-center gap-2 text-xs text-white/80">
                 <input
@@ -373,8 +470,8 @@ export function FocusToolbarApp(): JSX.Element | null {
                   </label>
                 </div>
               )}
-            </div>
-          )}
+            </Popover.Content>
+          </Popover.Root>
         </div>
 
         <button

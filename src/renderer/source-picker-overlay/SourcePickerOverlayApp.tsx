@@ -13,19 +13,23 @@ function parseInit(): SourcePickerOverlayInit | null {
 }
 
 /**
- * Full-desktop click-to-record overlay opened from the focus toolbar's
+ * Single-display click-to-record overlay opened from the focus toolbar's
  * Display/Window tabs (see main/screen-recorder/windows/
- * source-picker-overlay-window.ts). Clicking a panel/card both picks that
- * source and starts recording it immediately -- there's no separate
- * "confirm" step, matching how the native macOS recorder's window-select
- * mode works.
+ * source-picker-overlay-window.ts) -- scoped to whichever display the
+ * cursor was on when it opened (init.targetDisplayId). Clicking a
+ * panel/card both picks that source and starts recording it immediately --
+ * there's no separate "confirm" step, matching how the native macOS
+ * recorder's window-select mode works.
  *
- * 'screen' sources get a real per-display panel, positioned exactly on that
- * display via CaptureSource.displayBounds (always resolved for screens).
+ * 'screen' gets one real panel, positioned exactly on the target display via
+ * CaptureSource.displayBounds (always resolved for screens) -- filtered to
+ * that one display rather than trusting every screen source's bounds to
+ * land somewhere visible inside this now single-display-sized window.
  * 'window' sources have no resolvable on-screen position (desktopCapturer
  * doesn't expose one for arbitrary windows -- see the many other comments
  * on this across the codebase), so those fall back to a thumbnail grid
- * instead of a true per-window overlay.
+ * instead of a true per-window overlay -- unfiltered, since there's no way
+ * to tell which display an arbitrary window is actually on.
  */
 export function SourcePickerOverlayApp(): JSX.Element | null {
   const init = useMemo(() => parseInit(), []);
@@ -52,7 +56,9 @@ export function SourcePickerOverlayApp(): JSX.Element | null {
     window.screenRecorder.sourcePickerOverlay.pick(source.id);
   }
 
-  const matching = sources.filter((s) => s.type === init.type);
+  const matching = sources.filter(
+    (s) => s.type === init.type && (s.type !== 'screen' || s.displayId === init.targetDisplayId)
+  );
 
   return (
     <div

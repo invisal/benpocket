@@ -9,6 +9,7 @@ interface KubeTableRowProps<T> {
   onRowClick?: (row: T) => void;
   selectedRowKey?: string | number;
   colWidths: Record<string, number>;
+  resizable?: boolean;
 }
 
 export function KubeTableRow<T>({
@@ -17,7 +18,8 @@ export function KubeTableRow<T>({
   getRowKey,
   onRowClick,
   selectedRowKey,
-  colWidths
+  colWidths,
+  resizable
 }: KubeTableRowProps<T>) {
   const key = getRowKey(row);
   const isSelected = selectedRowKey !== undefined && selectedRowKey === key;
@@ -32,7 +34,13 @@ export function KubeTableRow<T>({
       )}
     >
       {columns.map((col) => (
-        <KubeTableCell<T> key={col.key} row={row} col={col} colWidth={colWidths[col.key]} />
+        <KubeTableCell<T>
+          key={col.key}
+          row={row}
+          col={col}
+          colWidth={colWidths[col.key]}
+          resizable={resizable}
+        />
       ))}
     </tr>
   );

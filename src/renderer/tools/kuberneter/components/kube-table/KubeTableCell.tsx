@@ -6,9 +6,10 @@ interface KubeTableCellProps<T> {
   row: T;
   col: Column<T>;
   colWidth: number | undefined;
+  resizable?: boolean;
 }
 
-export function KubeTableCell<T>({ row, col, colWidth }: KubeTableCellProps<T>) {
+export function KubeTableCell<T>({ row, col, colWidth, resizable = true }: KubeTableCellProps<T>) {
   const alignClass =
     col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left';
 
@@ -24,7 +25,10 @@ export function KubeTableCell<T>({ row, col, colWidth }: KubeTableCellProps<T>) 
       )}
       style={{ height: ROW_HEIGHT }}
     >
-      <div className="truncate" style={colWidth !== undefined ? { maxWidth: colWidth } : undefined}>
+      <div
+        className="truncate"
+        style={resizable && colWidth !== undefined ? { maxWidth: colWidth } : undefined}
+      >
         {content}
       </div>
     </td>

@@ -32,4 +32,7 @@ export interface KubeTableProps<T> {
   resizable?: boolean;
   /** Whether to render a top border on the table. Default: true */
   borderTop?: boolean;
+  showHeader?: boolean;
+  renderRowExpansion?: (row: T) => React.ReactNode;
+  expandedRowKeys?: Set<string | number>;
 }

@@ -1,5 +1,6 @@
 import type React from 'react';
 import { type ReplicaSetData } from '../../../types/ReplicaSetData';
+import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
 interface ReplicaSetDetailProps {
   payload: ReplicaSetData;
@@ -11,40 +12,36 @@ export const ReplicaSetDetail: React.FC<ReplicaSetDetailProps> = ({ payload, isT
     return <div className="p-4 text-xs text-zinc-500">No replica set details available.</div>;
   }
 
+  const propertiesData: PropertyItem[] = [
+    {
+      id: 'name',
+      name: 'Name',
+      value: payload.name
+    },
+    {
+      id: 'namespace',
+      name: 'Namespace',
+      value: payload.ns
+    },
+    {
+      id: 'replicas',
+      name: 'Desired / Current / Ready',
+      value: `Desired: ${payload.desired} | Current: ${payload.current} | Ready: ${payload.ready}`
+    },
+    {
+      id: 'status',
+      name: 'Status / Age',
+      value: `${payload.hasWarning ? 'Warning (Replica mismatch)' : 'OK'} (${payload.age})`
+    }
+  ];
+
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
-      <div className="flex flex-col gap-2.5 text-xs text-zinc-350">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Resource Name</span>
-          <span className="font-mono text-zinc-200 break-all">{payload.name}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Namespace</span>
-          <span className="font-mono text-zinc-300">{payload.ns}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Desired / Current / Ready</span>
-          <span className="font-mono text-zinc-300 border border-border-dark/30 rounded p-1.5 bg-surface-2 flex flex-col gap-1 mt-1">
-            <div className="flex justify-between">
-              <span>Desired:</span>
-              <span className="text-zinc-100">{payload.desired}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Current:</span>
-              <span className="text-zinc-100">{payload.current}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Ready:</span>
-              <span className="text-zinc-100">{payload.ready}</span>
-            </div>
-          </span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Warning State / Age</span>
-          <span className="font-mono text-zinc-300">
-            {payload.hasWarning ? 'Warning (Replica mismatch)' : 'OK'} ({payload.age})
-          </span>
-        </div>
+      <div className="flex flex-col gap-2.5 mt-1">
+        <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
+          Properties
+        </span>
+        <KubePropertiesTable properties={propertiesData} />
       </div>
 
       {/* Event Logs Drawer Mockup */}

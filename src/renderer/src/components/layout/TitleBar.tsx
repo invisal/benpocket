@@ -23,7 +23,7 @@ export const TitleBar: React.FC = () => {
   };
 
   return (
-    <div className="titlebar-drag h-8 bg-sidebar-bg border-b border-border-dark flex items-center justify-between text-xs text-text-dim select-none px-2 z-50 shrink-0">
+    <div className="titlebar-drag h-8 bg-surface-2 border-b border-border flex items-center justify-between text-xs text-text-dim select-none px-2 z-50 shrink-0">
       {/* Left side: macOS Traffic Lights Spacing or App Icon/Menu */}
       {isMac ? (
         <div className="w-20" /> /* Spacer for native macOS traffic lights */

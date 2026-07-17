@@ -18,6 +18,10 @@ import { LeaseDetail } from './LeaseDetail';
 import { ServiceDetail } from './ServiceDetail';
 import { MutatingWebhookDetail } from './MutatingWebhookDetail';
 import { ValidatingWebhookDetail } from './ValidatingWebhookDetail';
+import { EndpointSliceDetail } from './EndpointSliceDetail';
+import { EndpointDetail } from './EndpointDetail';
+import { IngressDetail } from './IngressDetail';
+import { IngressClassDetail } from './IngressClassDetail';
 
 import { type PodData } from '../../../types/PodData';
 import { type DeployData } from '../../../types/DeployData';
@@ -38,6 +42,10 @@ import { type LeaseData } from '../../../types/LeaseData';
 import { type ServiceData } from '../../../types/ServiceData';
 import { type MutatingWebhookConfigurationData } from '../../../types/MutatingWebhookConfigurationData';
 import { type ValidatingWebhookConfigurationData } from '../../../types/ValidatingWebhookConfigurationData';
+import { type EndpointSliceData } from '../../../types/EndpointSliceData';
+import { type EndpointData } from '../../../types/EndpointData';
+import { type IngressData } from '../../../types/IngressData';
+import { type IngressClassData } from '../../../types/IngressClassData';
 
 interface DetailContentProps {
   contentType: string;
@@ -92,6 +100,14 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       return <LeaseDetail payload={payload as LeaseData} isTab={isTab} />;
     case 'service':
       return <ServiceDetail payload={payload as ServiceData} isTab={isTab} />;
+    case 'endpointslice':
+      return <EndpointSliceDetail payload={payload as EndpointSliceData} isTab={isTab} />;
+    case 'endpoints':
+      return <EndpointDetail payload={payload as EndpointData} isTab={isTab} />;
+    case 'ingresses':
+      return <IngressDetail payload={payload as IngressData} isTab={isTab} />;
+    case 'ingressclasses':
+      return <IngressClassDetail payload={payload as IngressClassData} isTab={isTab} />;
     case 'mutatingwebhook':
       return (
         <MutatingWebhookDetail

@@ -1,14 +1,15 @@
 import { cn } from 'cnfast';
 import { type Column } from './types';
+import { ROW_HEIGHT } from './constants';
 
 interface KubeTableCellProps<T> {
   row: T;
   col: Column<T>;
   colWidth: number | undefined;
-  isModern: boolean;
+  resizable?: boolean;
 }
 
-export function KubeTableCell<T>({ row, col, colWidth, isModern }: KubeTableCellProps<T>) {
+export function KubeTableCell<T>({ row, col, colWidth, resizable = true }: KubeTableCellProps<T>) {
   const alignClass =
     col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left';
 
@@ -18,13 +19,16 @@ export function KubeTableCell<T>({ row, col, colWidth, isModern }: KubeTableCell
   return (
     <td
       className={cn(
-        'p-2 align-middle font-sans select-text overflow-hidden',
+        'px-2 align-middle font-sans select-text overflow-hidden border-none',
         alignClass,
-        isModern ? 'py-2.5 border-none' : 'border border-border/20',
         col.className
       )}
+      style={{ height: ROW_HEIGHT }}
     >
-      <div className="truncate" style={colWidth !== undefined ? { maxWidth: colWidth } : undefined}>
+      <div
+        className="truncate"
+        style={resizable && colWidth !== undefined ? { maxWidth: colWidth } : undefined}
+      >
         {content}
       </div>
     </td>

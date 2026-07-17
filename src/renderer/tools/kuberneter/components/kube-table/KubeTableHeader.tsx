@@ -2,11 +2,11 @@ import type React from 'react';
 import { cn } from 'cnfast';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { type Column } from './types';
+import { ROW_HEIGHT } from './constants';
 
 interface KubeTableHeaderProps<T> {
   columns: Column<T>[];
   colWidths: Record<string, number>;
-  isModern: boolean;
   hideHeaderWhenEmpty?: boolean;
   dataLength: number;
   resizable: boolean;
@@ -20,7 +20,6 @@ interface KubeTableHeaderProps<T> {
 export function KubeTableHeader<T>({
   columns,
   colWidths,
-  isModern,
   hideHeaderWhenEmpty,
   dataLength,
   resizable,
@@ -35,14 +34,7 @@ export function KubeTableHeader<T>({
   }
 
   return (
-    <thead
-      className={cn(
-        'sticky top-0 z-10',
-        isModern
-          ? 'bg-sidebar-bg text-zinc-455 text-[10px] font-bold uppercase tracking-wider'
-          : 'bg-surface-2 border border-border/20'
-      )}
-    >
+    <thead className="sticky top-0 z-10 bg-sidebar-bg text-zinc-455 text-[10px] font-bold uppercase tracking-wider">
       <tr>
         {columns.map((col) => {
           const alignClass =
@@ -60,14 +52,14 @@ export function KubeTableHeader<T>({
             <th
               key={col.key}
               className={cn(
-                'font-sans select-none relative group',
+                'font-sans select-none relative group bg-sidebar-bg px-3 text-zinc-400 font-semibold',
                 alignClass,
-                isModern
-                  ? 'bg-sidebar-bg py-2.5 px-3 text-zinc-400 font-semibold'
-                  : 'bg-surface-2 py-2.5 px-2',
                 col.headerClassName
               )}
-              style={resizable && colWidth !== undefined ? { width: colWidth } : undefined}
+              style={{
+                height: ROW_HEIGHT,
+                ...(resizable && colWidth !== undefined ? { width: colWidth } : undefined)
+              }}
             >
               <div
                 className="flex items-center gap-1.5 min-w-0"

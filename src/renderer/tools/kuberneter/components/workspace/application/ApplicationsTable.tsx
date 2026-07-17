@@ -42,7 +42,8 @@ export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
         headerClassName: 'w-10 text-center',
         className: 'w-10 text-center',
         initialWidth: 40,
-        resizable: false
+        resizable: false,
+        sortable: false
       },
       {
         key: 'instance',
@@ -149,7 +150,6 @@ export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="standard"
       className="flex-1"
       emptyMessage="No applications match the search filters."
     />

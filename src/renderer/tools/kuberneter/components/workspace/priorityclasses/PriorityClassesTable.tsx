@@ -45,7 +45,8 @@ export const PriorityClassesTable: React.FC<PriorityClassesTableProps> = ({
         headerClassName: 'w-10 text-center',
         className: 'w-10 text-center',
         initialWidth: 40,
-        resizable: false
+        resizable: false,
+        sortable: false
       },
       {
         key: 'name',
@@ -115,7 +116,6 @@ export const PriorityClassesTable: React.FC<PriorityClassesTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectPriorityClass(row)}
       selectedRowKey={selectedPriorityClassId}

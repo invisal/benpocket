@@ -2,6 +2,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { type SecretData } from '../../../types/SecretData';
 import { ChevronRight, ChevronDown, Copy, Check, FileKey, Eye, EyeOff } from 'lucide-react';
+import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
 interface SecretDetailProps {
   payload: SecretData;
@@ -48,62 +49,76 @@ export const SecretDetail: React.FC<SecretDetailProps> = ({ payload, isTab = fal
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
   const dataEntries = payload.data ? Object.entries(payload.data) : [];
 
+  const propertiesData: PropertyItem[] = [
+    {
+      id: 'created',
+      name: 'Created',
+      value: payload.age
+    },
+    {
+      id: 'name',
+      name: 'Name',
+      value: payload.name
+    },
+    {
+      id: 'namespace',
+      name: 'Namespace',
+      value: payload.ns
+    },
+    {
+      id: 'type',
+      name: 'Secret Type',
+      value: payload.type
+    },
+    {
+      id: 'labels',
+      name: 'Labels',
+      value: `${labels.length} Labels`,
+      hasDetail: labels.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {labels.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: 'annotations',
+      name: 'Annotations',
+      value: `${annotations.length} Annotations`,
+      hasDetail: annotations.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {annotations.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </span>
+          ))}
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
-      {/* Basic Metadata */}
-      <div className="flex flex-col gap-2.5 text-xs text-zinc-355">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Resource Name</span>
-          <span className="font-mono text-zinc-200 break-all">{payload.name}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Namespace</span>
-          <span className="font-mono text-zinc-300">{payload.ns}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Secret Type</span>
-          <span className="font-mono text-zinc-300">{payload.type}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-zinc-555 uppercase">Created / Age</span>
-          <span className="font-mono text-zinc-300">{payload.age}</span>
-        </div>
+      {/* Properties Section */}
+      <div className="flex flex-col gap-2.5 mt-1">
+        <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider mb-1">
+          Properties
+        </span>
+        <KubePropertiesTable properties={propertiesData} />
       </div>
-
-      {/* Labels */}
-      {labels.length > 0 && (
-        <div className="flex flex-col gap-1.5 border-t border-border-dark/60 pt-3">
-          <span className="text-[10px] font-bold text-zinc-455 uppercase">Labels</span>
-          <div className="flex flex-wrap gap-1">
-            {labels.map(([k, v]) => (
-              <span
-                key={k}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-2 border border-border text-zinc-300 break-all"
-              >
-                {k}: {v}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Annotations */}
-      {annotations.length > 0 && (
-        <div className="flex flex-col gap-1.5 border-t border-border-dark/60 pt-3">
-          <span className="text-[10px] font-bold text-zinc-455 uppercase">Annotations</span>
-          <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
-            {annotations.map(([k, v]) => (
-              <div
-                key={k}
-                className="text-[10px] font-mono bg-surface-2/40 border border-border/40 rounded p-1 text-zinc-400 break-all"
-              >
-                <div className="text-zinc-300 font-semibold">{k}</div>
-                <div className="mt-0.5 whitespace-pre-wrap select-text">{v}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Secret Data Keys */}
       <div className="flex flex-col gap-2.5 border-t border-border-dark/60 pt-3">

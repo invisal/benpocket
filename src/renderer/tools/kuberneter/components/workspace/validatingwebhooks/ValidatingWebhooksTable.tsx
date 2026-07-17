@@ -45,7 +45,8 @@ export const ValidatingWebhooksTable: React.FC<ValidatingWebhooksTableProps> = (
         headerClassName: 'w-10 text-center',
         className: 'w-10 text-center',
         initialWidth: 40,
-        resizable: false
+        resizable: false,
+        sortable: false
       },
       {
         key: 'name',
@@ -107,7 +108,6 @@ export const ValidatingWebhooksTable: React.FC<ValidatingWebhooksTableProps> = (
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectWebhook(row)}
       selectedRowKey={selectedWebhookId}

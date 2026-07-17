@@ -28,6 +28,9 @@ export interface ServiceData {
   age: string;
   createdTime: string;
   annotations?: Record<string, string>;
+  labels?: Record<string, string>;
+  controlledByName?: string;
+  controlledByKind?: string;
   finalizers?: string[];
   status: string; // "Active"
   hasWarning: boolean;

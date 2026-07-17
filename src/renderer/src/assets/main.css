@@ -10,11 +10,11 @@
   --color-text-dim: #a6adc8; /* Catppuccin Mocha Subtext 0 */
   --color-accent: #89b4fa; /* Catppuccin Mocha Blue */
   --color-danger: #f38ba8; /* Catppuccin Mocha Red */
-  --color-surface: #000000; /* base background, pure black */
-  --color-surface-2: #0e1016; /* elevation 1 — hover on surface */
-  --color-surface-3: #171a23; /* elevation 2 — hover on surface-2, selected on surface */
-  --color-surface-4: #222632; /* elevation 3 — selected on surface-2 */
-  --color-surface-5: #2a3040; /* elevation 4 — selected on surface-3 */
+  --color-surface: #1e1e1e; /* base background, VS Code editor tone */
+  --color-surface-2: #252526; /* elevation 1 — hover on surface, VS Code sidebar tone */
+  --color-surface-3: #2d2d2d; /* elevation 2 — hover on surface-2, selected on surface */
+  --color-surface-4: #383838; /* elevation 3 — selected on surface-2, VS Code inactive-selection tone */
+  --color-surface-5: #454545; /* elevation 4 — selected on surface-3, VS Code border tone */
   --color-border: var(--color-surface-4); /* hairline border against bg-surface */
   --color-surface-raised: var(
     --color-surface-2
@@ -26,6 +26,15 @@
   --color-scrollbar-track: #181825;
   --color-scrollbar-thumb: #313244;
   --color-scrollbar-thumb-hover: #45475a;
+
+  /* file-explorer: cast onto a panel's right edge so the content pane
+     beside it reads as elevated above the panel rather than flush with it.
+     Kept out of the `--shadow-*` theme namespace on purpose -- Tailwind
+     inlines those values into the generated utility at build time, which
+     would break the `:root.light` override below. Plain custom properties
+     don't have that problem, so `@utility shadow-panel-elevate` (below)
+     reads this one directly. */
+  --panel-elevate-shadow: inset -1px 0 4px -3px rgba(255, 255, 255, 0.5);
 
   /* screen-recorder: annotation entrance animations, see
      features/annotations/presets/text-animation-presets.ts */
@@ -90,6 +99,10 @@
   --color-scrollbar-track: #e6e9ef;
   --color-scrollbar-thumb: #ccd0da;
   --color-scrollbar-thumb-hover: #bcc0cc;
+
+  /* Softer than the dark-theme shadow -- light surfaces need less contrast
+     for the same "elevated" read. */
+  --panel-elevate-shadow: inset -1px 0 4px -3px rgba(0, 0, 0, 0.5);
 
   /* Many components reach for raw zinc-* utilities as an ad hoc text/bg
      hierarchy on top of the tokens above. Mirroring the scale (200<->800,
@@ -175,6 +188,10 @@ body {
 @utility bg-dotted {
   background-image: radial-gradient(circle at 1px 1px, var(--color-surface-3) 1px, #0000 0);
   background-size: 16px 16px;
+}
+
+@utility shadow-panel-elevate {
+  box-shadow: var(--panel-elevate-shadow);
 }
 
 /* Titlebar dragging configurations */

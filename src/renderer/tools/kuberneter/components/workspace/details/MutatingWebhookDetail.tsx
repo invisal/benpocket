@@ -1,6 +1,6 @@
 import type React from 'react';
-import { useState } from 'react';
 import { type MutatingWebhookConfigurationData } from '../../../types/MutatingWebhookConfigurationData';
+import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
 interface MutatingWebhookDetailProps {
   payload: MutatingWebhookConfigurationData;
@@ -11,9 +11,6 @@ export const MutatingWebhookDetail: React.FC<MutatingWebhookDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const [labelsExpanded, setLabelsExpanded] = useState(false);
-  const [annotationsExpanded, setAnnotationsExpanded] = useState(false);
-
   if (!payload) {
     return (
       <div className="p-4 text-xs text-zinc-500">
@@ -25,6 +22,62 @@ export const MutatingWebhookDetail: React.FC<MutatingWebhookDetailProps> = ({
   const labels = payload.labels ? Object.entries(payload.labels) : [];
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
 
+  const propertiesData: PropertyItem[] = [
+    {
+      id: 'created',
+      name: 'Created',
+      value: `${payload.age} ago (${payload.createdTime || 'N/A'})`
+    },
+    {
+      id: 'name',
+      name: 'Name',
+      value: payload.name
+    },
+    {
+      id: 'labels',
+      name: 'Labels',
+      value: `${labels.length} Labels`,
+      hasDetail: labels.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {labels.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: 'annotations',
+      name: 'Annotations',
+      value: `${annotations.length} Annotations`,
+      hasDetail: annotations.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {annotations.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: 'apiVersion',
+      name: 'API Version',
+      value: payload.apiVersion
+    }
+  ];
+
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
       {/* Properties Section */}
@@ -32,87 +85,12 @@ export const MutatingWebhookDetail: React.FC<MutatingWebhookDetailProps> = ({
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
           Properties
         </span>
-        <div className="flex flex-col gap-2.5 text-xs text-zinc-350 bg-surface-2/40 border border-border/40 rounded-lg p-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Created</span>
-            <span className="font-mono text-zinc-300">
-              {payload.age} ago ({payload.createdTime || 'N/A'})
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Name</span>
-            <span className="font-mono text-zinc-200 break-all">{payload.name}</span>
-          </div>
-
-          {/* Labels Collapsible */}
-          <div className="flex flex-col gap-0.5">
-            <div
-              className="flex justify-between items-center cursor-pointer select-none"
-              onClick={() => setLabelsExpanded(!labelsExpanded)}
-            >
-              <span className="text-[10px] text-zinc-555 uppercase flex items-center gap-1">
-                Labels
-                <span className="text-[9px] text-zinc-600 font-normal">
-                  {labelsExpanded ? '▲' : '▼'}
-                </span>
-              </span>
-              <span className="text-xs text-zinc-400 font-medium">{labels.length} Labels</span>
-            </div>
-            {labelsExpanded && labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5 max-h-24 overflow-y-auto">
-                {labels.map(([k, v]) => (
-                  <span
-                    key={k}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-300 break-all"
-                  >
-                    {k}: {v}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Annotations Collapsible */}
-          <div className="flex flex-col gap-0.5">
-            <div
-              className="flex justify-between items-center cursor-pointer select-none"
-              onClick={() => setAnnotationsExpanded(!annotationsExpanded)}
-            >
-              <span className="text-[10px] text-zinc-555 uppercase flex items-center gap-1">
-                Annotations
-                <span className="text-[9px] text-zinc-600 font-normal">
-                  {annotationsExpanded ? '▲' : '▼'}
-                </span>
-              </span>
-              <span className="text-xs text-zinc-400 font-medium">
-                {annotations.length} Annotations
-              </span>
-            </div>
-            {annotationsExpanded && annotations.length > 0 && (
-              <div className="flex flex-col gap-1 mt-1.5 max-h-32 overflow-y-auto pr-1 select-text">
-                {annotations.map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="font-mono text-[10px] text-zinc-400 bg-editor-bg px-2 py-1 rounded border border-border-dark/60 truncate"
-                    title={`${k}=${v}`}
-                  >
-                    {k}={v}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-0.5 border-t border-border/20 pt-2">
-            <span className="text-[10px] text-zinc-555 uppercase">API Version</span>
-            <span className="font-mono text-zinc-300">{payload.apiVersion}</span>
-          </div>
-        </div>
+        <KubePropertiesTable properties={propertiesData} />
       </div>
 
       {/* Webhooks List */}
       <div className="flex flex-col gap-2.5 mt-2">
-        <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
+        <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider mb-1">
           Webhooks
         </span>
         {payload.webhooks.length === 0 ? (

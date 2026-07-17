@@ -5,7 +5,7 @@ import {
   FilePreview,
   type PreviewEditorHandle,
   type PreviewUnavailableReason
-} from './components/FilePreview';
+} from './components/previews/FilePreview';
 import { FileExplorerSidebar } from './components/FileExplorerSidebar';
 import { Breadcrumb } from './components/Breadcrumb';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
@@ -187,7 +187,7 @@ function FileExplorerLayout() {
         onResize={setSidebarWidth}
         min={150}
         max={400}
-        className="bg-surface-2 border-r border-border-dark flex flex-col h-full p-3 overflow-y-auto"
+        className="bg-surface-2 flex flex-col h-full p-3 overflow-y-auto shadow-panel-elevate"
       >
         <FileExplorerSidebar />
       </ResizablePanel>

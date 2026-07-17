@@ -5,11 +5,11 @@ import { KubeTableCell } from './KubeTableCell';
 interface KubeTableRowProps<T> {
   row: T;
   columns: Column<T>[];
-  getRowKey: (row: T) => string | number;
+  getRowKey: (row: T, index?: number) => string | number;
   onRowClick?: (row: T) => void;
   selectedRowKey?: string | number;
   colWidths: Record<string, number>;
-  isModern: boolean;
+  resizable?: boolean;
 }
 
 export function KubeTableRow<T>({
@@ -19,7 +19,7 @@ export function KubeTableRow<T>({
   onRowClick,
   selectedRowKey,
   colWidths,
-  isModern
+  resizable
 }: KubeTableRowProps<T>) {
   const key = getRowKey(row);
   const isSelected = selectedRowKey !== undefined && selectedRowKey === key;
@@ -28,14 +28,9 @@ export function KubeTableRow<T>({
     <tr
       onClick={() => onRowClick?.(row)}
       className={cn(
-        'transition-colors duration-100',
+        'transition-colors duration-100 border-b border-border-dark/30 hover:bg-surface-2/45',
         onRowClick && 'cursor-pointer',
-        isModern
-          ? cn(
-              'hover:bg-surface-2/45 border-b border-border-dark/30 last:border-b-0',
-              isSelected && 'bg-surface-3/80 text-white font-medium'
-            )
-          : cn('hover:bg-border/20', isSelected && 'bg-border/30 text-zinc-150')
+        isSelected && 'bg-surface-3/80 text-white font-medium'
       )}
     >
       {columns.map((col) => (
@@ -44,7 +39,7 @@ export function KubeTableRow<T>({
           row={row}
           col={col}
           colWidth={colWidths[col.key]}
-          isModern={isModern}
+          resizable={resizable}
         />
       ))}
     </tr>

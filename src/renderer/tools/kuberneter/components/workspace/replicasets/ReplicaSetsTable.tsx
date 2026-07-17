@@ -45,7 +45,8 @@ export const ReplicaSetsTable: React.FC<ReplicaSetsTableProps> = ({
         headerClassName: 'w-10 text-center',
         className: 'w-10 text-center',
         initialWidth: 40,
-        resizable: false
+        resizable: false,
+        sortable: false
       },
       {
         key: 'name',
@@ -146,7 +147,6 @@ export const ReplicaSetsTable: React.FC<ReplicaSetsTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectReplicaSet(row)}
       selectedRowKey={selectedReplicaSetId}

@@ -24,6 +24,7 @@ import { ValidatingWebhooks } from './validatingwebhooks/ValidatingWebhooks';
 import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
 import { KuberneterHomeView } from './kubernetes-home';
+import { EndpointSlices } from './endpointslices/EndpointSlices';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { DetailContent } from './details/DetailContent';
@@ -62,6 +63,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     validatingWebhooksData,
     applicationsData,
     nodesData,
+    endpointSlicesData,
     isLoading,
     errorMsg
   } = useWorkspaceResources(resource);
@@ -165,6 +167,13 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'services' && (
             <Services
               servicesData={servicesData}
+              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+            />
+          )}
+
+          {resource === 'endpointslices' && (
+            <EndpointSlices
+              endpointSlicesData={endpointSlicesData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}

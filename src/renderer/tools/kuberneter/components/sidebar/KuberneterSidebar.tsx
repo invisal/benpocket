@@ -143,6 +143,7 @@ export const KuberneterSidebar: React.FC = () => {
     mutatingwebhooks: 'config',
     validatingwebhooks: 'config',
     services: 'network',
+    endpointslices: 'network',
     endpoints: 'network',
     ingresses: 'network',
     networkpolicies: 'network',
@@ -218,6 +219,7 @@ export const KuberneterSidebar: React.FC = () => {
       icon: Globe,
       subItems: [
         { id: 'services', label: 'Services' },
+        { id: 'endpointslices', label: 'Endpoint Slices' },
         { id: 'endpoints', label: 'Endpoints' },
         { id: 'ingresses', label: 'Ingresses' },
         { id: 'networkpolicies', label: 'Network Policies' },

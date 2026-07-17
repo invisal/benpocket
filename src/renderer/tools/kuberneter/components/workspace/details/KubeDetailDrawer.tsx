@@ -95,6 +95,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     statefulset: 'Stateful Set Details',
     replicaset: 'Replica Set Details',
     service: 'Service Details',
+    endpointslice: 'Endpoint Slice Details',
     job: 'Job Details',
     cronjob: 'Cron Job Details',
     configmap: 'Config Map Details',

@@ -1,8 +1,9 @@
 import type React from 'react';
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, Fragment } from 'react';
 import { cn } from 'cnfast';
 import { AlertCircle } from 'lucide-react';
 import { type KubeTableProps } from './types';
+import { ROW_HEIGHT } from './constants';
 import { KubeTableHeader } from './KubeTableHeader';
 import { KubeTableRow } from './KubeTableRow';
 
@@ -20,11 +21,11 @@ export function KubeTable<T>({
   hideHeaderWhenEmpty,
   className,
   resizable = true,
-  rowHeight,
-  borderTop = false
+  borderTop = false,
+  showHeader = true,
+  renderRowExpansion,
+  expandedRowKeys
 }: KubeTableProps<T>) {
-  const isModern = true;
-
   // Initialize column widths from initialWidth prop or default
   const [colWidths, setColWidths] = useState<Record<string, number>>(() =>
     Object.fromEntries(columns.map((col) => [col.key, col.initialWidth ?? DEFAULT_COL_WIDTH]))
@@ -36,7 +37,7 @@ export function KubeTable<T>({
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(400);
 
-  const rHeight = rowHeight ?? (isModern ? 38 : 36);
+  const rHeight = ROW_HEIGHT;
 
   // Sorting state
   const [sortCol, setSortCol] = useState<string | null>(null);
@@ -179,7 +180,7 @@ export function KubeTable<T>({
 
   const tableStyle: React.CSSProperties = {
     tableLayout: 'fixed',
-    width: tableWidth,
+    width: resizable ? tableWidth : '100%',
     borderCollapse: 'collapse'
   };
 
@@ -192,20 +193,19 @@ export function KubeTable<T>({
       )}
     >
       {/* 1. Dedicated Header Container (fixed vertical position) */}
-      {(!hideHeaderWhenEmpty || sortedData.length > 0) && (
+      {showHeader && (!hideHeaderWhenEmpty || sortedData.length > 0) && (
         <div ref={headerRef} className={cn('shrink-0 overflow-hidden select-none bg-sidebar-bg')}>
           <table className="text-left text-xs bg-transparent" style={tableStyle}>
-            {resizable && (
-              <colgroup>
-                {columns.map((col) => (
-                  <col key={col.key} style={{ width: colWidths[col.key] ?? DEFAULT_COL_WIDTH }} />
-                ))}
-              </colgroup>
-            )}
+            <colgroup>
+              {columns.map((col, idx) => {
+                const isLast = idx === columns.length - 1;
+                const width = colWidths[col.key] ?? DEFAULT_COL_WIDTH;
+                return <col key={col.key} style={!resizable && isLast ? undefined : { width }} />;
+              })}
+            </colgroup>
             <KubeTableHeader
               columns={columns}
               colWidths={colWidths}
-              isModern={isModern}
               hideHeaderWhenEmpty={hideHeaderWhenEmpty}
               dataLength={sortedData.length}
               resizable={resizable}
@@ -226,13 +226,13 @@ export function KubeTable<T>({
         className="overflow-auto flex-1 relative kube-table-container bg-transparent"
       >
         <table className="text-left text-xs bg-transparent" style={tableStyle}>
-          {resizable && (
-            <colgroup>
-              {columns.map((col) => (
-                <col key={col.key} style={{ width: colWidths[col.key] ?? DEFAULT_COL_WIDTH }} />
-              ))}
-            </colgroup>
-          )}
+          <colgroup>
+            {columns.map((col, idx) => {
+              const isLast = idx === columns.length - 1;
+              const width = colWidths[col.key] ?? DEFAULT_COL_WIDTH;
+              return <col key={col.key} style={!resizable && isLast ? undefined : { width }} />;
+            })}
+          </colgroup>
 
           <tbody className="text-zinc-350 bg-transparent">
             {sortedData.length === 0 ? (
@@ -241,7 +241,7 @@ export function KubeTable<T>({
                   colSpan={columns.length}
                   className={cn(
                     'p-8 text-center text-zinc-550 italic font-sans bg-transparent',
-                    isModern ? 'border-b border-border-dark/30' : 'border border-border/20'
+                    'border-b border-border-dark/30'
                   )}
                 >
                   {emptyState || (
@@ -259,18 +259,30 @@ export function KubeTable<T>({
                     <td colSpan={columns.length} style={{ padding: 0, height: spacerTopHeight }} />
                   </tr>
                 )}
-                {visibleData.map((row) => (
-                  <KubeTableRow<T>
-                    key={getRowKey(row)}
-                    row={row}
-                    columns={columns}
-                    getRowKey={getRowKey}
-                    onRowClick={onRowClick}
-                    selectedRowKey={selectedRowKey}
-                    colWidths={colWidths}
-                    isModern={isModern}
-                  />
-                ))}
+                {visibleData.map((row, index) => {
+                  const key = getRowKey(row, index);
+                  const isExpanded = expandedRowKeys?.has(key);
+                  return (
+                    <Fragment key={key}>
+                      <KubeTableRow<T>
+                        row={row}
+                        columns={columns}
+                        getRowKey={(r) => getRowKey(r, index)}
+                        onRowClick={onRowClick}
+                        selectedRowKey={selectedRowKey}
+                        colWidths={colWidths}
+                        resizable={resizable}
+                      />
+                      {renderRowExpansion && isExpanded && (
+                        <tr className="bg-surface-1/10 border-b border-border-dark/20">
+                          <td colSpan={columns.length} className="p-3 select-text">
+                            {renderRowExpansion(row)}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
                 {spacerBottomHeight > 0 && (
                   <tr style={{ height: spacerBottomHeight }}>
                     <td

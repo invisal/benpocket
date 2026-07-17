@@ -2,6 +2,7 @@ import type React from 'react';
 import { type LeaseData } from '../../../types/LeaseData';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
 interface LeaseDetailProps {
   payload: LeaseData;
@@ -25,82 +26,92 @@ export const LeaseDetail: React.FC<LeaseDetailProps> = ({ payload, isTab = false
   const labels = payload.labels ? Object.entries(payload.labels) : [];
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
 
+  const propertiesData: PropertyItem[] = [
+    {
+      id: 'created',
+      name: 'Created',
+      value: `${payload.age} ago (${payload.createdTime || 'N/A'})`
+    },
+    {
+      id: 'name',
+      name: 'Name',
+      value: payload.name
+    },
+    {
+      id: 'namespace',
+      name: 'Namespace',
+      value: (
+        <span
+          onClick={handleNamespaceClick}
+          className="font-mono text-accent hover:underline cursor-pointer"
+        >
+          {payload.ns}
+        </span>
+      )
+    },
+    {
+      id: 'labels',
+      name: 'Labels',
+      value: `${labels.length} Labels`,
+      hasDetail: labels.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {labels.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: 'annotations',
+      name: 'Annotations',
+      value: `${annotations.length} Annotations`,
+      hasDetail: annotations.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {annotations.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: 'holder',
+      name: 'Holder Identity',
+      value: payload.holder
+    },
+    {
+      id: 'durationSeconds',
+      name: 'Lease Duration Seconds',
+      value: payload.durationSeconds
+    },
+    {
+      id: 'renewTime',
+      name: 'Renew Time',
+      value: payload.renewTime
+    }
+  ];
+
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
-      {/* Properties Section */}
       <div className="flex flex-col gap-2.5 mt-1">
-        <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
+        <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider mb-1">
           Properties
         </span>
-        <div className="flex flex-col gap-2.5 text-xs text-zinc-350 bg-surface-2/40 border border-border/40 rounded-lg p-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Created</span>
-            <span className="font-mono text-zinc-300">
-              {payload.age} ago ({payload.createdTime || 'N/A'})
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Name</span>
-            <span className="font-mono text-zinc-200 break-all">{payload.name}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Namespace</span>
-            <span
-              onClick={handleNamespaceClick}
-              className="font-mono text-accent hover:underline cursor-pointer self-start"
-            >
-              {payload.ns}
-            </span>
-          </div>
-          {annotations.length > 0 && (
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Annotations</span>
-              <div className="flex flex-col gap-1 max-h-24 overflow-y-auto mt-0.5 pr-1 select-text">
-                {annotations.map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="font-mono text-[10px] text-zinc-400 bg-editor-bg px-2 py-1 rounded border border-border-dark/60 truncate"
-                    title={`${k}=${v}`}
-                  >
-                    {k}={v}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="flex flex-col gap-0.5 border-t border-border/20 pt-2">
-            <span className="text-[10px] text-zinc-555 uppercase">Holder Identity</span>
-            <span className="font-mono text-zinc-300">{payload.holder}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Lease Duration Seconds</span>
-            <span className="font-mono text-zinc-300">{payload.durationSeconds}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Renew Time</span>
-            <span className="font-mono text-zinc-300">{payload.renewTime}</span>
-          </div>
-        </div>
+        <KubePropertiesTable properties={propertiesData} />
       </div>
-
-      {/* Labels */}
-      {labels.length > 0 && (
-        <div className="flex flex-col gap-1.5 border-t border-border-dark/60 pt-3">
-          <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider">
-            Labels
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {labels.map(([k, v]) => (
-              <span
-                key={k}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-2 border border-border text-zinc-300 break-all"
-              >
-                {k}: {v}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">

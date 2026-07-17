@@ -1,5 +1,4 @@
 import type React from 'react';
-import { useState } from 'react';
 import {
   type DeployData,
   type DeployRevision,
@@ -8,6 +7,7 @@ import {
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
+import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
 interface DeploymentDetailProps {
   payload: DeployData;
@@ -47,9 +47,6 @@ interface DeployRawResource {
 }
 
 export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isTab = false }) => {
-  const [labelsExpanded, setLabelsExpanded] = useState(false);
-  const [annotationsExpanded, setAnnotationsExpanded] = useState(false);
-
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
 
@@ -90,6 +87,140 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
 
   // Conditions
   const conditions = rawItem?.status?.conditions || [];
+
+  const propertiesData: PropertyItem[] = [
+    {
+      id: 'created',
+      name: 'Created',
+      value: `${payload.age} ago (${createdTime || 'N/A'})`
+    },
+    {
+      id: 'name',
+      name: 'Name',
+      value: payload.name
+    },
+    {
+      id: 'namespace',
+      name: 'Namespace',
+      value: (
+        <span
+          onClick={handleNamespaceClick}
+          className="font-mono text-accent hover:underline cursor-pointer self-start"
+        >
+          {payload.ns}
+        </span>
+      )
+    },
+    {
+      id: 'labels',
+      name: 'Labels',
+      value: `${labels.length} Labels`,
+      hasDetail: labels.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1 select-text">
+          {labels.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-300 break-all"
+            >
+              {k}: {v}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: 'annotations',
+      name: 'Annotations',
+      value: `${annotations.length} Annotations`,
+      hasDetail: annotations.length > 0,
+      renderDetail: () => (
+        <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {annotations.map(([k, v]) => (
+            <div
+              key={k}
+              className="font-mono text-[10px] text-zinc-400 bg-editor-bg px-2 py-1 rounded border border-border-dark/60 truncate"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </div>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: 'replicas',
+      name: 'Replicas',
+      value: `${desired} desired, ${updated} updated, ${total} total, ${available} available, ${unavailable} unavailable`
+    },
+    {
+      id: 'selector',
+      name: 'Selector',
+      value:
+        selectorLabels.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {selectorLabels.map(([k, v]) => (
+              <span
+                key={k}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-zinc-800 border border-border/80 text-zinc-300"
+              >
+                {k}={v}
+              </span>
+            ))}
+          </div>
+        ) : (
+          selectorStr || '—'
+        )
+    },
+    {
+      id: 'strategy',
+      name: 'Strategy Type',
+      value: payload.strategy
+    },
+    {
+      id: 'status',
+      name: 'Status',
+      value: (
+        <span
+          className={`font-semibold ${
+            payload.hasWarning ? 'text-amber-500 animate-pulse' : 'text-emerald-500'
+          }`}
+        >
+          {payload.status}
+        </span>
+      )
+    }
+  ];
+
+  if (conditions.length > 0) {
+    propertiesData.push({
+      id: 'conditions',
+      name: 'Conditions',
+      value: (
+        <div className="flex flex-wrap gap-1.5">
+          {conditions.map((c) => {
+            const isTrue = c.status === 'True';
+            const isAvailable = c.type === 'Available';
+            const badgeColor =
+              isAvailable && isTrue
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-450'
+                : isTrue
+                  ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                  : 'bg-zinc-800 border-border/85 text-zinc-400';
+            return (
+              <span
+                key={c.type}
+                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono border ${badgeColor}`}
+                title={c.message}
+              >
+                {c.type}
+              </span>
+            );
+          })}
+        </div>
+      )
+    });
+  }
 
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
@@ -143,155 +274,7 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
           Properties
         </span>
-        <div className="flex flex-col gap-2.5 text-xs text-zinc-350 bg-surface-2/40 border border-border/40 rounded-lg p-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Created</span>
-            <span className="font-mono text-zinc-300">
-              {payload.age} ago ({createdTime || 'N/A'})
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Name</span>
-            <span className="font-mono text-zinc-200 break-all">{payload.name}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Namespace</span>
-            <span
-              onClick={handleNamespaceClick}
-              className="font-mono text-accent hover:underline cursor-pointer self-start"
-            >
-              {payload.ns}
-            </span>
-          </div>
-
-          {/* Labels Collapsible */}
-          <div className="flex flex-col gap-0.5">
-            <div
-              className="flex justify-between items-center cursor-pointer select-none"
-              onClick={() => setLabelsExpanded(!labelsExpanded)}
-            >
-              <span className="text-[10px] text-zinc-555 uppercase flex items-center gap-1">
-                Labels
-                <span className="text-[9px] text-zinc-650 font-normal">
-                  {labelsExpanded ? '▲' : '▼'}
-                </span>
-              </span>
-              <span className="text-xs text-zinc-400 font-medium">{labels.length} Labels</span>
-            </div>
-            {labelsExpanded && labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5 max-h-24 overflow-y-auto pr-1">
-                {labels.map(([k, v]) => (
-                  <span
-                    key={k}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-300 break-all"
-                  >
-                    {k}: {v}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Annotations Collapsible */}
-          <div className="flex flex-col gap-0.5">
-            <div
-              className="flex justify-between items-center cursor-pointer select-none"
-              onClick={() => setAnnotationsExpanded(!annotationsExpanded)}
-            >
-              <span className="text-[10px] text-zinc-555 uppercase flex items-center gap-1">
-                Annotations
-                <span className="text-[9px] text-zinc-650 font-normal">
-                  {annotationsExpanded ? '▲' : '▼'}
-                </span>
-              </span>
-              <span className="text-xs text-zinc-400 font-medium">
-                {annotations.length} Annotations
-              </span>
-            </div>
-            {annotationsExpanded && annotations.length > 0 && (
-              <div className="flex flex-col gap-1 mt-1.5 max-h-32 overflow-y-auto pr-1 select-text">
-                {annotations.map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="font-mono text-[10px] text-zinc-400 bg-editor-bg px-2 py-1 rounded border border-border-dark/60 truncate"
-                    title={`${k}=${v}`}
-                  >
-                    {k}={v}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Replicas</span>
-            <span className="font-mono text-zinc-300">
-              {desired} desired, {updated} updated, {total} total, {available} available,{' '}
-              {unavailable} unavailable
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Selector</span>
-            {selectorLabels.length > 0 ? (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {selectorLabels.map(([k, v]) => (
-                  <span
-                    key={k}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-zinc-800 border border-border/80 text-zinc-300"
-                  >
-                    {k}={v}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className="font-mono text-zinc-300">{selectorStr || '—'}</span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Strategy Type</span>
-            <span className="font-mono text-zinc-300">{payload.strategy}</span>
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-zinc-555 uppercase">Status</span>
-            <span
-              className={`font-semibold ${
-                payload.hasWarning ? 'text-amber-500 animate-pulse' : 'text-emerald-500'
-              }`}
-            >
-              {payload.status}
-            </span>
-          </div>
-
-          {conditions.length > 0 && (
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-zinc-555 uppercase">Conditions</span>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {conditions.map((c) => {
-                  const isTrue = c.status === 'True';
-                  const isAvailable = c.type === 'Available';
-                  const badgeColor =
-                    isAvailable && isTrue
-                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-450'
-                      : isTrue
-                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                        : 'bg-zinc-800 border-border/85 text-zinc-400';
-                  return (
-                    <span
-                      key={c.type}
-                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono border ${badgeColor}`}
-                      title={c.message}
-                    >
-                      {c.type}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        <KubePropertiesTable properties={propertiesData} />
       </div>
 
       {/* Deploy Revisions */}
@@ -302,7 +285,7 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
         {!payload.revisions || payload.revisions.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No revisions found</div>
         ) : (
-          <div className="border border-border/40 rounded-lg overflow-hidden flex flex-col h-44">
+          <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
             <KubeTable<DeployRevision>
               columns={[
                 {
@@ -347,7 +330,6 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
               ]}
               data={payload.revisions || []}
               getRowKey={(row) => row.name}
-              variant="modern"
               resizable={false}
             />
           </div>
@@ -360,7 +342,7 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
         {!payload.podsList || payload.podsList.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No pods found</div>
         ) : (
-          <div className="border border-border/40 rounded-lg overflow-hidden flex flex-col h-48">
+          <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
             <KubeTable<DeployRelatedPod>
               columns={[
                 {
@@ -416,7 +398,6 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
               ]}
               data={payload.podsList || []}
               getRowKey={(row) => row.name}
-              variant="modern"
               resizable={false}
             />
           </div>

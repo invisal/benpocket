@@ -45,7 +45,8 @@ export const ServicesTable: React.FC<ServicesTableProps> = ({
         headerClassName: 'w-10 text-center',
         className: 'w-10 text-center',
         initialWidth: 40,
-        resizable: false
+        resizable: false,
+        sortable: false
       },
       {
         key: 'name',
@@ -182,7 +183,6 @@ export const ServicesTable: React.FC<ServicesTableProps> = ({
       columns={columns}
       data={filteredData}
       getRowKey={(row) => row.id}
-      variant="standard"
       className="flex-1"
       onRowClick={(row) => onSelectService(row)}
       selectedRowKey={selectedServiceId}

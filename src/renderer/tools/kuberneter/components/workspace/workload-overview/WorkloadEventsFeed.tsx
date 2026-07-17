@@ -204,7 +204,6 @@ export const WorkloadEventsFeed: React.FC<WorkloadEventsFeedProps> = ({
         columns={columns}
         data={filteredData}
         getRowKey={(row) => row.id}
-        variant="modern"
         className="flex-1 overflow-x-auto"
         emptyMessage={
           warningsOnly

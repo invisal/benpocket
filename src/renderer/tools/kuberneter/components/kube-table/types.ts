@@ -23,16 +23,16 @@ export interface KubeTableProps<T> {
   data: T[];
   onRowClick?: (row: T) => void;
   selectedRowKey?: string | number;
-  getRowKey: (row: T) => string | number;
+  getRowKey: (row: T, index?: number) => string | number;
   emptyState?: React.ReactNode;
   emptyMessage?: string;
   hideHeaderWhenEmpty?: boolean;
   className?: string;
-  variant?: 'standard' | 'modern';
   /** Enable column resizing by drag. Default: true */
   resizable?: boolean;
-  /** Fixed row height for virtualization. Optional */
-  rowHeight?: number;
   /** Whether to render a top border on the table. Default: true */
   borderTop?: boolean;
+  showHeader?: boolean;
+  renderRowExpansion?: (row: T) => React.ReactNode;
+  expandedRowKeys?: Set<string | number>;
 }

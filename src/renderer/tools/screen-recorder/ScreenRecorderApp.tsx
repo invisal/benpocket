@@ -9,7 +9,7 @@ import { SettingsPage } from './workspace/settings/SettingsPage';
 import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 import { CutTimeline } from './features/timeline/components/CutTimeline';
 import { RecordingControllerProvider } from './features/recording/context/RecordingControllerContext';
-import { FocusToolbarBridge } from './features/recording/components/FocusToolbarBridge';
+import { RecorderToolbarBridge } from './features/recording/components/RecorderToolbarBridge';
 
 const NAV_ITEMS: {
   route: ScreenRecorderRoute;
@@ -32,7 +32,7 @@ export function ScreenRecorderApp(): JSX.Element {
 
   return (
     <RecordingControllerProvider>
-      <FocusToolbarBridge />
+      <RecorderToolbarBridge />
       <div className="flex flex-1 flex-col min-h-0 bg-surface text-white/90">
         <nav className="flex shrink-0 items-center gap-1 border-b border-line px-4 py-2">
           {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon }) => (

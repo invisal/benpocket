@@ -4,7 +4,7 @@ import { AudioSourceToggle } from '../features/recording/components/AudioSourceT
 import { WebcamShapePicker } from '../features/webcam/components/WebcamShapePicker';
 import { useRecordingControllerContext } from '../features/recording/context/recording-controller-context';
 import { Button } from '@renderer/components/ui/Button';
-import { openFocusToolbarFor } from '@screen-recorder/features/recording/lib/open-focus-toolbar';
+import { openRecorderToolbarFor } from '@screen-recorder/features/recording/lib/open-recorder-toolbar';
 
 export const ScreenRecorderSidebar: React.FC = () => {
   const isRecording = useAppStore((state) => state.isRecording);
@@ -21,7 +21,7 @@ export const ScreenRecorderSidebar: React.FC = () => {
       sources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ??
       sources.find((s) => s.type === 'screen') ??
       sources[0];
-    if (defaultSource) await openFocusToolbarFor(defaultSource);
+    if (defaultSource) await openRecorderToolbarFor(defaultSource);
   }
   const disabled = route === 'editor' || isRecording;
   return (

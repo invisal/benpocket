@@ -9,7 +9,7 @@ import { preloadScriptPath } from '../lib/preload-path';
 import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
 
 let overlayWindow: BrowserWindow | null = null;
-// The focus-toolbar window that requested the overlay -- hidden while it's
+// The recorder-toolbar window that requested the overlay -- hidden while it's
 // open (so the two aren't fighting for the topmost spot) and the one a pick
 // gets relayed back to, since it owns the audio/webcam config a pick needs
 // to actually start a recording.
@@ -70,7 +70,7 @@ function createOverlayWindow(display: Display): BrowserWindow {
 
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.setAlwaysOnTop(true, 'screen-saver');
-  // Same reasoning as the focus toolbar itself -- this overlay must never
+  // Same reasoning as the recorder toolbar itself -- this overlay must never
   // end up baked into the recording it's helping start.
   win.setContentProtection(true);
   win.on('closed', () => {
@@ -135,7 +135,7 @@ export function registerSourcePickerOverlayHandlers(): void {
   });
 }
 
-/** Best-effort cleanup on app quit -- mirrors destroyTray()/destroyFocusToolbar(). */
+/** Best-effort cleanup on app quit -- mirrors destroyTray()/destroyRecorderToolbar(). */
 export function destroySourcePickerOverlay(): void {
   const win = overlayWindow;
   overlayWindow = null;

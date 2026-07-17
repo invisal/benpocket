@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { useToolTabs } from './providers/ToolProvider';
-import { openFocusToolbarFor } from '../../tools/screen-recorder/features/recording/lib/open-focus-toolbar';
+import { openRecorderToolbarFor } from '../../tools/screen-recorder/features/recording/lib/open-recorder-toolbar';
 
 /**
  * Bridges the main process tray menu to the renderer. Either way, focuses
- * (or opens) the Screen Recorder tab and opens the floating focus-toolbar
+ * (or opens) the Screen Recorder tab and opens the floating recorder-toolbar
  * so it's always ready to go regardless of what tab/tool was showing
  * before; picking a specific source from the tray's menu (see tray.ts)
  * opens the toolbar for that source directly, otherwise it defaults to the
@@ -43,13 +43,18 @@ export function TrayBridge(): null {
       focusRecorderTab();
       void (async () => {
         const sources = await window.screenRecorder.recording.getCaptureSources();
-        const defaultSource = sources.find((s) => s.type === 'screen') ?? sources[0];
-        if (defaultSource) await openFocusToolbarFor(defaultSource);
+        // Prefer the primary display -- see ScreenRecorderSidebar.tsx's
+        // handleNewRecord for why "the first screen source" isn't safe.
+        const defaultSource =
+          sources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ??
+          sources.find((s) => s.type === 'screen') ??
+          sources[0];
+        if (defaultSource) await openRecorderToolbarFor(defaultSource);
       })();
     });
     const unsubscribeSelect = window.screenRecorder.tray.onSourceSelected((source) => {
       focusRecorderTab();
-      void openFocusToolbarFor(source);
+      void openRecorderToolbarFor(source);
     });
 
     return () => {

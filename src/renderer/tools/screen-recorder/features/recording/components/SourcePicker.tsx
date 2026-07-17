@@ -4,7 +4,7 @@ import { Monitor, RefreshCw, Smartphone } from 'lucide-react';
 import type { CaptureTargetType } from '@screen-recorder/types/recording';
 import { useCaptureSources } from '../hooks/useCaptureSources';
 import { useRecordingStore } from '../store/recording-store';
-import { openFocusToolbarFor } from '../lib/open-focus-toolbar';
+import { openRecorderToolbarFor } from '../lib/open-recorder-toolbar';
 
 /** Chrome's Screen Capture API adds this to MediaTrackSettings; lib.dom doesn't have it yet. */
 interface DisplaySurfaceSettings extends MediaTrackSettings {
@@ -30,8 +30,9 @@ export function SourcePicker(): JSX.Element {
   // grid -- but the resulting stream has no chromeMediaSourceId to re-request
   // later, so it's kept alive and reused as-is at recording start (see
   // recording-store's nativePickerStream / capture-engine's
-  // existingVideoStream), and doesn't get cursor tracking or the focus-toolbar
-  // flow, neither of which can key off an id that doesn't exist.
+  // existingVideoStream), and doesn't get cursor tracking or the
+  // recorder-toolbar flow, neither of which can key off an id that doesn't
+  // exist.
   async function useSystemPicker(): Promise<void> {
     setSystemPickerError(null);
     try {
@@ -115,7 +116,7 @@ export function SourcePicker(): JSX.Element {
             <button
               key={source.id}
               onClick={() => setSelectedSource(source)}
-              onDoubleClick={() => void openFocusToolbarFor(source)}
+              onDoubleClick={() => void openRecorderToolbarFor(source)}
               title="Double-click to focus this source and record from a floating toolbar"
               className={`rounded-xl border p-2 text-left ${
                 selectedSource?.id === source.id

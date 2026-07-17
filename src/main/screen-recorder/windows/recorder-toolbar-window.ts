@@ -2,10 +2,10 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
 import type {
-  FocusToolbarOpenPayload,
-  FocusToolbarStartPayload,
-  FocusToolbarRecordingResult
-} from '@shared/focus-toolbar';
+  RecorderToolbarOpenPayload,
+  RecorderToolbarStartPayload,
+  RecorderToolbarRecordingResult
+} from '@shared/recorder-toolbar';
 import type { ScreenRect } from '@shared/capture-region';
 import { preloadScriptPath } from '../lib/preload-path';
 import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
@@ -19,8 +19,8 @@ import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
 // that scales with user data (could be a dozen windows) rather than a fixed
 // label set, so it isn't rendered at all now rather than fought over width.
 // Taller than the pill itself needs (it's bottom-anchored within this via
-// `justify-end`, see FocusToolbarApp.tsx) -- the Camera/Device popovers open
-// upward from the pill and, since this window is transparent/fixed-size
+// `justify-end`, see RecorderToolbarApp.tsx) -- the Camera/Device popovers
+// open upward from the pill and, since this window is transparent/fixed-size
 // with nothing else to clip against, any room they need has to already
 // exist inside these bounds or Base UI's collision handling just shrinks
 // them into an unusably short scroll area instead of actually being cut off
@@ -49,24 +49,24 @@ let toolbarWindow: BrowserWindow | null = null;
 // itself has already been torn down.
 let ownerWindow: BrowserWindow | null = null;
 // Screen-space rect of what's actually being recorded, set the moment the
-// toolbar's Start Recording is clicked (see FocusToolbarStart below) and
+// toolbar's Start Recording is clicked (see RecorderToolbarStart below) and
 // used to reposition the toolbar right then, so it reads as attached to
 // that display/window/area instead of always sitting at the bottom of the
 // primary display. Null before a start attempt, and cleared whenever the
 // toolbar closes so a fresh session doesn't inherit it.
 let lastTargetBounds: ScreenRect | null = null;
 
-function loadToolbarPage(win: BrowserWindow, payload: FocusToolbarOpenPayload): void {
+function loadToolbarPage(win: BrowserWindow, payload: RecorderToolbarOpenPayload): void {
   const init = JSON.stringify(payload);
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     void win.loadURL(
-      `${process.env['ELECTRON_RENDERER_URL']}/focus-toolbar.html?init=${encodeURIComponent(init)}`
+      `${process.env['ELECTRON_RENDERER_URL']}/recorder-toolbar.html?init=${encodeURIComponent(init)}`
     );
     return;
   }
 
-  void win.loadFile(join(__dirname, '../renderer/focus-toolbar.html'), { query: { init } });
+  void win.loadFile(join(__dirname, '../renderer/recorder-toolbar.html'), { query: { init } });
 }
 
 /**
@@ -141,7 +141,7 @@ function createToolbarWindow(): BrowserWindow {
     alwaysOnTop: true,
     resizable: false,
     // Draggable by its own background (see the `app-region: drag` styling
-    // on the pill in FocusToolbarApp.tsx) rather than fixed in place.
+    // on the pill in RecorderToolbarApp.tsx) rather than fixed in place.
     movable: true,
     skipTaskbar: true,
     hasShadow: false,
@@ -172,9 +172,9 @@ function createToolbarWindow(): BrowserWindow {
   return win;
 }
 
-async function openFocusToolbar(
+async function openRecorderToolbar(
   event: Electron.IpcMainInvokeEvent,
-  payload: FocusToolbarOpenPayload
+  payload: RecorderToolbarOpenPayload
 ): Promise<void> {
   const owner = BrowserWindow.fromWebContents(event.sender);
   if (!owner) return;
@@ -190,7 +190,7 @@ async function openFocusToolbar(
 }
 
 /** Tears down the toolbar and brings the owning window back. */
-function closeFocusToolbar(): void {
+function closeRecorderToolbar(): void {
   void restoreCaptureWindow(ownerWindow, { focus: true });
   lastTargetBounds = null;
 
@@ -199,15 +199,15 @@ function closeFocusToolbar(): void {
   if (win && !win.isDestroyed()) win.close();
 }
 
-export function registerFocusToolbarHandlers(): void {
-  ipcMain.handle(IpcChannels.FocusToolbarOpen, openFocusToolbar);
+export function registerRecorderToolbarHandlers(): void {
+  ipcMain.handle(IpcChannels.RecorderToolbarOpen, openRecorderToolbar);
 
   // User backed out (Esc / close button) before starting a recording. Only
   // the two windows involved need to know -- the owner's store never
   // tracked "a toolbar is open" in the first place, so there's nothing to
   // clear on that side.
-  ipcMain.on(IpcChannels.FocusToolbarCancel, () => {
-    closeFocusToolbar();
+  ipcMain.on(IpcChannels.RecorderToolbarCancel, () => {
+    closeRecorderToolbar();
   });
 
   // Toolbar -> owner: apply this config and start capturing. The owner
@@ -216,37 +216,37 @@ export function registerFocusToolbarHandlers(): void {
   // MediaRecorder without ever being shown. Also latches the target bounds
   // and repositions right away, on the click itself, rather than waiting
   // for confirmation that the recording actually started.
-  ipcMain.on(IpcChannels.FocusToolbarStart, (_event, payload: FocusToolbarStartPayload) => {
+  ipcMain.on(IpcChannels.RecorderToolbarStart, (_event, payload: RecorderToolbarStartPayload) => {
     lastTargetBounds = payload.targetBounds ?? null;
     repositionToolbar();
-    ownerWindow?.webContents.send(IpcChannels.FocusToolbarStartRequested, payload);
+    ownerWindow?.webContents.send(IpcChannels.RecorderToolbarStartRequested, payload);
   });
 
   // Owner -> toolbar: whether that start actually succeeded, so the toolbar
   // can switch to its "Recording / Stop" mode or show the error and let the
   // user retry instead of being stuck on a dead "Starting..." button.
   ipcMain.on(
-    IpcChannels.FocusToolbarRecordingStarted,
-    (_event, result: FocusToolbarRecordingResult) => {
-      toolbarWindow?.webContents.send(IpcChannels.FocusToolbarRecordingStarted, result);
+    IpcChannels.RecorderToolbarRecordingStarted,
+    (_event, result: RecorderToolbarRecordingResult) => {
+      toolbarWindow?.webContents.send(IpcChannels.RecorderToolbarRecordingStarted, result);
     }
   );
 
   // Toolbar's Stop button -> owner: run the real stop/save/editor-navigate
   // flow (useRecordingController.stop).
-  ipcMain.on(IpcChannels.FocusToolbarStop, () => {
-    ownerWindow?.webContents.send(IpcChannels.FocusToolbarStopRequested);
+  ipcMain.on(IpcChannels.RecorderToolbarStop, () => {
+    ownerWindow?.webContents.send(IpcChannels.RecorderToolbarStopRequested);
   });
 
   // Owner reports the recording is fully stopped and saved -- close the
   // toolbar and bring the owner (now on the editor route) back to front.
-  ipcMain.on(IpcChannels.FocusToolbarRecordingStopped, () => {
-    closeFocusToolbar();
+  ipcMain.on(IpcChannels.RecorderToolbarRecordingStopped, () => {
+    closeRecorderToolbar();
   });
 }
 
 /** Best-effort cleanup on app quit -- mirrors destroyTray(). */
-export function destroyFocusToolbar(): void {
+export function destroyRecorderToolbar(): void {
   const win = toolbarWindow;
   toolbarWindow = null;
   ownerWindow = null;

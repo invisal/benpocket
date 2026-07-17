@@ -7,7 +7,7 @@ import { registerPermissionsHandlers } from './permissions-handlers';
 import { registerDialogHandlers } from './dialog-handlers';
 import { registerSimulatorHandlers } from './simulator-handlers';
 import { registerRegionHandlers } from './region-handlers';
-import { registerFocusToolbarHandlers } from '../windows/focus-toolbar-window';
+import { registerRecorderToolbarHandlers } from '../windows/recorder-toolbar-window';
 import { registerSourcePickerOverlayHandlers } from '../windows/source-picker-overlay-window';
 
 export function registerIpcHandlers(): void {
@@ -20,6 +20,6 @@ export function registerIpcHandlers(): void {
   registerDialogHandlers();
   registerSimulatorHandlers();
   registerRegionHandlers();
-  registerFocusToolbarHandlers();
+  registerRecorderToolbarHandlers();
   registerSourcePickerOverlayHandlers();
 }

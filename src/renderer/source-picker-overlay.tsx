@@ -1,9 +1,9 @@
 import './src/assets/main.css';
-import './source-picker-overlay/overlay.css';
+import '@screen-recorder/windows/overlay.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { SourcePickerOverlayApp } from './source-picker-overlay/SourcePickerOverlayApp';
+import { SourcePickerOverlayApp } from '@screen-recorder/windows/SourcePickerOverlayApp';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

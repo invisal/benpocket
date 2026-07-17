@@ -16,10 +16,10 @@ import type {
 } from '@shared/capture-region';
 import type { OsPickerSource } from '@shared/os-picker-source';
 import type {
-  FocusToolbarOpenPayload,
-  FocusToolbarStartPayload,
-  FocusToolbarRecordingResult
-} from '@shared/focus-toolbar';
+  RecorderToolbarOpenPayload,
+  RecorderToolbarStartPayload,
+  RecorderToolbarRecordingResult
+} from '@shared/recorder-toolbar';
 import type { SourcePickerOverlayOpenOptions } from '@shared/source-picker-overlay';
 
 export const screenRecorderApi = {
@@ -80,6 +80,9 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.WindowRestore, options),
     setBackgroundThrottling: (allowed: boolean): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.WindowSetBackgroundThrottling, allowed),
+    /** Recorder toolbar only: click-through for its transparent regions -- see window-handlers.ts. */
+    setIgnoreMouseEvents: (ignore: boolean, options?: { forward?: boolean }): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.WindowSetIgnoreMouseEvents, ignore, options),
     toggleMaximize: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowToggleMaximize),
     close: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowClose),
     isMaximized: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.WindowIsMaximized),
@@ -152,41 +155,45 @@ export const screenRecorderApi = {
       ipcRenderer.send(IpcChannels.RegionSelectComplete, payload),
     cancel: (): void => ipcRenderer.send(IpcChannels.RegionSelectCancel)
   },
-  focusToolbar: {
+  recorderToolbar: {
     /** Called by the main window when a source is double-clicked. */
-    open: (payload: FocusToolbarOpenPayload): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.FocusToolbarOpen, payload),
+    open: (payload: RecorderToolbarOpenPayload): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.RecorderToolbarOpen, payload),
     /** Called by the toolbar window itself (Esc / close button). */
-    cancel: (): void => ipcRenderer.send(IpcChannels.FocusToolbarCancel),
+    cancel: (): void => ipcRenderer.send(IpcChannels.RecorderToolbarCancel),
     /** Called by the toolbar window's Start Recording button. */
-    requestStart: (payload: FocusToolbarStartPayload): void =>
-      ipcRenderer.send(IpcChannels.FocusToolbarStart, payload),
+    requestStart: (payload: RecorderToolbarStartPayload): void =>
+      ipcRenderer.send(IpcChannels.RecorderToolbarStart, payload),
     /** Called by the toolbar window's Stop button once recording. */
-    requestStop: (): void => ipcRenderer.send(IpcChannels.FocusToolbarStop),
+    requestStop: (): void => ipcRenderer.send(IpcChannels.RecorderToolbarStop),
     /** Called by the main window once its start attempt settles. */
-    reportRecordingStarted: (result: FocusToolbarRecordingResult): void =>
-      ipcRenderer.send(IpcChannels.FocusToolbarRecordingStarted, result),
+    reportRecordingStarted: (result: RecorderToolbarRecordingResult): void =>
+      ipcRenderer.send(IpcChannels.RecorderToolbarRecordingStarted, result),
     /** Called by the main window once stop/save/editor-navigate finishes. */
-    reportRecordingStopped: (): void => ipcRenderer.send(IpcChannels.FocusToolbarRecordingStopped),
+    reportRecordingStopped: (): void =>
+      ipcRenderer.send(IpcChannels.RecorderToolbarRecordingStopped),
     /** Main window: the toolbar wants a recording started with this config. */
-    onStartRequested: (callback: (payload: FocusToolbarStartPayload) => void): (() => void) => {
-      const listener = (_event: unknown, payload: FocusToolbarStartPayload): void =>
+    onStartRequested: (callback: (payload: RecorderToolbarStartPayload) => void): (() => void) => {
+      const listener = (_event: unknown, payload: RecorderToolbarStartPayload): void =>
         callback(payload);
-      ipcRenderer.on(IpcChannels.FocusToolbarStartRequested, listener);
-      return () => ipcRenderer.removeListener(IpcChannels.FocusToolbarStartRequested, listener);
+      ipcRenderer.on(IpcChannels.RecorderToolbarStartRequested, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.RecorderToolbarStartRequested, listener);
     },
     /** Main window: the toolbar's Stop button was clicked. */
     onStopRequested: (callback: () => void): (() => void) => {
       const listener = (): void => callback();
-      ipcRenderer.on(IpcChannels.FocusToolbarStopRequested, listener);
-      return () => ipcRenderer.removeListener(IpcChannels.FocusToolbarStopRequested, listener);
+      ipcRenderer.on(IpcChannels.RecorderToolbarStopRequested, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.RecorderToolbarStopRequested, listener);
     },
     /** Toolbar window: whether the main window's start attempt succeeded. */
-    onRecordingResult: (callback: (result: FocusToolbarRecordingResult) => void): (() => void) => {
-      const listener = (_event: unknown, result: FocusToolbarRecordingResult): void =>
+    onRecordingResult: (
+      callback: (result: RecorderToolbarRecordingResult) => void
+    ): (() => void) => {
+      const listener = (_event: unknown, result: RecorderToolbarRecordingResult): void =>
         callback(result);
-      ipcRenderer.on(IpcChannels.FocusToolbarRecordingStarted, listener);
-      return () => ipcRenderer.removeListener(IpcChannels.FocusToolbarRecordingStarted, listener);
+      ipcRenderer.on(IpcChannels.RecorderToolbarRecordingStarted, listener);
+      return () =>
+        ipcRenderer.removeListener(IpcChannels.RecorderToolbarRecordingStarted, listener);
     },
     /** Called by the toolbar window's Display/Window tabs to open the click-to-record overlay. */
     openSourcePicker: (options: SourcePickerOverlayOpenOptions): Promise<void> =>

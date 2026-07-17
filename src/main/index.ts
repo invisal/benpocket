@@ -16,7 +16,7 @@ import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
 import { registerTrayHandlers, destroyTray } from './screen-recorder/windows/tray';
-import { destroyFocusToolbar } from './screen-recorder/windows/focus-toolbar-window';
+import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { registerKuberneterHandlers } from './kuberneter';
@@ -230,7 +230,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   destroyTray();
-  destroyFocusToolbar();
+  destroyRecorderToolbar();
   destroySourcePickerOverlay();
 });
 

@@ -21,7 +21,10 @@ import type {
   WebcamOptions
 } from '@screen-recorder/types/recording';
 import type { CaptureRegionSelection } from '@shared/capture-region';
-import type { FocusToolbarOpenPayload, FocusToolbarRecordingResult } from '@shared/focus-toolbar';
+import type {
+  RecorderToolbarOpenPayload,
+  RecorderToolbarRecordingResult
+} from '@shared/recorder-toolbar';
 
 const TABS: { type: CaptureTargetType; label: string; icon: typeof Monitor }[] = [
   { type: 'screen', label: 'Display', icon: Monitor },
@@ -36,10 +39,10 @@ const DEFAULT_WEBCAM: WebcamOptions = {
   size: 180
 };
 
-function parseInit(): FocusToolbarOpenPayload | null {
+function parseInit(): RecorderToolbarOpenPayload | null {
   try {
     const raw = new URLSearchParams(window.location.search).get('init');
-    return raw ? (JSON.parse(raw) as FocusToolbarOpenPayload) : null;
+    return raw ? (JSON.parse(raw) as RecorderToolbarOpenPayload) : null;
   } catch {
     return null;
   }
@@ -55,7 +58,7 @@ function formatElapsed(totalSeconds: number): string {
 
 type Mode = 'setup' | 'starting' | 'recording' | 'stopping';
 
-// The window is frameless (see focus-toolbar-window.ts's `movable: true`),
+// The window is frameless (see recorder-toolbar-window.ts's `movable: true`),
 // so dragging has to be opted into via CSS rather than a native titlebar.
 // `drag` goes on the pill's own background; every interactive element
 // inside needs `no-drag` or Chromium swallows its clicks as window-drag
@@ -64,9 +67,26 @@ type Mode = 'setup' | 'starting' | 'recording' | 'stopping';
 const DRAG = '[-webkit-app-region:drag]';
 const NO_DRAG = '[-webkit-app-region:no-drag]';
 
+// Only ever wired to onMouseEnter, deliberately never onMouseLeave: Chromium
+// fires a synthetic mouseleave on the pill the instant a native
+// `-webkit-app-region: drag` window-move gesture takes over the pointer, and
+// that leave calling disablePointerEvents mid-drag killed the drag before it
+// could go anywhere. Enter-only still covers every real transition -- moving
+// from the dead-space overlay onto the pill/an open popover fires *their*
+// onMouseEnter (enable), and moving back the other way fires the overlay's
+// (disable) -- without ever needing to react to something leaving.
+// `forward: true` is what keeps mouse enter events reaching the renderer at
+// all while ignoring.
+function enablePointerEvents(): void {
+  void window.screenRecorder.window.setIgnoreMouseEvents(false);
+}
+function disablePointerEvents(): void {
+  void window.screenRecorder.window.setIgnoreMouseEvents(true, { forward: true });
+}
+
 /**
  * The floating, always-on-top control bar shown while the main Craftbox
- * window is hidden (see main/screen-recorder/windows/focus-toolbar-window.ts)
+ * window is hidden (see main/screen-recorder/windows/recorder-toolbar-window.ts)
  * so the user sees their actual desktop/window instead of a copy rendered
  * inside the app. This is a fully separate renderer process from the main
  * window -- it keeps its own local copy of audio/webcam settings (seeded
@@ -74,7 +94,7 @@ const NO_DRAG = '[-webkit-app-region:no-drag]';
  * across the IPC boundary as plain data; nothing here shares store identity
  * with the main window.
  */
-export function FocusToolbarApp(): JSX.Element | null {
+export function RecorderToolbarApp(): JSX.Element | null {
   const init = useMemo(() => parseInit(), []);
   const [sources, setSources] = useState<CaptureSource[]>([]);
   const [sourceId, setSourceId] = useState<string | null>(init?.sourceId ?? null);
@@ -108,6 +128,19 @@ export function FocusToolbarApp(): JSX.Element | null {
       .catch(() => setSources([]));
   }, []);
 
+  // This window is now taller than the pill it shows (see TOOLBAR_HEIGHT in
+  // recorder-toolbar-window.ts -- extra headroom for the Camera/Device
+  // popovers to open into), so most of its bounds are just transparent
+  // empty space, not the pill itself. Without this, that space still
+  // captures every click over it -- Electron windows are rectangular and
+  // don't punch holes for transparent regions on their own -- blocking
+  // whatever's underneath (the desktop, other apps) even though nothing is
+  // visibly there. Set once on mount; the dead-space overlay and pill/popover
+  // below toggle it back off/on as the mouse actually crosses between them.
+  useEffect(() => {
+    disablePointerEvents();
+  }, []);
+
   // Same booted-Simulator lookup the main window's SourcePicker uses (see
   // simulator-detection.ts) -- reused here rather than re-implemented, just
   // to know its device name so we can match it against the window sources
@@ -121,8 +154,8 @@ export function FocusToolbarApp(): JSX.Element | null {
 
   useEffect(
     () =>
-      window.screenRecorder.focusToolbar.onRecordingResult(
-        (result: FocusToolbarRecordingResult) => {
+      window.screenRecorder.recorderToolbar.onRecordingResult(
+        (result: RecorderToolbarRecordingResult) => {
           if (result.ok) {
             setMode('recording');
             setRecordingStartedAt(Date.now());
@@ -145,7 +178,7 @@ export function FocusToolbarApp(): JSX.Element | null {
   // them change or it'd start with stale config.
   useEffect(
     () =>
-      window.screenRecorder.focusToolbar.onSourcePicked((sourceId) => {
+      window.screenRecorder.recorderToolbar.onSourcePicked((sourceId) => {
         const source = sources.find((s) => s.id === sourceId);
         if (!source) return;
         setSourceId(source.id);
@@ -171,7 +204,8 @@ export function FocusToolbarApp(): JSX.Element | null {
     function onKeyDown(event: KeyboardEvent): void {
       // Only cancels pre-recording setup -- an active recording only stops
       // via the explicit Stop button, same as the native recorder.
-      if (event.key === 'Escape' && mode === 'setup') window.screenRecorder.focusToolbar.cancel();
+      if (event.key === 'Escape' && mode === 'setup')
+        window.screenRecorder.recorderToolbar.cancel();
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -241,7 +275,7 @@ export function FocusToolbarApp(): JSX.Element | null {
     // A generic window with no bounds just leaves this undefined, and the
     // toolbar stays wherever it already is.
     const targetBounds = cropRegion?.rect ?? source.displayBounds;
-    window.screenRecorder.focusToolbar.requestStart({
+    window.screenRecorder.recorderToolbar.requestStart({
       sourceId: source.id,
       audio,
       webcam,
@@ -260,18 +294,26 @@ export function FocusToolbarApp(): JSX.Element | null {
   // source-picker-overlay-window.ts. A pick there arrives via
   // onSourcePicked above and starts recording immediately.
   async function openSourcePicker(type: CaptureTargetType): Promise<void> {
-    await window.screenRecorder.focusToolbar.openSourcePicker({ type });
+    await window.screenRecorder.recorderToolbar.openSourcePicker({ type });
   }
 
   function handleStop(): void {
     setMode('stopping');
-    window.screenRecorder.focusToolbar.requestStop();
+    window.screenRecorder.recorderToolbar.requestStop();
   }
 
   if (mode === 'recording' || mode === 'stopping') {
     return (
-      <div className="flex h-full items-end justify-center pb-4">
+      <div className="relative flex h-full items-end justify-center pb-4">
+        {/* Dead-space overlay: everything in this (fixed-size) window that
+            isn't the pill below. Sits behind it in stacking order, so the
+            pill's own onMouseEnter -- not this -- wins hit-testing over its
+            footprint; this only ever gets entered from genuinely empty
+            space. No onMouseLeave anywhere in this file, deliberately --
+            see the pill's onMouseEnter comment below. */}
+        <div className="absolute inset-0" onMouseEnter={disablePointerEvents} />
         <div
+          onMouseEnter={enablePointerEvents}
           className={cn(
             DRAG,
             'flex items-center gap-3 rounded-full border border-white/10 bg-zinc-900/95 py-2.5 pr-2.5 pl-4 shadow-2xl backdrop-blur'
@@ -298,8 +340,11 @@ export function FocusToolbarApp(): JSX.Element | null {
   if (!focusedSource) return null;
 
   return (
-    <div className="flex h-full flex-col items-center justify-end gap-2 pb-4">
+    <div className="relative flex h-full flex-col items-center justify-end gap-2 pb-4">
+      {/* See the recording-mode return above for why this has no onMouseLeave. */}
+      <div className="absolute inset-0" onMouseEnter={disablePointerEvents} />
       <div
+        onMouseEnter={enablePointerEvents}
         className={cn(
           DRAG,
           'flex items-center gap-1 rounded-full border border-white/10 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur'
@@ -309,7 +354,7 @@ export function FocusToolbarApp(): JSX.Element | null {
         <GripVertical size={13} className="mx-1 shrink-0 text-white/25" />
 
         <button
-          onClick={() => window.screenRecorder.focusToolbar.cancel()}
+          onClick={() => window.screenRecorder.recorderToolbar.cancel()}
           title="Cancel (Esc)"
           className={cn(
             NO_DRAG,
@@ -383,6 +428,7 @@ export function FocusToolbarApp(): JSX.Element | null {
             <Popover.Content
               side="top"
               align="start"
+              onMouseEnter={enablePointerEvents}
               className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-1.5 text-white')}
             >
               <button
@@ -430,6 +476,7 @@ export function FocusToolbarApp(): JSX.Element | null {
             <Popover.Content
               side="top"
               align="start"
+              onMouseEnter={enablePointerEvents}
               className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-3 text-white')}
             >
               <label className="mb-2 flex items-center gap-2 text-xs text-white/80">

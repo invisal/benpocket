@@ -1,12 +1,12 @@
 import './src/assets/main.css';
-import './focus-toolbar/toolbar.css';
+import '@screen-recorder/windows/recorder-toolbar.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { FocusToolbarApp } from './focus-toolbar/FocusToolbarApp';
+import { RecorderToolbarApp } from '@screen-recorder/windows/RecorderToolbarApp';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <FocusToolbarApp />
+    <RecorderToolbarApp />
   </StrictMode>
 );

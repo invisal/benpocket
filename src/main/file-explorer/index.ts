@@ -18,6 +18,7 @@ import {
   type CreateResult,
   type ListDirectoryResult,
   type MutationResult,
+  type ReadBinaryFileResult,
   type ReadFileResult,
   type WriteFileResult
 } from './fileDriver';
@@ -198,6 +199,13 @@ export function registerFileExplorerHandlers(): void {
     'file-explorer:read-file-content',
     async (_, uri: string): Promise<ReadFileResult> => {
       return getDriverForLocation(uri).readFile(uri);
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:read-file-binary',
+    async (_, uri: string): Promise<ReadBinaryFileResult> => {
+      return getDriverForLocation(uri).readBinaryFile(uri);
     }
   );
 

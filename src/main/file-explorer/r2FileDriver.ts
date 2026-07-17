@@ -9,7 +9,9 @@ import {
 } from '@aws-sdk/client-s3';
 import Cloudflare from 'cloudflare';
 import {
+  MAX_MEDIA_PREVIEW_BYTES,
   MAX_PREVIEW_FILE_BYTES,
+  MEDIA_EXTENSIONS,
   PREVIEWABLE_EXTENSIONS,
   type CreateResult,
   type DriverCapabilities,
@@ -17,6 +19,7 @@ import {
   type FileEntry,
   type ListDirectoryResult,
   type MutationResult,
+  type ReadBinaryFileResult,
   type ReadFileResult,
   type WriteFileResult
 } from './fileDriver';
@@ -234,6 +237,28 @@ async function readFile(uri: string): Promise<ReadFileResult> {
   }
 }
 
+async function readBinaryFile(uri: string): Promise<ReadBinaryFileResult> {
+  const { bucket, key } = parseR2Uri(uri);
+  const extension = keyExtension(key);
+  const mimeType = MEDIA_EXTENSIONS[extension];
+  if (!mimeType) {
+    return { error: 'unsupported-extension' };
+  }
+
+  try {
+    const client = getS3Client();
+    const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    if ((response.ContentLength ?? 0) > MAX_MEDIA_PREVIEW_BYTES) {
+      return { error: 'too-large', maxBytes: MAX_MEDIA_PREVIEW_BYTES };
+    }
+    const data = (await response.Body?.transformToByteArray()) ?? new Uint8Array();
+    return { data, mimeType };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: message };
+  }
+}
+
 async function writeFile(uri: string, content: string): Promise<WriteFileResult> {
   const { bucket, key } = parseR2Uri(uri);
   const extension = keyExtension(key);
@@ -356,6 +381,7 @@ export const r2FileDriver: FileDriver = {
   capabilities,
   listDirectory,
   readFile,
+  readBinaryFile,
   writeFile,
   deleteEntries,
   copyEntries,

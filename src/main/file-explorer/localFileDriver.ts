@@ -2,7 +2,9 @@ import { shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  MAX_MEDIA_PREVIEW_BYTES,
   MAX_PREVIEW_FILE_BYTES,
+  MEDIA_EXTENSIONS,
   PREVIEWABLE_EXTENSIONS,
   type CreateResult,
   type DriverCapabilities,
@@ -10,6 +12,7 @@ import {
   type FileEntry,
   type ListDirectoryResult,
   type MutationResult,
+  type ReadBinaryFileResult,
   type ReadFileResult,
   type WriteFileResult
 } from './fileDriver';
@@ -98,6 +101,28 @@ export const localFileDriver: FileDriver = {
 
       const content = await fs.promises.readFile(uri, 'utf-8');
       return { content };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: message };
+    }
+  },
+
+  async readBinaryFile(uri): Promise<ReadBinaryFileResult> {
+    const extension = path.extname(uri).replace(/^\./, '').toLowerCase();
+    const mimeType = MEDIA_EXTENSIONS[extension];
+    if (!mimeType) {
+      return { error: 'unsupported-extension' };
+    }
+
+    try {
+      const stats = await fs.promises.stat(uri);
+      if (stats.isDirectory()) return { error: 'Cannot preview a folder' };
+      if (stats.size > MAX_MEDIA_PREVIEW_BYTES) {
+        return { error: 'too-large', maxBytes: MAX_MEDIA_PREVIEW_BYTES };
+      }
+
+      const buffer = await fs.promises.readFile(uri);
+      return { data: new Uint8Array(buffer), mimeType };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { error: message };

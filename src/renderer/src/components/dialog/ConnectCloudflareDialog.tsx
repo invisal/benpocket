@@ -83,8 +83,8 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
           )}
         </div>
         <Dialog.Description>
-          Lets benpocket browse the R2 buckets this token can see. All four fields are required
-          together.
+          Account ID and API Token connect your Cloudflare account. R2 access keys are optional --
+          add them later to browse R2 buckets from the file explorer.
         </Dialog.Description>
 
         <div className="mt-4">
@@ -110,14 +110,14 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
                   onChange={(e) => setApiToken(e.target.value)}
                 />
               </Field>
-              <Field label="R2 Access Key ID">
+              <Field label="R2 Access Key ID (optional)">
                 <Input
                   size="sm"
                   value={accessKeyId}
                   onChange={(e) => setAccessKeyId(e.target.value)}
                 />
               </Field>
-              <Field label="R2 Secret Access Key">
+              <Field label="R2 Secret Access Key (optional)">
                 <Input
                   size="sm"
                   type="password"

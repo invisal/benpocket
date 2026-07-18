@@ -87,8 +87,8 @@ export interface FileExplorerApi {
   setR2Credential: (
     accountId: string,
     apiToken: string,
-    accessKeyId: string,
-    secretAccessKey: string
+    accessKeyId?: string,
+    secretAccessKey?: string
   ) => Promise<{ success: true } | { error: string }>;
   clearR2Credential: () => Promise<void>;
 }
@@ -121,7 +121,7 @@ export const fileExplorerApi: FileExplorerApi = {
   createFile: (destDir, name) => ipcRenderer.invoke('file-explorer:create-file', destDir, name),
   createFolder: (destDir, name) => ipcRenderer.invoke('file-explorer:create-folder', destDir, name),
   getR2CredentialStatus: () => ipcRenderer.invoke('file-explorer:get-r2-credential-status'),
-  setR2Credential: (accountId, apiToken, accessKeyId, secretAccessKey) =>
+  setR2Credential: (accountId, apiToken, accessKeyId = '', secretAccessKey = '') =>
     ipcRenderer.invoke(
       'file-explorer:set-r2-credential',
       accountId,

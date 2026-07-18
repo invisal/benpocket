@@ -28,7 +28,10 @@ import { parseLocation } from './location';
 
 export function getS3Client(): S3Client {
   const credential = getR2Credential();
-  if (!credential) throw new Error('R2 is not configured.');
+  if (!credential) throw new Error('Cloudflare is not connected.');
+  if (!credential.accessKeyId || !credential.secretAccessKey) {
+    throw new Error('R2 access keys are not configured.');
+  }
 
   // Construction is cheap (no connection opened until a command is sent), so a
   // fresh client per call sidesteps invalidating a cached one on credential rotation.
@@ -44,7 +47,7 @@ export function getS3Client(): S3Client {
 
 function getCloudflareClient(): Cloudflare {
   const credential = getR2Credential();
-  if (!credential) throw new Error('R2 is not configured.');
+  if (!credential) throw new Error('Cloudflare is not connected.');
   return new Cloudflare({ apiToken: credential.apiToken });
 }
 
@@ -393,7 +396,7 @@ export const r2FileDriver: FileDriver = {
 /** Bucket-level listing is a Cloudflare REST API call, not part of the S3-compatible object surface. */
 export async function listR2Buckets(): Promise<{ name: string }[] | { error: string }> {
   const credential = getR2Credential();
-  if (!credential) return { error: 'R2 is not configured.' };
+  if (!credential) return { error: 'Cloudflare is not connected.' };
 
   try {
     const client = getCloudflareClient();

@@ -177,7 +177,8 @@ export function useServices(enabled: boolean) {
             endpointsCount,
             ports: slicePorts,
             addressType,
-            age: formatAge(slice.metadata?.creationTimestamp || '')
+            age: formatAge(slice.metadata?.creationTimestamp || ''),
+            creationTimestamp: slice.metadata?.creationTimestamp || ''
           };
         });
 

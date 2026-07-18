@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import {
   type ServiceData,
@@ -37,7 +38,14 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     {
       id: 'created',
       name: 'Created',
-      value: `${payload.age} ago (${payload.createdTime || 'N/A'})`
+      value: (
+        <span>
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />{' '}
+          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+        </span>
+      )
     },
     {
       id: 'name',
@@ -248,7 +256,14 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                 {
                   key: 'age',
                   header: 'Age',
-                  className: 'font-mono text-zinc-500'
+                  className: 'font-mono text-zinc-500',
+                  render: (row) => (
+                    <Age
+                      timestamp={
+                        (row as unknown as Record<string, unknown>).creationTimestamp as string
+                      }
+                    />
+                  )
                 }
               ]}
               data={payload.endpointSlices}

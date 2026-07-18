@@ -92,7 +92,8 @@ export function useDeployments(enabled: boolean) {
               revision: rev,
               name: rs.metadata?.name || '',
               podsCount: `${rsReady}/${rsReplicas}`,
-              age: formatAge(rs.metadata?.creationTimestamp || '')
+              age: formatAge(rs.metadata?.creationTimestamp || ''),
+              creationTimestamp: rs.metadata?.creationTimestamp || ''
             };
           })
           .sort((a, b) => b.revision - a.revision);

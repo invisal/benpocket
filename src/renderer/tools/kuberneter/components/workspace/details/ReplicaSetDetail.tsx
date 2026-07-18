@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { type ReplicaSetData } from '../../../types/ReplicaSetData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
@@ -31,7 +32,15 @@ export const ReplicaSetDetail: React.FC<ReplicaSetDetailProps> = ({ payload, isT
     {
       id: 'status',
       name: 'Status / Age',
-      value: `${payload.hasWarning ? 'Warning (Replica mismatch)' : 'OK'} (${payload.age})`
+      value: (
+        <span>
+          {payload.hasWarning ? 'Warning (Replica mismatch)' : 'OK'} (
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />
+          )
+        </span>
+      )
     }
   ];
 

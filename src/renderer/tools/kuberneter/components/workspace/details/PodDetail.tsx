@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { useState } from 'react';
 import { type PodData } from '../../../types/PodData';
@@ -180,7 +181,14 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
     {
       id: 'created',
       name: 'Created',
-      value: `${payload.age} ago (${createdTime || 'N/A'})`
+      value: (
+        <span>
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />{' '}
+          ago ({createdTime || 'N/A'})
+        </span>
+      )
     },
     {
       id: 'name',

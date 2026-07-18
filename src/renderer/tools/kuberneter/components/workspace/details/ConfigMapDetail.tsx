@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { useState } from 'react';
 import { type ConfigMapData } from '../../../types/ConfigMapData';
@@ -36,7 +37,14 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
     {
       id: 'created',
       name: 'Created',
-      value: payload.age
+      value: (
+        <span>
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />{' '}
+          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+        </span>
+      )
     },
     {
       id: 'name',

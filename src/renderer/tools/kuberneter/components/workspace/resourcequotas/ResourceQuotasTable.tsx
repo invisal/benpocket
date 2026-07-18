@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { useMemo } from 'react';
 import { KubeTable, type Column } from '../../kubeTable';
@@ -74,7 +75,13 @@ export const ResourceQuotasTable: React.FC<ResourceQuotasTableProps> = ({
       {
         key: 'age',
         header: 'Age',
-        render: (row) => <span className="text-zinc-500 font-mono text-[11px]">{row.age}</span>,
+        render: (row) => (
+          <span className="text-zinc-500 font-mono text-[11px]">
+            <Age
+              timestamp={(row as unknown as Record<string, unknown>).creationTimestamp as string}
+            />
+          </span>
+        ),
         className: 'text-zinc-500',
         initialWidth: 100
       },

@@ -8,4 +8,5 @@ export interface ApplicationData {
   age: string;
   status: 'Running' | 'Pending';
   kind: string;
+  creationTimestamp: string;
 }

@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { useMemo, useCallback } from 'react';
 import { type IngressData } from '../../../types/IngressData';
@@ -28,7 +29,16 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
     {
       id: 'created',
       name: 'Created',
-      value: payload ? `${payload.age} ago (${payload.createdTime || 'N/A'})` : ''
+      value: payload ? (
+        <span>
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />{' '}
+          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+        </span>
+      ) : (
+        ''
+      )
     },
     {
       id: 'name',

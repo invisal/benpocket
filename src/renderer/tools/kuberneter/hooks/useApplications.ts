@@ -59,7 +59,8 @@ export function useApplications(enabled: boolean) {
             version,
             age,
             status,
-            kind
+            kind,
+            creationTimestamp: item.metadata?.creationTimestamp || ''
           };
         })
         .filter((x): x is ApplicationData => x !== null);

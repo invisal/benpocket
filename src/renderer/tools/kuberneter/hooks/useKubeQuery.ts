@@ -70,7 +70,33 @@ export function useKubeQuery<T>(
 
         const rawItems = (res?.items as K8sResource[]) || [];
         const transformed = await transformRef.current(rawItems, extraData);
-        setData(transformed);
+        const enriched = transformed.map((tObj: unknown) => {
+          if (tObj && typeof tObj === 'object') {
+            const obj = tObj as Record<string, unknown>;
+            const name = obj['name'] as string | undefined;
+            const ns = (obj['ns'] || obj['namespace']) as string | undefined;
+            let matchedRaw: K8sResource | undefined;
+            if (name) {
+              matchedRaw = rawItems.find(
+                (raw) => raw.metadata?.name === name && (!ns || raw.metadata?.namespace === ns)
+              );
+            }
+            return {
+              ...obj,
+              creationTimestamp:
+                (obj['creationTimestamp'] as string) ||
+                matchedRaw?.metadata?.creationTimestamp ||
+                '',
+              createdTime:
+                (obj['createdTime'] as string) ||
+                (matchedRaw?.metadata?.creationTimestamp
+                  ? new Date(matchedRaw.metadata.creationTimestamp).toLocaleString()
+                  : '')
+            };
+          }
+          return tObj;
+        }) as unknown as T[];
+        setData(enriched);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (!isBackground) {

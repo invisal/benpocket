@@ -4,6 +4,7 @@ export interface ServiceEndpointSlice {
   ports: string;
   addressType: string;
   age: string;
+  creationTimestamp: string;
 }
 
 export interface ServiceEndpoint {

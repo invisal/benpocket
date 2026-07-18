@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { type DaemonSetData } from '../../../types/DaemonSetData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
@@ -41,7 +42,15 @@ export const DaemonSetDetail: React.FC<DaemonSetDetailProps> = ({ payload, isTab
     {
       id: 'status',
       name: 'Status / Age',
-      value: `${payload.hasWarning ? 'Warning' : 'OK'} (${payload.age})`
+      value: (
+        <span>
+          {payload.hasWarning ? 'Warning' : 'OK'} (
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />
+          )
+        </span>
+      )
     }
   ];
 

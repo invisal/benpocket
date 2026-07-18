@@ -5,6 +5,7 @@ export interface DeployRevision {
   name: string;
   podsCount: string;
   age: string;
+  creationTimestamp: string;
 }
 
 export interface DeployRelatedPod {

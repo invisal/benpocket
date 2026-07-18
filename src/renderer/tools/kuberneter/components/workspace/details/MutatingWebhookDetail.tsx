@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { type MutatingWebhookConfigurationData } from '../../../types/MutatingWebhookConfigurationData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
@@ -26,7 +27,14 @@ export const MutatingWebhookDetail: React.FC<MutatingWebhookDetailProps> = ({
     {
       id: 'created',
       name: 'Created',
-      value: `${payload.age} ago (${payload.createdTime || 'N/A'})`
+      value: (
+        <span>
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />{' '}
+          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+        </span>
+      )
     },
     {
       id: 'name',

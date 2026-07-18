@@ -1,3 +1,4 @@
+import { Age } from '../../Age';
 import type React from 'react';
 import { type JobData } from '../../../types/JobData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
@@ -36,7 +37,14 @@ export const JobDetail: React.FC<JobDetailProps> = ({ payload, isTab = false }) 
     {
       id: 'age',
       name: 'Age',
-      value: payload.age
+      value: (
+        <span>
+          <Age
+            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+          />{' '}
+          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+        </span>
+      )
     }
   ];
 

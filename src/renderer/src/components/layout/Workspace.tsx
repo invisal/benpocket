@@ -9,7 +9,7 @@ import { KubeDetailDrawer } from '../../../tools/kuberneter/components/workspace
 import { ScreenRecorderWorkspace } from './workspaces/ScreenRecorderWorkspace';
 
 export const Workspace: React.FC = () => {
-  const { openTabs, activeTabId, setActiveTabId, closeTab, renameTab } = useLayoutStore();
+  const { openTabs, activeTabId, setActiveTabId, closeTab, renameTab, pinTab } = useLayoutStore();
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const filteredTabs = openTabs.filter((t) => t.instanceId === activeInstanceId);
@@ -42,6 +42,7 @@ export const Workspace: React.FC = () => {
             onActivate={() => setActiveTabId(tab.id)}
             onClose={() => closeTab(tab.id)}
             onRename={(title) => renameTab(tab.id, title)}
+            onPin={() => pinTab(tab.id)}
           />
         ))}
       </div>
@@ -80,6 +81,7 @@ interface TabBarItemProps {
   onActivate: () => void;
   onClose: () => void;
   onRename: (title: string) => void;
+  onPin: () => void;
 }
 
 const TabBarItem: React.FC<TabBarItemProps> = ({
@@ -87,7 +89,8 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
   isActive,
   onActivate,
   onClose,
-  onRename
+  onRename,
+  onPin
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(tab.title);
@@ -107,7 +110,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
         className={`flex items-center justify-center w-10 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 ${
           isActive
             ? 'bg-editor-bg text-white border-t-2 border-t-accent'
-            : 'bg-sidebar-bg text-zinc-550 hover:bg-editor-bg/40 hover:text-zinc-300'
+            : 'bg-sidebar-bg text-zinc-555 hover:bg-editor-bg/40 hover:text-zinc-300'
         }`}
         title="Kuberneter Connection Settings"
       >
@@ -144,10 +147,14 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
     <div
       onClick={onActivate}
       onDoubleClick={() => {
-        setDraftTitle(tab.title);
-        setIsEditing(true);
+        if (tab.isPreview) {
+          onPin();
+        } else {
+          setDraftTitle(tab.title);
+          setIsEditing(true);
+        }
       }}
-      title="Double-click to rename"
+      title={tab.isPreview ? 'Double-click to pin' : 'Double-click to rename'}
       className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
         isActive
           ? 'bg-editor-bg text-white border-t-2 border-t-accent'
@@ -155,7 +162,11 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
       }`}
     >
       <FileText size={12} className={isActive ? 'text-accent' : 'text-zinc-600'} />
-      <span className="truncate max-w-30">{tab.title}</span>
+      <span
+        className={`truncate max-w-30 ${tab.isPreview ? 'italic text-zinc-400 font-normal' : ''}`}
+      >
+        {tab.title}
+      </span>
       <button
         onClick={(e) => {
           e.stopPropagation();

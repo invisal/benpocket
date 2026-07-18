@@ -9,6 +9,7 @@ export interface Tab {
   instanceId: string;
   /** Tool-specific tab seed data (e.g. PostmanTabSeed). Each tool narrows/casts this at its own read site. */
   meta?: unknown;
+  isPreview?: boolean;
 }
 
 export interface ActivityInstance {
@@ -37,6 +38,7 @@ interface LayoutState {
   closeTab: (id: string) => void;
   setActiveTabId: (id: string | null) => void;
   renameTab: (id: string, title: string) => void;
+  pinTab: (id: string) => void;
 
   // Instance Lifecycle Actions
   addActivityInstance: (
@@ -66,7 +68,31 @@ export const useLayoutStore = create<LayoutState>()(
       openTab: (tab) =>
         set((state) => {
           const tabExists = state.openTabs.some((t) => t.id === tab.id);
-          const newTabs = tabExists ? state.openTabs : [...state.openTabs, tab];
+
+          if (tabExists) {
+            return {
+              activeTabId: tab.id
+            };
+          }
+
+          // Check if there is an unsticky/preview tab in the same instance
+          const previewTab = state.openTabs.find(
+            (t) => t.instanceId === tab.instanceId && t.isPreview
+          );
+
+          const isNewTabPreview = tab.isPreview === true;
+          let newTabs: Tab[];
+
+          if (previewTab) {
+            // Overwrite the existing preview tab with the new tab
+            const newTab = { ...tab, isPreview: isNewTabPreview };
+            newTabs = state.openTabs.map((t) => (t.id === previewTab.id ? newTab : t));
+          } else {
+            // Add as a new tab
+            const newTab = { ...tab, isPreview: isNewTabPreview };
+            newTabs = [...state.openTabs, newTab];
+          }
+
           return {
             openTabs: newTabs,
             activeTabId: tab.id
@@ -100,6 +126,11 @@ export const useLayoutStore = create<LayoutState>()(
       renameTab: (id, title) =>
         set((state) => ({
           openTabs: state.openTabs.map((t) => (t.id === id ? { ...t, title } : t))
+        })),
+
+      pinTab: (id) =>
+        set((state) => ({
+          openTabs: state.openTabs.map((t) => (t.id === id ? { ...t, isPreview: false } : t))
         })),
 
       addActivityInstance: (type, customId, context) =>

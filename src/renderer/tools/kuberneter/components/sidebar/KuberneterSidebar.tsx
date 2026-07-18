@@ -170,7 +170,7 @@ export const KuberneterSidebar: React.FC = () => {
     setKuberneterInstanceResource(activeInstanceId, resourceId);
     openTab({
       id: `kuberneter-k8s-${resourceId}-${activeInstanceId}`,
-      title: `K8s ${label}`,
+      title: `${label}`,
       type: 'kuberneter',
       instanceId: activeInstanceId,
       meta: { resource: resourceId }
@@ -178,7 +178,7 @@ export const KuberneterSidebar: React.FC = () => {
   };
 
   const categories: SidebarCategory[] = [
-    { id: 'overview', label: 'Overview', icon: Monitor },
+    { id: 'overview', label: 'Cluster Overview', icon: Monitor },
     { id: 'apps', label: 'Applications', icon: Layers },
     { id: 'nodes', label: 'Nodes', icon: Cpu },
     {
@@ -186,7 +186,7 @@ export const KuberneterSidebar: React.FC = () => {
       label: 'Workloads',
       icon: Boxes,
       subItems: [
-        { id: 'workloads-overview', label: 'Overview' },
+        { id: 'workloads-overview', label: 'Workload Overview' },
         { id: 'pods', label: 'Pods' },
         { id: 'deployments', label: 'Deployments' },
         { id: 'daemonsets', label: 'Daemon Sets' },

@@ -200,8 +200,8 @@ body {
   background-image: repeating-linear-gradient(
     -45deg,
     var(--color-border) 0,
-    var(--color-border) 1px,
-    transparent 1px,
+    var(--color-border) 1.5px,
+    transparent 1.5px,
     transparent 6px
   );
 }

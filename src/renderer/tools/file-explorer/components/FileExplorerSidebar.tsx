@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { CloudIcon, HardDrive } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { CloudIcon, HardDrive, Settings2 } from 'lucide-react';
 import { cn } from 'cnfast';
 import type { SidebarItem, SidebarSections } from '../../../../preload/file-explorer/api';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
 import { getFavoriteIcon, type IconComponent } from '../lib/sidebarIcons';
+import { SelectR2BucketsDialog } from './SelectR2BucketsDialog';
 
 function normalize(target: string): string {
   return target.replace(/[\\/]+$/, '').toLowerCase();
@@ -11,13 +12,18 @@ function normalize(target: string): string {
 
 export function FileExplorerSidebar() {
   const [sections, setSections] = useState<SidebarSections | null>(null);
+  const [bucketDialogOpen, setBucketDialogOpen] = useState(false);
 
   const activePanel = useFileExplorerStore((s) => s.activePanel);
   const panels = useFileExplorerStore((s) => s.panels);
   const setPanelPath = useFileExplorerStore((s) => s.setPanelPath);
 
-  useEffect(() => {
+  const refreshSections = () => {
     window.fileExplorer.getSidebarSections().then(setSections);
+  };
+
+  useEffect(() => {
+    refreshSections();
   }, []);
 
   if (!sections) return null;
@@ -48,6 +54,21 @@ export function FileExplorerSidebar() {
         currentPath={activePath ?? ''}
         onNavigate={navigateActive}
         getIcon={() => CloudIcon}
+        headerAction={
+          <button
+            title="Select R2 buckets"
+            onClick={() => setBucketDialogOpen(true)}
+            className="rounded p-0.5 text-zinc-500 hover:bg-surface-3 hover:text-text-base"
+          >
+            <Settings2 size={12} />
+          </button>
+        }
+      />
+
+      <SelectR2BucketsDialog
+        open={bucketDialogOpen}
+        onOpenChange={setBucketDialogOpen}
+        onSaved={refreshSections}
       />
     </div>
   );
@@ -59,16 +80,27 @@ interface SidebarSectionProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   getIcon: (item: SidebarItem) => IconComponent;
+  headerAction?: ReactNode;
 }
 
-function SidebarSection({ title, items, currentPath, onNavigate, getIcon }: SidebarSectionProps) {
-  if (items.length === 0) return null;
+function SidebarSection({
+  title,
+  items,
+  currentPath,
+  onNavigate,
+  getIcon,
+  headerAction
+}: SidebarSectionProps) {
+  if (items.length === 0 && !headerAction) return null;
 
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="px-2 text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
-        {title}
-      </span>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
+          {title}
+        </span>
+        {headerAction}
+      </div>
       {items.map((item) => {
         const Icon = getIcon(item);
         const isActive = normalize(currentPath) === normalize(item.path);

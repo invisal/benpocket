@@ -43,6 +43,11 @@ export type ClipboardFiles = { paths: string[]; mode: ClipboardMode };
 
 export interface R2CredentialStatus {
   configured: boolean;
+  selectedBuckets: string[];
+}
+
+export interface R2Bucket {
+  name: string;
 }
 
 /** Progress for a copy/move that streams bytes between local disk and R2. */
@@ -91,6 +96,8 @@ export interface FileExplorerApi {
     secretAccessKey?: string
   ) => Promise<{ success: true } | { error: string }>;
   clearR2Credential: () => Promise<void>;
+  listR2Buckets: () => Promise<R2Bucket[] | { error: string }>;
+  setSelectedR2Buckets: (bucketNames: string[]) => Promise<{ success: true } | { error: string }>;
 }
 
 export const fileExplorerApi: FileExplorerApi = {
@@ -129,5 +136,8 @@ export const fileExplorerApi: FileExplorerApi = {
       accessKeyId,
       secretAccessKey
     ),
-  clearR2Credential: () => ipcRenderer.invoke('file-explorer:clear-r2-credential')
+  clearR2Credential: () => ipcRenderer.invoke('file-explorer:clear-r2-credential'),
+  listR2Buckets: () => ipcRenderer.invoke('file-explorer:list-r2-buckets'),
+  setSelectedR2Buckets: (bucketNames) =>
+    ipcRenderer.invoke('file-explorer:set-selected-r2-buckets', bucketNames)
 };

@@ -187,7 +187,7 @@ function FileExplorerLayout() {
         onResize={setSidebarWidth}
         min={150}
         max={400}
-        className="bg-surface-2 border-r border-border flex flex-col h-full p-3 overflow-y-auto"
+        className="bg-surface-2 border-r border-border flex flex-col h-full overflow-y-auto"
       >
         <FileExplorerSidebar />
       </ResizablePanel>

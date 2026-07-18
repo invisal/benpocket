@@ -102,15 +102,13 @@ function getLocations(): SidebarItem[] {
   }
 }
 
-async function getR2BucketSidebarItems(): Promise<SidebarItem[]> {
-  // Not configured -- R2 stays entirely absent from the sidebar rather than
-  // showing an error state, matching Step 7's "opt-in, not an error" design.
-  if (!getR2Credential()) return [];
+function getR2BucketSidebarItems(): SidebarItem[] {
+  // Only buckets the user explicitly picked (via the bucket selector) show up
+  // here -- we never dump the whole account's bucket list into the sidebar.
+  const credential = getR2Credential();
+  if (!credential) return [];
 
-  const buckets = await listR2Buckets();
-  if ('error' in buckets) return [];
-
-  return buckets.map((bucket) => ({ label: bucket.name, path: `r2://${bucket.name}/` }));
+  return credential.selectedBuckets.map((name) => ({ label: name, path: `r2://${name}/` }));
 }
 
 /**
@@ -158,8 +156,12 @@ export function registerFileExplorerHandlers(): void {
     return {
       favorites: getFavorites(),
       locations: getLocations(),
-      r2Buckets: await getR2BucketSidebarItems()
+      r2Buckets: getR2BucketSidebarItems()
     };
+  });
+
+  ipcMain.handle('file-explorer:list-r2-buckets', async () => {
+    return listR2Buckets();
   });
 
   ipcMain.handle(

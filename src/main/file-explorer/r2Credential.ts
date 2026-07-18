@@ -9,6 +9,9 @@ export interface R2Credential {
   apiToken: string;
   accessKeyId?: string;
   secretAccessKey?: string;
+  // Buckets the user picked to show in the sidebar/location picker -- we never
+  // list the whole account's buckets there, only what was explicitly selected.
+  selectedBuckets: string[];
 }
 
 const CREDENTIAL_FILENAME = 'r2-credential.json';
@@ -24,6 +27,7 @@ interface EncryptedCredentialFile {
   apiToken: string;
   accessKeyId?: string;
   secretAccessKey?: string;
+  selectedBuckets?: string[];
 }
 
 // undefined = not loaded from disk yet; null = loaded, nothing saved.
@@ -41,7 +45,8 @@ function loadFromDisk(): R2Credential | null {
         : undefined,
       secretAccessKey: parsed.secretAccessKey
         ? safeStorage.decryptString(Buffer.from(parsed.secretAccessKey, 'base64'))
-        : undefined
+        : undefined,
+      selectedBuckets: parsed.selectedBuckets ?? []
     };
   } catch {
     return null;
@@ -61,9 +66,16 @@ export function getR2Credential(): R2Credential | null {
 }
 
 export function registerR2CredentialHandlers(): void {
-  ipcMain.handle('file-explorer:get-r2-credential-status', (): { configured: boolean } => {
-    return { configured: getCachedCredential() !== null };
-  });
+  ipcMain.handle(
+    'file-explorer:get-r2-credential-status',
+    (): { configured: boolean; selectedBuckets: string[] } => {
+      const credential = getCachedCredential();
+      return {
+        configured: credential !== null,
+        selectedBuckets: credential?.selectedBuckets ?? []
+      };
+    }
+  );
 
   ipcMain.handle(
     'file-explorer:set-r2-credential',
@@ -86,6 +98,9 @@ export function registerR2CredentialHandlers(): void {
         return { error: 'OS-level credential encryption is not available on this machine.' };
       }
 
+      // Reconnecting the same account shouldn't wipe out an existing bucket selection.
+      const selectedBuckets = getCachedCredential()?.selectedBuckets ?? [];
+
       const encrypted: EncryptedCredentialFile = {
         accountId,
         apiToken: safeStorage.encryptString(apiToken).toString('base64'),
@@ -94,7 +109,8 @@ export function registerR2CredentialHandlers(): void {
           : undefined,
         secretAccessKey: secretAccessKey.trim()
           ? safeStorage.encryptString(secretAccessKey).toString('base64')
-          : undefined
+          : undefined,
+        selectedBuckets
       };
 
       try {
@@ -104,13 +120,23 @@ export function registerR2CredentialHandlers(): void {
           accountId,
           apiToken,
           accessKeyId: accessKeyId.trim() || undefined,
-          secretAccessKey: secretAccessKey.trim() || undefined
+          secretAccessKey: secretAccessKey.trim() || undefined,
+          selectedBuckets
         };
         return { success: true };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return { error: message };
       }
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:set-selected-r2-buckets',
+    (_, bucketNames: string[]): { success: true } | { error: string } => {
+      const credential = getCachedCredential();
+      if (!credential) return { error: 'Cloudflare is not connected.' };
+      return setSelectedBuckets(credential, bucketNames);
     }
   );
 
@@ -122,4 +148,31 @@ export function registerR2CredentialHandlers(): void {
       // best-effort -- the in-memory cache is already cleared either way
     }
   });
+}
+
+function setSelectedBuckets(
+  credential: R2Credential,
+  bucketNames: string[]
+): { success: true } | { error: string } {
+  const encrypted: EncryptedCredentialFile = {
+    accountId: credential.accountId,
+    apiToken: safeStorage.encryptString(credential.apiToken).toString('base64'),
+    accessKeyId: credential.accessKeyId
+      ? safeStorage.encryptString(credential.accessKeyId).toString('base64')
+      : undefined,
+    secretAccessKey: credential.secretAccessKey
+      ? safeStorage.encryptString(credential.secretAccessKey).toString('base64')
+      : undefined,
+    selectedBuckets: bucketNames
+  };
+
+  try {
+    fs.mkdirSync(path.dirname(credentialFilePath()), { recursive: true });
+    fs.writeFileSync(credentialFilePath(), JSON.stringify(encrypted), { mode: 0o600 });
+    cachedCredential = { ...credential, selectedBuckets: bucketNames };
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: message };
+  }
 }

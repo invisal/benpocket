@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, HardDrive } from 'lucide-react';
+import { ChevronDown, ChevronRight, CloudIcon, HardDrive } from 'lucide-react';
 import { cn } from 'cnfast';
 import { useEffect, useRef, useState } from 'react';
 import { Menu } from '@renderer/components/ui/Menu';
@@ -230,6 +230,17 @@ function BreadcrumbLocationPicker({ onNavigate }: { onNavigate: (path: string) =
             {sections.locations.map((item) => (
               <Menu.Item key={item.path} onClick={() => onNavigate(item.path)}>
                 <HardDrive size={14} className="shrink-0 text-zinc-500" />
+                <span className="truncate">{item.label}</span>
+              </Menu.Item>
+            ))}
+          </Menu.Group>
+        )}
+        {sections && sections.r2Buckets.length > 0 && (
+          <Menu.Group>
+            <Menu.GroupLabel>R2</Menu.GroupLabel>
+            {sections.r2Buckets.map((item) => (
+              <Menu.Item key={item.path} onClick={() => onNavigate(item.path)}>
+                <CloudIcon size={14} className="shrink-0 text-zinc-500" />
                 <span className="truncate">{item.label}</span>
               </Menu.Item>
             ))}

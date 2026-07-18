@@ -221,3 +221,21 @@ body {
 .kuberneter-sidebar:hover .kuberneter-sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-scrollbar-thumb-hover);
 }
+
+/* Tab bar scrollbar: only visible on hover */
+.tab-bar-container::-webkit-scrollbar {
+  height: 3px;
+}
+.tab-bar-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tab-bar-container::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 1.5px;
+}
+.tab-bar-container:hover::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+}
+.tab-bar-container:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+}

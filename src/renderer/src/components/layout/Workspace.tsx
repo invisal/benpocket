@@ -51,7 +51,7 @@ export const Workspace: React.FC = () => {
       <div
         ref={containerRef}
         onWheel={handleWheel}
-        className="flex h-9 bg-sidebar-bg border-b border-border-dark overflow-x-auto select-none shrink-0 scrollbar-none"
+        className="flex h-9 bg-sidebar-bg border-b border-border-dark overflow-x-auto select-none shrink-0 tab-bar-container"
       >
         {filteredTabs.map((tab) => (
           <TabBarItem

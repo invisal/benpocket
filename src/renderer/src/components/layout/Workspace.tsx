@@ -55,7 +55,7 @@ export const Workspace: React.FC = () => {
           return (
             <div
               key={tab.id}
-              className={`relative flex-1 overflow-hidden flex flex-col min-h-0 min-w-0 bg-surface${isActive ? '' : ' hidden'}`}
+              className={`relative pr-1 flex-1 overflow-hidden flex flex-col min-h-0 min-w-0 bg-surface${isActive ? '' : ' hidden'}`}
             >
               <KuberneterWorkspace resource={resource} />
               <KubeDetailDrawer tabId={tab.id} />

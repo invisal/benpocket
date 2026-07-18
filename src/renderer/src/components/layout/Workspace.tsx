@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FileText, X, Home } from 'lucide-react';
 import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { HomeTab } from './HomeTab';
@@ -11,6 +11,21 @@ import { ScreenRecorderWorkspace } from './workspaces/ScreenRecorderWorkspace';
 export const Workspace: React.FC = () => {
   const { openTabs, activeTabId, setActiveTabId, closeTab, renameTab, pinTab } = useLayoutStore();
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!activeTabId || !containerRef.current) return;
+    const activeEl = containerRef.current.querySelector('[data-active="true"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [activeTabId]);
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (containerRef.current) {
+      containerRef.current.scrollLeft += e.deltaY;
+    }
+  };
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const filteredTabs = openTabs.filter((t) => t.instanceId === activeInstanceId);
 
@@ -33,7 +48,11 @@ export const Workspace: React.FC = () => {
   return (
     <div className="flex-1 bg-editor-bg flex flex-col min-w-0 overflow-hidden">
       {/* Tab bar header */}
-      <div className="flex h-9 bg-sidebar-bg border-b border-border-dark overflow-x-auto select-none shrink-0 scrollbar-none">
+      <div
+        ref={containerRef}
+        onWheel={handleWheel}
+        className="flex h-9 bg-sidebar-bg border-b border-border-dark overflow-x-auto select-none shrink-0 scrollbar-none"
+      >
         {filteredTabs.map((tab) => (
           <TabBarItem
             key={tab.id}
@@ -145,6 +164,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
 
   return (
     <div
+      data-active={isActive}
       onClick={onActivate}
       onDoubleClick={() => {
         if (tab.isPreview) {

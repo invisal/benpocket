@@ -138,9 +138,9 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
             : contentType === 'ingresses'
               ? `Ingress: ${resourceName}`
               : contentType === 'ingressclasses'
-                ? `IngressClass: ${resourceName}`
+                ? `Ingress Class: ${resourceName}`
                 : contentType === 'networkpolicies'
-                  ? `NetworkPolicy: ${resourceName}`
+                  ? `Network Policy: ${resourceName}`
                   : titleNames[contentType] || 'Details'}
         </span>
         <div className="flex items-center gap-2">

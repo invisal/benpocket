@@ -13,10 +13,17 @@ export async function listCaptureSources(): Promise<CaptureSource[]> {
   // `source.display_id` corresponds directly to `Display.id` from the Screen
   // API (Electron's own docs: "a unique identifier that will correspond to
   // the `id` of the matching Display") -- the correct way to pair a screen
-  // source with its bounds. Falls back to index-order matching only if a
-  // platform ever reports an empty `display_id` (documented as possible).
+  // source with its bounds. Falls back to "the next display nothing has
+  // claimed yet" only if a platform ever reports an empty `display_id`
+  // (documented as possible). `usedDisplayIds` has to be tracked explicitly
+  // rather than a simple incrementing counter: with multiple monitors, some
+  // sources typically resolve by id and some fall back, in no particular
+  // order, and a counter that advances on every screen source (matched or
+  // not) drifts out of sync with which displays are actually still free --
+  // the previous version of this code had exactly that bug.
   const displays = screen.getAllDisplays();
-  let fallbackIndex = 0;
+  const usedDisplayIds = new Set<number>();
+  const primaryDisplayId = screen.getPrimaryDisplay().id;
 
   // If a Simulator is booted, its window source gets tagged with real
   // on-screen bounds (see window-bounds.ts) so it gets the same cursor/click
@@ -44,8 +51,8 @@ export async function listCaptureSources(): Promise<CaptureSource[]> {
 
     const display =
       findDisplayForCapturerId(source.display_id ? String(source.display_id) : undefined) ??
-      displays[fallbackIndex];
-    fallbackIndex += 1;
+      displays.find((candidate) => !usedDisplayIds.has(candidate.id));
+    if (display) usedDisplayIds.add(display.id);
 
     return {
       id: source.id,
@@ -53,7 +60,8 @@ export async function listCaptureSources(): Promise<CaptureSource[]> {
       type,
       thumbnailDataUrl: source.thumbnail.toDataURL(),
       displayId: display ? String(display.id) : undefined,
-      displayBounds: display?.bounds
+      displayBounds: display?.bounds,
+      isPrimaryDisplay: display ? display.id === primaryDisplayId : undefined
     };
   });
 

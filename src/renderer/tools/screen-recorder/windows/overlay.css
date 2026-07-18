@@ -1,0 +1,14 @@
+/*
+ * main.css's "Global overrides for full-screen desktop application" rule
+ * paints html/body/#root with an opaque --color-editor-bg -- correct for
+ * the normal app window, but this window is a transparent always-on-top
+ * overlay (see source-picker-overlay-window.ts's transparent:true) that
+ * dims the real desktop itself via its own semi-transparent panels; an
+ * opaque page background would hide the desktop entirely instead. Imported
+ * after main.css so it wins the cascade.
+ */
+html,
+body,
+#root {
+  background: transparent !important;
+}

@@ -6,6 +6,7 @@ import {
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
 import { getSegmentOutputDurationMs } from '../../features/timeline/lib/segment-duration';
+import { resetHistory, useHistoryStore } from '../../features/history/store/history-store';
 import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
@@ -30,9 +31,16 @@ export function EditorPage(): JSX.Element {
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   const seekRequestMs = useTimelineStore((s) => s.seekRequestMs);
   const clearSeekRequest = useTimelineStore((s) => s.clearSeekRequest);
+  // Lives in the timeline store (not local state) for the same reason
+  // selection/activeTool do -- CutTimeline (rendered independently, see
+  // above) needs to read play state too, to gate the ruler's hover-scrub
+  // (only live-previews while paused; see CutTimeline.tsx).
+  const isPlaying = useTimelineStore((s) => s.isPlaying);
+  const setIsPlaying = useTimelineStore((s) => s.setIsPlaying);
+  const undo = useHistoryStore((s) => s.undo);
+  const redo = useHistoryStore((s) => s.redo);
 
   const [duration, setDuration] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [cropToolActive, setCropToolActive] = useState(false);
   const [sourceResolution, setSourceResolution] = useState<{
@@ -67,13 +75,41 @@ export function EditorPage(): JSX.Element {
 
   // Re-initialize the cut timeline whenever a *different* recording loads.
   // Guarded on previewUrl so scrubbing/metadata re-fires don't wipe cuts the
-  // user already made on the current recording.
+  // user already made on the current recording. Undo/redo history is scoped
+  // to this same session boundary -- otherwise Undo could reach back past
+  // the fresh recording into whatever the previous one's edits looked like.
   useEffect(() => {
     if (lastRecording && duration > 0) {
       initializeFromDuration(duration * 1000);
+      resetHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRecording?.previewUrl, duration]);
+
+  // Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (or Ctrl+Y) drive undo/redo from
+  // anywhere in the editor -- skipped while a text field has focus so it
+  // doesn't hijack native text-undo in caption/annotation text inputs.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (!event.metaKey && !event.ctrlKey) return;
+      const key = event.key.toLowerCase();
+      const isRedo = key === 'y' || (key === 'z' && event.shiftKey);
+      const isUndo = key === 'z' && !event.shiftKey;
+      if (!isUndo && !isRedo) return;
+
+      const target = event.target as HTMLElement | null;
+      const isEditingText =
+        target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isEditingText) return;
+
+      event.preventDefault();
+      if (isRedo) redo();
+      else undo();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   if (!lastRecording) {
     return (

@@ -1,9 +1,10 @@
 import type { JSX } from 'react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Annotation } from '@screen-recorder/types/project';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { useAnnotationsStore } from '../store/annotations-store';
 import { resolveTextAnimationPreset } from '../presets/text-animation-presets';
+import { beginGesture, endGesture } from '../../history/store/history-store';
 import { cn } from '../../../lib/utils';
 
 interface AnnotationOverlayProps {
@@ -51,6 +52,7 @@ export function AnnotationOverlay({
   }
 
   function stopDrag(): void {
+    if (dragState.current) endGesture();
     dragState.current = null;
     window.removeEventListener('pointermove', handleDragMove);
   }
@@ -60,11 +62,21 @@ export function AnnotationOverlay({
       event.preventDefault();
       event.stopPropagation();
       setSelectedAnnotationId(id);
+      beginGesture();
       dragState.current = { startClientX: event.clientX, startClientY: event.clientY, onMove };
       window.addEventListener('pointermove', handleDragMove);
       window.addEventListener('pointerup', stopDrag, { once: true });
     };
   }
+
+  // Guards against the pointerup listener never firing (this overlay
+  // unmounts mid-drag) -- otherwise the gesture it opened would stay open
+  // forever, silently swallowing every undo-tracked change made afterward.
+  useEffect(() => {
+    return () => {
+      if (dragState.current) endGesture();
+    };
+  }, []);
 
   const active = annotations.filter((a) => isActive(currentTimeMs, a));
 

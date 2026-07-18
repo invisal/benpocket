@@ -1,5 +1,6 @@
-import { useCallback, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
+import { beginGesture, endGesture } from '../../history/store/history-store';
 import { outputMsToSourceMs, sourceMsToOutputMs } from './segment-duration';
 
 type Seg = Pick<TimelineSegment, 'range' | 'speed'>;
@@ -49,9 +50,15 @@ export function usePillDrag({ containerRef, segments, totalOutputMs }: UsePillDr
   );
 
   const stop = useCallback(() => {
+    if (dragRef.current) endGesture();
     dragRef.current = null;
     window.removeEventListener('pointermove', handleMove);
   }, [handleMove]);
+
+  // Guards against the pointerup listener never firing (component unmounts
+  // mid-drag) -- otherwise the gesture it opened would stay open forever,
+  // silently swallowing every undo-tracked change made afterward.
+  useEffect(() => stop, [stop]);
 
   const startDrag = useCallback(
     (startSourceMs: number, onMove: (newSourceMs: number) => void) =>
@@ -61,6 +68,7 @@ export function usePillDrag({ containerRef, segments, totalOutputMs }: UsePillDr
         const container = containerRef.current;
         if (!container) return;
         didDragRef.current = false;
+        beginGesture();
         dragRef.current = {
           startClientX: event.clientX,
           startOutputMs: sourceMsToOutputMs(segments, startSourceMs) ?? 0,

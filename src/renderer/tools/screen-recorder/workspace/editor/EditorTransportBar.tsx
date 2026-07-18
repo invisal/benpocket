@@ -7,13 +7,16 @@ import {
   Pause,
   Play,
   Plus,
+  Redo2,
   Scissors,
   SkipBack,
   SkipForward,
+  Undo2,
   ZoomIn
 } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import { useExportStore } from '../../features/export/store/export-store';
+import { useHistoryStore } from '../../features/history/store/history-store';
 import {
   useTimelineStore,
   MIN_TIMELINE_ZOOM,
@@ -66,6 +69,10 @@ export function EditorTransportBar({
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
   const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
+  const canUndo = useHistoryStore((s) => s.past.length > 0);
+  const canRedo = useHistoryStore((s) => s.future.length > 0);
+  const undo = useHistoryStore((s) => s.undo);
+  const redo = useHistoryStore((s) => s.redo);
 
   // Drops a keyframe at the playhead with the default 'auto-cursor' target --
   // no arm-and-click-the-preview step first, unlike the "Add keyframe"
@@ -102,6 +109,25 @@ export function EditorTransportBar({
           size={12}
           className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
         />
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10 disabled:opacity-30"
+        >
+          <Undo2 size={15} />
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10 disabled:opacity-30"
+        >
+          <Redo2 size={15} />
+        </button>
       </div>
 
       <button

@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useCaptionsStore } from '../store/captions-store';
 
@@ -29,11 +30,23 @@ export function CaptionTrack(): JSX.Element | null {
       getStartMs={(caption) => caption.startMs}
       getDurationMs={(caption) => caption.endMs - caption.startMs}
       getTitle={(caption) => `${caption.text} -- drag to move, edges to trim`}
-      colorClassName="border-yellow-600/50 bg-yellow-700/30 text-yellow-100 hover:bg-yellow-700/45"
+      // Same gradient-fill + dark-border/text + title-row treatment as
+      // ZoomTrack (see ZoomTrack.tsx and CutTimeline.tsx's clip segments),
+      // in yellow instead of purple so tracks stay visually distinguishable.
+      colorClassName="border-yellow-900/40 text-yellow-950"
+      handleClassName="bg-black/10 hover:bg-black/25"
+      laneHeightPx={CLIP_ROW_HEIGHT_PX}
       renderContent={(caption) => (
         <>
-          <MessageSquare size={10} className="shrink-0" />
-          <span className="truncate text-[10px] font-medium">{caption.text}</span>
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-yellow-200 via-yellow-400 to-yellow-600" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/40 via-white/5 to-black/15" />
+          <div className="relative flex flex-col items-center justify-center gap-0.5 leading-none">
+            <span className="text-[9px] font-semibold text-yellow-950/70">Caption</span>
+            <span className="flex items-center gap-1 text-[10px] font-semibold">
+              <MessageSquare size={11} className="shrink-0" />
+              <span className="max-w-24 truncate">{caption.text}</span>
+            </span>
+          </div>
         </>
       )}
       onSelect={(caption) => requestSeek(caption.startMs)}

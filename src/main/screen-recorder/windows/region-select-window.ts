@@ -9,7 +9,7 @@ import type {
 } from '@shared/capture-region';
 import { preloadScriptPath } from '../lib/preload-path';
 
-function getVirtualDesktopBounds(): ScreenRect {
+export function getVirtualDesktopBounds(): ScreenRect {
   const displays = screen.getAllDisplays();
   let x = Infinity;
   let y = Infinity;

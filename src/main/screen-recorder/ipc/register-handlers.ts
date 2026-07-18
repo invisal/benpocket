@@ -7,6 +7,8 @@ import { registerPermissionsHandlers } from './permissions-handlers';
 import { registerDialogHandlers } from './dialog-handlers';
 import { registerSimulatorHandlers } from './simulator-handlers';
 import { registerRegionHandlers } from './region-handlers';
+import { registerRecorderToolbarHandlers } from '../windows/recorder-toolbar-window';
+import { registerSourcePickerOverlayHandlers } from '../windows/source-picker-overlay-window';
 
 export function registerIpcHandlers(): void {
   registerRecordingHandlers();
@@ -18,4 +20,6 @@ export function registerIpcHandlers(): void {
   registerDialogHandlers();
   registerSimulatorHandlers();
   registerRegionHandlers();
+  registerRecorderToolbarHandlers();
+  registerSourcePickerOverlayHandlers();
 }

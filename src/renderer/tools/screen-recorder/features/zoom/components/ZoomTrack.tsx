@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { Mouse, Target, ZoomIn } from 'lucide-react';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useZoomStore } from '../store/zoom-store';
 import { MIN_DURATION_MS, MAX_DURATION_MS } from './ZoomKeyframeEditor';
@@ -41,17 +42,46 @@ export function ZoomTrack(): JSX.Element | null {
           kf.position === 'auto-cursor' ? 'follows cursor' : 'fixed point'
         } -- drag to move, edges to trim`
       }
-      colorClassName="border-emerald-400/50 bg-emerald-600/30 text-emerald-100 hover:bg-emerald-600/45"
+      // Dark-border + text treatment as CutTimeline's clip segments (see
+      // CutTimeline.tsx) -- the fill/highlight gradients themselves are two
+      // stacked layers in renderContent below, not a background class here,
+      // for exact parity with how the clip bar layers its own. Scoped to
+      // ZoomTrack alone (colorClassName is applied as-is by PillTrack, so
+      // CaptionTrack/AnnotationTrack/BlurMaskTrack, which share PillTrack,
+      // are unaffected).
+      colorClassName="border-purple-900/40 text-purple-950"
+      handleClassName="bg-black/10 hover:bg-black/25"
+      // Taller than the default single-line pill (see PillTrack.tsx's
+      // `laneHeightPx`) so a "Zoom" title row can sit above the icon row,
+      // matching the reference's two-line badge -- scoped to this track
+      // alone, doesn't affect Caption/Annotation/BlurMask's lane math. Uses
+      // the clip row's own height so the two stay visually consistent
+      // instead of coincidentally matching magic numbers.
+      laneHeightPx={CLIP_ROW_HEIGHT_PX}
       renderContent={(kf) => (
         <>
-          <ZoomIn size={10} className="shrink-0" />
-          <span className="truncate text-[10px] font-medium">{kf.depth.toFixed(1)}×</span>
-          <span className="flex shrink-0 items-center gap-0.5 text-emerald-200/70">
-            {kf.position === 'auto-cursor' ? <Mouse size={10} /> : <Target size={9} />}
-            <span className="text-[9px] font-medium">
-              {kf.position === 'auto-cursor' ? 'Auto' : 'Manual'}
+          {/* Same two-layer gradient as the clip bar's background
+              (CutTimeline.tsx): a base color fill, then a light-at-bottom
+              -fading-to-dark-at-top highlight on top, just purple instead
+              of amber. Needs the sibling `relative` wrapper below so its
+              (in-flow, non-positioned) content still paints above these
+              (positioned) layers -- see CutTimeline.tsx's segments/
+              background layers for the same ordering concern. */}
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-purple-400 via-purple-500 to-purple-600" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/40 via-white/5 to-black/15" />
+          <div className="relative flex flex-col items-center justify-center gap-0.5 leading-none">
+            <span className="text-[9px] font-semibold text-purple-950">Zoom</span>
+            <span className="flex items-center gap-2 text-[10px] font-semibold">
+              <span className="flex items-center gap-1">
+                <ZoomIn size={11} className="shrink-0" />
+                {kf.depth.toFixed(1)}×
+              </span>
+              <span className="flex items-center gap-1">
+                {kf.position === 'auto-cursor' ? <Mouse size={11} /> : <Target size={10} />}
+                {kf.position === 'auto-cursor' ? 'Auto' : 'Manual'}
+              </span>
             </span>
-          </span>
+          </div>
         </>
       )}
       onSelect={(kf) => {

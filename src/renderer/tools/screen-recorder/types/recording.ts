@@ -20,6 +20,16 @@ export interface CaptureSource {
    * recording still makes tracking drift for the rest of that recording.
    */
   displayBounds?: { x: number; y: number; width: number; height: number };
+  /**
+   * Only set for `'screen'` sources, true for the one matching
+   * `screen.getPrimaryDisplay()`. `desktopCapturer.getSources()` doesn't
+   * enumerate screens in any guaranteed order -- on macOS in particular, a
+   * newly-connected external monitor can sort before the built-in display --
+   * so anything defaulting to "the first screen source" (quick-record entry
+   * points, initial SourcePicker selection) needs this to actually mean "the
+   * primary one" instead of whichever the OS happened to list first.
+   */
+  isPrimaryDisplay?: boolean;
 }
 
 export interface AudioInputOptions {

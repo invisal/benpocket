@@ -5,6 +5,8 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
     "src/renderer/region-select.ts",
+    "src/renderer/recorder-toolbar.tsx",
+    "src/renderer/source-picker-overlay.tsx",
     "src/renderer/tools/**/*",
     "src/preload/**/*.d.ts",
     "src/shared/**/*",

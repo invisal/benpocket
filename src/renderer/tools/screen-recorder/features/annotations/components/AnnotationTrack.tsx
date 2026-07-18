@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { ArrowUpRight, ImagePlus, Type } from 'lucide-react';
 import type { Annotation } from '@screen-recorder/types/project';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useAnnotationsStore } from '../store/annotations-store';
 
@@ -45,13 +46,26 @@ export function AnnotationTrack(): JSX.Element | null {
       getTitle={(a) =>
         `${annotationLabel(a)} at ${(a.atMs / 1000).toFixed(1)}s -- drag to move, edges to trim`
       }
-      colorClassName="border-violet-400/50 bg-violet-600/30 text-violet-100 hover:bg-violet-600/45"
+      // Same gradient-fill + dark-border/text + title-row treatment as
+      // ZoomTrack (see ZoomTrack.tsx and CutTimeline.tsx's clip segments),
+      // in pink instead of purple -- ZoomTrack claimed purple/violet, so
+      // this moved off it to stay visually distinguishable.
+      colorClassName="border-pink-900/40 text-pink-950"
+      handleClassName="bg-black/10 hover:bg-black/25"
+      laneHeightPx={CLIP_ROW_HEIGHT_PX}
       renderContent={(a) => {
         const Icon = a.kind === 'text' ? Type : a.kind === 'arrow' ? ArrowUpRight : ImagePlus;
         return (
           <>
-            <Icon size={10} className="shrink-0" />
-            <span className="truncate text-[10px] font-medium">{annotationLabel(a)}</span>
+            <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-pink-200 via-pink-400 to-pink-600" />
+            <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/40 via-white/5 to-black/15" />
+            <div className="relative flex flex-col items-center justify-center gap-0.5 leading-none">
+              <span className="text-[9px] font-semibold text-pink-950/70">Annotation</span>
+              <span className="flex items-center gap-1 text-[10px] font-semibold">
+                <Icon size={11} className="shrink-0" />
+                {annotationLabel(a)}
+              </span>
+            </div>
           </>
         );
       }}

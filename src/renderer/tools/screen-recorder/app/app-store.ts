@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { CursorPathPoint } from '@screen-recorder/types/project';
 
-export type ScreenRecorderRoute =
-  'record-setup' | 'recording-hud' | 'editor' | 'library' | 'presets' | 'settings';
+export type ScreenRecorderRoute = 'editor' | 'library' | 'presets' | 'settings';
 
 interface LastRecording {
   previewUrl: string;
@@ -26,7 +25,7 @@ interface AppStoreState {
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
-  route: 'record-setup',
+  route: 'library',
   setRoute: (route) => set({ route }),
   isRecording: false,
   setIsRecording: (isRecording) => set({ isRecording }),

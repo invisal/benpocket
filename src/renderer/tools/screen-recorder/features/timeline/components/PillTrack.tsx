@@ -18,6 +18,10 @@ export interface PillTrackProps<T extends { id: string }> {
   getTitle: (item: T) => string;
   /** Pill border/background/text color classes, e.g. `'border-emerald-400/50 bg-emerald-600/30 text-emerald-100 hover:bg-emerald-600/45'`. */
   colorClassName: string;
+  /** Edge-resize grip color classes -- defaults to a light overlay that reads against the usual dark/translucent pill fills. Override for a pill whose `colorClassName` is light (e.g. a gradient fill) where a white overlay would wash out. */
+  handleClassName?: string;
+  /** Pill height in px -- defaults to `LANE_HEIGHT_PX` (the compact single-line height every other pill track uses). Override for content that needs more room (e.g. a title row above the icon row), scoped to just that track's own lane stack. */
+  laneHeightPx?: number;
   renderContent: (item: T) => ReactNode;
   onSelect: (item: T) => void;
   onMove: (item: T, newStartMs: number) => void;
@@ -55,6 +59,8 @@ export function PillTrack<T extends { id: string }>({
   isSelected,
   getTitle,
   colorClassName,
+  handleClassName = 'bg-white/15 hover:bg-white/30',
+  laneHeightPx = LANE_HEIGHT_PX,
   renderContent,
   onSelect,
   onMove,
@@ -76,8 +82,7 @@ export function PillTrack<T extends { id: string }>({
     )
   );
   const trackHeightPx =
-    Math.max(1, laneCount(laned)) * LANE_HEIGHT_PX +
-    Math.max(0, laneCount(laned) - 1) * LANE_GAP_PX;
+    Math.max(1, laneCount(laned)) * laneHeightPx + Math.max(0, laneCount(laned) - 1) * LANE_GAP_PX;
   // Not even an empty placeholder div -- the parent track stack is a
   // `flex-col gap-1.5`, and that gap still reserves space around a rendered
   // child even if the child itself is 0-height, so an empty track would
@@ -102,13 +107,13 @@ export function PillTrack<T extends { id: string }>({
               className={cn(
                 'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-md border px-2 active:cursor-grabbing',
                 colorClassName,
-                isSelected?.(item) && 'ring-2 ring-white/70'
+                isSelected?.(item) && 'ring-2 ring-purple-200'
               )}
               style={{
                 left: `${position.leftPercent}%`,
                 width: `${position.widthPercent}%`,
-                top: lane * (LANE_HEIGHT_PX + LANE_GAP_PX),
-                height: LANE_HEIGHT_PX
+                top: lane * (laneHeightPx + LANE_GAP_PX),
+                height: laneHeightPx
               }}
             >
               {renderContent(item)}
@@ -133,7 +138,7 @@ export function PillTrack<T extends { id: string }>({
                     onResizeStart(item, newStartMs)
                   )(e);
                 }}
-                className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-white/15 hover:bg-white/30"
+                className={cn('absolute inset-y-0 left-0 w-1.5 cursor-ew-resize', handleClassName)}
               />
               <div
                 onPointerDown={(e) => {
@@ -142,7 +147,7 @@ export function PillTrack<T extends { id: string }>({
                     e
                   );
                 }}
-                className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-white/15 hover:bg-white/30"
+                className={cn('absolute inset-y-0 right-0 w-1.5 cursor-ew-resize', handleClassName)}
               />
             </div>
           );

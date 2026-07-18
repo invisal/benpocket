@@ -1,9 +1,10 @@
 import type { JSX } from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { BlurMaskRegion } from '@screen-recorder/types/project';
 import type { CropRect } from '@screen-recorder/types/timeline';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { useBlurMaskStore } from '../store/blur-mask-store';
+import { beginGesture, endGesture } from '../../history/store/history-store';
 import { cn } from '../../../lib/utils';
 
 const MIN_SIZE = 0.04;
@@ -95,9 +96,16 @@ export function BlurMaskOverlay({
   );
 
   const stopDragging = useCallback(() => {
+    if (dragState.current) endGesture();
     dragState.current = null;
     window.removeEventListener('pointermove', handlePointerMove);
   }, [handlePointerMove]);
+
+  // Guards against the pointerup listener never firing (this overlay
+  // unmounts mid-drag, e.g. the Blur/Mask tool gets deselected) -- otherwise
+  // the gesture it opened would stay open forever, silently swallowing
+  // every undo-tracked change made afterward.
+  useEffect(() => stopDragging, [stopDragging]);
 
   const startDragging = useCallback(
     (regionId: string, mode: Corner | 'move', startRect: CropRect) =>
@@ -105,6 +113,7 @@ export function BlurMaskOverlay({
         event.preventDefault();
         event.stopPropagation();
         setSelectedRegionId(regionId);
+        beginGesture();
         dragState.current = {
           regionId,
           mode,

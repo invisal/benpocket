@@ -1,7 +1,8 @@
 import type { JSX } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CropRect } from '@screen-recorder/types/timeline';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { beginGesture, endGesture } from '../../history/store/history-store';
 import { cn } from '../../../lib/utils';
 
 export type CropAspectId = 'free' | '16:9' | '9:16' | '1:1' | '4:3';
@@ -157,15 +158,23 @@ export function CropOverlay({
   );
 
   const stopDragging = useCallback(() => {
+    if (dragState.current) endGesture();
     dragState.current = null;
     window.removeEventListener('pointermove', handlePointerMove);
   }, [handlePointerMove]);
+
+  // Guards against the pointerup listener never firing (this overlay
+  // unmounts mid-drag, e.g. the crop tool gets toggled off) -- otherwise the
+  // gesture it opened would stay open forever, silently swallowing every
+  // undo-tracked change made afterward.
+  useEffect(() => stopDragging, [stopDragging]);
 
   const startDragging = useCallback(
     (mode: Corner | 'move') =>
       (event: React.PointerEvent): void => {
         event.preventDefault();
         event.stopPropagation();
+        beginGesture();
         dragState.current = {
           mode,
           startClientX: event.clientX,

@@ -55,15 +55,15 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
       value: `${annotations.length} Annotations`,
       hasDetail: annotations.length > 0,
       renderDetail: () => (
-        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1 select-text w-full">
           {annotations.map(([k, v]) => (
-            <span
+            <div
               key={k}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
-              title={`${k}=${v}`}
+              className="flex flex-col gap-0.5 bg-surface-3 border border-border/60 rounded p-1.5 font-mono text-[10px] w-full"
             >
-              {k}={v}
-            </span>
+              <span className="text-zinc-400 font-semibold break-all">{k}</span>
+              <span className="text-zinc-355 break-all whitespace-normal">{v}</span>
+            </div>
           ))}
         </div>
       )

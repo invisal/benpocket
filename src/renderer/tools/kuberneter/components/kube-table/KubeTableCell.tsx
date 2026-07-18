@@ -7,9 +7,16 @@ interface KubeTableCellProps<T> {
   col: Column<T>;
   colWidth: number | undefined;
   resizable?: boolean;
+  isExpanded?: boolean;
 }
 
-export function KubeTableCell<T>({ row, col, colWidth, resizable = true }: KubeTableCellProps<T>) {
+export function KubeTableCell<T>({
+  row,
+  col,
+  colWidth,
+  resizable = true,
+  isExpanded
+}: KubeTableCellProps<T>) {
   const alignClass =
     col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left';
 
@@ -19,15 +26,18 @@ export function KubeTableCell<T>({ row, col, colWidth, resizable = true }: KubeT
   return (
     <td
       className={cn(
-        'px-2 align-middle font-sans select-text overflow-hidden border-none',
+        'px-2 align-middle font-sans select-text border-none',
+        isExpanded ? 'py-2 overflow-visible' : 'overflow-hidden',
         alignClass,
         col.className
       )}
-      style={{ height: ROW_HEIGHT }}
+      style={isExpanded ? { minHeight: ROW_HEIGHT, height: 'auto' } : { height: ROW_HEIGHT }}
     >
       <div
-        className="truncate"
-        style={resizable && colWidth !== undefined ? { maxWidth: colWidth } : undefined}
+        className={cn(isExpanded ? 'whitespace-normal break-all' : 'truncate')}
+        style={
+          resizable && colWidth !== undefined && !isExpanded ? { maxWidth: colWidth } : undefined
+        }
       >
         {content}
       </div>

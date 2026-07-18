@@ -272,6 +272,7 @@ export function KubeTable<T>({
                         selectedRowKey={selectedRowKey}
                         colWidths={colWidths}
                         resizable={resizable}
+                        isExpanded={isExpanded}
                       />
                       {renderRowExpansion && isExpanded && (
                         <tr className="bg-surface-1/10 border-b border-border-dark/20">

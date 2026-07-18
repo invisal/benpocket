@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { KubeTable, type Column } from '../../kube-table';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
 import { type NetworkPolicyData } from '../../../types/NetworkPolicyData';
+import { Age } from '../../Age';
 
 interface NetworkPoliciesTableProps {
   filteredData: NetworkPolicyData[];
@@ -114,7 +115,11 @@ export const NetworkPoliciesTable: React.FC<NetworkPoliciesTableProps> = ({
       {
         key: 'age',
         header: 'Age',
-        render: (row) => <span className="text-zinc-500 font-mono text-[11px]">{row.age}</span>,
+        render: (row) => (
+          <span className="text-zinc-500 font-mono text-[11px]">
+            <Age timestamp={row.creationTimestamp} />
+          </span>
+        ),
         className: 'text-zinc-500',
         initialWidth: 100
       },

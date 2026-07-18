@@ -4,6 +4,7 @@ import { type NetworkPolicyData } from '../../../types/NetworkPolicyData';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+import { Age } from '../../Age';
 
 interface NetworkPolicyDetailProps {
   payload: NetworkPolicyData;
@@ -36,7 +37,11 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
     {
       id: 'created',
       name: 'Created',
-      value: `${payload.age} ago (${payload.createdTime || 'N/A'})`
+      value: (
+        <span>
+          <Age timestamp={payload.creationTimestamp} /> ago ({payload.createdTime || 'N/A'})
+        </span>
+      )
     },
     {
       id: 'name',

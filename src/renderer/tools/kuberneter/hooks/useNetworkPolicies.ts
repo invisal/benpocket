@@ -212,6 +212,7 @@ export function useNetworkPolicies(enabled: boolean) {
           hasWarning,
           age: formatAge(creationTimestamp),
           createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+          creationTimestamp,
           labels: netItem.metadata?.labels,
           annotations: netItem.metadata?.annotations,
           rawItem: netItem

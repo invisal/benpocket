@@ -25,6 +25,7 @@ export interface NetworkPolicyData {
   warningReason?: string;
   age: string;
   createdTime: string;
+  creationTimestamp: string;
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
   rawItem?: unknown;

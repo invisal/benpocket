@@ -66,7 +66,7 @@ export function CutTimeline(): JSX.Element {
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === 'video-1')?.segments ?? []
   );
-  // const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
+  const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
   const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
   const zoom = useTimelineStore((s) => s.timelineZoom);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
@@ -318,14 +318,14 @@ export function CutTimeline(): JSX.Element {
               */}
               <div
                 className="relative flex shrink-0 items-stretch overflow-hidden rounded-md border border-amber-900/40 mx-3 shadow-inherit"
-                style={{ height: CLIP_ROW_HEIGHT_PX * 1.5 }}
+                style={{ height: CLIP_ROW_HEIGHT_PX * 1.3 }}
               >
-                <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-amber-200 via-amber-400 to-orange-600" />
+                <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-blue-500 via-blue-400 to-blue-400" />
                 <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/40 via-white/5 to-black/15" />
 
                 {segments.map((segment, index) => {
                   const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
-                  // const isSelected = selectedSegmentId === segment.id;
+                  const isSelected = selectedSegmentId === segment.id;
                   return (
                     <div
                       key={segment.id}
@@ -335,8 +335,8 @@ export function CutTimeline(): JSX.Element {
                       className={cn(
                         'group relative flex min-w-9 cursor-grab items-center active:cursor-grabbing',
                         index !== segments.length - 1 && 'border-r border-white/15',
-                        dragOverIndex === index && 'ring-2 ring-inset ring-accent'
-                        // dragOverIndex !== index && isSelected && 'ring-2 ring-inset ring-white/80'
+                        dragOverIndex === index && 'ring-2 ring-inset ring-accent',
+                        dragOverIndex !== index && isSelected && 'ring-2 ring-inset ring-blue-500'
                       )}
                       style={{ width: `${widthPercent}%` }}
                     >

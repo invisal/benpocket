@@ -107,7 +107,7 @@ export function PillTrack<T extends { id: string }>({
               className={cn(
                 'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-md border px-2 active:cursor-grabbing',
                 colorClassName,
-                isSelected?.(item) && 'ring-2 ring-white/70'
+                isSelected?.(item) && 'ring-2 ring-purple-200'
               )}
               style={{
                 left: `${position.leftPercent}%`,

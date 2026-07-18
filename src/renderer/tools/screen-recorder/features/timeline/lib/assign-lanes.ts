@@ -8,7 +8,7 @@ export const LANE_GAP_PX = 4;
  * without importing CutTimeline.tsx, which imports that track back for
  * rendering and would otherwise create a circular import.
  */
-export const CLIP_ROW_HEIGHT_PX = 32;
+export const CLIP_ROW_HEIGHT_PX = 38;
 
 export interface LanePosition {
   leftPercent: number;

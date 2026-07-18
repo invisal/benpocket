@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { Droplets, Square } from 'lucide-react';
 import type { BlurMaskRegion } from '@screen-recorder/types/project';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useBlurMaskStore } from '../store/blur-mask-store';
 
@@ -43,13 +44,25 @@ export function BlurMaskTrack(): JSX.Element | null {
       getTitle={(r) =>
         `${regionLabel(r)} at ${(r.atMs / 1000).toFixed(1)}s -- drag to move, edges to trim`
       }
-      colorClassName="border-sky-400/50 bg-sky-700/30 text-sky-100 hover:bg-sky-700/45"
+      // Same gradient-fill + dark-border/text + title-row treatment as
+      // ZoomTrack (see ZoomTrack.tsx and CutTimeline.tsx's clip segments),
+      // in sky instead of purple so tracks stay visually distinguishable.
+      colorClassName="border-sky-900/40 text-sky-950"
+      handleClassName="bg-black/10 hover:bg-black/25"
+      laneHeightPx={CLIP_ROW_HEIGHT_PX}
       renderContent={(r) => {
         const Icon = r.kind === 'blur' ? Droplets : Square;
         return (
           <>
-            <Icon size={10} className="shrink-0" />
-            <span className="truncate text-[10px] font-medium">{regionLabel(r)}</span>
+            <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-sky-200 via-sky-400 to-sky-600" />
+            <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/40 via-white/5 to-black/15" />
+            <div className="relative flex flex-col items-center justify-center gap-0.5 leading-none">
+              <span className="text-[9px] font-semibold text-sky-950/70">Blur / Mask</span>
+              <span className="flex items-center gap-1 text-[10px] font-semibold">
+                <Icon size={11} className="shrink-0" />
+                {regionLabel(r)}
+              </span>
+            </div>
           </>
         );
       }}

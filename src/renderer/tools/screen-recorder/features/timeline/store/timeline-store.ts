@@ -7,6 +7,7 @@ import type {
 } from '@screen-recorder/types/timeline';
 import type { ExportSegment } from '@screen-recorder/types/export';
 import type { EditorTool } from '../../../workspace/editor/editorTools';
+import { withHistory } from '../../history/lib/with-history';
 import { getSegmentOutputDurationMs } from '../lib/segment-duration';
 
 export const PRIMARY_VIDEO_TRACK_ID = 'video-1';
@@ -28,6 +29,24 @@ function computeAutoZoom(durationMs: number): number {
 
 interface TimelineStoreState {
   playheadMs: number;
+  /**
+   * Mirrors the `<video>` element's actual play state -- lives here (not
+   * just EditorPage's local state) so CutTimeline can read it too: the
+   * ruler's hover-scrub only live-previews while paused, since while
+   * actually playing back, a hovering mouse shouldn't fight the running
+   * playback position (see CutTimeline.tsx's `handleRulerPointerMove`).
+   */
+  isPlaying: boolean;
+  /**
+   * True for the duration of a ruler/clip hover-scrub session (see
+   * CutTimeline.tsx) -- while true, PreviewStage's rAF loop skips syncing
+   * `playheadMs` from the video's actual `currentTime`, so the *real*
+   * playhead visually stays put while `previewSeek` moves the video/preview
+   * around underneath it. Cleared (and `playheadMs` catches up in one
+   * `requestSeek`) once the hover is committed (click/release) or cancelled
+   * (mouse leaves without clicking).
+   */
+  isHoverScrubbing: boolean;
   /** Full duration of the underlying recording (segments' ranges are bounded by this). */
   sourceDurationMs: number;
   tracks: TimelineTrack[];
@@ -59,11 +78,22 @@ interface TimelineStoreState {
    */
   seekRequestMs: number | null;
   setPlayhead: (ms: number) => void;
+  setIsPlaying: (isPlaying: boolean) => void;
+  setIsHoverScrubbing: (isHoverScrubbing: boolean) => void;
   setTracks: (tracks: TimelineTrack[]) => void;
   setSelectedSegmentId: (segmentId: string | null) => void;
   setTimelineZoom: (zoom: number) => void;
   setActiveTool: (tool: EditorTool | null) => void;
   requestSeek: (ms: number) => void;
+  /**
+   * Like `requestSeek`, but leaves `playheadMs` alone -- moves the actual
+   * `<video>` (so the preview shows that frame) without visually moving the
+   * main playhead, for hover-scrub's "gray marker follows the cursor, blue
+   * playhead doesn't" behavior (see CutTimeline.tsx). Only makes sense
+   * combined with `isHoverScrubbing: true`, otherwise PreviewStage's rAF
+   * loop will sync `playheadMs` from the video on the very next frame anyway.
+   */
+  previewSeek: (ms: number) => void;
   clearSeekRequest: () => void;
   initializeFromDuration: (durationMs: number) => void;
   /** Splits whichever kept segment covers `atOutputMs` (in the ripple/output timeline) into two. */
@@ -97,164 +127,178 @@ function replaceTrack(tracks: TimelineTrack[], updated: TimelineTrack): Timeline
   return tracks.map((t) => (t.id === updated.id ? updated : t));
 }
 
-export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
-  playheadMs: 0,
-  sourceDurationMs: 0,
-  tracks: [
-    { id: PRIMARY_VIDEO_TRACK_ID, kind: 'video', segments: [] },
-    { id: 'webcam-1', kind: 'webcam', segments: [] },
-    { id: 'audio-1', kind: 'audio', segments: [] },
-    { id: 'annotation-1', kind: 'annotation', segments: [] }
-  ],
-  selectedSegmentId: null,
-  timelineZoom: 1,
-  activeTool: 'background',
-  seekRequestMs: null,
-  setPlayhead: (playheadMs) => set({ playheadMs }),
-  setTracks: (tracks) => set({ tracks }),
-  setSelectedSegmentId: (selectedSegmentId) => set({ selectedSegmentId }),
-  setTimelineZoom: (timelineZoom) => set({ timelineZoom }),
-  setActiveTool: (activeTool) => set({ activeTool }),
-  requestSeek: (ms) => set({ seekRequestMs: ms, playheadMs: ms }),
-  clearSeekRequest: () => set({ seekRequestMs: null }),
+export const useTimelineStore = create<TimelineStoreState>(
+  withHistory(
+    'timeline',
+    (s) => ({ tracks: s.tracks }),
+    (set, get) => ({
+      playheadMs: 0,
+      isPlaying: false,
+      isHoverScrubbing: false,
+      sourceDurationMs: 0,
+      tracks: [
+        { id: PRIMARY_VIDEO_TRACK_ID, kind: 'video', segments: [] },
+        { id: 'webcam-1', kind: 'webcam', segments: [] },
+        { id: 'audio-1', kind: 'audio', segments: [] },
+        { id: 'annotation-1', kind: 'annotation', segments: [] }
+      ],
+      selectedSegmentId: null,
+      timelineZoom: 1,
+      activeTool: 'background',
+      seekRequestMs: null,
+      setPlayhead: (playheadMs) => set({ playheadMs }),
+      setIsPlaying: (isPlaying) => set({ isPlaying }),
+      setIsHoverScrubbing: (isHoverScrubbing) => set({ isHoverScrubbing }),
+      setTracks: (tracks) => set({ tracks }),
+      setSelectedSegmentId: (selectedSegmentId) => set({ selectedSegmentId }),
+      setTimelineZoom: (timelineZoom) => set({ timelineZoom }),
+      setActiveTool: (activeTool) => set({ activeTool }),
+      requestSeek: (ms) => set({ seekRequestMs: ms, playheadMs: ms }),
+      previewSeek: (ms) => set({ seekRequestMs: ms }),
+      clearSeekRequest: () => set({ seekRequestMs: null }),
 
-  initializeFromDuration: (durationMs) => {
-    const track = primaryTrack(get().tracks);
-    const segment: TimelineSegment = {
-      id: crypto.randomUUID(),
-      trackId: PRIMARY_VIDEO_TRACK_ID,
-      range: { startMs: 0, endMs: durationMs },
-      speed: 1,
-      sourceOffsetMs: 0,
-      crop: null,
-      trimmed: false
-    };
-    set({
-      sourceDurationMs: durationMs,
-      timelineZoom: computeAutoZoom(durationMs),
-      tracks: replaceTrack(get().tracks, { ...track, segments: [segment] })
-    });
-  },
-
-  splitAt: (atOutputMs) => {
-    const track = primaryTrack(get().tracks);
-    let cursor = 0;
-    const nextSegments: TimelineSegment[] = [];
-
-    for (const segment of track.segments) {
-      const outputDuration = getSegmentOutputDurationMs(segment);
-      const withinSegment = atOutputMs >= cursor && atOutputMs < cursor + outputDuration;
-      if (!withinSegment) {
-        nextSegments.push(segment);
-        cursor += outputDuration;
-        continue;
-      }
-
-      const splitSourceMs = segment.range.startMs + (atOutputMs - cursor) * segment.speed;
-      const leftDuration = splitSourceMs - segment.range.startMs;
-      const rightDuration = segment.range.endMs - splitSourceMs;
-      if (leftDuration < MIN_SEGMENT_MS || rightDuration < MIN_SEGMENT_MS) {
-        // Too close to an edge to make two meaningful clips -- leave it whole.
-        nextSegments.push(segment);
-      } else {
-        nextSegments.push(
-          { ...segment, range: { startMs: segment.range.startMs, endMs: splitSourceMs } },
-          {
-            ...segment,
-            id: crypto.randomUUID(),
-            range: { startMs: splitSourceMs, endMs: segment.range.endMs }
-          }
-        );
-      }
-      cursor += outputDuration;
-    }
-
-    set({ tracks: replaceTrack(get().tracks, { ...track, segments: nextSegments }) });
-  },
-
-  deleteSegment: (segmentId) => {
-    const track = primaryTrack(get().tracks);
-    if (track.segments.length <= 1) return;
-    set({
-      tracks: replaceTrack(get().tracks, {
-        ...track,
-        segments: track.segments.filter((s) => s.id !== segmentId)
-      })
-    });
-  },
-
-  reorderSegments: (fromIndex, toIndex) => {
-    const track = primaryTrack(get().tracks);
-    if (
-      fromIndex === toIndex ||
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= track.segments.length ||
-      toIndex >= track.segments.length
-    ) {
-      return;
-    }
-    const segments = [...track.segments];
-    const [moved] = segments.splice(fromIndex, 1);
-    segments.splice(toIndex, 0, moved);
-    set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
-  },
-
-  resizeSegmentEdge: (segmentId, edge, newSourceMs) => {
-    const track = primaryTrack(get().tracks);
-    const { sourceDurationMs } = get();
-    const segments = track.segments.map((segment) => {
-      if (segment.id !== segmentId) return segment;
-      const clamped = Math.min(Math.max(newSourceMs, 0), sourceDurationMs);
-      if (edge === 'start') {
-        const startMs = Math.min(clamped, segment.range.endMs - MIN_SEGMENT_MS);
-        return {
-          ...segment,
-          range: { ...segment.range, startMs: Math.max(0, startMs) },
-          trimmed: true
+      initializeFromDuration: (durationMs) => {
+        const track = primaryTrack(get().tracks);
+        const segment: TimelineSegment = {
+          id: crypto.randomUUID(),
+          trackId: PRIMARY_VIDEO_TRACK_ID,
+          range: { startMs: 0, endMs: durationMs },
+          speed: 1,
+          sourceOffsetMs: 0,
+          crop: null,
+          trimmed: false
         };
-      }
-      const endMs = Math.max(clamped, segment.range.startMs + MIN_SEGMENT_MS);
-      return {
-        ...segment,
-        range: { ...segment.range, endMs: Math.min(sourceDurationMs, endMs) },
-        trimmed: true
-      };
-    });
-    set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
-  },
+        set({
+          sourceDurationMs: durationMs,
+          timelineZoom: computeAutoZoom(durationMs),
+          tracks: replaceTrack(get().tracks, { ...track, segments: [segment] })
+        });
+      },
 
-  setSegmentTrimmed: (segmentId, trimmed) => {
-    const track = primaryTrack(get().tracks);
-    const segments = track.segments.map((segment) =>
-      segment.id === segmentId ? { ...segment, trimmed } : segment
-    );
-    set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
-  },
+      splitAt: (atOutputMs) => {
+        const track = primaryTrack(get().tracks);
+        let cursor = 0;
+        const nextSegments: TimelineSegment[] = [];
 
-  setSegmentCrop: (segmentId, crop) => {
-    const track = primaryTrack(get().tracks);
-    const segments = track.segments.map((segment) =>
-      segment.id === segmentId ? { ...segment, crop } : segment
-    );
-    set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
-  },
+        for (const segment of track.segments) {
+          const outputDuration = getSegmentOutputDurationMs(segment);
+          const withinSegment = atOutputMs >= cursor && atOutputMs < cursor + outputDuration;
+          if (!withinSegment) {
+            nextSegments.push(segment);
+            cursor += outputDuration;
+            continue;
+          }
 
-  setSegmentSpeed: (segmentId, speed) => {
-    const track = primaryTrack(get().tracks);
-    const segments = track.segments.map((segment) =>
-      segment.id === segmentId ? { ...segment, speed } : segment
-    );
-    set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
-  },
+          const splitSourceMs = segment.range.startMs + (atOutputMs - cursor) * segment.speed;
+          const leftDuration = splitSourceMs - segment.range.startMs;
+          const rightDuration = segment.range.endMs - splitSourceMs;
+          if (leftDuration < MIN_SEGMENT_MS || rightDuration < MIN_SEGMENT_MS) {
+            // Too close to an edge to make two meaningful clips -- leave it whole.
+            nextSegments.push(segment);
+          } else {
+            nextSegments.push(
+              { ...segment, range: { startMs: segment.range.startMs, endMs: splitSourceMs } },
+              {
+                ...segment,
+                id: crypto.randomUUID(),
+                range: { startMs: splitSourceMs, endMs: segment.range.endMs }
+              }
+            );
+          }
+          cursor += outputDuration;
+        }
 
-  getExportSegments: () =>
-    primaryTrack(get().tracks).segments.map((s) => ({
-      range: s.range,
-      crop: s.crop,
-      speed: s.speed
-    })),
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments: nextSegments }) });
+      },
 
-  getOutputDurationMs: () =>
-    primaryTrack(get().tracks).segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0)
-}));
+      deleteSegment: (segmentId) => {
+        const track = primaryTrack(get().tracks);
+        if (track.segments.length <= 1) return;
+        set({
+          tracks: replaceTrack(get().tracks, {
+            ...track,
+            segments: track.segments.filter((s) => s.id !== segmentId)
+          })
+        });
+      },
+
+      reorderSegments: (fromIndex, toIndex) => {
+        const track = primaryTrack(get().tracks);
+        if (
+          fromIndex === toIndex ||
+          fromIndex < 0 ||
+          toIndex < 0 ||
+          fromIndex >= track.segments.length ||
+          toIndex >= track.segments.length
+        ) {
+          return;
+        }
+        const segments = [...track.segments];
+        const [moved] = segments.splice(fromIndex, 1);
+        segments.splice(toIndex, 0, moved);
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
+      resizeSegmentEdge: (segmentId, edge, newSourceMs) => {
+        const track = primaryTrack(get().tracks);
+        const { sourceDurationMs } = get();
+        const segments = track.segments.map((segment) => {
+          if (segment.id !== segmentId) return segment;
+          const clamped = Math.min(Math.max(newSourceMs, 0), sourceDurationMs);
+          if (edge === 'start') {
+            const startMs = Math.min(clamped, segment.range.endMs - MIN_SEGMENT_MS);
+            return {
+              ...segment,
+              range: { ...segment.range, startMs: Math.max(0, startMs) },
+              trimmed: true
+            };
+          }
+          const endMs = Math.max(clamped, segment.range.startMs + MIN_SEGMENT_MS);
+          return {
+            ...segment,
+            range: { ...segment.range, endMs: Math.min(sourceDurationMs, endMs) },
+            trimmed: true
+          };
+        });
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
+      setSegmentTrimmed: (segmentId, trimmed) => {
+        const track = primaryTrack(get().tracks);
+        const segments = track.segments.map((segment) =>
+          segment.id === segmentId ? { ...segment, trimmed } : segment
+        );
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
+      setSegmentCrop: (segmentId, crop) => {
+        const track = primaryTrack(get().tracks);
+        const segments = track.segments.map((segment) =>
+          segment.id === segmentId ? { ...segment, crop } : segment
+        );
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
+      setSegmentSpeed: (segmentId, speed) => {
+        const track = primaryTrack(get().tracks);
+        const segments = track.segments.map((segment) =>
+          segment.id === segmentId ? { ...segment, speed } : segment
+        );
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
+      getExportSegments: () =>
+        primaryTrack(get().tracks).segments.map((s) => ({
+          range: s.range,
+          crop: s.crop,
+          speed: s.speed
+        })),
+
+      getOutputDurationMs: () =>
+        primaryTrack(get().tracks).segments.reduce(
+          (sum, s) => sum + getSegmentOutputDurationMs(s),
+          0
+        )
+    })
+  )
+);

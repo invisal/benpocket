@@ -5,6 +5,7 @@ import {
   DEFAULT_ZOOM_DURATION_MS,
   DEFAULT_ZOOM_HOLD_TRANSITION_MS
 } from '@shared/constants';
+import { withHistory } from '../../history/lib/with-history';
 
 interface ZoomStoreState {
   mode: 'auto' | 'manual';
@@ -33,42 +34,48 @@ interface ZoomStoreState {
   setKeyframes: (keyframes: ZoomKeyframe[]) => void;
 }
 
-export const useZoomStore = create<ZoomStoreState>((set) => ({
-  mode: 'auto',
-  keyframes: [],
-  armedKeyframeId: null,
-  selectedKeyframeId: null,
-  setMode: (mode) => set({ mode }),
-  addKeyframe: (atMs) => {
-    const id = crypto.randomUUID();
-    set((state) => ({
-      keyframes: [
-        ...state.keyframes,
-        {
-          id,
-          atMs,
-          durationMs: DEFAULT_ZOOM_DURATION_MS,
-          depth: DEFAULT_ZOOM_DEPTH,
-          easing: 'ease-in-out',
-          position: 'auto-cursor',
-          holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS
-        }
-      ]
-    }));
-    return id;
-  },
-  removeKeyframe: (id) =>
-    set((state) => ({
-      keyframes: state.keyframes.filter((k) => k.id !== id),
-      armedKeyframeId: state.armedKeyframeId === id ? null : state.armedKeyframeId,
-      selectedKeyframeId: state.selectedKeyframeId === id ? null : state.selectedKeyframeId
-    })),
-  updateKeyframe: (id, patch) =>
-    set((state) => ({
-      keyframes: state.keyframes.map((k) => (k.id === id ? { ...k, ...patch } : k))
-    })),
-  armPositioning: (id) => set({ armedKeyframeId: id }),
-  disarmPositioning: () => set({ armedKeyframeId: null }),
-  setSelectedKeyframeId: (selectedKeyframeId) => set({ selectedKeyframeId }),
-  setKeyframes: (keyframes) => set({ keyframes, armedKeyframeId: null })
-}));
+export const useZoomStore = create<ZoomStoreState>(
+  withHistory(
+    'zoom',
+    (s) => ({ mode: s.mode, keyframes: s.keyframes }),
+    (set) => ({
+      mode: 'auto',
+      keyframes: [],
+      armedKeyframeId: null,
+      selectedKeyframeId: null,
+      setMode: (mode) => set({ mode }),
+      addKeyframe: (atMs) => {
+        const id = crypto.randomUUID();
+        set((state) => ({
+          keyframes: [
+            ...state.keyframes,
+            {
+              id,
+              atMs,
+              durationMs: DEFAULT_ZOOM_DURATION_MS,
+              depth: DEFAULT_ZOOM_DEPTH,
+              easing: 'ease-in-out',
+              position: 'auto-cursor',
+              holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS
+            }
+          ]
+        }));
+        return id;
+      },
+      removeKeyframe: (id) =>
+        set((state) => ({
+          keyframes: state.keyframes.filter((k) => k.id !== id),
+          armedKeyframeId: state.armedKeyframeId === id ? null : state.armedKeyframeId,
+          selectedKeyframeId: state.selectedKeyframeId === id ? null : state.selectedKeyframeId
+        })),
+      updateKeyframe: (id, patch) =>
+        set((state) => ({
+          keyframes: state.keyframes.map((k) => (k.id === id ? { ...k, ...patch } : k))
+        })),
+      armPositioning: (id) => set({ armedKeyframeId: id }),
+      disarmPositioning: () => set({ armedKeyframeId: null }),
+      setSelectedKeyframeId: (selectedKeyframeId) => set({ selectedKeyframeId }),
+      setKeyframes: (keyframes) => set({ keyframes, armedKeyframeId: null })
+    })
+  )
+);

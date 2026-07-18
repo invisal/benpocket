@@ -2,6 +2,14 @@
 export const LANE_HEIGHT_PX = 28;
 export const LANE_GAP_PX = 4;
 
+/**
+ * CutTimeline's clip row height -- lives here (not on CutTimeline itself) so
+ * a pill track can match it (e.g. ZoomTrack passing this as `laneHeightPx`)
+ * without importing CutTimeline.tsx, which imports that track back for
+ * rendering and would otherwise create a circular import.
+ */
+export const CLIP_ROW_HEIGHT_PX = 38;
+
 export interface LanePosition {
   leftPercent: number;
   widthPercent: number;

@@ -7,6 +7,7 @@ import type {
   ImageAnnotation
 } from '@screen-recorder/types/project';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
+import { withHistory } from '../../history/lib/with-history';
 
 export const DEFAULT_ANNOTATION_DURATION_MS = 3000;
 // Authored in REFERENCE_CANVAS_WIDTH units (same convention as webcam/cursor
@@ -41,77 +42,84 @@ interface AnnotationsStoreState {
   setSelectedAnnotationId: (id: string | null) => void;
 }
 
-export const useAnnotationsStore = create<AnnotationsStoreState>((set) => ({
-  annotations: [],
-  selectedAnnotationId: null,
+export const useAnnotationsStore = create<AnnotationsStoreState>(
+  withHistory(
+    'annotations',
+    (s) => ({ annotations: s.annotations }),
+    (set) => ({
+      annotations: [],
+      selectedAnnotationId: null,
 
-  addTextAnnotation: (atMs) => {
-    const id = crypto.randomUUID();
-    const annotation: TextAnnotation = {
-      id,
-      kind: 'text',
-      atMs,
-      durationMs: DEFAULT_ANNOTATION_DURATION_MS,
-      position: { ...DEFAULT_POSITION },
-      text: 'New text',
-      animationPreset: 'none'
-    };
-    set((state) => ({
-      annotations: [...state.annotations, annotation],
-      selectedAnnotationId: id
-    }));
-    return id;
-  },
+      addTextAnnotation: (atMs) => {
+        const id = crypto.randomUUID();
+        const annotation: TextAnnotation = {
+          id,
+          kind: 'text',
+          atMs,
+          durationMs: DEFAULT_ANNOTATION_DURATION_MS,
+          position: { ...DEFAULT_POSITION },
+          text: 'New text',
+          animationPreset: 'none'
+        };
+        set((state) => ({
+          annotations: [...state.annotations, annotation],
+          selectedAnnotationId: id
+        }));
+        return id;
+      },
 
-  addArrowAnnotation: (atMs) => {
-    const id = crypto.randomUUID();
-    const annotation: ArrowAnnotation = {
-      id,
-      kind: 'arrow',
-      atMs,
-      durationMs: DEFAULT_ANNOTATION_DURATION_MS,
-      position: { ...DEFAULT_POSITION },
-      to: { x: DEFAULT_POSITION.x + DEFAULT_ARROW_LENGTH, y: DEFAULT_POSITION.y },
-      color: DEFAULT_ARROW_COLOR,
-      thickness: DEFAULT_ARROW_THICKNESS,
-      style: 'solid'
-    };
-    set((state) => ({
-      annotations: [...state.annotations, annotation],
-      selectedAnnotationId: id
-    }));
-    return id;
-  },
+      addArrowAnnotation: (atMs) => {
+        const id = crypto.randomUUID();
+        const annotation: ArrowAnnotation = {
+          id,
+          kind: 'arrow',
+          atMs,
+          durationMs: DEFAULT_ANNOTATION_DURATION_MS,
+          position: { ...DEFAULT_POSITION },
+          to: { x: DEFAULT_POSITION.x + DEFAULT_ARROW_LENGTH, y: DEFAULT_POSITION.y },
+          color: DEFAULT_ARROW_COLOR,
+          thickness: DEFAULT_ARROW_THICKNESS,
+          style: 'solid'
+        };
+        set((state) => ({
+          annotations: [...state.annotations, annotation],
+          selectedAnnotationId: id
+        }));
+        return id;
+      },
 
-  addImageAnnotation: (atMs, assetPath) => {
-    const id = crypto.randomUUID();
-    const annotation: ImageAnnotation = {
-      id,
-      kind: 'image',
-      atMs,
-      durationMs: DEFAULT_ANNOTATION_DURATION_MS,
-      position: { ...DEFAULT_POSITION },
-      assetPath
-    };
-    set((state) => ({
-      annotations: [...state.annotations, annotation],
-      selectedAnnotationId: id
-    }));
-    return id;
-  },
+      addImageAnnotation: (atMs, assetPath) => {
+        const id = crypto.randomUUID();
+        const annotation: ImageAnnotation = {
+          id,
+          kind: 'image',
+          atMs,
+          durationMs: DEFAULT_ANNOTATION_DURATION_MS,
+          position: { ...DEFAULT_POSITION },
+          assetPath
+        };
+        set((state) => ({
+          annotations: [...state.annotations, annotation],
+          selectedAnnotationId: id
+        }));
+        return id;
+      },
 
-  removeAnnotation: (id) =>
-    set((state) => ({
-      annotations: state.annotations.filter((a) => a.id !== id),
-      selectedAnnotationId: state.selectedAnnotationId === id ? null : state.selectedAnnotationId
-    })),
+      removeAnnotation: (id) =>
+        set((state) => ({
+          annotations: state.annotations.filter((a) => a.id !== id),
+          selectedAnnotationId:
+            state.selectedAnnotationId === id ? null : state.selectedAnnotationId
+        })),
 
-  updateAnnotation: (id, patch) =>
-    set((state) => ({
-      annotations: state.annotations.map((a) =>
-        a.id === id ? ({ ...a, ...patch } as Annotation) : a
-      )
-    })),
+      updateAnnotation: (id, patch) =>
+        set((state) => ({
+          annotations: state.annotations.map((a) =>
+            a.id === id ? ({ ...a, ...patch } as Annotation) : a
+          )
+        })),
 
-  setSelectedAnnotationId: (selectedAnnotationId) => set({ selectedAnnotationId })
-}));
+      setSelectedAnnotationId: (selectedAnnotationId) => set({ selectedAnnotationId })
+    })
+  )
+);

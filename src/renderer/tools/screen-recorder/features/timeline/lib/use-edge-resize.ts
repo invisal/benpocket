@@ -1,4 +1,5 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { beginGesture, endGesture } from '../../history/store/history-store';
 
 /**
  * Drag-to-resize for a pill's left/right edge, the same "grab an edge, drag
@@ -34,9 +35,15 @@ export function useEdgeResize(): {
   }, []);
 
   const stop = useCallback(() => {
+    if (dragRef.current) endGesture();
     dragRef.current = null;
     window.removeEventListener('pointermove', handleMove);
   }, [handleMove]);
+
+  // Guards against the pointerup listener never firing (component unmounts
+  // mid-drag) -- otherwise the gesture it opened would stay open forever,
+  // silently swallowing every undo-tracked change made afterward.
+  useEffect(() => stop, [stop]);
 
   const startResize = useCallback(
     (
@@ -48,6 +55,7 @@ export function useEdgeResize(): {
       (event: React.PointerEvent): void => {
         event.preventDefault();
         event.stopPropagation();
+        beginGesture();
         dragRef.current = {
           startClientX: event.clientX,
           startValueMs,

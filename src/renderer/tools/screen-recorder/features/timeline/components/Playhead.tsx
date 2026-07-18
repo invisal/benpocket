@@ -30,6 +30,14 @@ export function Playhead({
   const playheadMs = useTimelineStore((s) => s.playheadMs);
   const markerRef = useRef<HTMLDivElement>(null);
 
+  // The circular handle below extends `HANDLE_RADIUS_PX` past the marker's
+  // own `left` on every side -- padding the viewport bounds by that much
+  // before comparing keeps the *handle* fully on-screen, not just the 0px-wide
+  // marker line. Without this, the handle visibly got clipped by the
+  // scroll container's edge as soon as it was merely half-off-screen,
+  // instead of once it was actually outside the viewport.
+  const HANDLE_RADIUS_PX = 7;
+
   // Keep the playhead in view as it moves past either edge of the (horizontally
   // zoomed, `overflow-auto`) track area -- e.g. during playback, or while
   // scrubbing near an edge. `marker.offsetLeft` is relative to its offset
@@ -44,10 +52,10 @@ export function Playhead({
     const markerX = marker.offsetLeft;
     const viewStart = container.scrollLeft;
     const viewEnd = viewStart + container.clientWidth;
-    if (markerX < viewStart) {
-      container.scrollLeft = markerX;
-    } else if (markerX > viewEnd) {
-      container.scrollLeft = markerX - container.clientWidth;
+    if (markerX - HANDLE_RADIUS_PX < viewStart) {
+      container.scrollLeft = markerX - HANDLE_RADIUS_PX;
+    } else if (markerX + HANDLE_RADIUS_PX > viewEnd) {
+      container.scrollLeft = markerX + HANDLE_RADIUS_PX - container.clientWidth;
     }
   }, [playheadMs, scrollContainerRef]);
 
@@ -63,11 +71,11 @@ export function Playhead({
       className="pointer-events-none absolute inset-y-0 z-10 mx-0.5"
       style={{ left: `${(outputPlayheadMs / clampedTotal) * 100}%` }}
     >
-      <div className="absolute inset-y-0 left-0 w-px bg-accent" />
+      <div className="absolute inset-y-0 left-0 w-0.5 bg-accent" />
       <div
         onPointerDown={onPointerDown}
         title="Drag to scrub"
-        className="pointer-events-auto absolute -left-1.25 top-0 h-0 w-0 cursor-ew-resize border-x-[5px] border-t-[7px] border-x-transparent border-t-accent"
+        className="pointer-events-auto absolute top-0 -left-1.5  h-3.5 w-3.5 cursor-ew-resize rounded-full border-2 border-surface-raised bg-accent shadow-sm"
       />
     </div>
   );

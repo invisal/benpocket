@@ -33,7 +33,9 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('src/renderer/index.html'),
-          regionSelect: resolve('src/renderer/region-select.html')
+          regionSelect: resolve('src/renderer/region-select.html'),
+          recorderToolbar: resolve('src/renderer/recorder-toolbar.html'),
+          sourcePickerOverlay: resolve('src/renderer/source-picker-overlay.html')
         }
       }
     },

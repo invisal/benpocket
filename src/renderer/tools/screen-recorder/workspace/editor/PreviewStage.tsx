@@ -18,6 +18,7 @@ import { CropOverlay } from '../../features/crop/components/CropOverlay';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
 import { AnnotationOverlay } from '../../features/annotations/components/AnnotationOverlay';
 import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOverlay';
+import { beginGesture, endGesture } from '../../features/history/store/history-store';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { resolveZoom } from '@shared/zoom-resolve';
 import { smoothCursorPath } from '@shared/cursor-path';
@@ -113,6 +114,19 @@ export function PreviewStage({
     segmentsRef.current = segments;
   }, [segments]);
 
+  // While a ruler/clip hover-scrub is in progress (see CutTimeline.tsx),
+  // `previewSeek` still moves the actual video so this stage shows the
+  // hovered frame, but the tick loop below should *not* sync that back into
+  // `playheadMs` -- the main playhead stays put until the hover commits.
+  // Ref (not read directly), same reason `segmentsRef` is: the tick loop's
+  // effect has an empty dep array and would otherwise close over a stale
+  // value.
+  const isHoverScrubbing = useTimelineStore((s) => s.isHoverScrubbing);
+  const isHoverScrubbingRef = useRef(isHoverScrubbing);
+  useEffect(() => {
+    isHoverScrubbingRef.current = isHoverScrubbing;
+  }, [isHoverScrubbing]);
+
   // `currentTimeMs` only updates on the video's `timeupdate` event, which
   // browsers fire just a few times a second -- fine for captions sync, but
   // far too coarse for a smooth zoom or playhead: driving either off it
@@ -133,7 +147,7 @@ export function PreviewStage({
       if (video) {
         const sourceMs = video.currentTime * 1000;
         setZoomTimeMs(sourceMs);
-        setPlayhead(sourceMs);
+        if (!isHoverScrubbingRef.current) setPlayhead(sourceMs);
         const activeSegment = segmentsRef.current.find(
           (s) => sourceMs >= s.range.startMs && sourceMs < s.range.endMs
         );
@@ -200,6 +214,7 @@ export function PreviewStage({
 
   function startWebcamDrag(event: React.PointerEvent): void {
     event.preventDefault();
+    beginGesture();
     dragState.current = {
       startClientX: event.clientX,
       startClientY: event.clientY,
@@ -223,9 +238,19 @@ export function PreviewStage({
   }
 
   function stopWebcamDrag(): void {
+    if (dragState.current) endGesture();
     dragState.current = null;
     window.removeEventListener('pointermove', handleWebcamDrag);
   }
+
+  // Guards against the pointerup listener never firing (this stage
+  // unmounts mid-drag) -- otherwise the gesture it opened would stay open
+  // forever, silently swallowing every undo-tracked change made afterward.
+  useEffect(() => {
+    return () => {
+      if (dragState.current) endGesture();
+    };
+  }, []);
 
   // The stage mirrors the export canvas: fixed to the selected export aspect
   // ratio (not just whatever shape the flex column happens to be), letting

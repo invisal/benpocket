@@ -1,9 +1,12 @@
 import type { JSX } from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Clapperboard, Trash2 } from 'lucide-react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
+import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore } from '../store/timeline-store';
+import { useWaveformStore } from '../store/waveform-store';
 import { getSegmentOutputDurationMs, outputMsToSourceMs } from '../lib/segment-duration';
+import { CLIP_ROW_HEIGHT_PX } from '../lib/assign-lanes';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
@@ -11,9 +14,9 @@ import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
 import { AnnotationTrack } from '../../annotations/components/AnnotationTrack';
 import { BlurMaskTrack } from '../../blur-mask/components/BlurMaskTrack';
-import { TrimTrack } from './TrimTrack';
 import { SpeedTrack } from './SpeedTrack';
 import { Playhead } from './Playhead';
+import { SegmentWaveform } from './SegmentWaveform';
 import { cn } from '../../../lib/utils';
 
 function formatTime(ms: number): string {
@@ -66,15 +69,79 @@ export function CutTimeline(): JSX.Element {
   const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
   const zoom = useTimelineStore((s) => s.timelineZoom);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
+  const previewSeek = useTimelineStore((s) => s.previewSeek);
+  const setIsHoverScrubbing = useTimelineStore((s) => s.setIsHoverScrubbing);
   const splitAt = useTimelineStore((s) => s.splitAt);
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);
+  const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
+  // Gates the ruler's hover-scrub below -- only toggles on play/pause (not a
+  // 60fps concern like `playheadMs`), so subscribing directly here is fine.
+  const isPlaying = useTimelineStore((s) => s.isPlaying);
+
+  const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
+  const waveformPeaks = useWaveformStore((s) => s.peaks);
+  const loadWaveformForUrl = useWaveformStore((s) => s.loadForUrl);
+  // Decoded once per recording (cached in the store, keyed by URL) rather
+  // than per-clip -- each segment below just slices its own range out of
+  // the same peaks array, so re-cutting/reordering never re-decodes audio.
+  useEffect(() => {
+    if (previewUrl) loadWaveformForUrl(previewUrl);
+  }, [previewUrl, loadWaveformForUrl]);
 
   const { dragOverIndex, getDragHandlers } = useSegmentReorderDrag();
   const { startResize } = useEdgeResize();
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const playheadDraggingRef = useRef(false);
+  // Set for the duration of an edge-resize drag (useEdgeResize tracks its
+  // own drag state internally, via a `window` pointermove/pointerup pair
+  // that don't go through this component, so it doesn't already know when
+  // one is active) -- keeps hover-scrub from also seeking while the user is
+  // mid-resize on a clip's edge.
+  const edgeResizingRef = useRef(false);
+
+  function markEdgeResizeActive(): void {
+    edgeResizingRef.current = true;
+    window.addEventListener(
+      'pointerup',
+      () => {
+        edgeResizingRef.current = false;
+      },
+      { once: true }
+    );
+  }
+
+  // A second, gray playhead that tracks the cursor while it's over the
+  // ruler and live-seeks the preview video to that position -- scrubbing by
+  // hover alone, no click/drag needed. `preHoverPlayheadMsRef` remembers
+  // where playback actually was before the hover started, so moving the
+  // mouse away without clicking snaps the preview back instead of leaving
+  // it wherever the cursor last was (a real click/drag commits normally and
+  // clears the ref so the leave-restore doesn't undo it).
+  const [hoverFraction, setHoverFraction] = useState<number | null>(null);
+  const preHoverPlayheadMsRef = useRef<number | null>(null);
+
+  // Playback starting mid-hover (transport bar, spacebar, ...) invalidates
+  // the "position to restore on leave" baseline -- clearing just the ref
+  // (not React state, so this doesn't fight the set-state-in-effect rule)
+  // means a leave-while-playing won't snap playback back to wherever it
+  // happened to be when the hover started. The stale `hoverFraction` value
+  // itself is masked at render time below (`effectiveHoverFraction`)
+  // instead of being reset here, since real playback should just keep
+  // going from wherever it already is, not trigger another render.
+  // `setIsHoverScrubbing` is a zustand action, not React state, so it's
+  // exempt from that same rule -- and it has to be cleared here too, or a
+  // hover interrupted by playback starting would leave PreviewStage's rAF
+  // loop permanently skipping `setPlayhead`, freezing the main playhead
+  // forever even once paused again.
+  useEffect(() => {
+    if (isPlaying) {
+      preHoverPlayheadMsRef.current = null;
+      setIsHoverScrubbing(false);
+    }
+  }, [isPlaying, setIsHoverScrubbing]);
+  const effectiveHoverFraction = isPlaying ? null : hoverFraction;
 
   // Panel height is self-managed (not lifted to EditorPage) so the timeline
   // is an independently resizable strip spanning the full editor width.
@@ -121,13 +188,69 @@ export function CutTimeline(): JSX.Element {
     event.preventDefault();
     event.stopPropagation();
     playheadDraggingRef.current = true;
+    setHoverFraction(null);
+    preHoverPlayheadMsRef.current = null;
     seekFromClientX(event.clientX);
     window.addEventListener('pointermove', handlePlayheadDragMove);
     window.addEventListener('pointerup', stopPlayheadDrag, { once: true });
   }
 
   function handleRulerClick(event: React.MouseEvent<HTMLDivElement>): void {
+    preHoverPlayheadMsRef.current = null;
     seekFromClientX(event.clientX);
+  }
+
+  function handleRulerPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
+    // Hover-scrub only live-previews while paused -- while actually
+    // playing back, a hovering mouse shouldn't fight the running playback
+    // position. Dragging the *main* playhead handle (startPlayheadDrag)
+    // still works regardless of play state. Also off while the cursor is
+    // mid-drag on something else draggable (a clip edge being resized),
+    // so hover-scrub doesn't fight that interaction either.
+    if (isPlaying || playheadDraggingRef.current || edgeResizingRef.current) return;
+    const el = trackAreaRef.current;
+    if (!el || segments.length === 0) return;
+    const rect = el.getBoundingClientRect();
+    const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    setHoverFraction(fraction);
+
+    if (preHoverPlayheadMsRef.current === null) {
+      preHoverPlayheadMsRef.current = useTimelineStore.getState().playheadMs;
+      setIsHoverScrubbing(true);
+    }
+    // `previewSeek` (not `requestSeek`) -- moves the actual video so the
+    // preview shows this frame, but deliberately leaves `playheadMs` alone
+    // so the *main* blue playhead stays put and only the gray hover marker
+    // (positioned from `hoverFraction` above) follows the cursor. The main
+    // playhead only catches up once the hover is committed or cancelled
+    // (see handleHoverRelease/handleRulerPointerLeave below).
+    const sourceMs = outputMsToSourceMs(segments, fraction * clampedTotal);
+    if (sourceMs !== null) previewSeek(sourceMs);
+  }
+
+  // Releasing the mouse anywhere over the hover-scrub area (ruler or clip
+  // row) commits the current cursor position as the real seek -- same body
+  // as `handleRulerClick`, just reached via pointerup instead of click so
+  // it also covers releasing over a clip (which separately selects it).
+  // Uses `requestSeek` (not `previewSeek`), so this is the moment the main
+  // playhead actually jumps to the released position. Skipped while
+  // playing, dragging the main playhead, or mid-edge-resize, same as
+  // `handleRulerPointerMove` -- releasing off the end of one of those
+  // interactions shouldn't also fire a seek.
+  function handleHoverRelease(event: React.PointerEvent<HTMLDivElement>): void {
+    if (isPlaying || playheadDraggingRef.current || edgeResizingRef.current) return;
+    preHoverPlayheadMsRef.current = null;
+    setIsHoverScrubbing(false);
+    seekFromClientX(event.clientX);
+  }
+
+  function handleRulerPointerLeave(): void {
+    setHoverFraction(null);
+    if (preHoverPlayheadMsRef.current !== null) {
+      setIsHoverScrubbing(false);
+      requestSeek(preHoverPlayheadMsRef.current);
+      preHoverPlayheadMsRef.current = null;
+    }
   }
 
   function startResizeHandler(
@@ -219,94 +342,156 @@ export function CutTimeline(): JSX.Element {
             className="relative flex flex-col gap-1.5"
             style={{ width: `${zoom * 100}%`, minWidth: '100%' }}
           >
-            <div
-              onClick={handleRulerClick}
-              title="Click to scrub"
-              className="relative h-5 shrink-0 cursor-pointer select-none mx-3"
-            >
-              {ticks.map(({ atMs, major }) => (
-                <div
-                  key={atMs}
-                  className="pointer-events-none absolute top-0"
-                  style={{ left: `${(atMs / clampedTotal) * 100}%` }}
-                >
-                  <div className={cn('w-px bg-white/25', major ? 'h-2' : 'h-1')} />
-                  {major && (
-                    <span className="absolute left-0 top-2 -translate-x-1/2 whitespace-nowrap text-[9px] text-white/40">
-                      {formatTime(atMs)}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-
             {/*
-              Deliberately neutral (not red/Scissors) since those now belong
-              to TrimTrack's sparse "this clip was trimmed" indicator below --
-              this row always shows every clip, tiled edge-to-edge, which is
-              a different thing from that indicator.
+              Ruler + clip row share a `relative` wrapper (distinct from
+              trackAreaRef, which holds the *real* Playhead spanning every
+              track) so the gray hover-scrub marker can be sized to just
+              these two rows via `inset-y-0` instead of hand-computing a
+              pixel height that would drift if either row's height changes.
+              Hover tracking lives on this wrapper (not just the ruler) so
+              hovering the clip row also live-previews -- click-to-seek
+              stays ruler-only below, since a click on a clip is already
+              spoken for (selects it).
             */}
-            <div className="flex h-9 shrink-0 items-center gap-0.5 px-1">
-              {segments.map((segment, index) => {
-                const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
-                const isSelected = selectedSegmentId === segment.id;
-                return (
+            <div
+              className="relative flex flex-col gap-1.5"
+              onPointerMove={handleRulerPointerMove}
+              onPointerLeave={handleRulerPointerLeave}
+              onPointerUp={handleHoverRelease}
+            >
+              <div
+                onClick={handleRulerClick}
+                title="Click to scrub -- hover to preview a position"
+                className="relative h-6 shrink-0 cursor-pointer select-none mx-3"
+              >
+                {ticks.map(({ atMs, major }) => (
                   <div
-                    key={segment.id}
-                    {...getDragHandlers(index)}
-                    onClick={() => setSelectedSegmentId(segment.id)}
-                    onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
-                    className={cn(
-                      'group relative flex h-7 min-w-9 cursor-grab items-center justify-center gap-1.5 rounded-md border border-white/15 bg-white/10 active:cursor-grabbing',
-                      dragOverIndex === index && 'ring-2 ring-accent',
-                      dragOverIndex !== index && isSelected && 'ring-2 ring-white/70'
-                    )}
-                    style={{ width: `${widthPercent}%` }}
+                    key={atMs}
+                    className="pointer-events-none absolute top-0"
+                    style={{ left: `${(atMs / clampedTotal) * 100}%` }}
                   >
-                    <div className="pointer-events-none flex items-center gap-1.5 px-2 text-white/80">
-                      <Clapperboard size={13} className="shrink-0" />
-                      <span className="truncate text-[11px] font-medium">
-                        {formatTime(getSegmentOutputDurationMs(segment))}
-                      </span>
-                      {segment.speed !== 1 && (
-                        <span className="shrink-0 text-[10px] text-white/50">{segment.speed}x</span>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteSegment(segment.id);
-                      }}
-                      disabled={segments.length <= 1}
-                      className="absolute right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-
-                    <div
-                      onPointerDown={(e) => {
-                        const width =
-                          e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                        startResizeHandler(segment, 'start', width)(e);
-                      }}
-                      className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-white/15 hover:bg-white/30"
-                    />
-                    <div
-                      onPointerDown={(e) => {
-                        const width =
-                          e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                        startResizeHandler(segment, 'end', width)(e);
-                      }}
-                      className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-white/15 hover:bg-white/30"
-                    />
+                    {major ? (
+                      <>
+                        <div className="h-2 w-px bg-white/25" />
+                        <span className="absolute left-0 top-2.5 -translate-x-1/2 whitespace-nowrap text-[9px] text-white/40">
+                          {formatTime(atMs)}
+                        </span>
+                      </>
+                    ) : (
+                      <div className="absolute left-0 top-1 h-1 w-1 -translate-x-1/2 rounded-full bg-white/20" />
+                    )}
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              {/*
+                One continuous gradient + glassy highlight layer sits behind
+                *all* segments (not per-segment) so the bar reads as a single
+                faded pill the way the reference image does -- individual
+                segments above it are transparent, divided only by a
+                near-invisible hairline, instead of each carrying its own
+                gradient (which banded at every clip boundary). Segments stay
+                `relative` (positioned, painted after these `absolute`
+                layers in DOM order) so they -- and their ring/handles/delete
+                button -- still paint on top.
+              */}
+              <div
+                className="relative flex shrink-0 items-stretch overflow-hidden rounded-md border border-amber-900/40 shadow-inherit"
+                style={{ height: CLIP_ROW_HEIGHT_PX * 1.3 }}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-blue-500 via-blue-400 to-blue-400" />
+                <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/40 via-white/5 to-black/15" />
+
+                {segments.map((segment, index) => {
+                  const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
+                  const isSelected = selectedSegmentId === segment.id;
+                  return (
+                    <div
+                      key={segment.id}
+                      {...getDragHandlers(index)}
+                      onClick={() => setSelectedSegmentId(segment.id)}
+                      onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
+                      className={cn(
+                        'group relative flex min-w-9 cursor-grab items-center active:cursor-grabbing',
+                        index !== segments.length - 1 && 'border-r border-white/15',
+                        dragOverIndex === index && 'ring-2 ring-inset ring-accent',
+                        dragOverIndex !== index && isSelected && 'ring-2 ring-inset ring-blue-500'
+                      )}
+                      style={{ width: `${widthPercent}%` }}
+                    >
+                      {waveformPeaks && (
+                        <SegmentWaveform
+                          segment={segment}
+                          peaks={waveformPeaks}
+                          sourceDurationMs={sourceDurationMs}
+                        />
+                      )}
+
+                      {/*
+                        Small corner badge, not centered/dominant -- the
+                        reference bar carries no text at all, so this stays
+                        a subtle affordance (still useful once a recording's
+                        been split into multiple clips) rather than a label
+                        breaking up the pill's smooth gradient.
+                      */}
+                      <div className="pointer-events-none absolute left-2 top-1/2 flex -translate-y-1/2 items-center gap-1 text-amber-950/60">
+                        <Clapperboard size={11} className="shrink-0" />
+                        <span className="truncate text-[10px] font-medium">
+                          {formatTime(getSegmentOutputDurationMs(segment))}
+                        </span>
+                        {segment.speed !== 1 && (
+                          <span className="shrink-0 text-[9px] text-amber-950/50">
+                            {segment.speed}x
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSegment(segment.id);
+                        }}
+                        disabled={segments.length <= 1}
+                        className="absolute right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+
+                      <div
+                        onPointerDown={(e) => {
+                          const width =
+                            e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                          markEdgeResizeActive();
+                          startResizeHandler(segment, 'start', width)(e);
+                        }}
+                        className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-black/10 hover:bg-black/25"
+                      />
+                      <div
+                        onPointerDown={(e) => {
+                          const width =
+                            e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                          markEdgeResizeActive();
+                          startResizeHandler(segment, 'end', width)(e);
+                        }}
+                        className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-black/10 hover:bg-black/25"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {effectiveHoverFraction !== null && (
+                <div
+                  className="pointer-events-none absolute inset-y-0.5 z-5 mx-0.5"
+                  style={{ left: `${effectiveHoverFraction * 100}%` }}
+                >
+                  <div className="absolute inset-y-0 left-0 w-0.5 bg-white/40" />
+                  <div className="absolute -left-1 top-0 h-2.5 w-2.5 rounded-full border border-black/40 bg-white/70" />
+                </div>
+              )}
             </div>
 
             <ZoomTrack />
-            <TrimTrack />
             <CaptionTrack />
             <AnnotationTrack />
             <BlurMaskTrack />

@@ -1,0 +1,13 @@
+/*
+ * main.css's "Global overrides for full-screen desktop application" rule
+ * paints html/body/#root with an opaque --color-editor-bg -- correct for
+ * the normal app window, but this window is a transparent always-on-top
+ * overlay (see recorder-toolbar-window.ts's transparent:true); anything opaque
+ * here shows up as a big rectangle behind the pill instead of the real
+ * desktop. Imported after main.css so it wins the cascade.
+ */
+html,
+body,
+#root {
+  background: transparent !important;
+}

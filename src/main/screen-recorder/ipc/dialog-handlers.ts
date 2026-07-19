@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, type FileFilter } from 'electron';
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
@@ -13,6 +13,14 @@ import { captureViaPortal } from '../capture/portal-screenshot';
 import type { ScreenRect } from '@shared/capture-region';
 import { getLastScreenshotSaveDir, setLastScreenshotSaveDir } from '../store/screen-capture-store';
 import { hideCaptureWindow, restoreCaptureWindow } from '../windows/window-visibility';
+
+const SAVE_FILTERS: Record<string, FileFilter> = {
+  png: { name: 'PNG Image', extensions: ['png'] },
+  jpg: { name: 'JPEG Image', extensions: ['jpg', 'jpeg'] },
+  jpeg: { name: 'JPEG Image', extensions: ['jpg', 'jpeg'] },
+  webp: { name: 'WebP Image', extensions: ['webp'] },
+  avif: { name: 'AVIF Image', extensions: ['avif'] }
+};
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(
@@ -76,9 +84,13 @@ export function registerDialogHandlers(): void {
       const win = BrowserWindow.fromWebContents(event.sender);
       const lastSaveDir = getLastScreenshotSaveDir();
       const defaultDir = lastSaveDir ?? app.getPath('pictures');
+      const ext = defaultFileName.split('.').pop()?.toLowerCase() ?? 'png';
+      const filter =
+        SAVE_FILTERS[ext] ??
+        ({ name: `${ext.toUpperCase()} Image`, extensions: [ext] } satisfies FileFilter);
       const options = {
         defaultPath: join(defaultDir, defaultFileName),
-        filters: [{ name: 'PNG Image', extensions: ['png'] }]
+        filters: [filter]
       };
       const { canceled, filePath } = win
         ? await dialog.showSaveDialog(win, options)

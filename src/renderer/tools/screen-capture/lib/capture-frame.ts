@@ -398,9 +398,61 @@ export async function selectAndCaptureRegion(
   }
 }
 
-export function screenshotFileName(): string {
+export function screenshotFileName(ext: CaptureExportExt = 'png'): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  return `screenshot-${stamp}.png`;
+  return `screenshot-${stamp}.${ext}`;
+}
+
+export type CaptureExportFormat = 'png' | 'jpeg' | 'avif' | 'webp';
+export type CaptureExportExt = 'png' | 'jpg' | 'avif' | 'webp';
+
+export const CAPTURE_EXPORT_FORMATS: {
+  id: CaptureExportFormat;
+  label: string;
+  ext: CaptureExportExt;
+  mime: string;
+}[] = [
+  { id: 'png', label: 'PNG', ext: 'png', mime: 'image/png' },
+  { id: 'jpeg', label: 'JPEG', ext: 'jpg', mime: 'image/jpeg' },
+  { id: 'webp', label: 'WebP', ext: 'webp', mime: 'image/webp' },
+  { id: 'avif', label: 'AVIF', ext: 'avif', mime: 'image/avif' }
+];
+
+/** Re-encodes a (usually PNG) capture for save. JPEG gets a white underlay — it has no alpha. */
+export async function encodeCaptureBlob(
+  blob: Blob,
+  format: CaptureExportFormat,
+  quality = 0.92
+): Promise<Blob> {
+  const preset = CAPTURE_EXPORT_FORMATS.find((f) => f.id === format)!;
+  if (format === 'png' && (blob.type === 'image/png' || blob.type === '')) return blob;
+
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    bitmap.close();
+    throw new Error('Could not encode image.');
+  }
+  if (format === 'jpeg') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (result) =>
+        result
+          ? resolve(result)
+          : reject(new Error(`Could not encode ${preset.label}. This format may be unsupported.`)),
+      preset.mime,
+      format === 'png' ? undefined : quality
+    );
+  });
 }
 
 /** Re-encodes an imported (pasted / opened) image as PNG — the copy/save paths assume PNG bytes. */

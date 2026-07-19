@@ -23,29 +23,14 @@ export const EventsToolbar: React.FC<EventsToolbarProps> = ({
   useRegex,
   totalCount,
   selectedCount,
-  namespaces,
-  selectedNamespace,
   onSearchChange,
   onCaseSensitiveToggle,
   onRegexToggle,
-  onDownload,
-  onNamespaceChange
+  onDownload
 }) => {
   return (
     <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-2">
-        <select
-          value={selectedNamespace}
-          onChange={(e) => onNamespaceChange(e.target.value)}
-          className="bg-surface-3 border border-border-dark/60 rounded text-[11px] px-2 py-1 text-zinc-300 focus:outline-none focus:ring-0 cursor-pointer h-7"
-        >
-          {namespaces.map((ns) => (
-            <option key={ns} value={ns}>
-              {ns === 'All Namespaces' ? 'All namespaces' : ns}
-            </option>
-          ))}
-        </select>
-
         <KubeSearchbox
           value={searchQuery}
           placeholder="Search Events..."

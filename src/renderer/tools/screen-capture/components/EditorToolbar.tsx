@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import {
+  Captions,
   Circle,
   Crop,
   Droplets,
@@ -16,12 +17,33 @@ import { cn } from 'cnfast';
 import { Input } from '@renderer/components/ui/Input';
 import { Popover } from '@renderer/components/ui/Popover';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
-import { MAX_CORNER_RADIUS_UNITS, useCaptureEditorStore } from '../store/editor.store';
+import { FONT_TIERS, MAX_CORNER_RADIUS_UNITS, useCaptureEditorStore } from '../store/editor.store';
 import type { EditorTool } from '../types/editor';
 
-const TOOLS: { id: EditorTool; label: string; icon: typeof MousePointer2 }[] = [
+/**
+ * Unlike stage tools, a chip has a fixed default spot (image top-left), so
+ * the rail button places it immediately — no placement click. Defaults:
+ * white text, biggest font tier; edit via the layer's properties dropdown.
+ */
+function addChip(): void {
+  const s = useCaptureEditorStore.getState();
+  s.setTool('select');
+  s.addAnnotation({
+    id: crypto.randomUUID(),
+    kind: 'chip',
+    x: 16 * s.unit,
+    y: 16 * s.unit,
+    text: 'Before',
+    color: '#ffffff',
+    fontSize: FONT_TIERS.at(-1)!.value * s.unit
+  });
+}
+
+// 'chip' is an action button (adds a text label immediately), not a stage tool.
+const TOOLS: { id: EditorTool | 'chip'; label: string; icon: typeof MousePointer2 }[] = [
   { id: 'select', label: 'Select', icon: MousePointer2 },
   { id: 'text', label: 'Text', icon: Type },
+  { id: 'chip', label: 'Text label', icon: Captions },
   { id: 'label', label: 'Numbered label', icon: Tag },
   { id: 'rect', label: 'Rectangle', icon: Square },
   { id: 'circle', label: 'Circle', icon: Circle },
@@ -74,7 +96,7 @@ export function EditorToolbar(): JSX.Element {
               type="button"
               aria-label={label}
               aria-pressed={tool === id}
-              onClick={() => setTool(id)}
+              onClick={() => (id === 'chip' ? addChip() : setTool(id))}
               className={railButtonClass(tool === id)}
             >
               <Icon size={16} strokeWidth={1.75} />

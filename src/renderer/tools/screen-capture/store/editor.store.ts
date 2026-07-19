@@ -192,7 +192,7 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
     set((state) => {
       const targetId = id ?? state.selectedId ?? state.editingId;
       const target = state.annotations.find((a) => a.id === targetId);
-      if (!target || target.kind !== 'text') return { fontTier };
+      if (!target || (target.kind !== 'text' && target.kind !== 'chip')) return { fontTier };
       return {
         fontTier,
         ...pushPast(state),

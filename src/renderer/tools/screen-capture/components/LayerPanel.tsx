@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { useRef, useState } from 'react';
 import {
+  Captions,
   ChevronDown,
   Circle,
   Droplets,
@@ -25,6 +26,7 @@ import type { CaptureAnnotation } from '../types/editor';
 
 const KIND_ICONS = {
   text: Type,
+  chip: Captions,
   label: Tag,
   rect: Square,
   circle: Circle,
@@ -32,11 +34,16 @@ const KIND_ICONS = {
   blur: Droplets
 } as const;
 
+/** Quick word presets for a chip; anything else counts as custom text. */
+const CHIP_PRESETS = ['Before', 'After'];
+
 function layerLabel(annotation: CaptureAnnotation): string {
   if (annotation.name) return annotation.name;
   switch (annotation.kind) {
     case 'text':
       return 'Text';
+    case 'chip':
+      return 'Text label';
     case 'label':
       return `Label ${annotation.value}`;
     case 'rect':
@@ -69,13 +76,40 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
   const setStrokeTier = useCaptureEditorStore((s) => s.setStrokeTier);
   const setFontTier = useCaptureEditorStore((s) => s.setFontTier);
   const setBlurTier = useCaptureEditorStore((s) => s.setBlurTier);
+  const patchAnnotation = useCaptureEditorStore((s) => s.patchAnnotation);
   const unit = useCaptureEditorStore((s) => s.unit);
   // Pre-edit text stashed on focus so an emptied field can revert on blur.
   const textBeforeEdit = useRef('');
 
+  const isCustomChip = annotation.kind === 'chip' && !CHIP_PRESETS.includes(annotation.text);
+
   return (
     <div className="flex flex-col gap-2 px-2 pt-1 pb-2" onClick={(e) => e.stopPropagation()}>
-      {annotation.kind === 'text' && (
+      {annotation.kind === 'chip' && (
+        <div className="flex items-center gap-1">
+          {CHIP_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              aria-pressed={annotation.text === preset}
+              onClick={() => patchAnnotation(annotation.id, { text: preset })}
+              className={cn(tierButtonClass(annotation.text === preset), 'w-auto px-2 text-xs')}
+            >
+              {preset}
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-pressed={isCustomChip}
+            onClick={() => patchAnnotation(annotation.id, { text: 'Custom' })}
+            className={cn(tierButtonClass(isCustomChip), 'w-auto px-2 text-xs')}
+          >
+            Custom
+          </button>
+        </div>
+      )}
+
+      {(annotation.kind === 'text' || isCustomChip) && (
         <Input
           size="sm"
           aria-label="Text content"
@@ -140,7 +174,7 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
         </div>
       )}
 
-      {annotation.kind === 'text' && (
+      {(annotation.kind === 'text' || annotation.kind === 'chip') && (
         <div className="flex items-end gap-1">
           {FONT_TIERS.map(({ label, value }, index) => (
             <button

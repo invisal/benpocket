@@ -20,6 +20,17 @@ export interface TextAnnotation extends AnnotationBase {
   fontSize: number;
 }
 
+/** Word badge (e.g. "Before" / "After"): colored text on a translucent dark pill. */
+export interface ChipAnnotation extends AnnotationBase {
+  kind: 'chip';
+  /** Top-left corner of the pill. */
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  fontSize: number;
+}
+
 export interface LabelAnnotation extends AnnotationBase {
   kind: 'label';
   /** Center of the numbered badge. */
@@ -73,6 +84,7 @@ export interface BlurAnnotation extends AnnotationBase {
 
 export type CaptureAnnotation =
   | TextAnnotation
+  | ChipAnnotation
   | LabelAnnotation
   | RectAnnotation
   | CircleAnnotation

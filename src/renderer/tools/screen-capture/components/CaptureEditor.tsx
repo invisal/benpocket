@@ -5,8 +5,10 @@ import { nextLabelValue, useCaptureEditorStore } from '../store/editor.store';
 import { Check, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
 import {
+  CHIP_BG,
   arrowHeadLength,
   arrowHeadPoints,
+  chipMetrics,
   clampRectToImage,
   labelTextColor,
   normalizeRect,
@@ -596,6 +598,39 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
               />
             ))}
         </svg>
+      );
+    }
+
+    if (annotation.kind === 'chip') {
+      const m = chipMetrics(annotation.fontSize);
+      return (
+        <div
+          key={annotation.id}
+          onPointerDown={startDrag(annotation.id, (dx, dy) =>
+            store.getState().moveAnnotation(annotation.id, {
+              x: annotation.x + dx,
+              y: annotation.y + dy
+            })
+          )}
+          className={cn(
+            'absolute font-semibold whitespace-pre',
+            interactive ? 'pointer-events-auto cursor-move' : 'pointer-events-none',
+            isSelected && 'ring-2 ring-accent'
+          )}
+          style={{
+            left: annotation.x * scale,
+            top: annotation.y * scale,
+            padding: `${m.padY * scale}px ${m.padX * scale}px`,
+            color: annotation.color,
+            backgroundColor: CHIP_BG,
+            borderRadius: m.radius * scale,
+            fontSize: annotation.fontSize * scale,
+            lineHeight: 1,
+            fontFamily: 'sans-serif'
+          }}
+        >
+          {annotation.text}
+        </div>
       );
     }
 

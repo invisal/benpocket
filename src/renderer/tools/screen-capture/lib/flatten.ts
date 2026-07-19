@@ -2,6 +2,7 @@ import type {
   ArrowAnnotation,
   BlurAnnotation,
   CaptureAnnotation,
+  ChipAnnotation,
   CircleAnnotation,
   LabelAnnotation,
   RectAnnotation,
@@ -47,6 +48,14 @@ export function arrowHeadLength(strokeWidth: number): number {
 /** Number color inside a label badge — dark on light fills, white otherwise. */
 export function labelTextColor(fill: string): string {
   return fill === '#ffffff' ? '#111111' : '#ffffff';
+}
+
+/** Translucent dark pill behind a chip's text. */
+export const CHIP_BG = 'rgba(0, 0, 0, 0.55)';
+
+/** Chip pill padding/radius derived from font size — shared by the DOM preview and the canvas export so both render the same pill. */
+export function chipMetrics(fontSize: number): { padX: number; padY: number; radius: number } {
+  return { padX: fontSize * 0.6, padY: fontSize * 0.35, radius: fontSize * 0.3 };
 }
 
 export interface Rect {
@@ -199,6 +208,21 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: LabelAnnotation): void 
   ctx.fillText(String(label.value), label.x, label.y);
 }
 
+function drawChip(ctx: CanvasRenderingContext2D, chip: ChipAnnotation): void {
+  const { padX, padY, radius } = chipMetrics(chip.fontSize);
+  ctx.font = `600 ${Math.round(chip.fontSize)}px sans-serif`;
+  const width = ctx.measureText(chip.text).width + padX * 2;
+  const height = chip.fontSize + padY * 2;
+  ctx.beginPath();
+  ctx.roundRect(chip.x, chip.y, width, height, radius);
+  ctx.fillStyle = CHIP_BG;
+  ctx.fill();
+  ctx.fillStyle = chip.color;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(chip.text, chip.x + padX, chip.y + height / 2);
+}
+
 function drawText(ctx: CanvasRenderingContext2D, text: TextAnnotation): void {
   ctx.fillStyle = text.color;
   ctx.font = `500 ${Math.round(text.fontSize)}px sans-serif`;
@@ -260,6 +284,7 @@ export async function flattenImage(
     else if (a.kind === 'circle') drawCircle(ctx, a);
     else if (a.kind === 'arrow') drawArrow(ctx, a);
     else if (a.kind === 'label') drawLabel(ctx, a);
+    else if (a.kind === 'chip') drawChip(ctx, a);
     else if (a.kind === 'text') drawText(ctx, a);
     ctx.restore();
   }

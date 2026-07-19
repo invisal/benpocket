@@ -56,6 +56,7 @@ export const IpcChannels = {
   RecorderToolbarStopRequested: 'recorder-toolbar:stop-requested',
   RecorderToolbarRecordingStarted: 'recorder-toolbar:recording-started',
   RecorderToolbarRecordingStopped: 'recorder-toolbar:recording-stopped',
+  RecorderToolbarClosed: 'recorder-toolbar:closed',
   SourcePickerOverlayOpen: 'source-picker-overlay:open',
   SourcePickerOverlayPick: 'source-picker-overlay:pick',
   SourcePickerOverlayCancel: 'source-picker-overlay:cancel',

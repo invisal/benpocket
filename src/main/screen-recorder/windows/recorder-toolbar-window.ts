@@ -8,7 +8,7 @@ import type {
 } from '@shared/recorder-toolbar';
 import type { ScreenRect } from '@shared/capture-region';
 import { preloadScriptPath } from '../lib/preload-path';
-import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
+import { minimizeCaptureWindow, restoreCaptureWindow } from './window-visibility';
 
 // Fixed rather than measured -- a window sized to fit whatever content is
 // currently rendered turned out to be more fragile than it was worth (a
@@ -187,10 +187,13 @@ async function openRecorderToolbar(
   // background throttling keeps that loop running at full rate while hidden.
   owner.webContents.setBackgroundThrottling(false);
 
-  // `mainOnly` -- only the owning window hides. The toolbar is a separate
-  // window and must stay visible; the darwin `app.hide()` path (no
-  // `mainOnly`) would take it down too.
-  await hideCaptureWindow(owner, { mainOnly: true });
+  // Minimized rather than hidden -- a full hide leaves no Dock icon/window
+  // to click back to, so once the toolbar has your attention the owning
+  // window effectively vanishes. Minimizing removes it from the screen just
+  // as well (still absent from a 'Display' capture) while leaving a
+  // clickable Dock thumbnail; `closeRecorderToolbar` below un-minimizes it
+  // via `restoreCaptureWindow`.
+  await minimizeCaptureWindow(owner);
 
   if (!toolbarWindow) toolbarWindow = createToolbarWindow();
   loadToolbarPage(toolbarWindow, payload);
@@ -200,6 +203,12 @@ async function openRecorderToolbar(
 function closeRecorderToolbar(): void {
   if (ownerWindow && !ownerWindow.isDestroyed()) {
     ownerWindow.webContents.setBackgroundThrottling(true);
+    // Lets the owner's sidebar re-enable "Launch Recorder" -- see
+    // ScreenRecorderSidebar.tsx. Re-invoking that while this toolbar was
+    // still open used to reload it out from under an active recording
+    // (loadToolbarPage resets its local `mode` state back to 'setup'),
+    // leaving no way to reach Stop for a capture that was still running.
+    ownerWindow.webContents.send(IpcChannels.RecorderToolbarClosed);
   }
   void restoreCaptureWindow(ownerWindow, { focus: true });
   lastTargetBounds = null;
@@ -212,10 +221,9 @@ function closeRecorderToolbar(): void {
 export function registerRecorderToolbarHandlers(): void {
   ipcMain.handle(IpcChannels.RecorderToolbarOpen, openRecorderToolbar);
 
-  // User backed out (Esc / close button) before starting a recording. Only
-  // the two windows involved need to know -- the owner's store never
-  // tracked "a toolbar is open" in the first place, so there's nothing to
-  // clear on that side.
+  // User backed out (Esc / close button) before starting a recording.
+  // closeRecorderToolbar() below also notifies the owner (RecorderToolbarClosed)
+  // so its "toolbar is open" flag clears.
   ipcMain.on(IpcChannels.RecorderToolbarCancel, () => {
     closeRecorderToolbar();
   });

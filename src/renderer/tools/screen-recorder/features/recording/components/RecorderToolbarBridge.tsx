@@ -3,6 +3,7 @@ import type { RecorderToolbarStartPayload } from '@shared/recorder-toolbar';
 import { useRecordingStore } from '../store/recording-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useRecordingControllerContext } from '../context/recording-controller-context';
+import { useAppStore } from '../../../app/app-store';
 
 /**
  * Renders nothing -- just relays the floating recorder-toolbar window's
@@ -54,6 +55,14 @@ export function RecorderToolbarBridge(): JSX.Element | null {
       void stop().then(() => window.screenRecorder.recorderToolbar.reportRecordingStopped());
     });
   }, [stop]);
+
+  useEffect(
+    () =>
+      window.screenRecorder.recorderToolbar.onClosed(() => {
+        useAppStore.getState().setRecorderToolbarOpen(false);
+      }),
+    []
+  );
 
   return null;
 }

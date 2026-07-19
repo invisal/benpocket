@@ -8,6 +8,7 @@ import { openRecorderToolbarFor } from '@screen-recorder/features/recording/lib/
 
 export const ScreenRecorderSidebar: React.FC = () => {
   const isRecording = useAppStore((state) => state.isRecording);
+  const isRecorderToolbarOpen = useAppStore((state) => state.isRecorderToolbarOpen);
   const route = useAppStore((state) => state.route);
   async function handleNewRecord(): Promise<void> {
     const sources = await window.screenRecorder.recording.getCaptureSources();
@@ -22,7 +23,11 @@ export const ScreenRecorderSidebar: React.FC = () => {
       sources[0];
     if (defaultSource) await openRecorderToolbarFor(defaultSource);
   }
-  const disabled = route === 'editor' || isRecording;
+  // isRecorderToolbarOpen alone already covers isRecording (a recording
+  // can't be running without the toolbar that started it also being open),
+  // but isRecording is kept in the condition since it's the more direct,
+  // obviously-correct reason to disable this if the two ever desync.
+  const disabled = route === 'editor' || isRecording || isRecorderToolbarOpen;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">

@@ -25,6 +25,16 @@ interface AppStoreState {
   setRoute: (route: ScreenRecorderRoute) => void;
   isRecording: boolean;
   setIsRecording: (isRecording: boolean) => void;
+  /**
+   * Whether the floating recorder-toolbar (see recorder-toolbar-window.ts) is
+   * currently open, from setup through an active recording until it's
+   * cancelled or stopped. Drives disabling "Launch Recorder" in
+   * ScreenRecorderSidebar.tsx -- re-invoking it while the toolbar was already
+   * open used to reload the toolbar's window out from under an active
+   * recording, leaving no way to reach its Stop button.
+   */
+  isRecorderToolbarOpen: boolean;
+  setRecorderToolbarOpen: (isRecorderToolbarOpen: boolean) => void;
   lastRecording: LastRecording | null;
   setLastRecording: (recording: LastRecording) => void;
   /** Library's "Remove" action -- just the in-memory/route-level state; the caller is responsible for deleting the underlying file and revoking `previewUrl` first (see LibraryPage.tsx). */
@@ -37,6 +47,8 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setRoute: (route) => set({ route }),
   isRecording: false,
   setIsRecording: (isRecording) => set({ isRecording }),
+  isRecorderToolbarOpen: false,
+  setRecorderToolbarOpen: (isRecorderToolbarOpen) => set({ isRecorderToolbarOpen }),
   lastRecording: null,
   setLastRecording: (lastRecording) => set({ lastRecording }),
   clearLastRecording: () => set({ lastRecording: null }),

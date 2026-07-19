@@ -173,6 +173,12 @@ export const screenRecorderApi = {
     /** Called by the main window once stop/save/editor-navigate finishes. */
     reportRecordingStopped: (): void =>
       ipcRenderer.send(IpcChannels.RecorderToolbarRecordingStopped),
+    /** Main window: the toolbar has actually closed (cancelled or stopped) -- see ScreenRecorderSidebar.tsx's "Launch Recorder" disabled state. */
+    onClosed: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.RecorderToolbarClosed, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.RecorderToolbarClosed, listener);
+    },
     /** Main window: the toolbar wants a recording started with this config. */
     onStartRequested: (callback: (payload: RecorderToolbarStartPayload) => void): (() => void) => {
       const listener = (_event: unknown, payload: RecorderToolbarStartPayload): void =>

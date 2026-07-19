@@ -87,6 +87,14 @@ export function resizeRect(
   };
 }
 
+/** Translates an annotation by (dx, dy) in image px — used to map source-image coordinates into cropped-output coordinates. */
+export function shiftAnnotation<T extends CaptureAnnotation>(a: T, dx: number, dy: number): T {
+  if (a.kind === 'arrow') {
+    return { ...a, x1: a.x1 + dx, y1: a.y1 + dy, x2: a.x2 + dx, y2: a.y2 + dy };
+  }
+  return { ...a, x: a.x + dx, y: a.y + dy };
+}
+
 /** Clamps a rect into the bounds of an image, preserving the edges that were already inside. */
 export function clampRectToImage(rect: Rect, imageWidth: number, imageHeight: number): Rect {
   const x = Math.min(Math.max(0, rect.x), imageWidth);
@@ -187,21 +195,24 @@ function drawText(ctx: CanvasRenderingContext2D, text: TextAnnotation): void {
 }
 
 /**
- * Bakes annotations and the corner-radius clip into a new PNG blob at the
- * source image's native resolution. Returns the original blob untouched when
- * there is nothing to bake.
+ * Bakes the crop, annotations, and the corner-radius clip into a new PNG blob
+ * at the source image's native resolution. Returns the original blob
+ * untouched when there is nothing to bake.
  */
 export async function flattenImage(
   blob: Blob,
   annotations: CaptureAnnotation[],
-  cornerRadius: number
+  cornerRadius: number,
+  crop: Rect | null = null
 ): Promise<Blob> {
-  if (annotations.length === 0 && cornerRadius <= 0) return blob;
+  if (annotations.length === 0 && cornerRadius <= 0 && !crop) return blob;
 
   const bitmap = await createImageBitmap(blob);
+  const ox = crop ? Math.round(crop.x) : 0;
+  const oy = crop ? Math.round(crop.y) : 0;
   const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.width = crop ? Math.max(1, Math.round(crop.width)) : bitmap.width;
+  canvas.height = crop ? Math.max(1, Math.round(crop.height)) : bitmap.height;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     bitmap.close();
@@ -210,17 +221,22 @@ export async function flattenImage(
 
   if (cornerRadius > 0) {
     ctx.beginPath();
-    ctx.roundRect(0, 0, bitmap.width, bitmap.height, cornerRadius);
+    ctx.roundRect(0, 0, canvas.width, canvas.height, cornerRadius);
     ctx.clip();
   }
-  ctx.drawImage(bitmap, 0, 0);
+  ctx.drawImage(bitmap, -ox, -oy);
   bitmap.close();
 
   // Draw in array order (last = topmost layer). A blur layer samples the
   // canvas as painted so far, so it also blurs annotations stacked below it
   // — the same stacking semantics as the CSS backdrop-filter preview.
-  for (const a of annotations) {
-    if (a.hidden) continue;
+  // Annotations live in source-image coordinates; shift them into the
+  // cropped output space rather than transforming the context, because
+  // drawBlur reads canvas pixels and getImageData-style reads ignore
+  // context transforms.
+  for (const source of annotations) {
+    if (source.hidden) continue;
+    const a = ox || oy ? shiftAnnotation(source, -ox, -oy) : source;
     ctx.save();
     if (a.kind === 'blur') drawBlur(ctx, canvas, a);
     else if (a.kind === 'rect') drawRect(ctx, a);

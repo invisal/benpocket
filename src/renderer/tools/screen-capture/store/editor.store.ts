@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { imageUnit } from '../lib/flatten';
+import { imageUnit, type Rect } from '../lib/flatten';
 import type { CaptureAnnotation, EditorTool } from '../types/editor';
 
 export const EDITOR_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#ffffff', '#000000'];
@@ -36,6 +36,12 @@ interface EditorState {
    */
   unit: number;
   annotations: CaptureAnnotation[];
+  /**
+   * Non-destructive crop in source-image px, or null for the full image.
+   * Annotations always stay in source-image coordinates; the stage viewport
+   * and the export shift by the crop origin instead of rebasing them.
+   */
+  crop: Rect | null;
   /** Baked into the exported PNG as a rounded-rect clip. In image px. */
   cornerRadius: number;
   tool: EditorTool;
@@ -49,11 +55,11 @@ interface EditorState {
   fontTier: number;
   /** Blur radius in units (multiplied by `unit` at creation time). */
   blurTier: number;
-  // ponytail: undo covers annotations only — cornerRadius is a slider the
-  // user can just drag back; tracking it would spam the stack on every input
-  // event. Upgrade path: begin/end gesture around slider drags.
-  past: CaptureAnnotation[][];
-  future: CaptureAnnotation[][];
+  // ponytail: undo covers annotations + crop only — cornerRadius is a slider
+  // the user can just drag back; tracking it would spam the stack on every
+  // input event. Upgrade path: begin/end gesture around slider drags.
+  past: Snapshot[];
+  future: Snapshot[];
   init: (imageWidth: number, imageHeight: number) => void;
   reset: () => void;
   setTool: (tool: EditorTool) => void;
@@ -75,8 +81,8 @@ interface EditorState {
   removeAnnotation: (id: string) => void;
   /** Untracked removal — for discarding an empty text annotation whose creation entry already restores this exact state. */
   discardAnnotation: (id: string) => void;
-  /** Rebase the editor onto a cropped image: shift annotations into the new coordinate space and adopt the new dimensions. */
-  applyCrop: (x: number, y: number, width: number, height: number) => void;
+  /** Undo-tracked. Null clears the crop back to the full image. */
+  setCrop: (crop: Rect | null) => void;
   beginGesture: () => void;
   endGesture: () => void;
   undo: () => void;
@@ -85,8 +91,18 @@ interface EditorState {
 
 const HISTORY_CAP = 100;
 
+/** One undo entry — everything the user can change that undo should restore. */
+interface Snapshot {
+  annotations: CaptureAnnotation[];
+  crop: Rect | null;
+}
+
+function snapshot(state: Pick<EditorState, 'annotations' | 'crop'>): Snapshot {
+  return { annotations: state.annotations, crop: state.crop };
+}
+
 function pushPast(state: EditorState): Pick<EditorState, 'past' | 'future'> {
-  return { past: [...state.past, state.annotations].slice(-HISTORY_CAP), future: [] };
+  return { past: [...state.past, snapshot(state)].slice(-HISTORY_CAP), future: [] };
 }
 
 function applyPatch(
@@ -102,6 +118,7 @@ const initialState = {
   imageHeight: 0,
   unit: 1,
   annotations: [] as CaptureAnnotation[],
+  crop: null as Rect | null,
   cornerRadius: 0,
   tool: 'select' as EditorTool,
   selectedId: null,
@@ -109,12 +126,12 @@ const initialState = {
   strokeTier: STROKE_TIERS[1].value,
   fontTier: FONT_TIERS[1].value,
   blurTier: BLUR_TIERS[1].value,
-  past: [] as CaptureAnnotation[][],
-  future: [] as CaptureAnnotation[][]
+  past: [] as Snapshot[],
+  future: [] as Snapshot[]
 };
 
-/** Annotations snapshot at beginGesture — module-scope ref, not reactive state. */
-let gestureStart: CaptureAnnotation[] | null = null;
+/** Snapshot at beginGesture — module-scope ref, not reactive state. */
+let gestureStart: Snapshot | null = null;
 
 export const useCaptureEditorStore = create<EditorState>((set, get) => ({
   ...initialState,
@@ -235,34 +252,23 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
       editingId: state.editingId === id ? null : state.editingId
     })),
 
-  applyCrop: (x, y, width, height) =>
+  setCrop: (crop) =>
     set((state) => ({
-      imageWidth: width,
-      imageHeight: height,
-      unit: imageUnit(width),
-      annotations: state.annotations.map((a) => {
-        if (a.kind === 'arrow') {
-          return { ...a, x1: a.x1 - x, y1: a.y1 - y, x2: a.x2 - x, y2: a.y2 - y };
-        }
-        return { ...a, x: a.x - x, y: a.y - y };
-      }),
+      ...pushPast(state),
+      crop,
       tool: 'select' as EditorTool,
       selectedId: null,
-      editingId: null,
-      // ponytail: crop is destructive — past snapshots reference pre-crop
-      // pixels and coordinates, so history is cleared instead of rebased.
-      past: [],
-      future: []
+      editingId: null
     })),
 
   beginGesture: () => {
-    gestureStart = get().annotations;
+    gestureStart = snapshot(get());
   },
 
   endGesture: () => {
     const start = gestureStart;
     gestureStart = null;
-    if (!start || start === get().annotations) return;
+    if (!start || start.annotations === get().annotations) return;
     set((state) => ({
       past: [...state.past, start].slice(-HISTORY_CAP),
       future: []
@@ -274,9 +280,9 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
       const previous = state.past.at(-1);
       if (!previous) return state;
       return {
-        annotations: previous,
+        ...previous,
         past: state.past.slice(0, -1),
-        future: [...state.future, state.annotations],
+        future: [...state.future, snapshot(state)],
         selectedId: null,
         editingId: null
       };
@@ -287,9 +293,9 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
       const next = state.future.at(-1);
       if (!next) return state;
       return {
-        annotations: next,
+        ...next,
         future: state.future.slice(0, -1),
-        past: [...state.past, state.annotations].slice(-HISTORY_CAP),
+        past: [...state.past, snapshot(state)].slice(-HISTORY_CAP),
         selectedId: null,
         editingId: null
       };

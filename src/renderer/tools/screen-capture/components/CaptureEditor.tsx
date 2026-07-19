@@ -22,8 +22,6 @@ import type {
 
 interface CaptureEditorProps {
   dataUrl: string;
-  /** Called after a crop is applied with the newly encoded preview image. */
-  onCropped: (blob: Blob, dataUrl: string) => void;
 }
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
@@ -134,7 +132,7 @@ function TextEditInput({
  * `scale` (displayed px per image px) for rendering, so flatten.ts can draw
  * the exact same numbers 1:1 at export.
  */
-export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.Element {
+export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   const store = useCaptureEditorStore;
   const annotations = useCaptureEditorStore((s) => s.annotations);
   const imageWidth = useCaptureEditorStore((s) => s.imageWidth);
@@ -144,23 +142,32 @@ export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.E
   const selectedId = useCaptureEditorStore((s) => s.selectedId);
   const editingId = useCaptureEditorStore((s) => s.editingId);
   const cornerRadius = useCaptureEditorStore((s) => s.cornerRadius);
+  const crop = useCaptureEditorStore((s) => s.crop);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [cropRect, setCropRect] = useState<Rect | null>(null);
   const activeDrag = useRef<{ move: (e: PointerEvent) => void; up: () => void } | null>(null);
 
+  // The stage shows this viewport of the source image. The crop tool always
+  // works on the full image (so an existing crop can be re-adjusted);
+  // otherwise the applied crop is the viewport. Coordinates everywhere stay
+  // in source-image space — only rendering and pointer math shift by view.
+  const view: Rect =
+    tool !== 'crop' && crop ? crop : { x: 0, y: 0, width: imageWidth, height: imageHeight };
+  /** The crop selection shown by the crop tool: mid-drag rect, else the applied crop. */
+  const pendingCrop = tool === 'crop' ? (cropRect ?? crop) : null;
+
   // Fit the stage inside the container preserving aspect ratio, never
   // upscaling past native resolution (matches the old object-contain img).
   const fitScale =
-    imageWidth > 0 && containerSize.width > 0
-      ? Math.min(containerSize.width / imageWidth, containerSize.height / imageHeight, 1)
+    view.width > 0 && containerSize.width > 0
+      ? Math.min(containerSize.width / view.width, containerSize.height / view.height, 1)
       : 0;
-  const stageWidth = imageWidth * fitScale;
-  const stageHeight = imageHeight * fitScale;
+  const stageWidth = view.width * fitScale;
+  const stageHeight = view.height * fitScale;
   const scale = fitScale > 0 ? fitScale : 1;
 
   useEffect(() => {
@@ -199,17 +206,17 @@ export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.E
   }, [store]);
 
   // Enter applies / Escape cancels the pending crop. Separate from the main
-  // shortcut effect because it needs the current cropRect in scope.
+  // shortcut effect because it needs the current pendingCrop in scope.
   useEffect(() => {
-    if (tool !== 'crop' || !cropRect) return;
+    if (!pendingCrop) return;
     function onKeyDown(event: KeyboardEvent): void {
-      if (event.key === 'Enter') void applyCropRect(cropRect!);
-      if (event.key === 'Escape') setCropRect(null);
+      if (event.key === 'Enter') applyCropRect(pendingCrop!);
+      if (event.key === 'Escape') cancelCrop();
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool, cropRect]);
+  }, [pendingCrop]);
 
   // Guards against the pointerup listener never firing (editor unmounts
   // mid-drag) -- otherwise the window pointermove listener and the open
@@ -227,7 +234,10 @@ export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.E
   function toImagePoint(event: { clientX: number; clientY: number }): { x: number; y: number } {
     const bounds = stageRef.current?.getBoundingClientRect();
     if (!bounds) return { x: 0, y: 0 };
-    return { x: (event.clientX - bounds.left) / scale, y: (event.clientY - bounds.top) / scale };
+    return {
+      x: (event.clientX - bounds.left) / scale + view.x,
+      y: (event.clientY - bounds.top) / scale + view.y
+    };
   }
 
   function startDrag(id: string, onMove: DragMove) {
@@ -269,10 +279,10 @@ export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.E
   /** Move or resize the pending crop selection (local state, not the store). */
   function startCropAdjust(mode: Corner | 'move') {
     return (event: React.PointerEvent): void => {
-      if (event.button !== 0 || !cropRect) return;
+      if (event.button !== 0 || !pendingCrop) return;
       event.preventDefault();
       event.stopPropagation();
-      const start = cropRect;
+      const start = pendingCrop;
       const startClientX = event.clientX;
       const startClientY = event.clientY;
       const move = (e: PointerEvent): void => {
@@ -294,31 +304,26 @@ export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.E
     };
   }
 
-  async function applyCropRect(rect: Rect): Promise<void> {
-    const img = imgRef.current;
-    if (!img) return;
+  /** Commits the selection as the store's non-destructive crop (undoable). */
+  function applyCropRect(rect: Rect): void {
     const clamped = clampRectToImage(rect, imageWidth, imageHeight);
-    const sx = Math.round(clamped.x);
-    const sy = Math.round(clamped.y);
-    const sw = Math.max(1, Math.round(clamped.width));
-    const sh = Math.max(1, Math.round(clamped.height));
-
-    const canvas = document.createElement('canvas');
-    canvas.width = sw;
-    canvas.height = sh;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    // drawImage source coordinates are in the image's natural resolution,
-    // which is exactly the editor's image pixel space.
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (!blob) return;
-    // Rebase the store first so the img onLoad init-check (imageWidth ===
-    // naturalWidth) sees matching dimensions and keeps the annotations.
-    store.getState().applyCrop(sx, sy, sw, sh);
+    const next = {
+      x: Math.round(clamped.x),
+      y: Math.round(clamped.y),
+      width: Math.max(1, Math.round(clamped.width)),
+      height: Math.max(1, Math.round(clamped.height))
+    };
+    const isFullImage =
+      next.x === 0 && next.y === 0 && next.width === imageWidth && next.height === imageHeight;
+    // setCrop also switches back to the select tool, restoring the cropped view.
+    store.getState().setCrop(isFullImage ? null : next);
     setCropRect(null);
-    onCropped(blob, canvas.toDataURL('image/png'));
+  }
+
+  /** Leaves crop mode without changing the applied crop. */
+  function cancelCrop(): void {
+    setCropRect(null);
+    store.getState().setTool('select');
   }
 
   function handleStagePointerDown(event: React.PointerEvent): void {
@@ -708,66 +713,80 @@ export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.E
           overflow: 'hidden'
         }}
       >
-        <img
-          ref={imgRef}
-          src={dataUrl}
-          alt="Captured screenshot"
-          draggable={false}
-          className={cn('block', sized ? 'h-full w-full' : 'max-h-full max-w-full')}
-          onLoad={(e) => {
-            const img = e.currentTarget;
-            if (store.getState().imageWidth !== img.naturalWidth) {
-              store.getState().init(img.naturalWidth, img.naturalHeight);
-            }
-          }}
-        />
+        {/* Full image plus overlays, shifted so the viewport shows the crop. */}
+        <div
+          className={sized ? 'absolute' : undefined}
+          style={
+            sized
+              ? {
+                  left: -view.x * scale,
+                  top: -view.y * scale,
+                  width: imageWidth * scale,
+                  height: imageHeight * scale
+                }
+              : undefined
+          }
+        >
+          <img
+            src={dataUrl}
+            alt="Captured screenshot"
+            draggable={false}
+            className={cn('block', sized ? 'h-full w-full' : 'max-h-full max-w-full')}
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (store.getState().imageWidth !== img.naturalWidth) {
+                store.getState().init(img.naturalWidth, img.naturalHeight);
+              }
+            }}
+          />
 
-        {sized && (
-          <div className="absolute inset-0">
-            {annotations.filter((a) => !a.hidden).map(renderAnnotation)}
-            {draft && renderDraft(draft)}
+          {sized && (
+            <div className="absolute inset-0">
+              {annotations.filter((a) => !a.hidden).map(renderAnnotation)}
+              {draft && renderDraft(draft)}
 
-            {tool === 'crop' && cropRect && (
-              <div
-                onPointerDown={startCropAdjust('move')}
-                className="absolute z-20 cursor-move"
-                style={{
-                  left: cropRect.x * scale,
-                  top: cropRect.y * scale,
-                  width: cropRect.width * scale,
-                  height: cropRect.height * scale,
-                  // Dims everything outside the selection; the stage's
-                  // overflow-hidden clips the giant shadow to the image.
-                  boxShadow: '0 0 0 100000px rgba(0, 0, 0, 0.55)'
-                }}
-              >
-                <div className="pointer-events-none absolute -inset-px border border-dashed border-accent" />
-                {CORNERS.map((corner) => (
-                  <div
-                    key={corner}
-                    onPointerDown={startCropAdjust(corner)}
-                    className={cn(
-                      'absolute h-3 w-3 rounded-full border-2 border-accent bg-surface',
-                      CORNER_CLASSES[corner]
-                    )}
-                  />
-                ))}
+              {pendingCrop && (
                 <div
-                  className="absolute bottom-1 right-1 flex gap-1"
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerDown={startCropAdjust('move')}
+                  className="absolute z-20 cursor-move"
+                  style={{
+                    left: pendingCrop.x * scale,
+                    top: pendingCrop.y * scale,
+                    width: pendingCrop.width * scale,
+                    height: pendingCrop.height * scale,
+                    // Dims everything outside the selection; the stage's
+                    // overflow-hidden clips the giant shadow to the image.
+                    boxShadow: '0 0 0 100000px rgba(0, 0, 0, 0.55)'
+                  }}
                 >
-                  <Button variant="secondary" size="sm" onClick={() => setCropRect(null)}>
-                    <X size={14} />
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => void applyCropRect(cropRect)}>
-                    <Check size={14} />
-                    Crop
-                  </Button>
+                  <div className="pointer-events-none absolute -inset-px border border-dashed border-accent" />
+                  {CORNERS.map((corner) => (
+                    <div
+                      key={corner}
+                      onPointerDown={startCropAdjust(corner)}
+                      className={cn(
+                        'absolute h-3 w-3 rounded-full border-2 border-accent bg-surface',
+                        CORNER_CLASSES[corner]
+                      )}
+                    />
+                  ))}
+                  <div
+                    className="absolute bottom-1 right-1 flex gap-1"
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <Button variant="secondary" size="sm" onClick={cancelCrop}>
+                      <X size={14} />
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={() => applyCropRect(pendingCrop)}>
+                      <Check size={14} />
+                      Crop
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

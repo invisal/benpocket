@@ -5,7 +5,8 @@ import {
   clampRectToImage,
   labelTextColor,
   normalizeRect,
-  resizeRect
+  resizeRect,
+  shiftAnnotation
 } from './flatten';
 import { nextLabelValue, reorderById, useCaptureEditorStore } from '../store/editor.store';
 import type { CaptureAnnotation } from '../types/editor';
@@ -87,6 +88,61 @@ describe('reorderById', () => {
     expect(ids(reorderById(list, 'a', 99))).toBe('bcda');
     expect(reorderById(list, 'b', 1)).toBe(list);
     expect(reorderById(list, 'missing', 0)).toBe(list);
+  });
+});
+
+describe('shiftAnnotation', () => {
+  it('shifts point-based and arrow annotations into cropped-output space', () => {
+    const rect: CaptureAnnotation = {
+      id: 'r',
+      kind: 'rect',
+      x: 100,
+      y: 50,
+      width: 10,
+      height: 10,
+      color: '#fff',
+      strokeWidth: 2
+    };
+    expect(shiftAnnotation(rect, -30, -20)).toMatchObject({ x: 70, y: 30, width: 10, height: 10 });
+
+    const arrow: CaptureAnnotation = {
+      id: 'a',
+      kind: 'arrow',
+      x1: 10,
+      y1: 20,
+      x2: 30,
+      y2: 40,
+      color: '#fff',
+      strokeWidth: 2
+    };
+    expect(shiftAnnotation(arrow, -5, 5)).toMatchObject({ x1: 5, y1: 25, x2: 25, y2: 45 });
+  });
+});
+
+describe('crop undo', () => {
+  it('setCrop is undoable and redoable', () => {
+    const s = useCaptureEditorStore.getState();
+    s.init(1000, 500);
+    useCaptureEditorStore.getState().setCrop({ x: 10, y: 20, width: 300, height: 200 });
+    expect(useCaptureEditorStore.getState().crop).toEqual({
+      x: 10,
+      y: 20,
+      width: 300,
+      height: 200
+    });
+
+    useCaptureEditorStore.getState().undo();
+    expect(useCaptureEditorStore.getState().crop).toBeNull();
+
+    useCaptureEditorStore.getState().redo();
+    expect(useCaptureEditorStore.getState().crop).toEqual({
+      x: 10,
+      y: 20,
+      width: 300,
+      height: 200
+    });
+
+    useCaptureEditorStore.getState().reset();
   });
 });
 

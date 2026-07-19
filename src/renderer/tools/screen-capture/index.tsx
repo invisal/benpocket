@@ -142,7 +142,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     const unsubscribe = useCaptureEditorStore.subscribe((state, previous) => {
       if (
         state.annotations === previous.annotations &&
-        state.cornerRadius === previous.cornerRadius
+        state.cornerRadius === previous.cornerRadius &&
+        state.crop === previous.crop
       ) {
         return;
       }
@@ -150,8 +151,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       timer = window.setTimeout(() => {
         generation += 1;
         const current = generation;
-        const { annotations, cornerRadius } = useCaptureEditorStore.getState();
-        void flattenImage(previewBlob, annotations, cornerRadius)
+        const { annotations, cornerRadius, crop } = useCaptureEditorStore.getState();
+        void flattenImage(previewBlob, annotations, cornerRadius, crop)
           .then((blob) => (current === generation ? copyAfterCapture(blob) : true))
           .then((copied) => {
             if (!copied) console.error('Could not copy edited screenshot to clipboard.');
@@ -253,24 +254,11 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     setConfirmed(null);
   };
 
-  const handleCropped = (blob: Blob, dataUrl: string): void => {
-    setPreviewBlob(blob);
-    setPreviewDataUrl(dataUrl);
-    // The auto-copy subscription is re-created for the new blob, so it won't
-    // see the crop itself — sync the clipboard explicitly.
-    const { annotations, cornerRadius } = useCaptureEditorStore.getState();
-    void flattenImage(blob, annotations, cornerRadius)
-      .then(copyAfterCapture)
-      .then((copied) => {
-        if (!copied) console.error('Could not copy cropped screenshot to clipboard.');
-      });
-  };
-
   /** Copy/Save export what's on the editor stage, not the raw capture. */
   const editedBlob = async (): Promise<Blob | null> => {
     if (!previewBlob) return null;
-    const { annotations, cornerRadius } = useCaptureEditorStore.getState();
-    return flattenImage(previewBlob, annotations, cornerRadius);
+    const { annotations, cornerRadius, crop } = useCaptureEditorStore.getState();
+    return flattenImage(previewBlob, annotations, cornerRadius, crop);
   };
 
   const handleCopy = async (): Promise<void> => {
@@ -394,7 +382,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           {phase === 'result' && previewDataUrl && (
             <div className="flex min-h-0 flex-1 gap-3">
               <EditorToolbar />
-              <CaptureEditor dataUrl={previewDataUrl} onCropped={handleCropped} />
+              <CaptureEditor dataUrl={previewDataUrl} />
               <LayerPanel />
             </div>
           )}

@@ -23,6 +23,8 @@ export function KubeTableCell<T>({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const content = col.render ? col.render(row) : (row as any)[col.key];
 
+  const isFixed = col.resizable === false;
+
   return (
     <td
       className={cn(
@@ -33,14 +35,20 @@ export function KubeTableCell<T>({
       )}
       style={isExpanded ? { minHeight: ROW_HEIGHT, height: 'auto' } : { height: ROW_HEIGHT }}
     >
-      <div
-        className={cn(isExpanded ? 'whitespace-normal break-all' : 'truncate')}
-        style={
-          resizable && colWidth !== undefined && !isExpanded ? { maxWidth: colWidth } : undefined
-        }
-      >
-        {content}
-      </div>
+      {isFixed ? (
+        /* Fixed column: center content with flex, no truncation */
+        <div className="flex items-center justify-center w-full">{content}</div>
+      ) : (
+        /* Resizable column: truncate with optional max-width */
+        <div
+          className={cn(isExpanded ? 'whitespace-normal break-all' : 'truncate')}
+          style={
+            resizable && colWidth !== undefined && !isExpanded ? { maxWidth: colWidth } : undefined
+          }
+        >
+          {content}
+        </div>
+      )}
     </td>
   );
 }

@@ -21,6 +21,8 @@ interface AppStoreState {
   setIsRecording: (isRecording: boolean) => void;
   lastRecording: LastRecording | null;
   setLastRecording: (recording: LastRecording) => void;
+  /** Library's "Remove" action -- just the in-memory/route-level state; the caller is responsible for deleting the underlying file and revoking `previewUrl` first (see LibraryPage.tsx). */
+  clearLastRecording: () => void;
   projectName: string;
 }
 
@@ -31,5 +33,6 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setIsRecording: (isRecording) => set({ isRecording }),
   lastRecording: null,
   setLastRecording: (lastRecording) => set({ lastRecording }),
+  clearLastRecording: () => set({ lastRecording: null }),
   projectName: 'Untitled Recording'
 }));

@@ -33,7 +33,9 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.StartRecording, request),
     stop: (): Promise<void> => ipcRenderer.invoke(IpcChannels.StopRecording),
     saveFile: (fileName: string, data: ArrayBuffer): Promise<string> =>
-      ipcRenderer.invoke(IpcChannels.SaveRecordingFile, fileName, data)
+      ipcRenderer.invoke(IpcChannels.SaveRecordingFile, fileName, data),
+    deleteFile: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.DeleteRecordingFile, filePath)
   },
   cursor: {
     startTracking: (

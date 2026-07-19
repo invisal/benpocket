@@ -49,5 +49,23 @@ export function registerRecordingHandlers(): void {
     }
   );
 
+  // "Remove" from the Library -- best-effort: a recording whose save
+  // already failed (`filePath` null, see useRecordingController.stop) has
+  // nothing on disk to remove, and a file that's already gone shouldn't
+  // block clearing it from the UI either, so ENOENT is swallowed same as
+  // success. Any other error (permissions, disk issue, ...) still surfaces
+  // to the renderer, which leaves the item in the library rather than
+  // silently pretending it's gone.
+  ipcMain.handle(
+    IpcChannels.DeleteRecordingFile,
+    async (_event, filePath: string): Promise<void> => {
+      try {
+        await fs.unlink(filePath);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      }
+    }
+  );
+
   // TODO: pause/resume handlers once the capture pipeline exists
 }

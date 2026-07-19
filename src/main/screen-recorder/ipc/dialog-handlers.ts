@@ -49,20 +49,25 @@ export function registerDialogHandlers(): void {
     return captureRegionPngDarwin(rect);
   });
 
-  ipcMain.handle(IpcChannels.CaptureScreenshotPortal, async (event): Promise<Buffer | null> => {
-    // Screen Capture tool, Linux Wayland only — xdg-desktop-portal Screenshot.
-    // Hide first: GNOME freezes a backdrop the moment the picker opens, so we
-    // need the compositor to finish removing our window before that call.
-    // 350ms is longer than the usual 100ms PipeWire settle — portal backdrop
-    // capture is less forgiving of a late hide.
-    const win = BrowserWindow.fromWebContents(event.sender);
-    await hideCaptureWindow(win, { settleMs: 350 });
-    try {
-      return await captureViaPortal();
-    } finally {
-      await restoreCaptureWindow(win, { focus: true });
+  ipcMain.handle(
+    IpcChannels.CaptureScreenshotPortal,
+    async (event, options?: { hideApp?: boolean }): Promise<Buffer | null> => {
+      // Screen Capture tool, Linux Wayland only — xdg-desktop-portal Screenshot.
+      // Hide first (unless the user opted to keep the app visible): GNOME
+      // freezes a backdrop the moment the picker opens, so we need the
+      // compositor to finish removing our window before that call. 350ms is
+      // longer than the usual 100ms PipeWire settle — portal backdrop capture
+      // is less forgiving of a late hide.
+      const hideApp = options?.hideApp ?? true;
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (hideApp) await hideCaptureWindow(win, { settleMs: 350 });
+      try {
+        return await captureViaPortal();
+      } finally {
+        if (hideApp) await restoreCaptureWindow(win, { focus: true });
+      }
     }
-  });
+  );
 
   ipcMain.handle(
     IpcChannels.SaveScreenshot,

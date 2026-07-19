@@ -329,16 +329,20 @@ export type RegionCaptureStep = 'picker' | 'region' | 'processing';
 export async function selectAndCaptureRegion(
   sources: CaptureSource[],
   usesOsPicker: boolean,
-  onStep?: (step: RegionCaptureStep) => void
+  onStep?: (step: RegionCaptureStep) => void,
+  options?: { hideApp?: boolean }
 ): Promise<Blob | null> {
+  const hideApp = options?.hideApp ?? true;
   try {
     // macOS: dim the live desktop with the transparent overlay (no frozen
     // screenshot), then grab just the dragged rectangle natively. screencapture
     // -R returns Display P3 pixels straight from the OS, so what the user framed
     // on the real screen is exactly what gets captured.
     if (window.api?.platform === 'darwin') {
-      await hideMainWindow();
-      await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+      if (hideApp) {
+        await hideMainWindow();
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+      }
 
       onStep?.('region');
       const selection = (await window.screenRecorder?.screenshot.selectRegion()) ?? null;
@@ -358,8 +362,10 @@ export async function selectAndCaptureRegion(
       // removing us during the IPC round-trip; main waits an extra settle
       // before calling the portal (GNOME freezes the backdrop immediately).
       onStep?.('picker');
-      await hideMainWindow();
-      const buffer = await window.screenRecorder!.screenshot.capturePortal();
+      // The main-process handler hides again with a longer settle; this early
+      // hide just lets the compositor start removing us during the IPC trip.
+      if (hideApp) await hideMainWindow();
+      const buffer = await window.screenRecorder!.screenshot.capturePortal({ hideApp });
       if (!buffer) return null;
       return new Blob([buffer], { type: 'image/png' });
     }
@@ -370,8 +376,10 @@ export async function selectAndCaptureRegion(
     // capture the matched display while the app + overlay are still gone, then
     // crop. Capturing before the finally re-shows the app keeps CraftBox out of
     // the grab.
-    await hideMainWindow();
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+    if (hideApp) {
+      await hideMainWindow();
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+    }
 
     onStep?.('region');
     const selection = (await window.screenRecorder?.screenshot.selectRegion()) ?? null;
@@ -393,6 +401,20 @@ export async function selectAndCaptureRegion(
 export function screenshotFileName(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   return `screenshot-${stamp}.png`;
+}
+
+/** Re-encodes an imported (pasted / opened) image as PNG — the copy/save paths assume PNG bytes. */
+export async function toPngBlob(blob: Blob): Promise<Blob> {
+  if (blob.type === 'image/png') return blob;
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to decode image.');
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return canvasToPngBlob(canvas);
 }
 
 export function blobToDataUrl(blob: Blob): Promise<string> {

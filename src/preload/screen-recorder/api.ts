@@ -144,8 +144,8 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.SaveScreenshot, data, defaultFileName),
     selectRegion: (options?: SelectCaptureRegionOptions): Promise<CaptureRegionSelection | null> =>
       ipcRenderer.invoke(IpcChannels.SelectCaptureRegion, options),
-    capturePortal: (): Promise<ArrayBuffer | null> =>
-      ipcRenderer.invoke(IpcChannels.CaptureScreenshotPortal)
+    capturePortal: (options?: { hideApp?: boolean }): Promise<ArrayBuffer | null> =>
+      ipcRenderer.invoke(IpcChannels.CaptureScreenshotPortal, options)
   },
   regionSelect: {
     getContentOrigin: (): Promise<ScreenRect | null> =>

@@ -51,11 +51,11 @@ Shared with main/preload (not under this directory):
 
 When `window.api.usesOsCapturePicker` is true (Linux Wayland), the thumbnail grid is skipped **and the footer shows only one "Capture" button** — GNOME's native picker already offers screen/window/selection in one UI, so a separate "Capture region" button would trigger the exact same flow.
 
-| Phase       | Header (in-app picker)          | Header (OS picker / Wayland) | Body / footer (idle)                                                                                             |
-| ----------- | ------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `idle`      | Entire Screen / Window tabs     | Title + short description    | Scrollable source grid; footer pinned bottom-right: **Capture region** + **Capture** (Wayland: **Capture** only) |
-| `capturing` | Hidden                          | Hidden                       | “Capturing…” / region / portal message                                                                           |
-| `result`    | **Preview** title + description | same                         | Preview scales to fit; footer pinned bottom-right: Copy / Save / Capture again                                   |
+| Phase       | Header (in-app picker)          | Header (OS picker / Wayland) | Body / footer (idle)                                                                                                                                                                      |
+| ----------- | ------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `idle`      | Entire Screen / Window tabs     | Title + short description    | Scrollable source grid (Wayland: empty body — the header description already explains the flow); footer pinned bottom-right: **Capture region** + **Capture** (Wayland: **Capture** only) |
+| `capturing` | Hidden                          | Hidden                       | “Capturing…” / region / portal message                                                                                                                                                    |
+| `result`    | **Preview** title + description | same                         | Preview scales to fit; footer pinned bottom-right: Copy / Save / Capture again                                                                                                            |
 
 **Capture again** resets to `idle` — it does **not** immediately re-capture. On macOS/Windows/X11 that shows the source grid; on Linux Wayland it returns to the idle screen with the single **Capture** button in the footer.
 

@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from 'react';
 import { useRef } from 'react';
-import { Trash2 } from 'lucide-react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
+import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { getSegmentOutputDurationMs, sourceRangeToOutputPercent } from '../lib/segment-duration';
 import { assignLanes, laneCount, LANE_HEIGHT_PX, LANE_GAP_PX } from '../lib/assign-lanes';
 import { usePillDrag } from '../lib/use-pill-drag';
@@ -49,7 +49,9 @@ export interface PillTrackProps<T extends { id: string }> {
  *
  * Click a pill to select it, drag its body to move it (`usePillDrag`), or
  * drag either edge to trim it (`useEdgeResize`) -- the same "grab an edge"
- * interaction the main clip row has always had.
+ * interaction the main clip row has always had. Right-click for a context
+ * menu with Delete (`onDelete`), instead of a permanently-competing hover
+ * button.
  */
 export function PillTrack<T extends { id: string }>({
   items,
@@ -97,59 +99,64 @@ export function PillTrack<T extends { id: string }>({
           const durationMs = getDurationMs(item);
           const endMs = startMs + durationMs;
           return (
-            <div
-              key={item.id}
-              onPointerDown={startDrag(startMs, (newStartMs) => onMove(item, newStartMs))}
-              onClick={() => {
-                if (!didDragRef.current) onSelect(item);
-              }}
-              title={getTitle(item)}
-              className={cn(
-                'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-md border px-2 active:cursor-grabbing',
-                colorClassName,
-                isSelected?.(item) && 'ring-2 ring-purple-200'
-              )}
-              style={{
-                left: `${position.leftPercent}%`,
-                width: `${position.widthPercent}%`,
-                top: lane * (laneHeightPx + LANE_GAP_PX),
-                height: laneHeightPx
-              }}
-            >
-              {renderContent(item)}
+            <ContextMenu.Root key={item.id}>
+              <ContextMenu.Trigger
+                render={
+                  <div
+                    onPointerDown={startDrag(startMs, (newStartMs) => onMove(item, newStartMs))}
+                    onClick={() => {
+                      if (!didDragRef.current) onSelect(item);
+                    }}
+                    title={getTitle(item)}
+                    className={cn(
+                      'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-md border px-2 active:cursor-grabbing',
+                      colorClassName,
+                      isSelected?.(item) && 'ring-2 ring-purple-200'
+                    )}
+                    style={{
+                      left: `${position.leftPercent}%`,
+                      width: `${position.widthPercent}%`,
+                      top: lane * (laneHeightPx + LANE_GAP_PX),
+                      height: laneHeightPx
+                    }}
+                  >
+                    {renderContent(item)}
 
+                    <div
+                      onPointerDown={(e) => {
+                        const width =
+                          e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                        startResize(startMs, durationMs, width, (newStartMs) =>
+                          onResizeStart(item, newStartMs)
+                        )(e);
+                      }}
+                      className={cn(
+                        'absolute inset-y-0 left-0 w-1.5 cursor-ew-resize',
+                        handleClassName
+                      )}
+                    />
+                    <div
+                      onPointerDown={(e) => {
+                        const width =
+                          e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                        startResize(endMs, durationMs, width, (newEndMs) =>
+                          onResizeEnd(item, newEndMs)
+                        )(e);
+                      }}
+                      className={cn(
+                        'absolute inset-y-0 right-0 w-1.5 cursor-ew-resize',
+                        handleClassName
+                      )}
+                    />
+                  </div>
+                }
+              />
               {onDelete && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(item);
-                  }}
-                  title="Delete"
-                  className="absolute right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 group-hover:flex"
-                >
-                  <Trash2 size={11} />
-                </button>
+                <ContextMenu.Content>
+                  <ContextMenu.Item onClick={() => onDelete(item)}>Delete</ContextMenu.Item>
+                </ContextMenu.Content>
               )}
-
-              <div
-                onPointerDown={(e) => {
-                  const width = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                  startResize(startMs, durationMs, width, (newStartMs) =>
-                    onResizeStart(item, newStartMs)
-                  )(e);
-                }}
-                className={cn('absolute inset-y-0 left-0 w-1.5 cursor-ew-resize', handleClassName)}
-              />
-              <div
-                onPointerDown={(e) => {
-                  const width = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                  startResize(endMs, durationMs, width, (newEndMs) => onResizeEnd(item, newEndMs))(
-                    e
-                  );
-                }}
-                className={cn('absolute inset-y-0 right-0 w-1.5 cursor-ew-resize', handleClassName)}
-              />
-            </div>
+            </ContextMenu.Root>
           );
         })}
       </div>

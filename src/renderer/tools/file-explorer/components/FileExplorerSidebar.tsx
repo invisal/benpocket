@@ -33,7 +33,7 @@ export function FileExplorerSidebar() {
   const navigateActive = (path: string) => setPanelPath(activeIndex, path);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 py-2">
       <SidebarSection
         title="Favorites"
         items={sections.favorites}
@@ -96,7 +96,7 @@ function SidebarSection({
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
+        <span className="px-4 mb-1 text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
           {title}
         </span>
         {headerAction}
@@ -110,7 +110,7 @@ function SidebarSection({
             onClick={() => onNavigate(item.path)}
             title={item.path}
             className={cn(
-              'flex items-center gap-2 px-2 py-1 rounded text-xs text-left cursor-pointer transition-colors',
+              'flex items-center gap-2 px-4 py-1 text-xs text-left cursor-pointer transition-colors',
               isActive
                 ? 'bg-surface-4 text-text-base'
                 : 'text-text-dim hover:bg-surface-3 hover:text-text-base'

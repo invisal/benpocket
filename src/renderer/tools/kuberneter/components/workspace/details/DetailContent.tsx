@@ -18,9 +18,11 @@ import { LeaseDetail } from './LeaseDetail';
 import { ServiceDetail } from './ServiceDetail';
 import { PersistentVolumeClaimDetail } from './PersistentVolumeClaimDetail';
 import { PersistentVolumeDetail } from './PersistentVolumeDetail';
+import { StorageClassDetail } from './StorageClassDetail';
 import { MutatingWebhookDetail } from './MutatingWebhookDetail';
 import { type PersistentVolumeClaimData } from '../../../types/PersistentVolumeClaimData';
 import { type PersistentVolumeData } from '../../../types/PersistentVolumeData';
+import { type StorageClassData } from '../../../types/StorageClassData';
 
 import { ValidatingWebhookDetail } from './ValidatingWebhookDetail';
 import { EndpointSliceDetail } from './EndpointSliceDetail';
@@ -113,6 +115,8 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       );
     case 'persistentvolume':
       return <PersistentVolumeDetail payload={payload as PersistentVolumeData} isTab={isTab} />;
+    case 'storageclass':
+      return <StorageClassDetail payload={payload as StorageClassData} isTab={isTab} />;
     case 'endpointslice':
       return <EndpointSliceDetail payload={payload as EndpointSliceData} isTab={isTab} />;
     case 'endpoints':

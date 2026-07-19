@@ -291,7 +291,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const captureDisabled = usesOsPicker ? false : !selectedSource || loading;
 
   const idleDescription = usesOsPicker
-    ? 'Click Capture to choose a screen, window, or region in the system dialog.'
+    ? 'Click Capture to choose a screen, window, or region in the system dialog — or paste (Ctrl+V) or open an image to edit it.'
     : undefined;
 
   const capturingMessage =
@@ -318,7 +318,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
               <div>
                 <h1 className="text-base font-medium">Screen Capture</h1>
                 <p className="mt-0.5 text-xs text-text-dim">
-                  Capture a full screen or window, or drag a region.
+                  Capture a full screen or window, or drag a region. You can also paste (Ctrl+V) or
+                  open an image to edit it.
                 </p>
               </div>
             ) : (

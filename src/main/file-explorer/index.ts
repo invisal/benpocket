@@ -10,6 +10,8 @@ import {
 import { pathExists } from './localFileDriver';
 import { getDriverForLocation } from './driverRegistry';
 import { getR2Credential, registerR2CredentialHandlers } from './r2Credential';
+import { registerAiGatewayCredentialHandlers } from './aiGatewayCredential';
+import { registerAgentHandlers } from './agent';
 import { listR2Buckets } from './r2FileDriver';
 import { transferEntries } from './crossSchemeTransfer';
 import { parseLocation } from './location';
@@ -147,6 +149,8 @@ async function runCopyOrMove(
 
 export function registerFileExplorerHandlers(): void {
   registerR2CredentialHandlers();
+  registerAiGatewayCredentialHandlers();
+  registerAgentHandlers();
 
   ipcMain.handle('file-explorer:get-home-dir', () => {
     return app.getPath('home');

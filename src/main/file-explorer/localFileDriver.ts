@@ -218,5 +218,17 @@ export const localFileDriver: FileDriver = {
       const message = err instanceof Error ? err.message : String(err);
       return { error: message };
     }
+  },
+
+  async renameEntry(uri, newName): Promise<MutationResult> {
+    const destination = path.join(path.dirname(uri), newName);
+    try {
+      await fs.promises.rename(uri, destination);
+      return { success: true };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'EEXIST') return { error: 'exists' };
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: message };
+    }
   }
 };

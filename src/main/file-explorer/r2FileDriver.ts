@@ -371,6 +371,10 @@ async function createFolder(destDirUri: string, name: string): Promise<CreateRes
   }
 }
 
+async function renameEntry(): Promise<MutationResult> {
+  return { error: 'Rename is not supported for R2 buckets yet.' };
+}
+
 const capabilities: DriverCapabilities = {
   trash: false,
   nativeIcons: false,
@@ -390,7 +394,8 @@ export const r2FileDriver: FileDriver = {
   copyEntries,
   moveEntries,
   createFile,
-  createFolder
+  createFolder,
+  renameEntry
 };
 
 /** Bucket-level listing is a Cloudflare REST API call, not part of the S3-compatible object surface. */

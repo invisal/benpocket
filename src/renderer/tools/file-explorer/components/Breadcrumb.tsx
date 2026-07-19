@@ -109,6 +109,12 @@ export function BreadcrumbInner({
   );
 }
 
+const MODE_LABELS: Record<PanelMode, string> = {
+  explorer: 'Explorer',
+  preview: 'Preview',
+  agent: 'Agent'
+};
+
 function BreadcrumbModeSwitch({ modeSwitch }: { modeSwitch: BreadcrumbModeSwitch }) {
   const { value, onChange } = modeSwitch;
 
@@ -117,7 +123,7 @@ function BreadcrumbModeSwitch({ modeSwitch }: { modeSwitch: BreadcrumbModeSwitch
       <Menu.Trigger
         render={
           <Toolbar.Button>
-            <span>{value === 'explorer' ? 'Explorer' : 'Preview'}</span>
+            <span>{MODE_LABELS[value]}</span>
             <ChevronDown className="size-3.5 text-gray-500" />
           </Toolbar.Button>
         }
@@ -125,6 +131,7 @@ function BreadcrumbModeSwitch({ modeSwitch }: { modeSwitch: BreadcrumbModeSwitch
       <Menu.Content>
         <Menu.Item onClick={() => onChange('explorer')}>Explorer</Menu.Item>
         <Menu.Item onClick={() => onChange('preview')}>Preview</Menu.Item>
+        <Menu.Item onClick={() => onChange('agent')}>Agent</Menu.Item>
       </Menu.Content>
     </Menu.Root>
   );

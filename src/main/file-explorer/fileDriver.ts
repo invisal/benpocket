@@ -84,4 +84,5 @@ export interface FileDriver {
   moveEntries(sourceUris: string[], destDirUri: string): Promise<MutationResult>;
   createFile(destDirUri: string, name: string): Promise<CreateResult>;
   createFolder(destDirUri: string, name: string): Promise<CreateResult>;
+  renameEntry(uri: string, newName: string): Promise<MutationResult>;
 }

@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { type FileEntry } from '../components/columns';
 
-export type PanelMode = 'explorer' | 'preview';
+export type PanelMode = 'explorer' | 'preview' | 'agent';
 export type PanelIndex = 0 | 1;
 export type ActivePanelId = 'panel1' | 'panel2';
 export type FileClipboard = { paths: string[]; mode: 'copy' | 'cut' } | null;

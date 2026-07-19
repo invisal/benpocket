@@ -19,6 +19,7 @@ import {
 } from './store/fileExplorer.store';
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Button } from '@renderer/components/ui/Button';
+import { AgentPanel } from './features/agent/components/AgentPanel';
 
 interface Props {}
 
@@ -210,7 +211,7 @@ function FileExplorerLayout() {
         </ResizablePanel>
 
         <div className="flex-1 flex flex-col min-h-0 min-w-[200px]">
-          {panels[1].mode === 'explorer' ? (
+          {panels[1].mode === 'explorer' && (
             <FileExplorerPanelBody
               path={panels[1].path}
               onNavigate={(path) => setPanelPath(1, path)}
@@ -218,7 +219,8 @@ function FileExplorerLayout() {
               onActivate={() => setActivePanel('panel2')}
               modeSwitch={{ value: panels[1].mode, onChange: (mode) => handleModeToggle(1, mode) }}
             />
-          ) : (
+          )}
+          {panels[1].mode === 'preview' && (
             <div
               className="flex-1 flex flex-col min-h-0 min-w-0"
               onMouseDownCapture={() => setActivePanel('panel2')}
@@ -238,6 +240,23 @@ function FileExplorerLayout() {
                 unavailableReason={computePreviewTarget(panels[0].selection).unavailableReason}
                 onDirtyChange={(dirty) => setPanelDirty(1, dirty)}
               />
+            </div>
+          )}
+          {panels[1].mode === 'agent' && (
+            <div
+              className="flex-1 flex flex-col min-h-0 min-w-0"
+              onMouseDownCapture={() => setActivePanel('panel2')}
+            >
+              <Breadcrumb
+                currentPath={panels[1].path ?? ''}
+                onNavigate={(path) => setPanelPath(1, path)}
+                modeSwitch={{
+                  value: panels[1].mode,
+                  onChange: (mode) => handleModeToggle(1, mode)
+                }}
+                showPath={false}
+              />
+              <AgentPanel workingDirectory={panels[0].path} />
             </div>
           )}
         </div>

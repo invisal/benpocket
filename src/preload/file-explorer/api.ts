@@ -50,6 +50,39 @@ export interface R2Bucket {
   name: string;
 }
 
+export interface AiGatewayCredentialStatus {
+  configured: boolean;
+  /** True once Cloudflare (accountId/apiToken) is connected -- reused from the R2 credential. */
+  cloudflareConnected: boolean;
+  gatewayId: string;
+  model: string;
+}
+
+export interface AgentToolCall {
+  id: string;
+  /** JSON-encoded arguments, exactly as returned by the model. */
+  arguments: string;
+  name: string;
+}
+
+export interface AgentMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  toolCalls?: AgentToolCall[];
+  toolCallId?: string;
+  name?: string;
+}
+
+export interface AgentUsage {
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number;
+}
+
+export type AgentSendResponse = { message: AgentMessage; usage?: AgentUsage } | { error: string };
+
+export type AgentToolResult = { success: true; result: unknown } | { error: string };
+
 /** Progress for a copy/move that streams bytes between local disk and R2. */
 export interface TransferProgress {
   currentFile: string;
@@ -98,6 +131,14 @@ export interface FileExplorerApi {
   clearR2Credential: () => Promise<void>;
   listR2Buckets: () => Promise<R2Bucket[] | { error: string }>;
   setSelectedR2Buckets: (bucketNames: string[]) => Promise<{ success: true } | { error: string }>;
+  getAiGatewayCredentialStatus: () => Promise<AiGatewayCredentialStatus>;
+  setAiGatewayCredential: (
+    gatewayId: string,
+    model: string
+  ) => Promise<{ success: true } | { error: string }>;
+  clearAiGatewayCredential: () => Promise<void>;
+  agentSend: (messages: AgentMessage[]) => Promise<AgentSendResponse>;
+  agentExecuteTool: (name: string, args: unknown) => Promise<AgentToolResult>;
 }
 
 export const fileExplorerApi: FileExplorerApi = {
@@ -139,5 +180,13 @@ export const fileExplorerApi: FileExplorerApi = {
   clearR2Credential: () => ipcRenderer.invoke('file-explorer:clear-r2-credential'),
   listR2Buckets: () => ipcRenderer.invoke('file-explorer:list-r2-buckets'),
   setSelectedR2Buckets: (bucketNames) =>
-    ipcRenderer.invoke('file-explorer:set-selected-r2-buckets', bucketNames)
+    ipcRenderer.invoke('file-explorer:set-selected-r2-buckets', bucketNames),
+  getAiGatewayCredentialStatus: () =>
+    ipcRenderer.invoke('file-explorer:get-ai-gateway-credential-status'),
+  setAiGatewayCredential: (gatewayId, model) =>
+    ipcRenderer.invoke('file-explorer:set-ai-gateway-credential', gatewayId, model),
+  clearAiGatewayCredential: () => ipcRenderer.invoke('file-explorer:clear-ai-gateway-credential'),
+  agentSend: (messages) => ipcRenderer.invoke('file-explorer:agent-send', messages),
+  agentExecuteTool: (name, args) =>
+    ipcRenderer.invoke('file-explorer:agent-execute-tool', name, args)
 };

@@ -7,6 +7,7 @@ import { Button } from '@renderer/components/ui/Button';
 import { cssGradient, findWallpaperPreset } from '@shared/wallpaper-presets';
 import {
   BACKGROUND_SHADOW,
+  BACKGROUND_WATERMARK,
   CHIP_BG,
   arrowHeadLength,
   arrowHeadPoints,
@@ -151,6 +152,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   const cornerRadius = useCaptureEditorStore((s) => s.cornerRadius);
   const crop = useCaptureEditorStore((s) => s.crop);
   const background = useCaptureEditorStore((s) => s.background);
+  const watermark = useCaptureEditorStore((s) => s.watermark);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -821,6 +823,22 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     </>
   );
 
+  const watermarkLabel = watermark && (
+    <div
+      className="pointer-events-none absolute right-0 bottom-0 z-10 font-medium text-white/55"
+      style={{
+        // Matches flatten.ts drawWatermark: ~1.2% of output width, padded the same amount.
+        padding:
+          Math.max(8, (framed?.frame.width ?? view.width) * 0.012) * (framed ? frameFit : scale),
+        fontSize:
+          Math.max(12, (framed?.frame.width ?? view.width) * 0.012) * (framed ? frameFit : scale),
+        textShadow: '0 1px 2px rgba(0,0,0,0.35)'
+      }}
+    >
+      {BACKGROUND_WATERMARK}
+    </div>
+  );
+
   const stage = (
     <div
       ref={stageRef}
@@ -858,7 +876,12 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
         />
 
         {/* Framed mode mounts the overlay outside the stage's overflow clip instead. */}
-        {!framed && <div className="absolute inset-0">{overlayChildren}</div>}
+        {!framed && (
+          <>
+            <div className="absolute inset-0">{overlayChildren}</div>
+            {watermarkLabel}
+          </>
+        )}
       </div>
     </div>
   );
@@ -900,6 +923,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
               {overlayChildren}
             </div>
           </div>
+          {watermarkLabel}
         </div>
       ) : (
         stage

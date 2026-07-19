@@ -144,7 +144,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         state.annotations === previous.annotations &&
         state.cornerRadius === previous.cornerRadius &&
         state.crop === previous.crop &&
-        state.background === previous.background
+        state.background === previous.background &&
+        state.watermark === previous.watermark
       ) {
         return;
       }
@@ -152,8 +153,9 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       timer = window.setTimeout(() => {
         generation += 1;
         const current = generation;
-        const { annotations, cornerRadius, crop, background } = useCaptureEditorStore.getState();
-        void flattenImage(previewBlob, annotations, cornerRadius, crop, background)
+        const { annotations, cornerRadius, crop, background, watermark } =
+          useCaptureEditorStore.getState();
+        void flattenImage(previewBlob, annotations, cornerRadius, crop, background, watermark)
           .then((blob) => (current === generation ? copyAfterCapture(blob) : true))
           .then((copied) => {
             if (!copied) console.error('Could not copy edited screenshot to clipboard.');
@@ -258,8 +260,9 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   /** Copy/Save export what's on the editor stage, not the raw capture. */
   const editedBlob = async (): Promise<Blob | null> => {
     if (!previewBlob) return null;
-    const { annotations, cornerRadius, crop, background } = useCaptureEditorStore.getState();
-    return flattenImage(previewBlob, annotations, cornerRadius, crop, background);
+    const { annotations, cornerRadius, crop, background, watermark } =
+      useCaptureEditorStore.getState();
+    return flattenImage(previewBlob, annotations, cornerRadius, crop, background, watermark);
   };
 
   const handleCopy = async (): Promise<void> => {

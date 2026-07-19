@@ -13,7 +13,8 @@ import {
   Tag,
   Type,
   Undo2,
-  Wallpaper
+  Wallpaper,
+  Copyright
 } from 'lucide-react';
 import { cn } from 'cnfast';
 import { WALLPAPER_PRESETS, cssGradient } from '@shared/wallpaper-presets';
@@ -288,6 +289,8 @@ export function EditorToolbar(): JSX.Element {
   const cornerRadius = useCaptureEditorStore((s) => s.cornerRadius);
   const setCornerRadius = useCaptureEditorStore((s) => s.setCornerRadius);
   const hasBackground = useCaptureEditorStore((s) => s.background !== null);
+  const watermark = useCaptureEditorStore((s) => s.watermark);
+  const setWatermark = useCaptureEditorStore((s) => s.setWatermark);
   const unit = useCaptureEditorStore((s) => s.unit);
   const canUndo = useCaptureEditorStore((s) => s.past.length > 0);
   const canRedo = useCaptureEditorStore((s) => s.future.length > 0);
@@ -360,10 +363,26 @@ export function EditorToolbar(): JSX.Element {
               <Wallpaper size={16} strokeWidth={1.75} />
             </Popover.Trigger>
           </RailTooltip>
-          <Popover.Content side="right" align="start" className="w-72">
+          <Popover.Content
+            side="right"
+            align="start"
+            className="max-h-[min(32rem,var(--available-height))] w-72 overflow-y-auto"
+          >
             <BackgroundControls />
           </Popover.Content>
         </Popover.Root>
+
+        <RailTooltip label={watermark ? 'Watermark on' : 'Watermark off'}>
+          <button
+            type="button"
+            aria-label="Watermark"
+            aria-pressed={watermark}
+            onClick={() => setWatermark(!watermark)}
+            className={railButtonClass(watermark)}
+          >
+            <Copyright size={16} strokeWidth={1.75} />
+          </button>
+        </RailTooltip>
 
         <div className="my-1.5 h-px w-6 bg-border-dark" />
 

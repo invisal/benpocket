@@ -65,10 +65,12 @@ interface EditorState {
   crop: Rect | null;
   /** Baked into the exported PNG as a rounded-rect clip. In image px. */
   cornerRadius: number;
-  // ponytail: like cornerRadius, background is not undo-tracked — every
-  // popover control is self-reverting. Upgrade path: fold it into Snapshot.
+  // ponytail: like cornerRadius, background/watermark are not undo-tracked —
+  // every popover/toggle is self-reverting. Upgrade path: fold into Snapshot.
   /** Frame the export is composited onto, or null for the bare capture. */
   background: BackgroundConfig | null;
+  /** Draws "benpocket/screen-capture" in the output's bottom-right corner. On by default. */
+  watermark: boolean;
   tool: EditorTool;
   selectedId: string | null;
   /** Text annotation currently showing its inline text input. */
@@ -95,6 +97,7 @@ interface EditorState {
   setBlurTier: (tier: number, id?: string) => void;
   setCornerRadius: (radius: number) => void;
   setBackground: (background: BackgroundConfig | null) => void;
+  setWatermark: (watermark: boolean) => void;
   setSelectedId: (id: string | null) => void;
   setEditingId: (id: string | null) => void;
   addAnnotation: (annotation: CaptureAnnotation) => void;
@@ -147,6 +150,7 @@ const initialState = {
   crop: null as Rect | null,
   cornerRadius: 0,
   background: null as BackgroundConfig | null,
+  watermark: true,
   tool: 'select' as EditorTool,
   selectedId: null,
   editingId: null,
@@ -245,6 +249,8 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
   setCornerRadius: (cornerRadius) => set({ cornerRadius }),
 
   setBackground: (background) => set({ background }),
+
+  setWatermark: (watermark) => set({ watermark }),
 
   setSelectedId: (selectedId) => set({ selectedId }),
 

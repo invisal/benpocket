@@ -766,10 +766,67 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     ? (framed.frame.width * frameFit) / BACKGROUND_SHADOW.referenceWidth
     : 0;
 
+  /** Positions the full image (and its overlay) so the viewport shows the crop. */
+  const shiftedStyle = {
+    left: -view.x * scale,
+    top: -view.y * scale,
+    width: imageWidth * scale,
+    height: imageHeight * scale
+  };
+
+  const overlayChildren = sized && (
+    <>
+      {annotations.filter((a) => !a.hidden).map(renderAnnotation)}
+      {draft && renderDraft(draft)}
+
+      {pendingCrop && (
+        <div
+          onPointerDown={startCropAdjust('move')}
+          className="absolute z-20 cursor-move"
+          style={{
+            left: pendingCrop.x * scale,
+            top: pendingCrop.y * scale,
+            width: pendingCrop.width * scale,
+            height: pendingCrop.height * scale,
+            // Dims everything outside the selection; the stage's
+            // overflow-hidden clips the giant shadow to the image.
+            boxShadow: '0 0 0 100000px rgba(0, 0, 0, 0.55)'
+          }}
+        >
+          <div className="pointer-events-none absolute -inset-px border border-dashed border-accent" />
+          {CORNERS.map((corner) => (
+            <div
+              key={corner}
+              onPointerDown={startCropAdjust(corner)}
+              className={cn(
+                'absolute h-3 w-3 rounded-full border-2 border-accent bg-surface',
+                CORNER_CLASSES[corner]
+              )}
+            />
+          ))}
+          <div
+            className="absolute bottom-1 right-1 flex gap-1"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Button variant="secondary" size="sm" onClick={cancelCrop}>
+              <X size={14} />
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => applyCropRect(pendingCrop)}>
+              <Check size={14} />
+              Crop
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   const stage = (
     <div
       ref={stageRef}
-      onPointerDown={handleStagePointerDown}
+      // When framed, the surrounding frame div owns pointer input (clicks
+      // here bubble up to it) so tools also work over the background.
+      onPointerDown={framed ? undefined : handleStagePointerDown}
       className={cn(
         'relative select-none',
         !sized && 'max-h-full max-w-full',
@@ -785,20 +842,8 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
           : undefined
       }}
     >
-      {/* Full image plus overlays, shifted so the viewport shows the crop. */}
-      <div
-        className={sized ? 'absolute' : undefined}
-        style={
-          sized
-            ? {
-                left: -view.x * scale,
-                top: -view.y * scale,
-                width: imageWidth * scale,
-                height: imageHeight * scale
-              }
-            : undefined
-        }
-      >
+      {/* Full image, shifted so the viewport shows the crop. */}
+      <div className={sized ? 'absolute' : undefined} style={sized ? shiftedStyle : undefined}>
         <img
           src={dataUrl}
           alt="Captured screenshot"
@@ -812,52 +857,8 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
           }}
         />
 
-        {sized && (
-          <div className="absolute inset-0">
-            {annotations.filter((a) => !a.hidden).map(renderAnnotation)}
-            {draft && renderDraft(draft)}
-
-            {pendingCrop && (
-              <div
-                onPointerDown={startCropAdjust('move')}
-                className="absolute z-20 cursor-move"
-                style={{
-                  left: pendingCrop.x * scale,
-                  top: pendingCrop.y * scale,
-                  width: pendingCrop.width * scale,
-                  height: pendingCrop.height * scale,
-                  // Dims everything outside the selection; the stage's
-                  // overflow-hidden clips the giant shadow to the image.
-                  boxShadow: '0 0 0 100000px rgba(0, 0, 0, 0.55)'
-                }}
-              >
-                <div className="pointer-events-none absolute -inset-px border border-dashed border-accent" />
-                {CORNERS.map((corner) => (
-                  <div
-                    key={corner}
-                    onPointerDown={startCropAdjust(corner)}
-                    className={cn(
-                      'absolute h-3 w-3 rounded-full border-2 border-accent bg-surface',
-                      CORNER_CLASSES[corner]
-                    )}
-                  />
-                ))}
-                <div
-                  className="absolute bottom-1 right-1 flex gap-1"
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  <Button variant="secondary" size="sm" onClick={cancelCrop}>
-                    <X size={14} />
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => applyCropRect(pendingCrop)}>
-                    <Check size={14} />
-                    Crop
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Framed mode mounts the overlay outside the stage's overflow clip instead. */}
+        {!framed && <div className="absolute inset-0">{overlayChildren}</div>}
       </div>
     </div>
   );
@@ -869,7 +870,11 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     >
       {framed ? (
         <div
-          className="relative"
+          onPointerDown={handleStagePointerDown}
+          className={cn(
+            'relative select-none overflow-hidden',
+            tool !== 'select' && 'cursor-crosshair'
+          )}
           style={{
             width: framed.frame.width * frameFit,
             height: framed.frame.height * frameFit,
@@ -880,9 +885,20 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
         >
           <div
             className="absolute"
-            style={{ left: framed.inner.x * frameFit, top: framed.inner.y * frameFit }}
+            style={{
+              left: framed.inner.x * frameFit,
+              top: framed.inner.y * frameFit,
+              width: stageWidth,
+              height: stageHeight
+            }}
           >
             {stage}
+            {/* Overlay as a stage sibling: annotations escape the stage's
+                overflow clip and can sit on the background, matching the
+                export, which draws them onto the frame canvas. */}
+            <div className="absolute" style={shiftedStyle}>
+              {overlayChildren}
+            </div>
           </div>
         </div>
       ) : (

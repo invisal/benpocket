@@ -206,12 +206,15 @@ export const BACKGROUND_SHADOW = {
 };
 
 /**
- * Composites the flattened capture onto a gradient frame. The corner radius
- * (in capture px) is applied to the inset image here — scaled by the fit
- * ratio — instead of on the capture canvas, so the clip edge stays crisp.
+ * Composites the capture onto a gradient frame, then draws the annotations
+ * on top in frame space — so annotations placed beyond the image edges land
+ * on the background, exactly like the editor preview shows them. The corner
+ * radius (in capture px) is applied to the inset image here — scaled by the
+ * fit ratio — instead of on the capture canvas, so the clip edge stays crisp.
  */
 function composeBackground(
   content: HTMLCanvasElement,
+  annotations: CaptureAnnotation[],
   cornerRadius: number,
   background: BackgroundConfig
 ): HTMLCanvasElement {
@@ -258,6 +261,8 @@ function composeBackground(
   ctx.clip();
   ctx.drawImage(content, inner.x, inner.y, inner.width, inner.height);
   ctx.restore();
+
+  drawAnnotations(ctx, frame, annotations, inner.width / content.width, inner.x, inner.y);
   return frame;
 }
 
@@ -383,6 +388,52 @@ function drawText(ctx: CanvasRenderingContext2D, text: TextAnnotation): void {
 }
 
 /**
+ * Draws annotations onto `surface` with the image origin at (dx, dy) and
+ * image px scaled by `k` — the identity for the bare capture, the inner-rect
+ * transform when composited onto a background frame (which also lets
+ * annotations extend past the image onto the frame). Annotations must
+ * already be crop-shifted and visible.
+ *
+ * Draws in array order (last = topmost layer). A blur layer samples the
+ * surface as painted so far, so it also blurs annotations stacked below it —
+ * the same stacking semantics as the CSS backdrop-filter preview.
+ */
+function drawAnnotations(
+  ctx: CanvasRenderingContext2D,
+  surface: HTMLCanvasElement,
+  annotations: CaptureAnnotation[],
+  k: number,
+  dx: number,
+  dy: number
+): void {
+  for (const a of annotations) {
+    ctx.save();
+    if (a.kind === 'blur') {
+      // drawBlur reads surface pixels, and getImageData-style reads ignore
+      // context transforms — so map the region into surface space by hand.
+      drawBlur(ctx, surface, {
+        ...a,
+        x: dx + a.x * k,
+        y: dy + a.y * k,
+        width: a.width * k,
+        height: a.height * k,
+        blurRadius: a.blurRadius * k
+      });
+    } else {
+      ctx.translate(dx, dy);
+      ctx.scale(k, k);
+      if (a.kind === 'rect') drawRect(ctx, a);
+      else if (a.kind === 'circle') drawCircle(ctx, a);
+      else if (a.kind === 'arrow') drawArrow(ctx, a);
+      else if (a.kind === 'label') drawLabel(ctx, a);
+      else if (a.kind === 'chip') drawChip(ctx, a);
+      else drawText(ctx, a);
+    }
+    ctx.restore();
+  }
+}
+
+/**
  * Bakes the crop, annotations, the corner-radius clip, and the optional
  * background frame into a new PNG blob. Without a background the output is
  * the source image's native (cropped) resolution; with one it is the frame's
@@ -421,28 +472,18 @@ export async function flattenImage(
   ctx.drawImage(bitmap, -ox, -oy);
   bitmap.close();
 
-  // Draw in array order (last = topmost layer). A blur layer samples the
-  // canvas as painted so far, so it also blurs annotations stacked below it
-  // — the same stacking semantics as the CSS backdrop-filter preview.
   // Annotations live in source-image coordinates; shift them into the
-  // cropped output space rather than transforming the context, because
-  // drawBlur reads canvas pixels and getImageData-style reads ignore
-  // context transforms.
-  for (const source of annotations) {
-    if (source.hidden) continue;
-    const a = ox || oy ? shiftAnnotation(source, -ox, -oy) : source;
-    ctx.save();
-    if (a.kind === 'blur') drawBlur(ctx, canvas, a);
-    else if (a.kind === 'rect') drawRect(ctx, a);
-    else if (a.kind === 'circle') drawCircle(ctx, a);
-    else if (a.kind === 'arrow') drawArrow(ctx, a);
-    else if (a.kind === 'label') drawLabel(ctx, a);
-    else if (a.kind === 'chip') drawChip(ctx, a);
-    else if (a.kind === 'text') drawText(ctx, a);
-    ctx.restore();
-  }
+  // cropped output space.
+  const visible = annotations
+    .filter((a) => !a.hidden)
+    .map((a) => (ox || oy ? shiftAnnotation(a, -ox, -oy) : a));
 
-  const output = background ? composeBackground(canvas, cornerRadius, background) : canvas;
+  // Without a background, annotations bake straight onto the capture (under
+  // the corner-radius clip set above). With one, they draw onto the frame in
+  // composeBackground instead, so they can overhang onto the background.
+  if (!background) drawAnnotations(ctx, canvas, visible, 1, 0, 0);
+
+  const output = background ? composeBackground(canvas, visible, cornerRadius, background) : canvas;
   return new Promise((resolve, reject) => {
     output.toBlob(
       (result) => (result ? resolve(result) : reject(new Error('Could not encode PNG.'))),

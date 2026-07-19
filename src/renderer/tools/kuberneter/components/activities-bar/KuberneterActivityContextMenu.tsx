@@ -64,7 +64,8 @@ export const KuberneterActivityContextMenu: React.FC<KuberneterActivityContextMe
                       initInstance(instanceId, {
                         cluster: cluster.name,
                         configPath: cluster.configPath,
-                        namespace: 'default'
+                        namespace: 'default',
+                        server: cluster.server
                       });
                       closeAll(instanceId);
                       openTab({

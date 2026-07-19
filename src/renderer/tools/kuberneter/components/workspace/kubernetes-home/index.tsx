@@ -17,12 +17,13 @@ export const KuberneterHomeView: React.FC = () => {
     removeKuberneterKubeconfig,
     kuberneterInstanceCluster,
     setKuberneterInstanceCluster,
+    setKuberneterInstanceServer,
     setKuberneterInstanceNamespace,
     kuberneterInstanceConfigPath,
     setKuberneterInstanceConfigPath,
+    setKuberneterInstanceResource,
     kuberneterRecentConnections,
-    addKuberneterRecentConnection,
-    setKuberneterInstanceResource
+    addKuberneterRecentConnection
   } = useKuberneterStore();
 
   const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || '';
@@ -55,6 +56,7 @@ export const KuberneterHomeView: React.FC = () => {
   ) => {
     // 1. Set connection cluster and namespace context
     setKuberneterInstanceCluster(activeInstanceId, contextName);
+    setKuberneterInstanceServer(activeInstanceId, server || '');
     setKuberneterInstanceConfigPath(activeInstanceId, configPath);
     setKuberneterInstanceNamespace(activeInstanceId, namespace || 'default');
     setKuberneterInstanceResource(activeInstanceId, 'overview');

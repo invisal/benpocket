@@ -24,6 +24,16 @@ interface RecordingStoreState {
    */
   cropRegion: CaptureRegionSelection | null;
   audio: AudioInputOptions;
+  /**
+   * Whether to track the system cursor during recording at all -- off by
+   * default it stays on, since it's also what auto-generated zoom keyframes
+   * (see `generateAutoZoomKeyframes` in useRecordingController.ts) are
+   * seeded from. Unchecking this skips `startCursorCapture` entirely (not
+   * just discarding its output afterward), so there's no tracking overhead
+   * and no auto-zoom keyframes -- the recording ends up with an empty
+   * cursor/click path, same as if nothing were ever captured.
+   */
+  autoZoomEnabled: boolean;
   setSelectedSource: (source: CaptureSource | null) => void;
   /** Adopts a native-picker stream as the current pick, releasing any previous one. */
   setNativePickerSelection: (stream: MediaStream, source: CaptureSource) => void;
@@ -37,6 +47,7 @@ interface RecordingStoreState {
   takeNativePickerStream: () => MediaStream | null;
   setCropRegion: (region: CaptureRegionSelection | null) => void;
   setAudio: (audio: Partial<AudioInputOptions>) => void;
+  setAutoZoomEnabled: (enabled: boolean) => void;
 }
 
 export const useRecordingStore = create<RecordingStoreState>((set, get) => ({
@@ -44,6 +55,7 @@ export const useRecordingStore = create<RecordingStoreState>((set, get) => ({
   nativePickerStream: null,
   cropRegion: null,
   audio: { microphoneEnabled: true, systemAudioEnabled: false },
+  autoZoomEnabled: true,
   setSelectedSource: (selectedSource) => {
     stopStream(get().nativePickerStream);
     set({ selectedSource, nativePickerStream: null, cropRegion: null });
@@ -58,5 +70,6 @@ export const useRecordingStore = create<RecordingStoreState>((set, get) => ({
     return stream;
   },
   setCropRegion: (cropRegion) => set({ cropRegion }),
-  setAudio: (audio) => set((state) => ({ audio: { ...state.audio, ...audio } }))
+  setAudio: (audio) => set((state) => ({ audio: { ...state.audio, ...audio } })),
+  setAutoZoomEnabled: (autoZoomEnabled) => set({ autoZoomEnabled })
 }));

@@ -44,7 +44,7 @@ export function useRecordingController(): RecordingController {
     // toolbar applies its chosen source/audio to the store and calls
     // `start()` in the same synchronous handler, before React has a chance
     // to re-render this hook with the new values.
-    const { selectedSource, audio, cropRegion } = useRecordingStore.getState();
+    const { selectedSource, audio, cropRegion, autoZoomEnabled } = useRecordingStore.getState();
     if (!selectedSource) {
       const message = 'Pick a screen or window first.';
       setError(message);
@@ -100,12 +100,19 @@ export function useRecordingController(): RecordingController {
           }
         : source;
       // Uses the recorder's *actual* startedAt (not a pre-call guess) so
-      // cursor samples line up exactly with the video's own t=0.
-      cursorCaptureRef.current = await startCursorCapture(
-        cursorTrackingSource,
-        captureRef.current.startedAt,
-        setLiveCounts
-      );
+      // cursor samples line up exactly with the video's own t=0. Skipped
+      // entirely (not just discarded afterward) when the "Auto Zoom"
+      // sidebar checkbox is off -- see `autoZoomEnabled` in
+      // recording-store.ts -- so there's no tracking overhead and the
+      // recording ends up with an empty cursor/click path, same as a
+      // source with no resolvable bounds.
+      cursorCaptureRef.current = autoZoomEnabled
+        ? await startCursorCapture(
+            cursorTrackingSource,
+            captureRef.current.startedAt,
+            setLiveCounts
+          )
+        : null;
       if (!cursorCaptureRef.current) setLiveCounts(null);
       setIsRecording(true);
       return { ok: true };

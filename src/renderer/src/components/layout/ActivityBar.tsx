@@ -5,14 +5,15 @@ import { FolderOpen, GlobeIcon, HomeIcon, PlusIcon, VideoIcon, CameraIcon } from
 import cn from 'cnfast';
 import { ContextMenu } from '../ui/ContextMenu';
 import { ToolDialog } from '../dialog/ToolDialog';
-import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
+import { KuberneterActivityContextMenu } from '../../../tools/kuberneter/components/activities-bar/KuberneterActivityContextMenu';
+import { KuberneterActivityIcon } from '../../../tools/kuberneter/components/activities-bar/KuberneterActivityIcon';
 
 export const ActivityBar: React.FC = () => {
   const { tabs, activeTabId, selectTab, closeTab } = useToolTabs();
   const [isToolDialogOpen, setIsToolDialogOpen] = useState(false);
 
-  const renderIcon = (type: string) => {
-    switch (type) {
+  const renderIcon = (tab: (typeof tabs)[number]) => {
+    switch (tab.type) {
       case 'home':
         return <HomeIcon size={16} />;
       case 'http-client':
@@ -23,10 +24,10 @@ export const ActivityBar: React.FC = () => {
         return <CameraIcon size={16} />;
       case 'kuberneter':
         return (
-          <img
-            src={kuberneterIcon}
-            className="size-5 select-none pointer-events-none"
-            alt="Kuberneter"
+          <KuberneterActivityIcon
+            tabId={tab.id}
+            payload={tab.payload}
+            isActive={tab.id === activeTabId}
           />
         );
       case 'file-explorer':
@@ -44,16 +45,19 @@ export const ActivityBar: React.FC = () => {
             render={
               <button
                 className={cn(
-                  'size-11 flex justify-center items-center cursor-pointer transition-colors',
+                  'size-11 flex items-center justify-center cursor-pointer transition-colors relative',
                   tab.id === activeTabId ? 'bg-blue-300 text-blue-900' : 'hover:bg-surface-2'
                 )}
                 onClick={() => selectTab(tab.id)}
               >
-                {renderIcon(tab.type)}
+                {renderIcon(tab)}
               </button>
             }
           />
           <ContextMenu.Content>
+            {tab.type === 'kuberneter' && (
+              <KuberneterActivityContextMenu tabId={tab.id} payload={tab.payload} />
+            )}
             <ContextMenu.Item onClick={() => closeTab(tab.id)}>Close</ContextMenu.Item>
           </ContextMenu.Content>
         </ContextMenu.Root>

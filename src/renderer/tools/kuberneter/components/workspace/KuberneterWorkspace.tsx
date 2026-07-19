@@ -28,7 +28,6 @@ import { MutatingWebhooks } from './mutatingwebhooks/MutatingWebhooks';
 import { ValidatingWebhooks } from './validatingwebhooks/ValidatingWebhooks';
 import { Application } from './application/Application';
 import { Nodes } from './nodes/Nodes';
-import { KuberneterHomeView } from './kubernetes-home';
 import { EndpointSlices } from './endpointslices/EndpointSlices';
 import { Endpoints } from './endpoints/Endpoints';
 import { Ingresses } from './ingresses/Ingresses';
@@ -86,15 +85,14 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     errorMsg
   } = useWorkspaceResources(resource);
 
-  // If we are not on the home connection view and there's no connected cluster
-  if (resource !== 'home' && !kuberneterSelectedCluster) {
+  // If there's no connected cluster
+  if (!kuberneterSelectedCluster) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
         <AlertCircle className="size-10 text-zinc-650" />
         <p className="text-xs font-semibold text-zinc-400">Connection Required</p>
         <p className="text-[10px] text-zinc-500 text-center max-w-sm">
-          No cluster context is currently connected. Please open the Kuberneter Home tab and connect
-          to a cluster context first.
+          No cluster context is currently connected. Please connect to a cluster context first.
         </p>
       </div>
     );
@@ -132,8 +130,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
               />
             </div>
           )}
-
-          {resource === 'home' && <KuberneterHomeView />}
 
           {resource === 'overview' && <ClusterOverview />}
 

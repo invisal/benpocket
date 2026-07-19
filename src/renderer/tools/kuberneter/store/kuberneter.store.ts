@@ -17,6 +17,7 @@ export interface DrawerState {
 
 interface KuberneterState {
   kuberneterInstanceCluster: Record<string, string>;
+  kuberneterInstanceServer: Record<string, string>;
   kuberneterInstanceNamespace: Record<string, string>;
   kuberneterInstanceResource: Record<string, string>;
   kuberneterInstanceConfigPath: Record<string, string>;
@@ -27,6 +28,7 @@ interface KuberneterState {
   kuberneterTabDrawers: Record<string, DrawerState>;
 
   setKuberneterInstanceCluster: (instanceId: string, cluster: string) => void;
+  setKuberneterInstanceServer: (instanceId: string, server: string) => void;
   setKuberneterInstanceNamespace: (instanceId: string, ns: string) => void;
   setKuberneterInstanceResource: (instanceId: string, resource: string) => void;
   setKuberneterInstanceConfigPath: (instanceId: string, path: string) => void;
@@ -40,7 +42,7 @@ interface KuberneterState {
 
   initInstance: (
     instanceId: string,
-    context?: { cluster: string; configPath: string; namespace?: string }
+    context?: { cluster: string; configPath: string; namespace?: string; server?: string }
   ) => void;
 }
 
@@ -48,6 +50,7 @@ export const useKuberneterStore = create<KuberneterState>()(
   persist(
     (set) => ({
       kuberneterInstanceCluster: {},
+      kuberneterInstanceServer: {},
       kuberneterInstanceNamespace: {},
       kuberneterInstanceResource: {},
       kuberneterInstanceConfigPath: {},
@@ -75,6 +78,11 @@ export const useKuberneterStore = create<KuberneterState>()(
       setKuberneterInstanceCluster: (instanceId, cluster) =>
         set((state) => ({
           kuberneterInstanceCluster: { ...state.kuberneterInstanceCluster, [instanceId]: cluster }
+        })),
+
+      setKuberneterInstanceServer: (instanceId, server) =>
+        set((state) => ({
+          kuberneterInstanceServer: { ...state.kuberneterInstanceServer, [instanceId]: server }
         })),
 
       setKuberneterInstanceNamespace: (instanceId, ns) =>
@@ -139,9 +147,13 @@ export const useKuberneterStore = create<KuberneterState>()(
             ...state.kuberneterInstanceCluster,
             [instanceId]: context?.cluster || ''
           },
+          kuberneterInstanceServer: {
+            ...state.kuberneterInstanceServer,
+            [instanceId]: context?.server || ''
+          },
           kuberneterInstanceConfigPath: {
             ...state.kuberneterInstanceConfigPath,
-            [instanceId]: context?.configPath || 'default'
+            [instanceId]: context?.configPath || ''
           },
           kuberneterInstanceNamespace: {
             ...state.kuberneterInstanceNamespace,
@@ -162,6 +174,7 @@ export const useKuberneterStore = create<KuberneterState>()(
       partialize: (state) => ({
         kuberneterKubeconfigs: state.kuberneterKubeconfigs,
         kuberneterInstanceCluster: state.kuberneterInstanceCluster,
+        kuberneterInstanceServer: state.kuberneterInstanceServer,
         kuberneterInstanceNamespace: state.kuberneterInstanceNamespace,
         kuberneterInstanceResource: state.kuberneterInstanceResource,
         kuberneterInstanceConfigPath: state.kuberneterInstanceConfigPath,

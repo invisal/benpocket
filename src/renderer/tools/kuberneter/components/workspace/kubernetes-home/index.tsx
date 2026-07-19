@@ -6,10 +6,10 @@ import { ActionsPanel } from './ActionsPanel';
 import { RecentList } from './RecentList';
 import { ConfigTree } from './ConfigTree';
 import { PasteConfigModal } from './PasteConfigModal';
-import { Server, AlertCircle } from 'lucide-react';
+import { AlertCircle, Home } from 'lucide-react';
 
 export const KuberneterHomeView: React.FC = () => {
-  const { activeInstanceId } = useLayoutStore();
+  const { activeInstanceId, openTab } = useLayoutStore();
 
   const {
     kuberneterKubeconfigs,
@@ -17,14 +17,16 @@ export const KuberneterHomeView: React.FC = () => {
     removeKuberneterKubeconfig,
     kuberneterInstanceCluster,
     setKuberneterInstanceCluster,
+    setKuberneterInstanceServer,
     setKuberneterInstanceNamespace,
     kuberneterInstanceConfigPath,
     setKuberneterInstanceConfigPath,
+    setKuberneterInstanceResource,
     kuberneterRecentConnections,
     addKuberneterRecentConnection
   } = useKuberneterStore();
 
-  const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || 'default';
+  const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || '';
   const activeContext = kuberneterInstanceCluster[activeInstanceId] || '';
 
   const [showPasteModal, setShowPasteModal] = useState(false);
@@ -54,16 +56,33 @@ export const KuberneterHomeView: React.FC = () => {
   ) => {
     // 1. Set connection cluster and namespace context
     setKuberneterInstanceCluster(activeInstanceId, contextName);
+    setKuberneterInstanceServer(activeInstanceId, server || '');
     setKuberneterInstanceConfigPath(activeInstanceId, configPath);
     setKuberneterInstanceNamespace(activeInstanceId, namespace || 'default');
+    setKuberneterInstanceResource(activeInstanceId, 'overview');
 
-    // 2. Add connection info to the Recents list
+    // 2. Open default Cluster Overview workspace tab
+    openTab({
+      id: `kuberneter-k8s-overview-${activeInstanceId}`,
+      title: 'Cluster Overview',
+      type: 'kuberneter',
+      instanceId: activeInstanceId,
+      meta: { resource: 'overview' },
+      isPreview: true
+    });
+
+    // 3. Add connection info to the Recents list
     addKuberneterRecentConnection(contextName, configPath, server);
   };
 
   // Handler to save config after paste
   const handleSavePastedConfig = async (content: string, filename: string) => {
-    return await window.kuberneter.saveKubeconfig(content, filename);
+    const res = await window.kuberneter.saveKubeconfig(content, filename);
+    if (typeof res === 'string') {
+      addKuberneterKubeconfig(res);
+      setKuberneterInstanceConfigPath(activeInstanceId, res);
+    }
+    return res;
   };
 
   return (
@@ -71,12 +90,9 @@ export const KuberneterHomeView: React.FC = () => {
       {/* Header Info */}
       <div className="shrink-0 border-b border-border-dark pb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2 font-sans tracking-tight">
-          <Server className="size-5 text-accent fill-accent/10" />
-          Kuberneter Connection Manager
+          <Home className="size-5 text-accent fill-accent/10" />
+          Home
         </h2>
-        <p className="text-xs text-zinc-500 mt-0.5 font-medium">
-          Manage local contexts and connect to actual cluster configurations in real-time.
-        </p>
       </div>
 
       {errorMsg && (

@@ -5,6 +5,9 @@ import { useLayoutStore } from '../../src/store/layout.store';
 import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
 
+import { useKuberneterStore } from './store/kuberneter.store';
+import { KuberneterHomeView } from './components/workspace/kubernetes-home';
+
 export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: string }>) {
   const { instanceId } = payload;
   const [sidebarWidth, setSidebarWidth] = useState(240);
@@ -12,12 +15,18 @@ export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: str
   const sidebarRef = useRef<HTMLDivElement | null>(null);
 
   const setActiveInstanceId = useLayoutStore((s) => s.setActiveInstanceId);
+  const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
+  const currentCluster = kuberneterInstanceCluster[instanceId] || '';
 
   useEffect(() => {
     if (instanceId) {
       setActiveInstanceId(instanceId);
     }
   }, [instanceId, setActiveInstanceId]);
+
+  if (!currentCluster) {
+    return <KuberneterHomeView />;
+  }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();

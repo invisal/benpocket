@@ -36,6 +36,7 @@ export function KubeTable<T>({
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(400);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const rHeight = ROW_HEIGHT;
 
@@ -46,7 +47,7 @@ export function KubeTable<T>({
   const handleSort = useCallback(
     (colKey: string) => {
       const col = columns.find((c) => c.key === colKey);
-      if (col?.sortable === false) return;
+      if (col?.sortable === false || col?.resizable === false) return;
 
       if (sortCol === colKey) {
         if (sortDir === 'asc') {
@@ -96,10 +97,12 @@ export function KubeTable<T>({
     if (!el) return;
 
     setContainerHeight(el.clientHeight);
+    setContainerWidth(el.clientWidth);
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerHeight(entry.contentRect.height || el.clientHeight);
+        setContainerWidth(entry.contentRect.width || el.clientWidth);
       }
     });
     observer.observe(el);
@@ -147,22 +150,54 @@ export function KubeTable<T>({
     };
   }, [onMouseMove, onMouseUp]);
 
+  const tableWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
+
+  // Find the last resizable column and give it any remaining container space,
+  // so the table always fills the container width (like VS Code / GitHub tables).
+  // When columns are wider than the container, both header and body scroll together.
+  const lastResizableKey = useMemo(() => {
+    for (let i = columns.length - 1; i >= 0; i--) {
+      if (columns[i].resizable !== false) return columns[i].key;
+    }
+    return null;
+  }, [columns]);
+
+  const effectiveColWidths = useMemo(() => {
+    if (!lastResizableKey || !resizable || containerWidth <= 0) return colWidths;
+    const extraWidth = Math.max(0, containerWidth - tableWidth);
+    if (extraWidth === 0) return colWidths;
+    return {
+      ...colWidths,
+      [lastResizableKey]: (colWidths[lastResizableKey] ?? DEFAULT_COL_WIDTH) + extraWidth
+    };
+  }, [colWidths, containerWidth, tableWidth, lastResizableKey, resizable]);
+
   const startResize = useCallback(
     (e: React.MouseEvent, colKey: string) => {
+      const col = columns.find((c) => c.key === colKey);
+      if (col?.resizable === false) return;
       e.preventDefault();
       e.stopPropagation();
       resizingRef.current = {
         colKey,
         startX: e.clientX,
-        startWidth: colWidths[colKey] ?? DEFAULT_COL_WIDTH
+        startWidth: effectiveColWidths[colKey] ?? DEFAULT_COL_WIDTH
       };
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     },
-    [colWidths]
+    [columns, effectiveColWidths]
   );
 
-  const isColResizable = () => true;
+  const isColResizable = useCallback(
+    (colKey: string) => {
+      const col = columns.find((c) => c.key === colKey);
+      return col?.resizable !== false;
+    },
+    [columns]
+  );
+
+  const effectiveTableWidth = resizable ? Math.max(tableWidth, containerWidth) : undefined;
 
   // Windowing calculation
   const buffer = 8;
@@ -176,11 +211,9 @@ export function KubeTable<T>({
   const spacerTopHeight = startIndex * rHeight;
   const spacerBottomHeight = (sortedData.length - endIndex) * rHeight;
 
-  const tableWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
-
   const tableStyle: React.CSSProperties = {
     tableLayout: 'fixed',
-    width: resizable ? tableWidth : '100%',
+    width: resizable ? effectiveTableWidth : '100%',
     borderCollapse: 'collapse'
   };
 
@@ -194,18 +227,23 @@ export function KubeTable<T>({
     >
       {/* 1. Dedicated Header Container (fixed vertical position) */}
       {showHeader && (!hideHeaderWhenEmpty || sortedData.length > 0) && (
-        <div ref={headerRef} className={cn('shrink-0 overflow-hidden select-none bg-sidebar-bg')}>
+        <div
+          ref={headerRef}
+          className={cn(
+            'shrink-0 overflow-hidden select-none bg-surface-2 border-b border-border-dark/60'
+          )}
+        >
           <table className="text-left text-xs bg-transparent" style={tableStyle}>
             <colgroup>
               {columns.map((col, idx) => {
                 const isLast = idx === columns.length - 1;
-                const width = colWidths[col.key] ?? DEFAULT_COL_WIDTH;
+                const width = effectiveColWidths[col.key] ?? DEFAULT_COL_WIDTH;
                 return <col key={col.key} style={!resizable && isLast ? undefined : { width }} />;
               })}
             </colgroup>
             <KubeTableHeader
               columns={columns}
-              colWidths={colWidths}
+              colWidths={effectiveColWidths}
               hideHeaderWhenEmpty={hideHeaderWhenEmpty}
               dataLength={sortedData.length}
               resizable={resizable}
@@ -229,7 +267,7 @@ export function KubeTable<T>({
           <colgroup>
             {columns.map((col, idx) => {
               const isLast = idx === columns.length - 1;
-              const width = colWidths[col.key] ?? DEFAULT_COL_WIDTH;
+              const width = effectiveColWidths[col.key] ?? DEFAULT_COL_WIDTH;
               return <col key={col.key} style={!resizable && isLast ? undefined : { width }} />;
             })}
           </colgroup>
@@ -270,7 +308,7 @@ export function KubeTable<T>({
                         getRowKey={(r) => getRowKey(r, index)}
                         onRowClick={onRowClick}
                         selectedRowKey={selectedRowKey}
-                        colWidths={colWidths}
+                        colWidths={effectiveColWidths}
                         resizable={resizable}
                         isExpanded={isExpanded}
                       />

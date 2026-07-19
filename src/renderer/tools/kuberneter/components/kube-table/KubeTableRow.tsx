@@ -30,9 +30,9 @@ export function KubeTableRow<T>({
     <tr
       onClick={() => onRowClick?.(row)}
       className={cn(
-        'transition-colors duration-100 border-b border-border-dark/30 hover:bg-surface-2/45',
+        'transition-colors duration-100 border-b border-border hover:bg-surface-2',
         onRowClick && 'cursor-pointer',
-        isSelected && 'bg-surface-3/80 text-white font-medium'
+        isSelected && 'bg-surface-3 text-white font-semibold'
       )}
     >
       {columns.map((col) => (

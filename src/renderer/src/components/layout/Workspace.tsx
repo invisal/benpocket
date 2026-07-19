@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState, useRef, useEffect } from 'react';
-import { FileText, X, Home } from 'lucide-react';
+import { FileText, X } from 'lucide-react';
 import { useLayoutStore, type Tab } from '../../store/layout.store';
 import { ContextMenu } from '../ui/ContextMenu';
 import { HomeTab } from './HomeTab';
@@ -134,29 +134,11 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(tab.title);
 
-  const isHome = (tab.meta as { resource?: string })?.resource === 'home';
-
   const commitRename = (): void => {
     const trimmed = draftTitle.trim();
     if (trimmed && trimmed !== tab.title) onRename(trimmed);
     setIsEditing(false);
   };
-
-  if (isHome) {
-    return (
-      <div
-        onClick={onActivate}
-        className={`flex items-center justify-center w-10 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 ${
-          isActive
-            ? 'bg-editor-bg text-white border-t-2 border-t-accent'
-            : 'bg-sidebar-bg text-zinc-555 hover:bg-editor-bg/40 hover:text-zinc-300'
-        }`}
-        title="Kuberneter Connection Settings"
-      >
-        <Home size={14} className={isActive ? 'text-accent' : 'text-zinc-600'} />
-      </div>
-    );
-  }
 
   if (isEditing) {
     return (

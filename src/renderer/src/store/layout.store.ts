@@ -208,26 +208,36 @@ export const useLayoutStore = create<LayoutState>()(
           };
 
           // Create a default tab for the newly spawned instance
+          let defaultTab: Tab | null = null;
           let defaultTabId = '';
-          let defaultTabTitle = '';
           if (type === 'kuberneter') {
-            defaultTabId = `kuberneter-home-${instanceId}`;
-            defaultTabTitle = 'Home';
+            if (context?.cluster) {
+              defaultTabId = `kuberneter-k8s-overview-${instanceId}`;
+              defaultTab = {
+                id: defaultTabId,
+                title: 'Cluster Overview',
+                type: 'kuberneter',
+                instanceId,
+                meta: { resource: 'overview' }
+              };
+            }
           } else if (type === 'postman') {
             defaultTabId = `postman-req-${instanceId}`;
-            defaultTabTitle = 'New API Request';
+            defaultTab = {
+              id: defaultTabId,
+              title: 'New API Request',
+              type,
+              instanceId
+            };
           } else if (type === 'screenrecorder') {
             defaultTabId = `screenrecorder-session-${instanceId}`;
-            defaultTabTitle = 'Screen Recording';
+            defaultTab = {
+              id: defaultTabId,
+              title: 'Screen Recording',
+              type,
+              instanceId
+            };
           }
-
-          const defaultTab: Tab = {
-            id: defaultTabId,
-            title: defaultTabTitle,
-            type,
-            instanceId,
-            ...(type === 'kuberneter' ? { meta: { resource: 'home' } } : {})
-          };
 
           // IMPORTANT: If this is a kuberneter instance, we initialize its private store
           if (type === 'kuberneter') {
@@ -238,8 +248,8 @@ export const useLayoutStore = create<LayoutState>()(
             activeInstances: [...state.activeInstances, newInstance],
             activeInstanceId: instanceId,
             activeActivity: type,
-            openTabs: [...state.openTabs, defaultTab],
-            activeTabId: defaultTabId
+            openTabs: defaultTab ? [...state.openTabs, defaultTab] : state.openTabs,
+            activeTabId: defaultTab ? defaultTabId : null
           };
         }),
 

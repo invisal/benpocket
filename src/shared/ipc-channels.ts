@@ -59,6 +59,5 @@ export const IpcChannels = {
   SourcePickerOverlayPick: 'source-picker-overlay:pick',
   SourcePickerOverlayCancel: 'source-picker-overlay:cancel',
   SourcePickerOverlayPicked: 'source-picker-overlay:picked',
-  ShowNotification: 'notification:show',
   FileExplorerTransferProgress: 'file-explorer:transfer-progress'
 } as const;

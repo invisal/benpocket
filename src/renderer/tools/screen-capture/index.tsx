@@ -1,11 +1,10 @@
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
-import { Camera, ClipboardCopy, Download, Scan } from 'lucide-react';
+import { Camera, CircleCheck, ClipboardCopy, Download, Scan } from 'lucide-react';
 import { cn } from 'cnfast';
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { Button } from '@renderer/components/ui/Button';
-import { notifyError, notifySuccess } from '@renderer/lib/notify';
 import type { CaptureSource } from '@screen-recorder/types/recording';
 import { ScreenRecordingPermissionBanner } from '@screen-recorder/features/recording/components/ScreenRecordingPermissionBanner';
 import { SourcePickerPanels } from './components/SourcePicker';
@@ -70,6 +69,14 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [selectedSource, setSelectedSource] = useState<CaptureSource | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [confirmed, setConfirmed] = useState<'copy' | 'save' | null>(null);
+  const confirmTimer = useRef<number | undefined>(undefined);
+
+  const flashConfirm = (action: 'copy' | 'save'): void => {
+    setConfirmed(action);
+    window.clearTimeout(confirmTimer.current);
+    confirmTimer.current = window.setTimeout(() => setConfirmed(null), 1500);
+  };
 
   const { screens, windows, sources, activeTab, setActiveTab, loading } = useCaptureSources(
     setSelectedSource,
@@ -100,12 +107,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     setPhase('result');
 
     void copyAfterCapture(blob).then((copied) => {
-      if (copied) {
-        notifySuccess('Screenshot captured and copied to clipboard.');
-      } else {
-        notifySuccess('Screenshot captured.');
-        notifyError('Could not copy to clipboard.');
-      }
+      if (!copied) console.error('Could not copy screenshot to clipboard.');
     });
   };
 
@@ -124,7 +126,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       await finishCapture(blob);
     } catch (err) {
       setPhase('idle');
-      notifyError(err instanceof Error ? err.message : 'Could not capture region.');
+      console.error('Could not capture region.', err);
     }
   };
 
@@ -157,14 +159,15 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     setPhase('idle');
     setPreviewDataUrl(null);
     setPreviewBlob(null);
+    setConfirmed(null);
   };
 
   const handleCopy = async (): Promise<void> => {
     if (!previewBlob) return;
     if (await copyToClipboard(previewBlob)) {
-      notifySuccess('Copied to clipboard.');
+      flashConfirm('copy');
     } else {
-      notifyError('Could not copy to clipboard.');
+      console.error('Could not copy screenshot to clipboard.');
     }
   };
 
@@ -177,11 +180,9 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         arrayBuffer,
         screenshotFileName()
       );
-      if (filePath) {
-        notifySuccess(`Saved to ${filePath}.`);
-      }
+      if (filePath) flashConfirm('save');
     } catch (err) {
-      notifyError(err instanceof Error ? err.message : 'Could not save screenshot.');
+      console.error('Could not save screenshot.', err);
     }
   };
 
@@ -289,11 +290,11 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       {phase === 'result' && (
         <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border-dark bg-surface px-6 py-4">
           <Button variant="secondary" size="sm" onClick={() => void handleCopy()}>
-            <ClipboardCopy size={14} />
+            {confirmed === 'copy' ? <CircleCheck size={14} /> : <ClipboardCopy size={14} />}
             Copy to clipboard
           </Button>
           <Button variant="secondary" size="sm" onClick={() => void handleSave()}>
-            <Download size={14} />
+            {confirmed === 'save' ? <CircleCheck size={14} /> : <Download size={14} />}
             Save to file
           </Button>
           <Button variant="primary" size="sm" onClick={handleCaptureAgain}>

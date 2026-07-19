@@ -59,7 +59,7 @@ When `window.api.usesOsCapturePicker` is true (Linux Wayland), the thumbnail gri
 
 **Capture again** resets to `idle` — it does **not** immediately re-capture. On macOS/Windows/X11 that shows the source grid; on Linux Wayland it returns to the idle screen with the single **Capture** button in the footer.
 
-On success, a **native OS notification** is shown (see below). Permission issues are surfaced only via `ScreenRecordingPermissionBanner` — no inline error text.
+Errors (clipboard copy, region capture, save) are logged to the console — no notifications. Permission issues are surfaced only via `ScreenRecordingPermissionBanner` — no inline error text.
 
 ## Source loading (`lib/use-capture-sources.ts`)
 
@@ -182,16 +182,13 @@ Reuses the **`window.screenRecorder`** preload namespace (same as Screen Recorde
 | `screenshot.save`             | `ipc/dialog-handlers.ts` (native save dialog; remembers last save dir) | Yes                                             |
 | `recording.start` / `stop`    | Screen Recorder pipeline                                               | **No**                                          |
 
-App-wide notifications (not under `screenRecorder`):
+Other `window.api.*` used (not under `screenRecorder`):
 
-| `window.api.*`        | Handler / module                                          |
-| --------------------- | --------------------------------------------------------- |
-| `usesOsCapturePicker` | `@shared/uses-os-capture-picker.ts` (preload)             |
-| `showNotification`    | `main/notification-handlers.ts` → Electron `Notification` |
+| `window.api.*`        | Handler / module                              |
+| --------------------- | --------------------------------------------- |
+| `usesOsCapturePicker` | `@shared/uses-os-capture-picker.ts` (preload) |
 
-Renderer helper: `src/renderer/src/lib/notify.ts` — `notifySuccess()` / `notifyError()` with title **CraftBox**.
-
-IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:capture`, `screenshot:capture-portal`, `screenshot:copy`, `screenshot:save`, `screenshot:select-region`, `region-select:complete`, `region-select:cancel`, `notification:show`, `window:hide`, `window:restore`.
+IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:capture`, `screenshot:capture-portal`, `screenshot:copy`, `screenshot:save`, `screenshot:select-region`, `region-select:complete`, `region-select:cancel`, `window:hide`, `window:restore`.
 
 ## Impact on other CraftBox tools
 

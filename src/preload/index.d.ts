@@ -28,7 +28,6 @@ declare global {
         path: string;
         tree: FileTreeNode | null;
       } | null>;
-      showNotification: (title: string, body: string) => Promise<boolean>;
     } & PostmanBridge;
   }
 }

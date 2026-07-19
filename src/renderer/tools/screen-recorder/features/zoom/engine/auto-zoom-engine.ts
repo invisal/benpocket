@@ -22,21 +22,29 @@ const MIN_GAP_MS = DEFAULT_ZOOM_DURATION_MS;
  * zoom-resolve.ts) -- so the zoom follows the mouse for the whole window
  * instead of freezing on the single pixel that was clicked.
  *
- * Clicks fired within `MIN_GAP_MS` of the previously kept click (a rapid
+ * Clicks fired within `MIN_GAP_MS` of the previously kept *click* (a rapid
  * double-click, or a small cluster of clicks while the user is still
- * interacting with the same area) extend that keyframe's window rather than
- * starting a new overlapping zoom.
+ * interacting with the same area -- e.g. click somewhere, then move fast
+ * and click somewhere else) extend that keyframe's window rather than
+ * starting a new overlapping zoom. The gap is measured from the last click
+ * actually folded into the cluster, not from the cluster's own `atMs` --
+ * comparing against `atMs` would let a long-running cluster's *extended*
+ * window silently outgrow the fixed `MIN_GAP_MS` check, so a later click
+ * still inside that extended window could slip past it and spawn a second,
+ * overlapping keyframe instead of joining the first.
  */
 export function generateAutoZoomKeyframes(clickSamples: CursorSample[]): ZoomKeyframe[] {
   if (clickSamples.length === 0) return [];
 
   const sorted = [...clickSamples].sort((a, b) => a.atMs - b.atMs);
   const keyframes: ZoomKeyframe[] = [];
+  let lastClickAtMs = -Infinity;
 
   for (const click of sorted) {
     const last = keyframes[keyframes.length - 1];
-    if (last && click.atMs - last.atMs < MIN_GAP_MS) {
+    if (last && click.atMs - lastClickAtMs < MIN_GAP_MS) {
       last.durationMs = click.atMs - last.atMs + DEFAULT_ZOOM_DURATION_MS;
+      lastClickAtMs = click.atMs;
       continue;
     }
     keyframes.push({
@@ -48,6 +56,7 @@ export function generateAutoZoomKeyframes(clickSamples: CursorSample[]): ZoomKey
       position: 'auto-cursor',
       holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS
     });
+    lastClickAtMs = click.atMs;
   }
 
   return keyframes;

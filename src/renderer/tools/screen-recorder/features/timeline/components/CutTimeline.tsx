@@ -63,12 +63,13 @@ const MAX_PANEL_HEIGHT_PX = 300;
 // Taller than a plain pill track (`CLIP_ROW_HEIGHT_PX`) -- clips carry a
 // two-line label (name + duration/speed), not just a single corner badge.
 const CLIP_PILL_HEIGHT_PX = CLIP_ROW_HEIGHT_PX * 1.4;
-// Visual gap between adjacent clip pills, split evenly off each pill's own
-// left/width percent (see `segmentLayouts` below) rather than a flex `gap` --
-// that keeps every pill's rendered edges exactly on its percent boundary, so
-// the ruler ticks/playhead/cut markers (all computed from the same percent
-// space) stay aligned regardless of clip count.
-const CLIP_GAP_PX = 4;
+// Adjacent clip pills sit flush edge-to-edge (no visual gap) -- the only
+// separation between them is the `ring` drawn on the selected/drag-over
+// pill (a box-shadow, so it doesn't need layout space of its own). Kept as
+// an explicit 0 (rather than dropping the left/width math below) so the
+// percentages stay computed the same way regardless of clip count, in case
+// a gap is ever reintroduced.
+const CLIP_GAP_PX = 0;
 // Space reserved above the clip row for the floating pin-shaped cut
 // markers, whose tip touches the row's top edge.
 const CUT_MARKER_RESERVED_PX = 10;
@@ -530,7 +531,7 @@ export function CutTimeline(): JSX.Element {
           scroll position, and the playhead (last child, absolutely
           positioned) spans the full stack instead of just the ruler.
         */}
-        <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-auto">
+        <div ref={scrollContainerRef} className="min-h-0 flex-1 px-1 overflow-auto">
           <div
             ref={trackAreaRef}
             className="relative flex flex-col gap-1.5"

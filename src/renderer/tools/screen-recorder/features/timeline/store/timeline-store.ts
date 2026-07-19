@@ -69,6 +69,17 @@ interface TimelineStoreState {
    */
   activeTool: EditorTool | null;
   /**
+   * True while the timeline's cut/blade tool is armed (toggled from the
+   * Scissors button in EditorTransportBar). Lives here, not local state, so
+   * CutTimeline (rendered independently of EditorPage/EditorTransportBar --
+   * see `activeTool` above) can read it too: while armed, hovering the
+   * timeline shows a cut-marker preview that follows the cursor instead of
+   * just live-scrubbing, and clicking performs the split there instead of
+   * selecting/dragging a clip. Stays armed across multiple cuts until
+   * toggled off again, matching a typical NLE blade-tool workflow.
+   */
+  isCutToolActive: boolean;
+  /**
    * One-shot seek command (source ms), separate from `playheadMs` to avoid a
    * feedback loop: CutTimeline (rendered independently of the `<video>`
    * element) can't imperatively set `videoRef.current.currentTime` itself,
@@ -84,6 +95,7 @@ interface TimelineStoreState {
   setSelectedSegmentId: (segmentId: string | null) => void;
   setTimelineZoom: (zoom: number) => void;
   setActiveTool: (tool: EditorTool | null) => void;
+  setCutToolActive: (active: boolean) => void;
   requestSeek: (ms: number) => void;
   /**
    * Like `requestSeek`, but leaves `playheadMs` alone -- moves the actual
@@ -145,6 +157,7 @@ export const useTimelineStore = create<TimelineStoreState>(
       selectedSegmentId: null,
       timelineZoom: 1,
       activeTool: 'background',
+      isCutToolActive: false,
       seekRequestMs: null,
       setPlayhead: (playheadMs) => set({ playheadMs }),
       setIsPlaying: (isPlaying) => set({ isPlaying }),
@@ -153,6 +166,7 @@ export const useTimelineStore = create<TimelineStoreState>(
       setSelectedSegmentId: (selectedSegmentId) => set({ selectedSegmentId }),
       setTimelineZoom: (timelineZoom) => set({ timelineZoom }),
       setActiveTool: (activeTool) => set({ activeTool }),
+      setCutToolActive: (isCutToolActive) => set({ isCutToolActive }),
       requestSeek: (ms) => set({ seekRequestMs: ms, playheadMs: ms }),
       previewSeek: (ms) => set({ seekRequestMs: ms }),
       clearSeekRequest: () => set({ seekRequestMs: null }),

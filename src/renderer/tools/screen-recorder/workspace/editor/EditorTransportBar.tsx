@@ -44,8 +44,9 @@ interface EditorTransportBarProps {
   isPlaying: boolean;
   cropToolActive: boolean;
   onToggleCrop: () => void;
-  onSplitSelected: () => void;
-  canSplitSelected: boolean;
+  /** True while the timeline's cut/blade tool is armed -- see `isCutToolActive` in timeline-store.ts. */
+  cutToolActive: boolean;
+  onToggleCutTool: () => void;
   /** Current playback position, ms, source-relative -- for the "0:12 / 1:34" readout. */
   currentTimeMs: number;
   /** Full source duration, ms -- 0 before metadata loads (readout just shows "0:00" for the total then). */
@@ -57,8 +58,8 @@ export function EditorTransportBar({
   isPlaying,
   cropToolActive,
   onToggleCrop,
-  onSplitSelected,
-  canSplitSelected,
+  cutToolActive,
+  onToggleCutTool,
   currentTimeMs,
   durationMs
 }: EditorTransportBarProps): JSX.Element {
@@ -174,10 +175,16 @@ export function EditorTransportBar({
       </span>
 
       <button
-        onClick={onSplitSelected}
-        disabled={!canSplitSelected}
-        title="Split the selected clip at its midpoint"
-        className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10 disabled:opacity-30"
+        onClick={onToggleCutTool}
+        title={
+          cutToolActive
+            ? 'Cut tool active -- click the timeline to trim'
+            : 'Cut tool -- click to arm, then click the timeline to trim'
+        }
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
+          cutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-white/10'
+        )}
       >
         <Scissors size={14} />
       </button>

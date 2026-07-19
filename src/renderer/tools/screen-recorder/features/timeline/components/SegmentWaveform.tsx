@@ -22,7 +22,7 @@ const AMPLITUDE_BOOST = 4;
  * edge (not mirrored top/bottom) and stretched to fill the clip via
  * `preserveAspectRatio="none"` -- so it re-flows automatically as the clip
  * is trimmed, resized, or zoomed without recomputing points, the same way
- * the amber gradient behind it does.
+ * the gradient behind it does.
  */
 export function SegmentWaveform({
   segment,

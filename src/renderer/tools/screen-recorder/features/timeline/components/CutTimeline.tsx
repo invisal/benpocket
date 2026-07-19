@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Clapperboard, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Clapperboard, Gauge, Scissors, Trash2 } from 'lucide-react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore } from '../store/timeline-store';
@@ -26,6 +26,19 @@ function formatTime(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/**
+ * Short "Ns" / "N.Ns" duration label for clip pills and cut-marker badges --
+ * distinct from `formatTime`'s "m:ss" (the ruler/transport readout), matching
+ * how a few-second clip is normally talked about ("22s", "0.9s") rather than
+ * as minutes.
+ */
+function formatShortDuration(ms: number): string {
+  const totalSeconds = ms / 1000;
+  if (totalSeconds < 1) return `${totalSeconds.toFixed(1)}s`;
+  if (totalSeconds < 60) return `${Math.round(totalSeconds)}s`;
+  return formatTime(ms);
+}
+
 // "Nice" tick spacings to choose from so the ruler never gets cluttered
 // regardless of recording length or zoom.
 const NICE_TICK_INTERVALS_SEC = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800];
@@ -45,9 +58,76 @@ const DEFAULT_PANEL_HEIGHT_PX = 180;
 const MIN_PANEL_HEIGHT_PX = 150;
 const MAX_PANEL_HEIGHT_PX = 300;
 
+// Taller than a plain pill track (`CLIP_ROW_HEIGHT_PX`) -- clips carry a
+// two-line label (name + duration/speed), not just a single corner badge.
+const CLIP_PILL_HEIGHT_PX = CLIP_ROW_HEIGHT_PX * 1.4;
+// Visual gap between adjacent clip pills, split evenly off each pill's own
+// left/width percent (see `segmentLayouts` below) rather than a flex `gap` --
+// that keeps every pill's rendered edges exactly on its percent boundary, so
+// the ruler ticks/playhead/cut markers (all computed from the same percent
+// space) stay aligned regardless of clip count.
+const CLIP_GAP_PX = 4;
+// Space reserved above the clip row for the floating pin-shaped cut
+// markers, whose tip touches the row's top edge.
+const CUT_MARKER_RESERVED_PX = 10;
+// Below this, a head/tail trim or closed-up gap between clips is treated as
+// float noise, not a real cut worth flagging with a badge.
+const MIN_CUT_MARKER_GAP_MS = 100;
+
+/**
+ * The stretch of source footage trimmed off immediately *before* this
+ * segment -- the head trim if it's the first clip, otherwise whatever gap
+ * ripple-editing closed up between it and the previous kept clip. `0` if
+ * nothing was cut there (a plain split leaves no gap). Each pill checks its
+ * own left edge for this instead of a separate percent-positioned overlay
+ * layer, so its badge is always exactly above the clip it describes -- it
+ * can't drift out of alignment the way a standalone layer computed from
+ * running totals could.
+ */
+function gapBeforeSegmentMs(segments: TimelineSegment[], index: number): number {
+  const segment = segments[index];
+  const previous = segments[index - 1];
+  return previous ? segment.range.startMs - previous.range.endMs : segment.range.startMs;
+}
+
 interface PanelResize {
   startClientY: number;
   startHeightPx: number;
+}
+
+/**
+ * Map-pin-shaped scissors badge -- a single teardrop (a rounded square with
+ * one sharp corner, rotated so that corner points straight down) whose tip
+ * touches the exact cut point, with the scissors icon and duration stacked
+ * inside its round head. `anchorClassName` supplies both the horizontal
+ * anchor edge (`left-0` / `right-0`) and the matching outward half-width
+ * translate (`-translate-x-1/2` / `translate-x-1/2`) that recenters the pin
+ * on that edge, so the tip always lands exactly on the cut regardless of
+ * which side it's anchored from, rather than merely flush against it.
+ */
+function CutMarker({
+  durationMs,
+  anchorClassName
+}: {
+  /** Omitted for the cut tool's live preview pin, which follows the cursor before any cut has actually been made -- there's no trimmed duration to show yet. */
+  durationMs?: number;
+  anchorClassName: string;
+}): JSX.Element {
+  return (
+    <div className={cn('pointer-events-none absolute -top-10 z-10', anchorClassName)}>
+      <div className="relative h-9 w-9">
+        <div className="absolute inset-0 -rotate-45 rounded-[50%_50%_50%_0] border-2 border-blue-500 bg-neutral-900 shadow-sm" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-px pt-0.5">
+          <Scissors size={13} className="text-white" />
+          {durationMs !== undefined && (
+            <span className="whitespace-nowrap text-[9px] font-medium leading-none text-white/85">
+              {formatShortDuration(durationMs)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -78,6 +158,11 @@ export function CutTimeline(): JSX.Element {
   // Gates the ruler's hover-scrub below -- only toggles on play/pause (not a
   // 60fps concern like `playheadMs`), so subscribing directly here is fine.
   const isPlaying = useTimelineStore((s) => s.isPlaying);
+  // Armed from the Scissors button in EditorTransportBar -- while true, a
+  // click anywhere on the timeline (ruler or clip row) performs a split at
+  // the cursor instead of seeking/selecting, and the hover marker below
+  // renders as a live cut-preview pin instead of the plain gray scrub line.
+  const isCutToolActive = useTimelineStore((s) => s.isCutToolActive);
 
   const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
   const waveformPeaks = useWaveformStore((s) => s.peaks);
@@ -151,6 +236,29 @@ export function CutTimeline(): JSX.Element {
   const totalDurationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const clampedTotal = totalDurationMs > 0 ? totalDurationMs : 1;
 
+  // Each pill's left/width percent, laid out edge-to-edge in output order --
+  // computed once here (rather than inline per-segment) since the cut
+  // markers below need the same running cursor to find clip boundaries.
+  const segmentLayouts = useMemo(
+    () =>
+      segments.reduce<{
+        list: { segment: TimelineSegment; leftPercent: number; widthPercent: number }[];
+        cursorMs: number;
+      }>(
+        (acc, segment) => {
+          const outputDurationMs = getSegmentOutputDurationMs(segment);
+          const leftPercent = (acc.cursorMs / clampedTotal) * 100;
+          const widthPercent = (outputDurationMs / clampedTotal) * 100;
+          return {
+            list: [...acc.list, { segment, leftPercent, widthPercent }],
+            cursorMs: acc.cursorMs + outputDurationMs
+          };
+        },
+        { list: [], cursorMs: 0 }
+      ).list,
+    [segments, clampedTotal]
+  );
+
   const majorTickIntervalMs = pickMajorTickIntervalMs(totalDurationMs);
   const minorTickIntervalMs = majorTickIntervalMs / 3;
   const tickCount = totalDurationMs > 0 ? Math.floor(totalDurationMs / minorTickIntervalMs) + 1 : 0;
@@ -169,6 +277,23 @@ export function CutTimeline(): JSX.Element {
       if (sourceMs !== null) requestSeek(sourceMs);
     },
     [segments, clampedTotal, requestSeek]
+  );
+
+  // Cut tool's click-to-trim -- computed from the cursor's fraction across
+  // the *whole* track area (not the specific segment clicked), since
+  // `splitAt` takes an output-ms position and figures out which kept
+  // segment covers it internally. That means every click target on the
+  // timeline (ruler, or any clip pill) can share this one calculation
+  // instead of each needing its own per-segment bounds math.
+  const splitFromClientX = useCallback(
+    (clientX: number) => {
+      const el = trackAreaRef.current;
+      if (!el || segments.length === 0) return;
+      const rect = el.getBoundingClientRect();
+      const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      splitAt(fraction * clampedTotal);
+    },
+    [segments, clampedTotal, splitAt]
   );
 
   const handlePlayheadDragMove = useCallback(
@@ -196,6 +321,10 @@ export function CutTimeline(): JSX.Element {
   }
 
   function handleRulerClick(event: React.MouseEvent<HTMLDivElement>): void {
+    if (isCutToolActive) {
+      splitFromClientX(event.clientX);
+      return;
+    }
     preHoverPlayheadMsRef.current = null;
     seekFromClientX(event.clientX);
   }
@@ -295,6 +424,11 @@ export function CutTimeline(): JSX.Element {
     index: number,
     event: React.MouseEvent<HTMLDivElement>
   ) {
+    // A single click already performs the cut while the tool is armed (see
+    // the segment wrapper's onClick below) -- without this guard, a real
+    // double-click would fire two clicks (two cuts) *and* this handler,
+    // attempting a third split against a since-stale segment/index.
+    if (isCutToolActive) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const fraction = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
     const outputStart = segments
@@ -316,7 +450,7 @@ export function CutTimeline(): JSX.Element {
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
-        <div className="flex shrink-0 items-center gap-3 text-xs text-white/50">
+        {/* <div className="flex shrink-0 items-center gap-3 text-xs text-white/50">
           <span className="flex items-center gap-1.5">
             <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
           </span>
@@ -326,7 +460,7 @@ export function CutTimeline(): JSX.Element {
           <span className="ml-auto text-white/30">
             Click to select · double-click to split · drag to reorder, trim, or scrub
           </span>
-        </div>
+        </div> */}
 
         {/*
           Every track (ruler, clips, Zoom/Caption/Speed/Crop pills) lives
@@ -361,8 +495,15 @@ export function CutTimeline(): JSX.Element {
             >
               <div
                 onClick={handleRulerClick}
-                title="Click to scrub -- hover to preview a position"
-                className="relative h-6 shrink-0 cursor-pointer select-none mx-3"
+                title={
+                  isCutToolActive
+                    ? 'Click to trim at this position'
+                    : 'Click to scrub -- hover to preview a position'
+                }
+                className={cn(
+                  'relative h-6 shrink-0 select-none mx-3',
+                  isCutToolActive ? 'cursor-crosshair' : 'cursor-pointer'
+                )}
               >
                 {ticks.map(({ atMs, major }) => (
                   <div
@@ -385,102 +526,164 @@ export function CutTimeline(): JSX.Element {
               </div>
 
               {/*
-                One continuous gradient + glassy highlight layer sits behind
-                *all* segments (not per-segment) so the bar reads as a single
-                faded pill the way the reference image does -- individual
-                segments above it are transparent, divided only by a
-                near-invisible hairline, instead of each carrying its own
-                gradient (which banded at every clip boundary). Segments stay
-                `relative` (positioned, painted after these `absolute`
-                layers in DOM order) so they -- and their ring/handles/delete
-                button -- still paint on top.
+                Kept clips draw as individual rounded pills with a real gap
+                between them (not one continuous bar) -- each pill is
+                absolutely positioned from `segmentLayouts`' own left/width
+                percent (inset by `CLIP_GAP_PX` on both edges) rather than
+                laid out with a flex `gap`, so the percentages stay exact and
+                every other track's percent-based math (ruler ticks,
+                playhead) keeps lining up regardless of clip count.
+                `marginTop` reserves room above for the floating
+                scissors/duration badges to sit fully above the row.
               */}
               <div
-                className="relative flex shrink-0 items-stretch overflow-hidden rounded-md border border-amber-900/40 shadow-inherit"
-                style={{ height: CLIP_ROW_HEIGHT_PX * 1.3 }}
+                className="relative"
+                style={{ height: CLIP_PILL_HEIGHT_PX, marginTop: CUT_MARKER_RESERVED_PX }}
               >
-                <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-blue-500 via-blue-400 to-blue-400" />
-                <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/40 via-white/5 to-black/15" />
-
-                {segments.map((segment, index) => {
-                  const widthPercent = (getSegmentOutputDurationMs(segment) / clampedTotal) * 100;
+                {segmentLayouts.map(({ segment, leftPercent, widthPercent }, index) => {
                   const isSelected = selectedSegmentId === segment.id;
+                  const gapBeforeMs = gapBeforeSegmentMs(segments, index);
+                  const dragHandlers = getDragHandlers(index);
                   return (
+                    // Outer element owns position/interaction only (no
+                    // `overflow-hidden`) -- a trim badge is `absolute -top-*`
+                    // from *this* box, so it must live outside the inner
+                    // pill's own `overflow-hidden`, or it'd clip its own badge.
                     <div
                       key={segment.id}
-                      {...getDragHandlers(index)}
-                      onClick={() => setSelectedSegmentId(segment.id)}
+                      {...dragHandlers}
+                      draggable={!isCutToolActive && dragHandlers.draggable}
+                      onClick={(e) => {
+                        // Cut tool armed: a click anywhere on a clip cuts at
+                        // the exact cursor position (via the shared
+                        // whole-track-area calculation), rather than
+                        // selecting -- which segment was clicked doesn't
+                        // matter, `splitAt` finds it from the position alone.
+                        if (isCutToolActive) {
+                          splitFromClientX(e.clientX);
+                          return;
+                        }
+                        setSelectedSegmentId(segment.id);
+                      }}
                       onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
                       className={cn(
-                        'group relative flex min-w-9 cursor-grab items-center active:cursor-grabbing',
-                        index !== segments.length - 1 && 'border-r border-white/15',
-                        dragOverIndex === index && 'ring-2 ring-inset ring-accent',
-                        dragOverIndex !== index && isSelected && 'ring-2 ring-inset ring-blue-500'
+                        'group absolute inset-y-0 min-w-12',
+                        isCutToolActive ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
                       )}
-                      style={{ width: `${widthPercent}%` }}
+                      style={{
+                        left: `calc(${leftPercent}% + ${CLIP_GAP_PX / 2}px)`,
+                        width: `calc(${widthPercent}% - ${CLIP_GAP_PX}px)`
+                      }}
                     >
-                      {waveformPeaks && (
-                        <SegmentWaveform
-                          segment={segment}
-                          peaks={waveformPeaks}
-                          sourceDurationMs={sourceDurationMs}
-                        />
-                      )}
+                      <div
+                        className={cn(
+                          'relative flex h-full items-center justify-center overflow-hidden rounded-lg border border-orange-900/40',
+                          dragOverIndex === index && 'ring-2 ring-accent',
+                          dragOverIndex !== index && isSelected && 'ring-2 ring-accent'
+                        )}
+                      >
+                        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-blue-500 via-blue-400 to-blue-400" />
+                        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/35 via-white/5 to-black/15" />
 
-                      {/*
-                        Small corner badge, not centered/dominant -- the
-                        reference bar carries no text at all, so this stays
-                        a subtle affordance (still useful once a recording's
-                        been split into multiple clips) rather than a label
-                        breaking up the pill's smooth gradient.
-                      */}
-                      <div className="pointer-events-none absolute left-2 top-1/2 flex -translate-y-1/2 items-center gap-1 text-amber-950/60">
-                        <Clapperboard size={11} className="shrink-0" />
-                        <span className="truncate text-[10px] font-medium">
-                          {formatTime(getSegmentOutputDurationMs(segment))}
-                        </span>
-                        {segment.speed !== 1 && (
-                          <span className="shrink-0 text-[9px] text-amber-950/50">
+                        {waveformPeaks && (
+                          <SegmentWaveform
+                            segment={segment}
+                            peaks={waveformPeaks}
+                            sourceDurationMs={sourceDurationMs}
+                          />
+                        )}
+
+                        <div className="pointer-events-none relative flex flex-col items-center gap-0.5 px-2 text-orange-950/70">
+                          <span className="flex items-center gap-1 truncate text-[10px] font-semibold">
+                            <Clapperboard size={10} className="shrink-0" />
+                            Clip
+                          </span>
+                          <span className="flex items-center gap-1 truncate text-[10px] text-orange-950/60">
+                            {formatShortDuration(getSegmentOutputDurationMs(segment))}
+                            <Gauge size={9} className="shrink-0" />
                             {segment.speed}x
                           </span>
-                        )}
+                        </div>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSegment(segment.id);
+                          }}
+                          disabled={segments.length <= 1}
+                          className="absolute right-1 top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+
+                        <div
+                          onPointerDown={(e) => {
+                            // Cut tool armed: leave the pointerdown alone so
+                            // it bubbles to the wrapper's onClick above and
+                            // cuts there instead of starting a resize drag.
+                            if (isCutToolActive) return;
+                            const width =
+                              e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                            markEdgeResizeActive();
+                            startResizeHandler(segment, 'start', width)(e);
+                          }}
+                          className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-black/10 hover:bg-black/25"
+                        />
+                        <div
+                          onPointerDown={(e) => {
+                            if (isCutToolActive) return;
+                            const width =
+                              e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                            markEdgeResizeActive();
+                            startResizeHandler(segment, 'end', width)(e);
+                          }}
+                          className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-black/10 hover:bg-black/25"
+                        />
                       </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteSegment(segment.id);
-                        }}
-                        disabled={segments.length <= 1}
-                        className="absolute right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-black/70 text-white/70 hover:text-red-400 disabled:opacity-30 group-hover:flex"
-                      >
-                        <Trash2 size={11} />
-                      </button>
-
-                      <div
-                        onPointerDown={(e) => {
-                          const width =
-                            e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                          markEdgeResizeActive();
-                          startResizeHandler(segment, 'start', width)(e);
-                        }}
-                        className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-black/10 hover:bg-black/25"
-                      />
-                      <div
-                        onPointerDown={(e) => {
-                          const width =
-                            e.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
-                          markEdgeResizeActive();
-                          startResizeHandler(segment, 'end', width)(e);
-                        }}
-                        className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-black/10 hover:bg-black/25"
-                      />
+                      {/*
+                        Cut marker for footage trimmed off just before this
+                        clip -- the head trim for the first clip, otherwise a
+                        ripple-closed gap to the previous one. Always
+                        centered exactly on the boundary it describes (via
+                        `CutMarker`'s anchor+translate pairing), including
+                        the first clip's own head cut.
+                      */}
+                      {gapBeforeMs > MIN_CUT_MARKER_GAP_MS && (
+                        <CutMarker durationMs={gapBeforeMs} anchorClassName="-translate-x-1/2" />
+                      )}
+                      {/* Same, for the tail trim -- only ever the last clip's own right edge. */}
+                      {/* {gapAfterMs > MIN_CUT_MARKER_GAP_MS && (
+                        <CutMarker
+                          durationMs={gapAfterMs}
+                          anchorClassName="right-0 translate-x-1/2"
+                        />
+                      )} */}
                     </div>
                   );
                 })}
+
+                {/*
+                  Cut tool's live preview -- the same pin shape as a real
+                  cut marker, but with no duration (nothing's actually been
+                  cut yet) and following the cursor continuously rather than
+                  sitting fixed at a clip boundary. Rendered inside this same
+                  clip-row container (not the outer ruler+row wrapper below)
+                  so its `-top-*` offset is relative to the row's own top
+                  edge, exactly like the real markers above.
+                */}
+                {isCutToolActive && effectiveHoverFraction !== null && (
+                  <div
+                    className="pointer-events-none absolute top-0 z-20"
+                    style={{ left: `${effectiveHoverFraction * 100}%` }}
+                  >
+                    <CutMarker anchorClassName="-translate-x-1/2" />
+                  </div>
+                )}
               </div>
 
-              {effectiveHoverFraction !== null && (
+              {/* Plain gray hover-scrub marker -- swapped out for the cut-tool's pin preview above while that tool is armed, so the two don't visually double up. */}
+              {effectiveHoverFraction !== null && !isCutToolActive && (
                 <div
                   className="pointer-events-none absolute inset-y-0.5 z-5 mx-0.5"
                   style={{ left: `${effectiveHoverFraction * 100}%` }}

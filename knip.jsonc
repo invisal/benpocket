@@ -6,7 +6,8 @@
   // System binaries invoked via spawn/execFile — not npm packages.
   // xclip: Linux X11 clipboard helper.
   // xcrun/osascript: macOS Xcode CLI tools / AppleScript, used for Simulator detection and window bounds.
-  "ignoreBinaries": ["xclip", "xcrun", "osascript"],
+  // kubectl: Kubernetes CLI, spawned by the kuberneter tool.
+  "ignoreBinaries": ["xclip", "xcrun", "osascript", "kubectl"],
   // Pulled in via @import 'tailwindcss' in main.css and @tailwindcss/vite plugin
   "ignoreDependencies": ["tailwindcss"],
   // Skip exports that are only referenced within the same file

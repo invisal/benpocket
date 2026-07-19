@@ -10,15 +10,17 @@ BenPocket — a personal multi-purpose toolkit (Swiss Army knife) combining smal
 
 ## Workflow
 
-Every change must pass format and lint before it's considered done:
+Every change must pass format, lint, typecheck, and knip before it's considered done:
 
 ```bash
 npm run format       # prettier --write . (auto-fixes formatting)
 npm run lint          # eslint --cache .
 npm run typecheck     # tsc --noEmit for both node and web targets
+npm run knip          # dead code: unused files, exports, dependencies
 ```
 
-- Run all three after finishing a change. If `lint` have error or warning in files and fix them .
+- Run all four after finishing a change. If `lint` have error or warning in files and fix them .
+- If `knip` reports an unused export, prefer deleting the dead code over adding it to `knip.jsonc` ignores. Only extend `knip.jsonc` for false positives (e.g. system binaries invoked via `spawn`).
 - Use `cn` from `cnfast` to combine class names — not manual string template concatenation.
 
 ## Receipts

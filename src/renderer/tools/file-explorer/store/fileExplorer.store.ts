@@ -11,15 +11,6 @@ export type FileClipboard = { paths: string[]; mode: 'copy' | 'cut' } | null;
 export type EntriesPatch =
   { type: 'remove'; paths: string[] } | { type: 'insert'; entry: FileEntry };
 
-export function applyEntriesPatch(entries: FileEntry[], patch: EntriesPatch): FileEntry[] {
-  switch (patch.type) {
-    case 'remove':
-      return entries.filter((entry) => !patch.paths.includes(entry.path));
-    case 'insert':
-      return [...entries, patch.entry];
-  }
-}
-
 export interface FileExplorerPanelState {
   path: string | null;
   selection: FileEntry[];

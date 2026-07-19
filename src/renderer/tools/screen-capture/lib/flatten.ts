@@ -7,8 +7,18 @@ import type {
   TextAnnotation
 } from '../types/editor';
 
-/** How much a blur region's sub-image is shrunk before scaling back up — same cheap blur as frame-compositor's drawBlurMasks. */
-export const BLUR_SHRINK = 12;
+/**
+ * Blur radius in `unit`s. The editor previews regions with CSS
+ * `backdrop-filter: blur()` and the export bakes them with `ctx.filter =
+ * 'blur()'` — the same Chromium Gaussian — so both must derive the pixel
+ * radius from this one constant to look identical.
+ */
+export const BLUR_RADIUS_UNITS = 8;
+
+/** Resolution-independent sizing unit — must match editor.store.ts's `unit`. */
+export function imageUnit(imageWidth: number): number {
+  return Math.max(1, imageWidth / 1000);
+}
 
 export interface ArrowHead {
   hx1: number;
@@ -64,22 +74,37 @@ export function normalizeRect(
 function drawBlur(
   ctx: CanvasRenderingContext2D,
   source: HTMLCanvasElement,
-  region: BlurAnnotation
+  region: BlurAnnotation,
+  blurPx: number
 ): void {
-  const { x, y, width, height } = region;
+  const x = Math.round(region.x);
+  const y = Math.round(region.y);
+  const width = Math.round(region.width);
+  const height = Math.round(region.height);
   if (width <= 0 || height <= 0) return;
-  // Shrink-then-scale-up blur (same approach as frame-compositor.ts):
-  // downsampling discards high-frequency detail, upscaling smears what's
-  // left. Unlike ctx.filter = 'blur()', nothing bleeds outside the rect.
-  const small = document.createElement('canvas');
-  small.width = Math.max(1, Math.round(width / BLUR_SHRINK));
-  small.height = Math.max(1, Math.round(height / BLUR_SHRINK));
-  const smallCtx = small.getContext('2d');
-  if (!smallCtx) return;
-  smallCtx.imageSmoothingEnabled = true;
-  smallCtx.drawImage(source, x, y, width, height, 0, 0, small.width, small.height);
-  ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(small, 0, 0, small.width, small.height, x, y, width, height);
+
+  // Blur a padded copy of the region, then keep only the center: the
+  // Gaussian needs surrounding context (like backdrop-filter has) and the
+  // padding absorbs the transparent bleed at the temp canvas edges.
+  const pad = Math.ceil(blurPx * 3);
+  const temp = document.createElement('canvas');
+  temp.width = width + pad * 2;
+  temp.height = height + pad * 2;
+  const tempCtx = temp.getContext('2d');
+  if (!tempCtx) return;
+  tempCtx.filter = `blur(${blurPx}px)`;
+  tempCtx.drawImage(
+    source,
+    x - pad,
+    y - pad,
+    temp.width,
+    temp.height,
+    0,
+    0,
+    temp.width,
+    temp.height
+  );
+  ctx.drawImage(temp, pad, pad, width, height, x, y, width, height);
 }
 
 function drawRect(ctx: CanvasRenderingContext2D, rect: RectAnnotation): void {
@@ -164,7 +189,8 @@ export async function flattenImage(
   bitmap.close();
 
   // Blur first (it samples the untouched screenshot), shapes on top.
-  for (const a of annotations) if (a.kind === 'blur') drawBlur(ctx, canvas, a);
+  const blurPx = BLUR_RADIUS_UNITS * imageUnit(bitmap.width);
+  for (const a of annotations) if (a.kind === 'blur') drawBlur(ctx, canvas, a, blurPx);
   for (const a of annotations) {
     ctx.save();
     if (a.kind === 'rect') drawRect(ctx, a);

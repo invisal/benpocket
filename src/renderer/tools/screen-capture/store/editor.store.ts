@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { imageUnit } from '../lib/flatten';
 import type { CaptureAnnotation, EditorTool } from '../types/editor';
 
 export const EDITOR_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#ffffff', '#000000'];
@@ -111,7 +112,7 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
       fontTier: state.fontTier,
       imageWidth,
       imageHeight,
-      unit: Math.max(1, imageWidth / 1000)
+      unit: imageUnit(imageWidth)
     })),
 
   reset: () =>

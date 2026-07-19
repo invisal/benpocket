@@ -2,7 +2,13 @@ import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from 'cnfast';
 import { nextLabelValue, useCaptureEditorStore } from '../store/editor.store';
-import { arrowHeadLength, arrowHeadPoints, labelTextColor, normalizeRect } from '../lib/flatten';
+import {
+  BLUR_RADIUS_UNITS,
+  arrowHeadLength,
+  arrowHeadPoints,
+  labelTextColor,
+  normalizeRect
+} from '../lib/flatten';
 import type {
   BlurAnnotation,
   CaptureAnnotation,
@@ -385,8 +391,8 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
             height: annotation.height * scale,
             ...(isBlur
               ? {
-                  backdropFilter: `blur(${8 * unit * scale}px)`,
-                  WebkitBackdropFilter: `blur(${8 * unit * scale}px)`
+                  backdropFilter: `blur(${BLUR_RADIUS_UNITS * unit * scale}px)`,
+                  WebkitBackdropFilter: `blur(${BLUR_RADIUS_UNITS * unit * scale}px)`
                 }
               : {
                   border: `${Math.max(1, annotation.strokeWidth * scale)}px solid ${annotation.color}`

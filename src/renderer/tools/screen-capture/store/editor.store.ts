@@ -1,6 +1,7 @@
 import { create } from 'zustand';
+import { WALLPAPER_PRESETS } from '@shared/wallpaper-presets';
 import { imageUnit, type Rect } from '../lib/flatten';
-import type { CaptureAnnotation, EditorTool } from '../types/editor';
+import type { BackgroundConfig, CaptureAnnotation, EditorTool } from '../types/editor';
 
 export const EDITOR_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#ffffff', '#000000'];
 
@@ -26,6 +27,25 @@ export const BLUR_TIERS = [
 /** Max corner radius as a multiple of `unit` (i.e. ~6.4% of image width). */
 export const MAX_CORNER_RADIUS_UNITS = 64;
 
+/** Output frame sizes for the background tool; "Custom" is any width/height not matching one of these. */
+export const BACKGROUND_SIZE_PRESETS = [
+  { id: 'full-hd', label: 'Full HD', width: 1920, height: 1080 },
+  { id: 'facebook-post', label: 'Facebook post', width: 1200, height: 630 },
+  { id: 'instagram-post', label: 'Instagram post', width: 1080, height: 1080 },
+  { id: 'x-post', label: 'X post', width: 1600, height: 900 },
+  { id: 'linkedin-post', label: 'LinkedIn post', width: 1200, height: 627 },
+  { id: 'instagram-story', label: 'Instagram story', width: 1080, height: 1920 },
+  { id: 'pinterest-pin', label: 'Pinterest pin', width: 1000, height: 1500 }
+];
+
+/** Turning the background on starts from the screen-recorder's default wallpaper at Full HD. */
+export const DEFAULT_BACKGROUND: BackgroundConfig = {
+  wallpaper: WALLPAPER_PRESETS[0].id,
+  width: BACKGROUND_SIZE_PRESETS[0].width,
+  height: BACKGROUND_SIZE_PRESETS[0].height,
+  marginPct: 5
+};
+
 interface EditorState {
   imageWidth: number;
   imageHeight: number;
@@ -44,6 +64,10 @@ interface EditorState {
   crop: Rect | null;
   /** Baked into the exported PNG as a rounded-rect clip. In image px. */
   cornerRadius: number;
+  // ponytail: like cornerRadius, background is not undo-tracked — every
+  // popover control is self-reverting. Upgrade path: fold it into Snapshot.
+  /** Frame the export is composited onto, or null for the bare capture. */
+  background: BackgroundConfig | null;
   tool: EditorTool;
   selectedId: string | null;
   /** Text annotation currently showing its inline text input. */
@@ -69,6 +93,7 @@ interface EditorState {
   setFontTier: (tier: number, id?: string) => void;
   setBlurTier: (tier: number, id?: string) => void;
   setCornerRadius: (radius: number) => void;
+  setBackground: (background: BackgroundConfig | null) => void;
   setSelectedId: (id: string | null) => void;
   setEditingId: (id: string | null) => void;
   addAnnotation: (annotation: CaptureAnnotation) => void;
@@ -120,6 +145,7 @@ const initialState = {
   annotations: [] as CaptureAnnotation[],
   crop: null as Rect | null,
   cornerRadius: 0,
+  background: null as BackgroundConfig | null,
   tool: 'select' as EditorTool,
   selectedId: null,
   editingId: null,
@@ -216,6 +242,8 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
     }),
 
   setCornerRadius: (cornerRadius) => set({ cornerRadius }),
+
+  setBackground: (background) => set({ background }),
 
   setSelectedId: (selectedId) => set({ selectedId }),
 

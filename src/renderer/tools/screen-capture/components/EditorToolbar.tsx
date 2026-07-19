@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import {
+  Ban,
   Captions,
   Circle,
   Crop,
@@ -11,13 +12,22 @@ import {
   Squircle,
   Tag,
   Type,
-  Undo2
+  Undo2,
+  Wallpaper
 } from 'lucide-react';
 import { cn } from 'cnfast';
+import { WALLPAPER_PRESETS, cssGradient } from '@shared/wallpaper-presets';
 import { Input } from '@renderer/components/ui/Input';
 import { Popover } from '@renderer/components/ui/Popover';
+import { Select } from '@renderer/components/ui/Select';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
-import { FONT_TIERS, MAX_CORNER_RADIUS_UNITS, useCaptureEditorStore } from '../store/editor.store';
+import {
+  BACKGROUND_SIZE_PRESETS,
+  DEFAULT_BACKGROUND,
+  FONT_TIERS,
+  MAX_CORNER_RADIUS_UNITS,
+  useCaptureEditorStore
+} from '../store/editor.store';
 import type { EditorTool } from '../types/editor';
 
 /**
@@ -75,12 +85,173 @@ function RailTooltip({
   );
 }
 
+const MAX_BACKGROUND_MARGIN_PCT = 25;
+const MAX_FRAME_PX = 8192;
+
+function clampFramePx(px: number): number {
+  return Math.min(Math.max(1, Math.round(px)), MAX_FRAME_PX);
+}
+
+/** Background popover body: wallpaper swatches, output size, and margin. */
+function BackgroundControls(): JSX.Element {
+  const background = useCaptureEditorStore((s) => s.background);
+  const setBackground = useCaptureEditorStore((s) => s.setBackground);
+
+  const sizePresetId = background
+    ? (BACKGROUND_SIZE_PRESETS.find(
+        (p) => p.width === background.width && p.height === background.height
+      )?.id ?? 'custom')
+    : 'custom';
+
+  return (
+    <div className="flex flex-col gap-3 px-1 py-0.5">
+      <div className="grid grid-cols-5 gap-1.5">
+        <button
+          type="button"
+          aria-label="No background"
+          aria-pressed={background === null}
+          title="None"
+          onClick={() => setBackground(null)}
+          className={cn(
+            'flex h-7 cursor-pointer items-center justify-center rounded-md border border-border-dark text-text-dim',
+            background === null
+              ? 'ring-2 ring-accent ring-offset-1 ring-offset-surface'
+              : 'hover:bg-surface-3'
+          )}
+        >
+          <Ban size={14} />
+        </button>
+        {WALLPAPER_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            aria-label={`${preset.label} background`}
+            aria-pressed={background?.wallpaper === preset.id}
+            title={preset.label}
+            onClick={() =>
+              setBackground(
+                background
+                  ? { ...background, wallpaper: preset.id }
+                  : { ...DEFAULT_BACKGROUND, wallpaper: preset.id }
+              )
+            }
+            className={cn(
+              'h-7 cursor-pointer rounded-md',
+              background?.wallpaper === preset.id
+                ? 'ring-2 ring-accent ring-offset-1 ring-offset-surface'
+                : 'hover:opacity-85'
+            )}
+            style={{ background: cssGradient(preset) }}
+          />
+        ))}
+      </div>
+
+      {background && (
+        <>
+          <div className="flex items-center gap-3">
+            <span className="w-10 shrink-0 text-xs text-text-dim">Size</span>
+            <Select.Root
+              value={sizePresetId}
+              onValueChange={(value) => {
+                const preset = BACKGROUND_SIZE_PRESETS.find((p) => p.id === value);
+                if (preset)
+                  setBackground({ ...background, width: preset.width, height: preset.height });
+              }}
+            >
+              <Select.Trigger size="sm" className="flex-1">
+                {/* base-ui's Select.Value renders the raw value ("full-hd"), so render the label ourselves. */}
+                <span className="truncate">
+                  {BACKGROUND_SIZE_PRESETS.find((p) => p.id === sizePresetId)?.label ?? 'Custom'}
+                </span>
+              </Select.Trigger>
+              <Select.Content side="bottom" align="start">
+                {BACKGROUND_SIZE_PRESETS.map((p) => (
+                  <Select.Item key={p.id} value={p.id}>
+                    {p.label} ({p.width}x{p.height})
+                  </Select.Item>
+                ))}
+                <Select.Item value="custom">Custom size</Select.Item>
+              </Select.Content>
+            </Select.Root>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="w-10 shrink-0 text-xs text-text-dim">Custom</span>
+            <Input
+              type="number"
+              size="sm"
+              aria-label="Background width in pixels"
+              min={1}
+              max={MAX_FRAME_PX}
+              value={background.width}
+              onChange={(e) => {
+                const px = Number(e.target.value);
+                if (Number.isNaN(px)) return;
+                setBackground({ ...background, width: clampFramePx(px) });
+              }}
+              className="min-w-0 flex-1"
+            />
+            <span className="shrink-0 text-xs text-text-dim">x</span>
+            <Input
+              type="number"
+              size="sm"
+              aria-label="Background height in pixels"
+              min={1}
+              max={MAX_FRAME_PX}
+              value={background.height}
+              onChange={(e) => {
+                const px = Number(e.target.value);
+                if (Number.isNaN(px)) return;
+                setBackground({ ...background, height: clampFramePx(px) });
+              }}
+              className="min-w-0 flex-1"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="w-10 shrink-0 text-xs text-text-dim">Margin</span>
+            <input
+              type="range"
+              aria-label="Background margin"
+              min={0}
+              max={MAX_BACKGROUND_MARGIN_PCT}
+              step={1}
+              value={background.marginPct}
+              onChange={(e) => setBackground({ ...background, marginPct: Number(e.target.value) })}
+              className="h-1 w-full cursor-pointer accent-(--color-accent)"
+            />
+            <Input
+              type="number"
+              size="sm"
+              aria-label="Background margin in percent"
+              min={0}
+              max={MAX_BACKGROUND_MARGIN_PCT}
+              value={background.marginPct}
+              onChange={(e) => {
+                const pct = Number(e.target.value);
+                if (Number.isNaN(pct)) return;
+                setBackground({
+                  ...background,
+                  marginPct: Math.min(Math.max(0, Math.round(pct)), MAX_BACKGROUND_MARGIN_PCT)
+                });
+              }}
+              className="w-14 shrink-0"
+            />
+            <span className="shrink-0 text-xs text-text-dim">%</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Vertical tool rail on the left edge of the editor stage. */
 export function EditorToolbar(): JSX.Element {
   const tool = useCaptureEditorStore((s) => s.tool);
   const setTool = useCaptureEditorStore((s) => s.setTool);
   const cornerRadius = useCaptureEditorStore((s) => s.cornerRadius);
   const setCornerRadius = useCaptureEditorStore((s) => s.setCornerRadius);
+  const hasBackground = useCaptureEditorStore((s) => s.background !== null);
   const unit = useCaptureEditorStore((s) => s.unit);
   const canUndo = useCaptureEditorStore((s) => s.past.length > 0);
   const canRedo = useCaptureEditorStore((s) => s.future.length > 0);
@@ -144,6 +315,17 @@ export function EditorToolbar(): JSX.Element {
               />
               <span className="shrink-0 text-xs text-text-dim">px</span>
             </div>
+          </Popover.Content>
+        </Popover.Root>
+
+        <Popover.Root>
+          <RailTooltip label="Background">
+            <Popover.Trigger aria-label="Background" className={railButtonClass(hasBackground)}>
+              <Wallpaper size={16} strokeWidth={1.75} />
+            </Popover.Trigger>
+          </RailTooltip>
+          <Popover.Content side="right" align="start" className="w-72">
+            <BackgroundControls />
           </Popover.Content>
         </Popover.Root>
 

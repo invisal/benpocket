@@ -4,10 +4,13 @@ import { cn } from 'cnfast';
 import { nextLabelValue, useCaptureEditorStore } from '../store/editor.store';
 import { Check, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
+import { cssGradient, findWallpaperPreset } from '@shared/wallpaper-presets';
 import {
+  BACKGROUND_SHADOW,
   CHIP_BG,
   arrowHeadLength,
   arrowHeadPoints,
+  backgroundInnerRect,
   chipMetrics,
   clampRectToImage,
   labelTextColor,
@@ -147,6 +150,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   const editingId = useCaptureEditorStore((s) => s.editingId);
   const cornerRadius = useCaptureEditorStore((s) => s.cornerRadius);
   const crop = useCaptureEditorStore((s) => s.crop);
+  const background = useCaptureEditorStore((s) => s.background);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -164,10 +168,28 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   /** The crop selection shown by the crop tool: mid-drag rect, else the applied crop. */
   const pendingCrop = tool === 'crop' ? (cropRect ?? crop) : null;
 
+  // The crop tool needs the bare full image, so the frame preview turns off there.
+  const frame = tool !== 'crop' ? background : null;
+  /** Where the image sits inside the frame, in frame px — same math as the export. */
+  const inner =
+    frame && view.width > 0
+      ? backgroundInnerRect(frame.width, frame.height, view.width, view.height, frame.marginPct)
+      : null;
+  /** Displayed px per frame px: the frame fit-scales into the container (frames are virtual, so upscaling is fine to cap at 1:1). */
+  const frameFit =
+    frame && containerSize.width > 0
+      ? Math.min(containerSize.width / frame.width, containerSize.height / frame.height, 1)
+      : 0;
+
   // Fit the stage inside the container preserving aspect ratio, never
   // upscaling past native resolution (matches the old object-contain img).
-  const fitScale =
-    view.width > 0 && containerSize.width > 0
+  // With a background frame, the stage instead fills the frame's inner rect
+  // so the preview shows the exact export composition.
+  const fitScale = inner
+    ? frameFit > 0
+      ? (inner.width * frameFit) / view.width
+      : 0
+    : view.width > 0 && containerSize.width > 0
       ? Math.min(containerSize.width / view.width, containerSize.height / view.height, 1)
       : 0;
   const stageWidth = view.width * fitScale;
@@ -737,102 +759,133 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   }
 
   const sized = stageWidth > 0;
+  /** Non-null when the gradient frame is shown around the stage (narrowed refs for JSX below). */
+  const framed = frame && inner && frameFit > 0 && sized ? { frame, inner } : null;
+  /** Preview shadow mirrors the export's BACKGROUND_SHADOW, scaled to displayed frame px. */
+  const shadowScale = framed
+    ? (framed.frame.width * frameFit) / BACKGROUND_SHADOW.referenceWidth
+    : 0;
+
+  const stage = (
+    <div
+      ref={stageRef}
+      onPointerDown={handleStagePointerDown}
+      className={cn(
+        'relative select-none',
+        !sized && 'max-h-full max-w-full',
+        tool !== 'select' && 'cursor-crosshair'
+      )}
+      style={{
+        width: sized ? stageWidth : undefined,
+        height: sized ? stageHeight : undefined,
+        borderRadius: cornerRadius * scale,
+        overflow: 'hidden',
+        boxShadow: framed
+          ? `0 ${BACKGROUND_SHADOW.offsetY * shadowScale}px ${BACKGROUND_SHADOW.blur * shadowScale}px rgba(0, 0, 0, ${BACKGROUND_SHADOW.alpha})`
+          : undefined
+      }}
+    >
+      {/* Full image plus overlays, shifted so the viewport shows the crop. */}
+      <div
+        className={sized ? 'absolute' : undefined}
+        style={
+          sized
+            ? {
+                left: -view.x * scale,
+                top: -view.y * scale,
+                width: imageWidth * scale,
+                height: imageHeight * scale
+              }
+            : undefined
+        }
+      >
+        <img
+          src={dataUrl}
+          alt="Captured screenshot"
+          draggable={false}
+          className={cn('block', sized ? 'h-full w-full' : 'max-h-full max-w-full')}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (store.getState().imageWidth !== img.naturalWidth) {
+              store.getState().init(img.naturalWidth, img.naturalHeight);
+            }
+          }}
+        />
+
+        {sized && (
+          <div className="absolute inset-0">
+            {annotations.filter((a) => !a.hidden).map(renderAnnotation)}
+            {draft && renderDraft(draft)}
+
+            {pendingCrop && (
+              <div
+                onPointerDown={startCropAdjust('move')}
+                className="absolute z-20 cursor-move"
+                style={{
+                  left: pendingCrop.x * scale,
+                  top: pendingCrop.y * scale,
+                  width: pendingCrop.width * scale,
+                  height: pendingCrop.height * scale,
+                  // Dims everything outside the selection; the stage's
+                  // overflow-hidden clips the giant shadow to the image.
+                  boxShadow: '0 0 0 100000px rgba(0, 0, 0, 0.55)'
+                }}
+              >
+                <div className="pointer-events-none absolute -inset-px border border-dashed border-accent" />
+                {CORNERS.map((corner) => (
+                  <div
+                    key={corner}
+                    onPointerDown={startCropAdjust(corner)}
+                    className={cn(
+                      'absolute h-3 w-3 rounded-full border-2 border-accent bg-surface',
+                      CORNER_CLASSES[corner]
+                    )}
+                  />
+                ))}
+                <div
+                  className="absolute bottom-1 right-1 flex gap-1"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <Button variant="secondary" size="sm" onClick={cancelCrop}>
+                    <X size={14} />
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => applyCropRect(pendingCrop)}>
+                    <Check size={14} />
+                    Crop
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div
       ref={containerRef}
       className="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
     >
-      <div
-        ref={stageRef}
-        onPointerDown={handleStagePointerDown}
-        className={cn(
-          'relative select-none',
-          !sized && 'max-h-full max-w-full',
-          tool !== 'select' && 'cursor-crosshair'
-        )}
-        style={{
-          width: sized ? stageWidth : undefined,
-          height: sized ? stageHeight : undefined,
-          borderRadius: cornerRadius * scale,
-          overflow: 'hidden'
-        }}
-      >
-        {/* Full image plus overlays, shifted so the viewport shows the crop. */}
+      {framed ? (
         <div
-          className={sized ? 'absolute' : undefined}
-          style={
-            sized
-              ? {
-                  left: -view.x * scale,
-                  top: -view.y * scale,
-                  width: imageWidth * scale,
-                  height: imageHeight * scale
-                }
-              : undefined
-          }
+          className="relative"
+          style={{
+            width: framed.frame.width * frameFit,
+            height: framed.frame.height * frameFit,
+            background: cssGradient(findWallpaperPreset(framed.frame.wallpaper))
+          }}
         >
-          <img
-            src={dataUrl}
-            alt="Captured screenshot"
-            draggable={false}
-            className={cn('block', sized ? 'h-full w-full' : 'max-h-full max-w-full')}
-            onLoad={(e) => {
-              const img = e.currentTarget;
-              if (store.getState().imageWidth !== img.naturalWidth) {
-                store.getState().init(img.naturalWidth, img.naturalHeight);
-              }
-            }}
-          />
-
-          {sized && (
-            <div className="absolute inset-0">
-              {annotations.filter((a) => !a.hidden).map(renderAnnotation)}
-              {draft && renderDraft(draft)}
-
-              {pendingCrop && (
-                <div
-                  onPointerDown={startCropAdjust('move')}
-                  className="absolute z-20 cursor-move"
-                  style={{
-                    left: pendingCrop.x * scale,
-                    top: pendingCrop.y * scale,
-                    width: pendingCrop.width * scale,
-                    height: pendingCrop.height * scale,
-                    // Dims everything outside the selection; the stage's
-                    // overflow-hidden clips the giant shadow to the image.
-                    boxShadow: '0 0 0 100000px rgba(0, 0, 0, 0.55)'
-                  }}
-                >
-                  <div className="pointer-events-none absolute -inset-px border border-dashed border-accent" />
-                  {CORNERS.map((corner) => (
-                    <div
-                      key={corner}
-                      onPointerDown={startCropAdjust(corner)}
-                      className={cn(
-                        'absolute h-3 w-3 rounded-full border-2 border-accent bg-surface',
-                        CORNER_CLASSES[corner]
-                      )}
-                    />
-                  ))}
-                  <div
-                    className="absolute bottom-1 right-1 flex gap-1"
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    <Button variant="secondary" size="sm" onClick={cancelCrop}>
-                      <X size={14} />
-                    </Button>
-                    <Button variant="primary" size="sm" onClick={() => applyCropRect(pendingCrop)}>
-                      <Check size={14} />
-                      Crop
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <div
+            className="absolute"
+            style={{ left: framed.inner.x * frameFit, top: framed.inner.y * frameFit }}
+          >
+            {stage}
+          </div>
         </div>
-      </div>
+      ) : (
+        stage
+      )}
     </div>
   );
 }

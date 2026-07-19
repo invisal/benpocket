@@ -1,6 +1,17 @@
 export type EditorTool =
   'select' | 'text' | 'label' | 'rect' | 'circle' | 'arrow' | 'blur' | 'crop';
 
+/** Background frame the (cropped, annotated) capture is composited onto at export. Null = off. */
+export interface BackgroundConfig {
+  /** WALLPAPER_PRESETS gradient id. */
+  wallpaper: string;
+  /** Output frame size in px. */
+  width: number;
+  height: number;
+  /** Margin around the capture as % of the shorter frame side. */
+  marginPct: number;
+}
+
 interface AnnotationBase {
   id: string;
   /** Custom layer name; falls back to a kind-based default in the panel. */

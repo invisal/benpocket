@@ -1,5 +1,7 @@
+import { findWallpaperPreset } from '@shared/wallpaper-presets';
 import type {
   ArrowAnnotation,
+  BackgroundConfig,
   BlurAnnotation,
   CaptureAnnotation,
   ChipAnnotation,
@@ -137,6 +139,121 @@ export function clampRectToImage(rect: Rect, imageWidth: number, imageHeight: nu
   return { x, y, width: right - x, height: bottom - y };
 }
 
+/**
+ * Where the capture sits inside a background frame: contain-fit into the
+ * frame inset by `marginPct` (% of the shorter frame side), centered. Same
+ * behavior as the screen-recorder's computeInnerRect, so a small capture
+ * scales up to fill the frame. Shared by the live preview and the export.
+ */
+export function backgroundInnerRect(
+  frameWidth: number,
+  frameHeight: number,
+  imageWidth: number,
+  imageHeight: number,
+  marginPct: number
+): Rect {
+  const margin = (marginPct / 100) * Math.min(frameWidth, frameHeight);
+  const availWidth = Math.max(1, frameWidth - margin * 2);
+  const availHeight = Math.max(1, frameHeight - margin * 2);
+  const aspect = imageWidth / imageHeight;
+  const wide = aspect > availWidth / availHeight;
+  const width = wide ? availWidth : availHeight * aspect;
+  const height = wide ? availWidth / aspect : availHeight;
+  return {
+    x: Math.round((frameWidth - width) / 2),
+    y: Math.round((frameHeight - height) / 2),
+    width: Math.round(width),
+    height: Math.round(height)
+  };
+}
+
+/**
+ * Fills the canvas with a wallpaper preset's linear gradient, converting the
+ * CSS angle convention (0deg = to top, clockwise) that cssGradient() uses for
+ * the live preview — mirrors main/screen-recorder/export/frame-compositor.ts.
+ */
+function fillWallpaper(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  wallpaperId: string
+): void {
+  const preset = findWallpaperPreset(wallpaperId);
+  const angleRad = (preset.angleDeg * Math.PI) / 180;
+  const dx = Math.sin(angleRad);
+  const dy = -Math.cos(angleRad);
+  const len = Math.max(width, height);
+  const gradient = ctx.createLinearGradient(
+    width / 2 - (dx * len) / 2,
+    height / 2 - (dy * len) / 2,
+    width / 2 + (dx * len) / 2,
+    height / 2 + (dy * len) / 2
+  );
+  preset.colors.forEach((color, i) =>
+    gradient.addColorStop(i / Math.max(1, preset.colors.length - 1), color)
+  );
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+/** Shadow strength behind the framed capture — the screen-recorder's default intensity (40). */
+export const BACKGROUND_SHADOW = {
+  alpha: 0.33,
+  blur: 28,
+  offsetY: 12,
+  /** blur/offsetY are px at this frame width; scale linearly for other sizes. */
+  referenceWidth: 1920
+};
+
+/**
+ * Composites the flattened capture onto a gradient frame. The corner radius
+ * (in capture px) is applied to the inset image here — scaled by the fit
+ * ratio — instead of on the capture canvas, so the clip edge stays crisp.
+ */
+function composeBackground(
+  content: HTMLCanvasElement,
+  cornerRadius: number,
+  background: BackgroundConfig
+): HTMLCanvasElement {
+  const frame = document.createElement('canvas');
+  frame.width = Math.max(1, Math.round(background.width));
+  frame.height = Math.max(1, Math.round(background.height));
+  const ctx = frame.getContext('2d');
+  if (!ctx) return content;
+
+  fillWallpaper(ctx, frame.width, frame.height, background.wallpaper);
+
+  const inner = backgroundInnerRect(
+    frame.width,
+    frame.height,
+    content.width,
+    content.height,
+    background.marginPct
+  );
+  const radius = cornerRadius * (inner.width / content.width);
+
+  // Soft drop shadow so the capture doesn't look pasted on. Opaque black
+  // fill under the image, like the recorder's drawContentShadow.
+  const shadowScale = frame.width / BACKGROUND_SHADOW.referenceWidth;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(inner.x, inner.y, inner.width, inner.height, radius);
+  ctx.shadowColor = `rgba(0, 0, 0, ${BACKGROUND_SHADOW.alpha})`;
+  ctx.shadowBlur = BACKGROUND_SHADOW.blur * shadowScale;
+  ctx.shadowOffsetY = BACKGROUND_SHADOW.offsetY * shadowScale;
+  ctx.fillStyle = '#000000';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(inner.x, inner.y, inner.width, inner.height, radius);
+  ctx.clip();
+  ctx.drawImage(content, inner.x, inner.y, inner.width, inner.height);
+  ctx.restore();
+  return frame;
+}
+
 // The editor previews regions with CSS `backdrop-filter: blur()` and this
 // bakes them with `ctx.filter = 'blur()'` — the same Chromium Gaussian — so
 // both read the pixel radius from the annotation to look identical.
@@ -259,17 +376,20 @@ function drawText(ctx: CanvasRenderingContext2D, text: TextAnnotation): void {
 }
 
 /**
- * Bakes the crop, annotations, and the corner-radius clip into a new PNG blob
- * at the source image's native resolution. Returns the original blob
- * untouched when there is nothing to bake.
+ * Bakes the crop, annotations, the corner-radius clip, and the optional
+ * background frame into a new PNG blob. Without a background the output is
+ * the source image's native (cropped) resolution; with one it is the frame's
+ * width x height. Returns the original blob untouched when there is nothing
+ * to bake.
  */
 export async function flattenImage(
   blob: Blob,
   annotations: CaptureAnnotation[],
   cornerRadius: number,
-  crop: Rect | null = null
+  crop: Rect | null = null,
+  background: BackgroundConfig | null = null
 ): Promise<Blob> {
-  if (annotations.length === 0 && cornerRadius <= 0 && !crop) return blob;
+  if (annotations.length === 0 && cornerRadius <= 0 && !crop && !background) return blob;
 
   const bitmap = await createImageBitmap(blob);
   const ox = crop ? Math.round(crop.x) : 0;
@@ -283,7 +403,10 @@ export async function flattenImage(
     return blob;
   }
 
-  if (cornerRadius > 0) {
+  // With a background, composeBackground applies the radius clip when
+  // insetting the image into the frame instead — clipping here too would
+  // double-round the (scaled) corners.
+  if (cornerRadius > 0 && !background) {
     ctx.beginPath();
     ctx.roundRect(0, 0, canvas.width, canvas.height, cornerRadius);
     ctx.clip();
@@ -312,8 +435,9 @@ export async function flattenImage(
     ctx.restore();
   }
 
+  const output = background ? composeBackground(canvas, cornerRadius, background) : canvas;
   return new Promise((resolve, reject) => {
-    canvas.toBlob(
+    output.toBlob(
       (result) => (result ? resolve(result) : reject(new Error('Could not encode PNG.'))),
       'image/png'
     );

@@ -9,7 +9,7 @@ import { getSegmentOutputDurationMs, outputMsToSourceMs } from '../lib/segment-d
 import { CLIP_ROW_HEIGHT_PX } from '../lib/assign-lanes';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
-import { useZoomStore } from '../../zoom/store/zoom-store';
+import { useZoomStore, findKeyframeContaining } from '../../zoom/store/zoom-store';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
 import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
@@ -168,6 +168,7 @@ export function CutTimeline(): JSX.Element {
   // keyframe at the cursor instead of splitting; ZoomTrack (rendered below)
   // gets the hovered position as a prop and draws its own ghost preview.
   const isZoomToolActive = useTimelineStore((s) => s.isZoomToolActive);
+  const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
   const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
@@ -321,6 +322,11 @@ export function CutTimeline(): JSX.Element {
   // `splitFromClientX`, just mapped to a *source*-ms position (zoom
   // keyframes are authored against the source recording, not the output
   // timeline -- see PillTrack.tsx) instead of handed to `splitAt` directly.
+  // No-ops over a stretch that already has a keyframe -- ZoomTrack hides
+  // its ghost there for the same reason (see ZoomTrack.tsx): a click
+  // wouldn't add one *here*, it'd silently snap in right after the
+  // existing one (clampToNonOverlapping, zoom-store.ts), which isn't what
+  // a click on an already-covered stretch should do.
   const placeZoomKeyframeFromClientX = useCallback(
     (clientX: number) => {
       const el = trackAreaRef.current;
@@ -329,11 +335,19 @@ export function CutTimeline(): JSX.Element {
       const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
       const sourceMs = outputMsToSourceMs(segments, fraction * clampedTotal);
       if (sourceMs === null) return;
+      if (findKeyframeContaining(zoomKeyframes, sourceMs)) return;
       const id = addZoomKeyframe(sourceMs);
       setSelectedZoomKeyframeId(id);
       setActiveTool('zoom');
     },
-    [segments, clampedTotal, addZoomKeyframe, setSelectedZoomKeyframeId, setActiveTool]
+    [
+      segments,
+      clampedTotal,
+      zoomKeyframes,
+      addZoomKeyframe,
+      setSelectedZoomKeyframeId,
+      setActiveTool
+    ]
   );
 
   const handlePlayheadDragMove = useCallback(

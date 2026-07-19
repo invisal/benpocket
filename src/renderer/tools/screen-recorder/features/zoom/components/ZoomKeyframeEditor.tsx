@@ -2,6 +2,7 @@ import type { JSX, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import { Crosshair, Plus, Trash2 } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
+import { ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
 import { useZoomStore } from '../store/zoom-store';
 import { Slider } from '../../../components/ui/slider';
 import { Button } from '@renderer/components/ui/Button';
@@ -15,10 +16,6 @@ function formatTime(ms: number): string {
 }
 
 const EASINGS: ZoomKeyframe['easing'][] = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
-// Also used by ZoomTrack's edge-resize handles, so a keyframe's duration
-// stays within the same bounds whether it's dragged there or on this slider.
-export const MIN_DURATION_MS = 200;
-export const MAX_DURATION_MS = 10000;
 // zoom-resolve.ts clamps this to half of a keyframe's own duration, so a
 // short keyframe degrades to a plain ease-in-then-out rather than clipping.
 export const MIN_HOLD_TRANSITION_MS = 50;
@@ -214,8 +211,8 @@ function KeyframeDetailPanel({
         >
           <Slider
             value={kf.durationMs}
-            min={MIN_DURATION_MS}
-            max={MAX_DURATION_MS}
+            min={ZOOM_MIN_DURATION_MS}
+            max={ZOOM_MAX_DURATION_MS}
             step={50}
             onChange={(durationMs) => updateKeyframe(kf.id, { durationMs })}
           />

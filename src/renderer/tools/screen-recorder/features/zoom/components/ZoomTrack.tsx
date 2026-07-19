@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { Mouse, Target, ZoomIn } from 'lucide-react';
-import { DEFAULT_ZOOM_DEPTH } from '@shared/constants';
+import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
@@ -8,8 +8,7 @@ import {
   getSegmentOutputDurationMs,
   sourceRangeToOutputPercent
 } from '../../timeline/lib/segment-duration';
-import { useZoomStore } from '../store/zoom-store';
-import { MIN_DURATION_MS, MAX_DURATION_MS } from './ZoomKeyframeEditor';
+import { useZoomStore, findKeyframeContaining } from '../store/zoom-store';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -54,8 +53,16 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
   const selectedKeyframeId = useZoomStore((s) => s.selectedKeyframeId);
   const setSelectedKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
 
-  const ghostPercent =
+  // No ghost over a stretch that already has a keyframe -- a click there
+  // wouldn't add one *here* anyway (it'd snap in right after the existing
+  // one, see clampToNonOverlapping in zoom-store.ts), so showing the
+  // preview at the cursor's exact position would be misleading.
+  const previewOnExistingKeyframe =
     previewAtSourceMs !== null
+      ? findKeyframeContaining(keyframes, previewAtSourceMs) !== null
+      : false;
+  const ghostPercent =
+    previewAtSourceMs !== null && !previewOnExistingKeyframe
       ? sourceRangeToOutputPercent(
           segments,
           segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0),
@@ -140,15 +147,15 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
         onMove={(kf, atMs) => updateKeyframe(kf.id, { atMs })}
         onResizeStart={(kf, newAtMs) => {
           const endMs = kf.atMs + kf.durationMs;
-          const clampedAtMs = Math.min(newAtMs, endMs - MIN_DURATION_MS);
+          const clampedAtMs = Math.min(newAtMs, endMs - ZOOM_MIN_DURATION_MS);
           updateKeyframe(kf.id, {
             atMs: clampedAtMs,
-            durationMs: clamp(endMs - clampedAtMs, MIN_DURATION_MS, MAX_DURATION_MS)
+            durationMs: clamp(endMs - clampedAtMs, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS)
           });
         }}
         onResizeEnd={(kf, newEndMs) => {
           updateKeyframe(kf.id, {
-            durationMs: clamp(newEndMs - kf.atMs, MIN_DURATION_MS, MAX_DURATION_MS)
+            durationMs: clamp(newEndMs - kf.atMs, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS)
           });
         }}
         onDelete={(kf) => removeKeyframe(kf.id)}

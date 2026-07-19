@@ -10,6 +10,7 @@ import { ScreenRecordingPermissionBanner } from '@screen-recorder/features/recor
 import { SourcePickerPanels } from './components/SourcePicker';
 import { CaptureEditor } from './components/CaptureEditor';
 import { EditorToolbar } from './components/EditorToolbar';
+import { LayerPanel } from './components/LayerPanel';
 import { useCaptureEditorStore } from './store/editor.store';
 import { flattenImage } from './lib/flatten';
 import { useCaptureSources, type SourceTab } from './lib/use-capture-sources';
@@ -347,6 +348,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
             <div className="flex min-h-0 flex-1 gap-3">
               <EditorToolbar />
               <CaptureEditor dataUrl={previewDataUrl} onCropped={handleCropped} />
+              <LayerPanel />
             </div>
           )}
         </div>

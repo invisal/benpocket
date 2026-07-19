@@ -221,12 +221,14 @@ export async function flattenImage(
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
 
-  // Blur first (it samples the untouched screenshot), shapes on top.
+  // Draw in array order (last = topmost layer). A blur layer samples the
+  // canvas as painted so far, so it also blurs annotations stacked below it
+  // — the same stacking semantics as the CSS backdrop-filter preview.
   const blurPx = BLUR_RADIUS_UNITS * imageUnit(bitmap.width);
-  for (const a of annotations) if (a.kind === 'blur') drawBlur(ctx, canvas, a, blurPx);
   for (const a of annotations) {
     ctx.save();
-    if (a.kind === 'rect') drawRect(ctx, a);
+    if (a.kind === 'blur') drawBlur(ctx, canvas, a, blurPx);
+    else if (a.kind === 'rect') drawRect(ctx, a);
     else if (a.kind === 'arrow') drawArrow(ctx, a);
     else if (a.kind === 'label') drawLabel(ctx, a);
     else if (a.kind === 'text') drawText(ctx, a);

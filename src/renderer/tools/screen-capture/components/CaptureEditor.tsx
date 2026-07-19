@@ -473,8 +473,7 @@ export function CaptureEditor({ dataUrl, onCropped }: CaptureEditorProps): JSX.E
           )}
           className={cn(
             'absolute',
-            interactive ? 'pointer-events-auto cursor-move' : 'pointer-events-none',
-            isSelected && 'z-10'
+            interactive ? 'pointer-events-auto cursor-move' : 'pointer-events-none'
           )}
           style={{
             left: annotation.x * scale,

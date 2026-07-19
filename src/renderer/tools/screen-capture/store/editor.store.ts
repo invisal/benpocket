@@ -59,6 +59,8 @@ interface EditorState {
   patchAnnotation: (id: string, patch: Partial<CaptureAnnotation>) => void;
   /** Not undo-tracked — for continuous updates inside a begin/endGesture pair. */
   moveAnnotation: (id: string, patch: Partial<CaptureAnnotation>) => void;
+  /** Move an annotation to a new stacking position (last = topmost). */
+  moveLayer: (id: string, toIndex: number) => void;
   removeAnnotation: (id: string) => void;
   /** Untracked removal — for discarding an empty text annotation whose creation entry already restores this exact state. */
   discardAnnotation: (id: string) => void;
@@ -185,6 +187,13 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
   moveAnnotation: (id, patch) =>
     set((state) => ({ annotations: applyPatch(state.annotations, id, patch) })),
 
+  moveLayer: (id, toIndex) =>
+    set((state) => {
+      const next = reorderById(state.annotations, id, toIndex);
+      if (next === state.annotations) return state;
+      return { ...pushPast(state), annotations: next, selectedId: id };
+    }),
+
   removeAnnotation: (id) =>
     set((state) => ({
       ...pushPast(state),
@@ -264,4 +273,15 @@ export const useCaptureEditorStore = create<EditorState>((set, get) => ({
 /** Next auto-increment value for a numbered label badge. */
 export function nextLabelValue(annotations: CaptureAnnotation[]): number {
   return annotations.reduce((max, a) => (a.kind === 'label' ? Math.max(max, a.value) : max), 0) + 1;
+}
+
+/** Moves the item with `id` so it ends up at `toIndex` in the result. Returns the input array when nothing changes. */
+export function reorderById<T extends { id: string }>(list: T[], id: string, toIndex: number): T[] {
+  const from = list.findIndex((item) => item.id === id);
+  const to = Math.max(0, Math.min(toIndex, list.length - 1));
+  if (from < 0 || to === from) return list;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
 }

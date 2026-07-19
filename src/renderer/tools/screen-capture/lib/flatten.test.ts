@@ -7,7 +7,7 @@ import {
   normalizeRect,
   resizeRect
 } from './flatten';
-import { nextLabelValue } from '../store/editor.store';
+import { nextLabelValue, reorderById } from '../store/editor.store';
 import type { CaptureAnnotation } from '../types/editor';
 
 describe('normalizeRect', () => {
@@ -71,6 +71,22 @@ describe('arrowHeadPoints', () => {
     // Wing tips are exactly headLength away from the arrow tip.
     expect(Math.hypot(head.hx1 - 100, head.hy1)).toBeCloseTo(16);
     expect(Math.hypot(head.hx2 - 100, head.hy2)).toBeCloseTo(16);
+  });
+});
+
+describe('reorderById', () => {
+  const list = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+  const ids = (l: { id: string }[]): string => l.map((x) => x.id).join('');
+
+  it('moves an item up and down to its exact final index', () => {
+    expect(ids(reorderById(list, 'a', 2))).toBe('bcad');
+    expect(ids(reorderById(list, 'd', 0))).toBe('dabc');
+  });
+
+  it('clamps out-of-range targets and returns the same array for no-ops', () => {
+    expect(ids(reorderById(list, 'a', 99))).toBe('bcda');
+    expect(reorderById(list, 'b', 1)).toBe(list);
+    expect(reorderById(list, 'missing', 0)).toBe(list);
   });
 });
 

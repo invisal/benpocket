@@ -46,7 +46,7 @@ export function KubeTable<T>({
   const handleSort = useCallback(
     (colKey: string) => {
       const col = columns.find((c) => c.key === colKey);
-      if (col?.sortable === false) return;
+      if (col?.sortable === false || col?.resizable === false) return;
 
       if (sortCol === colKey) {
         if (sortDir === 'asc') {

@@ -45,7 +45,7 @@ export function KubeTableHeader<T>({
                 : 'text-left';
           const canResize = isColResizable(col.key);
           const colWidth = colWidths[col.key];
-          const isSortable = col.sortable !== false;
+          const isSortable = col.sortable !== false && col.resizable !== false;
           const isSorted = sortCol === col.key;
 
           return (

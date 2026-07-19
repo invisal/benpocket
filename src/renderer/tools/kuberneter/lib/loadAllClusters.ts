@@ -4,16 +4,14 @@ export interface AvailableCluster {
 }
 
 /**
- * Loads unique Kubernetes contexts across all configured Kubeconfig paths.
+ * Loads unique Kubernetes contexts across user-added Kubeconfig paths.
  */
 export async function loadAllClusters(kubeconfigs: string[]): Promise<AvailableCluster[]> {
-  const allPaths = ['default', ...kubeconfigs];
   const results: AvailableCluster[] = [];
 
-  for (const path of allPaths) {
+  for (const path of kubeconfigs) {
     try {
-      const pathArg = path === 'default' ? undefined : path;
-      const contexts = await window.kuberneter.listContexts(pathArg);
+      const contexts = await window.kuberneter.listContexts(path);
       if (contexts && Array.isArray(contexts)) {
         for (const ctx of contexts) {
           if (ctx && ctx.name) {

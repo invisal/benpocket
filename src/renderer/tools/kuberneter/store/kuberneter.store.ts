@@ -141,7 +141,7 @@ export const useKuberneterStore = create<KuberneterState>()(
           },
           kuberneterInstanceConfigPath: {
             ...state.kuberneterInstanceConfigPath,
-            [instanceId]: context?.configPath || 'default'
+            [instanceId]: context?.configPath || ''
           },
           kuberneterInstanceNamespace: {
             ...state.kuberneterInstanceNamespace,

@@ -1,5 +1,9 @@
 import { fixWebmDuration } from '@fix-webm-duration/fix';
-import type { AudioInputOptions, CaptureSource } from '@screen-recorder/types/recording';
+import type {
+  AudioInputOptions,
+  CaptureSource,
+  WebcamOptions
+} from '@screen-recorder/types/recording';
 import type { CaptureRegionSelection } from '@shared/capture-region';
 
 // Electron's desktop capture constraints (`chromeMediaSource`, `mandatory`)
@@ -39,6 +43,22 @@ export interface CaptureRequest {
    * than a getUserMedia constraint.
    */
   cropRegion?: CaptureRegionSelection;
+  /**
+   * When `enabled`, a second camera stream is opened and recorded in its own
+   * parallel `MediaRecorder` (see `startWebcamRecorder`) -- a fully separate
+   * file rather than baked into `stream` above, so position/size/shape stay
+   * editable after the fact (see `types/recording.ts`'s `WebcamOptions` doc).
+   */
+  webcam?: WebcamOptions;
+}
+
+export interface StopResult {
+  /** The desktop (+ mixed audio) recording. */
+  blob: Blob;
+  /** The parallel webcam recording, if `CaptureRequest.webcam` was enabled. */
+  webcamBlob: Blob | null;
+  /** `Date.now()` when the webcam `MediaRecorder` actually started -- see `CaptureHandle.startedAt` for why this matters, and `webcamOffsetMs` in useRecordingController.ts for how callers use the gap between the two. */
+  webcamStartedAt: number | null;
 }
 
 export interface CaptureHandle {
@@ -46,8 +66,8 @@ export interface CaptureHandle {
   stream: MediaStream;
   /** `Date.now()` at the exact moment the recorder started -- the true t=0 of the output file's timeline, for anything (cursor tracking) that needs to line up samples against it. */
   startedAt: number;
-  /** Stops all tracks and the recorder, resolving with the final recording. */
-  stop: () => Promise<Blob>;
+  /** Stops all tracks and both recorders, resolving with the final recording(s). */
+  stop: () => Promise<StopResult>;
 }
 
 function pickSupportedMimeType(): string {
@@ -120,6 +140,61 @@ async function getMicrophoneStream(deviceId?: string): Promise<MediaStream> {
   return navigator.mediaDevices.getUserMedia({
     audio: deviceId ? { deviceId: { exact: deviceId } } : true
   });
+}
+
+async function getCameraStream(deviceId?: string): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({
+    video: deviceId ? { deviceId: { exact: deviceId } } : true
+  });
+}
+
+interface WebcamRecorder {
+  startedAt: number;
+  stream: MediaStream;
+  stop: () => Promise<Blob>;
+}
+
+/**
+ * Records the camera to its own file via a second `MediaRecorder`, entirely
+ * independent of the desktop recorder started alongside it in `startCapture`
+ * -- see `CaptureRequest.webcam`'s doc for why this is a parallel file
+ * rather than composited into the same stream.
+ */
+function startWebcamRecorder(stream: MediaStream): WebcamRecorder {
+  const recorder = new MediaRecorder(stream, {
+    mimeType: pickSupportedMimeType(),
+    videoBitsPerSecond: 2_500_000
+  });
+  const chunks: BlobPart[] = [];
+  recorder.ondataavailable = (event): void => {
+    if (event.data.size > 0) chunks.push(event.data);
+  };
+  const recorderStopped = new Promise<Blob>((resolve) => {
+    recorder.onstop = (): void => resolve(new Blob(chunks, { type: recorder.mimeType }));
+  });
+
+  const startedAt = Date.now();
+  recorder.start(250);
+
+  return {
+    startedAt,
+    stream,
+    stop: async (): Promise<Blob> => {
+      if (recorder.state !== 'inactive') recorder.stop();
+      const rawBlob = await recorderStopped;
+      const durationMs = Date.now() - startedAt;
+      stream.getTracks().forEach((track) => track.stop());
+      try {
+        return await fixWebmDuration(rawBlob, durationMs);
+      } catch (err) {
+        console.error(
+          '[capture-engine] failed to patch webcam webm duration, using raw blob:',
+          err
+        );
+        return rawBlob;
+      }
+    }
+  };
 }
 
 /** Mixes any number of audio tracks down to a single track via Web Audio. */
@@ -251,6 +326,18 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
     audioTracks.push(...micStream.getAudioTracks());
   }
 
+  // Opened before the desktop recorder starts (below) so it's ready to record
+  // the instant that one does -- minimizes the startedAt gap between the two
+  // files that useRecordingController.ts later needs to line them back up.
+  let cameraStream: MediaStream | null = null;
+  if (request.webcam?.enabled) {
+    try {
+      cameraStream = await getCameraStream(request.webcam.deviceId);
+    } catch (err) {
+      console.error('[capture-engine] failed to open camera, recording without webcam:', err);
+    }
+  }
+
   const finalStream = new MediaStream();
   videoStream.getVideoTracks().forEach((track) => finalStream.addTrack(track));
 
@@ -285,13 +372,17 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
 
   const startedAt = Date.now();
   recorder.start(250);
+  const webcamRecorder = cameraStream ? startWebcamRecorder(cameraStream) : null;
 
   return {
     stream: finalStream,
     startedAt,
-    stop: async (): Promise<Blob> => {
+    stop: async (): Promise<StopResult> => {
       if (recorder.state !== 'inactive') recorder.stop();
-      const rawBlob = await recorderStopped;
+      const [rawBlob, webcamBlob] = await Promise.all([
+        recorderStopped,
+        webcamRecorder?.stop() ?? Promise.resolve(null)
+      ]);
       const durationMs = Date.now() - startedAt;
 
       // Release every underlying device/track -- otherwise the OS keeps
@@ -308,12 +399,14 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
       // unscrubbable box even though the capture itself is fine. This patches
       // the correct duration into the file so it plays normally. See
       // https://github.com/yusitnikov/fix-webm-duration
+      let blob: Blob;
       try {
-        return await fixWebmDuration(rawBlob, durationMs);
+        blob = await fixWebmDuration(rawBlob, durationMs);
       } catch (err) {
         console.error('[capture-engine] failed to patch webm duration, using raw blob:', err);
-        return rawBlob;
+        blob = rawBlob;
       }
+      return { blob, webcamBlob, webcamStartedAt: webcamRecorder?.startedAt ?? null };
     }
   };
 }

@@ -72,6 +72,22 @@ export function resolveCropRect(
   };
 }
 
+/**
+ * Largest even-sided square centered in a `width x height` frame -- used to
+ * crop a typically-16:9 webcam feed down to the square the PiP shape (see
+ * frame-compositor.ts's `drawWebcamFrame`) is clipped from.
+ */
+export function centerSquareCrop(width: number, height: number): PixelCropRect {
+  const toEven = (n: number): number => Math.max(2, Math.floor(n / 2) * 2);
+  const side = toEven(Math.min(width, height));
+  return {
+    x: Math.floor((width - side) / 2),
+    y: Math.floor((height - side) / 2),
+    width: side,
+    height: side
+  };
+}
+
 export interface DecodeFramesOptions {
   sourcePath: string;
   trimRange: TimeRange;

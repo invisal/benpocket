@@ -12,6 +12,12 @@ interface LastRecording {
   cursorPath: CursorPathPoint[];
   /** Recorded real mousedown events (see click-tracker.ts), same convention as cursorPath. */
   clickPath: CursorPathPoint[];
+  /** Blob URL for the parallel webcam recording, if the webcam was enabled. Null otherwise, or if saving it failed. */
+  webcamPreviewUrl: string | null;
+  /** Absolute path to the saved webcam file, for export -- see capture-engine.ts's `CaptureRequest.webcam`. */
+  webcamFilePath: string | null;
+  /** `webcamStartedAt - startedAt` from capture-engine.ts's `StopResult` -- the webcam recorder's `MediaRecorder` starts a moment after the main one, so this is added to a main-timeline `atMs` to find the corresponding moment in the webcam file. */
+  webcamOffsetMs: number;
 }
 
 interface AppStoreState {

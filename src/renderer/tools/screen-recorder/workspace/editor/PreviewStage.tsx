@@ -107,6 +107,9 @@ export function PreviewStage({
   const cursorSmoothing = useCursorStore((s) => s.smoothing);
   const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
   const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
+  const webcamPreviewUrl = useAppStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
+  const webcamOffsetMs = useAppStore((s) => s.lastRecording?.webcamOffsetMs ?? 0);
+  const webcamVideoRef = useRef<HTMLVideoElement>(null);
   // Same smoothing pass the export compositor applies (see
   // FrameCompositor.create), so 'auto-cursor' zoom keyframes and the export
   // follow the identical (smoothed) trajectory.
@@ -333,6 +336,24 @@ export function PreviewStage({
         const activeSegment = segs.find((s) => s.id === activeSegmentIdRef.current);
         const targetRate = activeSegment?.speed ?? 1;
         if (active.playbackRate !== targetRate) active.playbackRate = targetRate;
+
+        // Free-running single element, not pre-buffered/dual-slotted like
+        // the main video above -- a cut re-seeks it directly, which can
+        // flicker briefly on this small PiP. Only correcting drift past
+        // 150ms (rather than every frame) keeps it from fighting its own
+        // playback with a seek on every tick.
+        const webcamVideo = webcamVideoRef.current;
+        if (webcamVideo && webcamPreviewUrl) {
+          const targetSec = Math.max(0, (sourceMs + webcamOffsetMs) / 1000);
+          if (Math.abs(webcamVideo.currentTime - targetSec) > 0.15) {
+            webcamVideo.currentTime = targetSec;
+          }
+          if (active.playbackRate !== webcamVideo.playbackRate) {
+            webcamVideo.playbackRate = active.playbackRate;
+          }
+          if (active.paused && !webcamVideo.paused) webcamVideo.pause();
+          else if (!active.paused && webcamVideo.paused) void webcamVideo.play();
+        }
       }
       rafId = requestAnimationFrame(tick);
     };
@@ -621,11 +642,11 @@ export function PreviewStage({
             </button>
           )}
 
-          {webcam.enabled && !cropToolActive && (
+          {webcam.enabled && webcamPreviewUrl && !cropToolActive && (
             <div
               onPointerDown={startWebcamDrag}
               className={cn(
-                'absolute flex cursor-grab items-center justify-center border border-white/10 bg-white/5 text-xs text-white/60 backdrop-blur active:cursor-grabbing',
+                'absolute cursor-grab overflow-hidden border border-white/10 bg-black/40 active:cursor-grabbing',
                 webcam.shape === 'circle' && 'rounded-full',
                 webcam.shape === 'rounded-square' && 'rounded-2xl',
                 webcam.shape === 'square' && 'rounded-none'
@@ -637,9 +658,14 @@ export function PreviewStage({
                 height: webcam.size
               }}
             >
-              <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Webcam
-              </span>
+              <video
+                ref={webcamVideoRef}
+                key={webcamPreviewUrl}
+                src={webcamPreviewUrl}
+                muted
+                playsInline
+                className={cn('h-full w-full object-cover', webcam.mirrored && 'scale-x-[-1]')}
+              />
             </div>
           )}
 

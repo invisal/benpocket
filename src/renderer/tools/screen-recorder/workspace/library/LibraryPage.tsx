@@ -40,7 +40,15 @@ export function LibraryPage(): JSX.Element {
         console.error('[library] failed to delete recording file:', err);
       }
     }
+    if (recording.webcamFilePath) {
+      try {
+        await window.screenRecorder.recording.deleteFile(recording.webcamFilePath);
+      } catch (err) {
+        console.error('[library] failed to delete webcam recording file:', err);
+      }
+    }
     URL.revokeObjectURL(recording.previewUrl);
+    if (recording.webcamPreviewUrl) URL.revokeObjectURL(recording.webcamPreviewUrl);
     clearLastRecording();
   }
 

@@ -195,32 +195,78 @@ function drawContentShadow(
   ctx.restore();
 }
 
+function traceWebcamShape(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  shape: WebcamOptions['shape']
+): void {
+  ctx.beginPath();
+  if (shape === 'circle') {
+    ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  } else if (shape === 'rounded-square') {
+    ctx.roundRect(x, y, size, size, size * 0.16);
+  } else {
+    ctx.rect(x, y, size, size);
+  }
+  ctx.closePath();
+}
+
+/** Empty-shape fallback: no webcam recording exists (or its file failed to probe/decode) for this frame, but the PiP is still enabled. */
 function drawWebcamPlaceholder(
   ctx: CanvasRenderingContext2D,
   outputWidth: number,
   webcam: WebcamOptions
 ): void {
-  if (!webcam.enabled) return;
   const scale = outputWidth / REFERENCE_CANVAS_WIDTH;
   const x = webcam.position.x * scale;
   const y = webcam.position.y * scale;
   const size = webcam.size * scale;
 
   ctx.save();
-  ctx.beginPath();
-  if (webcam.shape === 'circle') {
-    ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
-  } else if (webcam.shape === 'rounded-square') {
-    ctx.roundRect(x, y, size, size, size * 0.16);
-  } else {
-    ctx.rect(x, y, size, size);
-  }
-  ctx.closePath();
+  traceWebcamShape(ctx, x, y, size, webcam.shape);
   ctx.fillStyle = 'rgba(20, 20, 24, 0.9)';
   ctx.fill();
   ctx.lineWidth = Math.max(2, size * 0.015);
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Draws the real, decoded webcam frame (a square RGBA buffer, `frameSize`
+ * pixels on a side -- see export-manager.ts's per-segment webcam decode)
+ * clipped to the PiP shape, mirrored if requested. This is the export-side
+ * mirror of PreviewStage.tsx's live webcam `<video>` PiP.
+ */
+function drawWebcamFrame(
+  ctx: CanvasRenderingContext2D,
+  outputWidth: number,
+  webcam: WebcamOptions,
+  frame: Buffer,
+  frameSize: number
+): void {
+  const scale = outputWidth / REFERENCE_CANVAS_WIDTH;
+  const x = webcam.position.x * scale;
+  const y = webcam.position.y * scale;
+  const size = webcam.size * scale;
+
+  const scratch = createCanvas(frameSize, frameSize);
+  const scratchCtx = scratch.getContext('2d');
+  const clamped = new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.byteLength);
+  scratchCtx.putImageData(new ImageData(clamped, frameSize, frameSize), 0, 0);
+
+  ctx.save();
+  traceWebcamShape(ctx, x, y, size, webcam.shape);
+  ctx.clip();
+  if (webcam.mirrored) {
+    ctx.translate(x + size, y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(scratch, 0, 0, frameSize, frameSize, 0, 0, size, size);
+  } else {
+    ctx.drawImage(scratch, 0, 0, frameSize, frameSize, x, y, size, size);
+  }
   ctx.restore();
 }
 
@@ -549,8 +595,20 @@ export class FrameCompositor {
     return this.innerRect;
   }
 
-  /** Draws one frame and returns the composited RGBA pixel buffer. */
-  composite(project: Project, atMs: number, decodedFrame: Buffer): Buffer {
+  /**
+   * Draws one frame and returns the composited RGBA pixel buffer.
+   * `webcamFrame`, when given, is a decoded square frame from the parallel
+   * webcam recording for this exact `atMs` (see export-manager.ts) -- absent
+   * whenever there's no webcam recording, or this segment/frame falls
+   * outside its range, in which case the empty placeholder shape is drawn
+   * instead so an enabled-but-unavailable PiP doesn't just vanish.
+   */
+  composite(
+    project: Project,
+    atMs: number,
+    decodedFrame: Buffer,
+    webcamFrame?: { buffer: Buffer; size: number }
+  ): Buffer {
     const { ctx, scratchCtx, innerRect, outputWidth, outputHeight } = this;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -644,7 +702,13 @@ export class FrameCompositor {
 
     // Webcam/annotations are drawn untransformed so content zoom doesn't
     // affect them (matches a fixed on-top PiP/overlay, not part of the scene).
-    drawWebcamPlaceholder(ctx, outputWidth, project.webcam);
+    if (project.webcam.enabled) {
+      if (webcamFrame) {
+        drawWebcamFrame(ctx, outputWidth, project.webcam, webcamFrame.buffer, webcamFrame.size);
+      } else {
+        drawWebcamPlaceholder(ctx, outputWidth, project.webcam);
+      }
+    }
     drawAnnotations(ctx, outputWidth, project.annotations, atMs, this.annotationImages);
 
     // getImageData (not canvas.toBuffer('raw')) guarantees RGBA byte order

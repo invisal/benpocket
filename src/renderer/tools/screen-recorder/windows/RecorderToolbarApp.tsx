@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import {
   AppWindow,
   Crop,
@@ -120,6 +120,9 @@ export function RecorderToolbarApp(): JSX.Element | null {
   const [bootedSimulatorName, setBootedSimulatorName] = useState<string | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+  const cameraPreviewRef = useRef<HTMLVideoElement>(null);
+  const cameraPreviewStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     window.screenRecorder.recording
@@ -210,6 +213,41 @@ export function RecorderToolbarApp(): JSX.Element | null {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [mode]);
+
+  // Live self-view + device list while the Camera popover is open -- opening
+  // *some* camera stream is also what unlocks real device labels from
+  // enumerateDevices() (labels stay blank until a getUserMedia video
+  // permission has actually been granted). Stopped as soon as the popover
+  // closes so the camera light doesn't stay on during setup.
+  useEffect(() => {
+    if (openPopover !== 'camera' || !webcam.enabled) {
+      cameraPreviewStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraPreviewStreamRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+    navigator.mediaDevices
+      .getUserMedia({ video: webcam.deviceId ? { deviceId: { exact: webcam.deviceId } } : true })
+      .then(async (stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        cameraPreviewStreamRef.current = stream;
+        if (cameraPreviewRef.current) cameraPreviewRef.current.srcObject = stream;
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        if (!cancelled) setCameraDevices(devices.filter((d) => d.kind === 'videoinput'));
+      })
+      .catch((err) => console.error('[toolbar] failed to open camera preview:', err));
+
+    return () => {
+      cancelled = true;
+      cameraPreviewStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraPreviewStreamRef.current = null;
+    };
+  }, [openPopover, webcam.enabled, webcam.deviceId]);
 
   const focusedSource = sources.find((s) => s.id === sourceId) ?? null;
 
@@ -490,6 +528,35 @@ export function RecorderToolbarApp(): JSX.Element | null {
               </label>
               {webcam.enabled && (
                 <div className="flex flex-col gap-2">
+                  <video
+                    ref={cameraPreviewRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className={cn(
+                      'h-24 w-full rounded-lg bg-black object-cover',
+                      webcam.mirrored && 'scale-x-[-1]'
+                    )}
+                  />
+                  {cameraDevices.length > 1 && (
+                    <select
+                      value={webcam.deviceId ?? ''}
+                      onChange={(e) =>
+                        setWebcam((w) => ({ ...w, deviceId: e.target.value || undefined }))
+                      }
+                      className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-1 text-[11px] text-white/80"
+                    >
+                      {cameraDevices.map((device, index) => (
+                        <option
+                          key={device.deviceId}
+                          value={device.deviceId}
+                          className="bg-zinc-900"
+                        >
+                          {device.label || `Camera ${index + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <div className="grid grid-cols-3 gap-1.5">
                     {(['circle', 'rounded-square', 'square'] as const).map((option) => (
                       <button

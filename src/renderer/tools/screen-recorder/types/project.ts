@@ -105,6 +105,10 @@ export interface Project {
   tracks: TimelineTrack[];
   zoomKeyframes: ZoomKeyframe[];
   webcam: WebcamOptions;
+  /** Absolute path to the parallel webcam recording (see capture-engine.ts's `CaptureRequest.webcam`), or null if none was recorded. */
+  webcamVideoPath: string | null;
+  /** `webcamStartedAt - startedAt` at record time -- added to a `sourceVideoPath`-timeline `atMs` to find the corresponding moment in `webcamVideoPath`. */
+  webcamOffsetMs: number;
   background: BackgroundSettings;
   cursor: CursorSettings;
   /** Recorded system-cursor samples for `sourceVideoPath`, source-timeline `atMs`. Empty when the source was a 'window' capture (no display bounds to normalize against) or tracking failed. */

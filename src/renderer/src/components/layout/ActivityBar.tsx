@@ -1,7 +1,15 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useToolTabs } from '../providers/ToolProvider';
-import { FolderOpen, GlobeIcon, HomeIcon, PlusIcon, VideoIcon, CameraIcon } from 'lucide-react';
+import {
+  FolderOpen,
+  GlobeIcon,
+  HomeIcon,
+  PlusIcon,
+  VideoIcon,
+  CameraIcon,
+  SwatchBookIcon
+} from 'lucide-react';
 import cn from 'cnfast';
 import { ContextMenu } from '../ui/ContextMenu';
 import { ToolDialog } from '../dialog/ToolDialog';
@@ -32,6 +40,8 @@ export const ActivityBar: React.FC = () => {
         );
       case 'file-explorer':
         return <FolderOpen size={16} className="text-inherit" />;
+      case 'storybook':
+        return <SwatchBookIcon size={16} className="text-inherit" />;
       default:
         return <GlobeIcon size={16} />;
     }

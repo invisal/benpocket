@@ -42,11 +42,20 @@ const fileExplorerTool = registerTool({
   label: ''
 });
 
+const storybookTool = registerTool({
+  name: 'storybook' as const,
+  loadComponent: () => import('./../../../tools/storybook'),
+  generateName: () => 'Storybook',
+  label: ''
+});
+
+// Mini component gallery/storybook, dev-only: never registered in production builds.
 export const allTools = [
   homeTool,
   httpClientTool,
   screenRecordTool,
   screenCaptureTool,
   kuberneterTool,
-  fileExplorerTool
+  fileExplorerTool,
+  ...(import.meta.env.DEV ? [storybookTool] : [])
 ];

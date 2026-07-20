@@ -1,7 +1,14 @@
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { useLayoutStore } from '@renderer/store/layout.store';
-import { CameraIcon, CloudIcon, FolderOpen, GlobeIcon, VideoIcon } from 'lucide-react';
+import {
+  CameraIcon,
+  CloudIcon,
+  FolderOpen,
+  GlobeIcon,
+  VideoIcon,
+  SwatchBookIcon
+} from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { cn } from 'cnfast';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
@@ -74,7 +81,18 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         description: 'Browse files on your computer.',
         icon: <FolderOpen size={20} />,
         onClick: () => openTab('file-explorer', {})
-      }
+      },
+      ...(import.meta.env.DEV
+        ? [
+            {
+              id: 'storybook',
+              name: 'Storybook',
+              description: 'Browse shared UI components and mockup pages.',
+              icon: <SwatchBookIcon size={20} />,
+              onClick: () => openTab('storybook', {})
+            }
+          ]
+        : [])
     ],
     [openTab]
   );

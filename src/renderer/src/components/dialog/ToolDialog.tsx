@@ -7,7 +7,8 @@ import {
   GlobeIcon,
   Plus,
   Server,
-  VideoIcon
+  VideoIcon,
+  SwatchBookIcon
 } from 'lucide-react';
 import { cn } from 'cnfast';
 import { Dialog } from '../ui/Dialog';
@@ -95,6 +96,11 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
     close();
   };
 
+  const handleOpenStorybook = () => {
+    openTab('storybook', {});
+    close();
+  };
+
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Content className="max-w-sm">
@@ -133,6 +139,14 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
                 description="Browse files on your computer."
                 onClick={handleOpenFileExplorer}
               />
+              {import.meta.env.DEV && (
+                <ToolRow
+                  icon={<SwatchBookIcon size={18} />}
+                  name="Storybook"
+                  description="Browse shared UI components and mockup pages."
+                  onClick={handleOpenStorybook}
+                />
+              )}
             </div>
           </>
         )}

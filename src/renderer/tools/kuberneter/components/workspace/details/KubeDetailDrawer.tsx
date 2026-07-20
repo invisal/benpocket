@@ -118,7 +118,21 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     endpoints: 'Endpoints Details',
     ingresses: 'Ingress Details',
     ingressclasses: 'Ingress Class Details',
-    networkpolicies: 'Network Policy Details'
+    networkpolicies: 'Network Policy Details',
+    'helm-chart': 'Helm Chart Details'
+  };
+
+  const prefixMap: Record<string, string> = {
+    endpoints: 'Endpoints',
+    ingresses: 'Ingress',
+    ingressclasses: 'Ingress Class',
+    networkpolicies: 'Network Policy',
+    persistentvolumeclaim: 'PersistentVolumeClaim',
+    persistentvolume: 'PersistentVolume',
+    storageclass: 'StorageClass',
+    namespace: 'Namespace',
+    event: 'Event',
+    'helm-chart': 'Chart'
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,25 +152,9 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
 
       <div className="h-11 shrink-0 flex items-center justify-between px-4 border-b border-border-dark">
         <span className="text-xs font-bold text-white uppercase tracking-wider">
-          {contentType === 'endpoints'
-            ? `Endpoints: ${resourceName}`
-            : contentType === 'ingresses'
-              ? `Ingress: ${resourceName}`
-              : contentType === 'ingressclasses'
-                ? `Ingress Class: ${resourceName}`
-                : contentType === 'networkpolicies'
-                  ? `Network Policy: ${resourceName}`
-                  : contentType === 'persistentvolumeclaim'
-                    ? `PersistentVolumeClaim: ${resourceName}`
-                    : contentType === 'persistentvolume'
-                      ? `PersistentVolume: ${resourceName}`
-                      : contentType === 'storageclass'
-                        ? `StorageClass: ${resourceName}`
-                        : contentType === 'namespace'
-                          ? `Namespace: ${resourceName}`
-                          : contentType === 'event'
-                            ? `Event: ${resourceName}`
-                            : titleNames[contentType] || 'Details'}
+          {prefixMap[contentType]
+            ? `${prefixMap[contentType]}: ${resourceName}`
+            : titleNames[contentType] || 'Details'}
         </span>
         <div className="flex items-center gap-2">
           {contentType === 'ingressclasses' && (
@@ -204,7 +202,11 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto min-h-0 p-4 pr-5">
-        <DetailContent contentType={contentType} payload={payload} />
+        <DetailContent
+          key={`${contentType}-${resourceName}`}
+          contentType={contentType}
+          payload={payload}
+        />
       </div>
     </div>
   );

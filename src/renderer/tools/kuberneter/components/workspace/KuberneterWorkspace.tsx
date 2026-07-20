@@ -36,6 +36,7 @@ import { NetworkPolicies } from './networkpolicies/NetworkPolicies';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { DetailContent } from './details/DetailContent';
+import { HelmCharts } from './helm-charts/HelmCharts';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -299,12 +300,14 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
             <ValidatingWebhooks validatingWebhooksData={validatingWebhooksData} />
           )}
 
-          {resource === 'apps' && (
+          {(resource === 'apps' || resource === 'helm-releases') && (
             <Application
               applicationsData={applicationsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
             />
           )}
+
+          {resource === 'helm-charts' && <HelmCharts />}
 
           {resource === 'nodes' && <Nodes nodesData={nodesData} />}
         </>

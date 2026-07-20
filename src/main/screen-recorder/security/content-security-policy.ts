@@ -21,7 +21,7 @@ export function applyContentSecurityPolicy(): void {
   const policy = isDev
     ? [
         "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-        "img-src 'self' data: blob:",
+        "img-src 'self' data: blob: http: https:",
         "media-src 'self' blob:",
         "connect-src 'self' blob: ws: wss: http://localhost:* https://localhost:*"
       ].join('; ')
@@ -29,7 +29,7 @@ export function applyContentSecurityPolicy(): void {
         "default-src 'self'",
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
+        "img-src 'self' data: blob: http: https:",
         "media-src 'self' blob:",
         "connect-src 'self' blob:"
       ].join('; ');

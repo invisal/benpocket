@@ -104,6 +104,12 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
             <Dialog.Description>Choose a tool to open.</Dialog.Description>
             <div className="mt-4 space-y-1">
               <ToolRow
+                icon={<Folder size={18} />}
+                name="File Explorer"
+                description="Browse files on your computer."
+                onClick={handleOpenFileExplorer}
+              />
+              <ToolRow
                 icon={<img src={kuberneterIcon} className="size-5" alt="Kubernetes" />}
                 name="Kubernetes"
                 description="Connect to a cluster and manage workloads."
@@ -126,12 +132,6 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
                 name="Screen Capture"
                 description="Capture a still image from your screen."
                 onClick={handleOpenScreenCapture}
-              />
-              <ToolRow
-                icon={<Folder size={18} />}
-                name="File Explorer"
-                description="Browse files on your computer."
-                onClick={handleOpenFileExplorer}
               />
             </div>
           </>

@@ -37,6 +37,13 @@ export function HomeMain({}: ToolComponentProps<Props>) {
   const tools: ToolEntry[] = useMemo(
     () => [
       {
+        id: 'file-explorer',
+        name: 'File Explorer',
+        description: 'Browse files on your computer.',
+        icon: <FolderOpen size={20} />,
+        onClick: () => openTab('file-explorer', {})
+      },
+      {
         id: 'kuberneter',
         name: 'Kubernetes',
         description: 'Connect to a cluster and manage workloads.',
@@ -67,13 +74,6 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         description: 'Capture a still image from your screen.',
         icon: <CameraIcon size={20} />,
         onClick: () => openTab('screen-capture', {})
-      },
-      {
-        id: 'file-explorer',
-        name: 'File Explorer',
-        description: 'Browse files on your computer.',
-        icon: <FolderOpen size={20} />,
-        onClick: () => openTab('file-explorer', {})
       }
     ],
     [openTab]

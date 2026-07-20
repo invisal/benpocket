@@ -7,6 +7,20 @@ const homeTool = registerTool({
   label: ''
 });
 
+const fileExplorerTool = registerTool({
+  name: 'file-explorer' as const,
+  loadComponent: () => import('./../../../tools/file-explorer'),
+  generateName: () => 'File Explorer',
+  label: ''
+});
+
+const kuberneterTool = registerTool({
+  name: 'kuberneter' as const,
+  loadComponent: () => import('./../../../tools/kuberneter'),
+  generateName: () => `Kuberneter`,
+  label: ''
+});
+
 const httpClientTool = registerTool({
   name: 'http-client',
   loadComponent: () => import('./../../../tools/http-client'),
@@ -28,25 +42,11 @@ const screenCaptureTool = registerTool({
   label: ''
 });
 
-const kuberneterTool = registerTool({
-  name: 'kuberneter' as const,
-  loadComponent: () => import('./../../../tools/kuberneter'),
-  generateName: () => `Kuberneter`,
-  label: ''
-});
-
-const fileExplorerTool = registerTool({
-  name: 'file-explorer' as const,
-  loadComponent: () => import('./../../../tools/file-explorer'),
-  generateName: () => 'File Explorer',
-  label: ''
-});
-
 export const allTools = [
   homeTool,
+  fileExplorerTool,
+  kuberneterTool,
   httpClientTool,
   screenRecordTool,
-  screenCaptureTool,
-  kuberneterTool,
-  fileExplorerTool
+  screenCaptureTool
 ];

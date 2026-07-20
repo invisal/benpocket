@@ -1,11 +1,11 @@
 import { ipcMain } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
 import type { ExportOptions } from '@screen-recorder/types/export';
-import { exportManager } from '../export/export-manager';
+import { runExportInWorkerWindow } from '../windows/export-worker-window';
 
 export function registerExportHandlers(): void {
   ipcMain.handle(IpcChannels.ExportVideo, (event, options: ExportOptions) =>
-    exportManager.export(options, (progress) => {
+    runExportInWorkerWindow(options, (progress) => {
       event.sender.send(IpcChannels.ExportProgress, progress);
     })
   );

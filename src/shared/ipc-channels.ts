@@ -16,6 +16,8 @@ export const IpcChannels = {
   SaveProject: 'project:save',
   ExportVideo: 'export:start',
   ExportProgress: 'export:progress',
+  ExportWorkerRun: 'export:worker-run',
+  ExportWorkerResult: 'export:worker-result',
   ShowSaveExportDialog: 'dialog:show-save-export',
   SaveScreenshot: 'screenshot:save',
   CopyScreenshot: 'screenshot:copy',

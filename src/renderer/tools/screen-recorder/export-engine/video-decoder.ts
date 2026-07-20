@@ -1,7 +1,6 @@
-import { Transform, type TransformCallback } from 'stream';
-import ffmpeg, { type FfmpegCommand } from 'fluent-ffmpeg';
+import { Transform, execa, type TransformCallback, type ResultPromise } from './node-bridge';
 import type { ClipSpeed, CropRect, TimeRange } from '@screen-recorder/types/timeline';
-import './ffmpeg-config';
+import { FFMPEG_PATH } from './ffmpeg-config';
 
 export interface DecodedFrame {
   index: number;
@@ -11,14 +10,10 @@ export interface DecodedFrame {
 /** Chunks a raw RGBA byte stream into fixed-size per-frame buffers. */
 class FrameSplitter extends Transform {
   private leftover: Buffer = Buffer.alloc(0);
-  private frameIndex: number;
+  private frameIndex = 0;
 
-  constructor(
-    private readonly frameSize: number,
-    startFrameIndex = 0
-  ) {
+  constructor(private readonly frameSize: number) {
     super({ readableObjectMode: true, readableHighWaterMark: 8 });
-    this.frameIndex = startFrameIndex;
   }
 
   _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback): void {
@@ -47,8 +42,8 @@ export interface PixelCropRect {
 /**
  * Converts a normalized (0-1) `TimelineSegment.crop` rect (per-clip, not
  * global) into source pixel coordinates, clamped to the source's actual
- * bounds and rounded to even numbers (several encoders/pix_fmts require
- * even width/height).
+ * bounds and rounded to even numbers (several pix_fmts require even
+ * width/height).
  */
 export function resolveCropRect(
   crop: CropRect | null,
@@ -75,7 +70,7 @@ export function resolveCropRect(
 /**
  * Largest even-sided square centered in a `width x height` frame -- used to
  * crop a typically-16:9 webcam feed down to the square the PiP shape (see
- * frame-compositor.ts's `drawWebcamFrame`) is clipped from.
+ * rendering-engine/effects/webcam.ts) is clipped from.
  */
 export function centerSquareCrop(width: number, height: number): PixelCropRect {
   const toEven = (n: number): number => Math.max(2, Math.floor(n / 2) * 2);
@@ -91,6 +86,7 @@ export function centerSquareCrop(width: number, height: number): PixelCropRect {
 export interface DecodeFramesOptions {
   sourcePath: string;
   trimRange: TimeRange;
+  /** Target size decoded frames are scaled/letterboxed to -- see the note on why this stays in ffmpeg below. */
   width: number;
   height: number;
   frameRate: number;
@@ -102,14 +98,23 @@ export interface DecodeFramesOptions {
 
 export interface DecodeFramesResult {
   frames: AsyncIterable<DecodedFrame>;
-  command: FfmpegCommand;
+  command: ResultPromise;
 }
 
 /**
  * Decodes one segment of the source video into a stream of RGBA frames,
- * optionally cropped, then pre-scaled and letterboxed to exactly
- * `width x height` so the compositor can treat the inner content rect as an
- * opaque, fixed-size rectangle.
+ * scaled/letterboxed to exactly `width x height` (ffmpeg's `swscale`, same
+ * as the pre-PixiJS pipeline) -- *not* decoded at native resolution and
+ * resized on the GPU. That was tried and measurably regressed export speed:
+ * for a source much larger than the output (e.g. a 3456x2234 recording
+ * exported at 960x540), native-resolution decode means every frame is a
+ * ~30MB buffer that has to cross the ffmpeg stdout pipe, get copied, and
+ * `postMessage`-transfer to the render Worker -- versus ~2MB once
+ * pre-scaled here. swscale is cheap and shrinks the data *before* any of
+ * those further hops, which matters far more than saving that one resize by
+ * doing it on the GPU instead. The rendering engine still positions/zooms
+ * this pre-scaled frame at `innerRect` on the GPU; only the initial fit-to-
+ * canvas resize happens in ffmpeg.
  */
 export function decodeFrames(opts: DecodeFramesOptions): DecodeFramesResult {
   const { sourcePath, trimRange, width, height, frameRate, cropRect, speed } = opts;
@@ -135,18 +140,28 @@ export function decodeFrames(opts: DecodeFramesOptions): DecodeFramesResult {
     `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black@0`
   );
 
-  const command = ffmpeg(sourcePath)
-    .seekInput(startSec)
-    // `-t` here must be an *input* option: `.duration()` sets it on the
-    // output, which is measured on post-filter timestamps -- once `setpts`
-    // rescales those, an output-side `-t` would bound the wrong timeline
-    // (reading too much source for speed>1, truncating for speed<1).
-    .inputOptions(['-t', String(durationSec)])
-    .videoFilters(filters.join(','))
-    .outputFormat('rawvideo')
-    .outputOptions(['-pix_fmt', 'rgba']);
+  // `-ss`/`-t` must be *input* options (before `-i`): `-t` measured on
+  // post-filter timestamps as an output option would bound the wrong
+  // timeline once `setpts` rescales those (reading too much source for
+  // speed>1, truncating for speed<1).
+  const args = [
+    '-ss',
+    String(startSec),
+    '-t',
+    String(durationSec),
+    '-i',
+    sourcePath,
+    '-filter:v',
+    filters.join(','),
+    '-f',
+    'rawvideo',
+    '-pix_fmt',
+    'rgba',
+    'pipe:1'
+  ];
 
-  const stdout = command.pipe() as unknown as NodeJS.ReadableStream;
+  const command = execa(FFMPEG_PATH, args, { stdout: 'pipe', stderr: 'pipe', buffer: false });
+  const stdout = command.stdout as NodeJS.ReadableStream;
   const splitter = new FrameSplitter(width * height * 4);
   stdout.pipe(splitter);
 

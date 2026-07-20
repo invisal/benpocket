@@ -18,6 +18,7 @@ import { applyContentSecurityPolicy } from './screen-recorder/security/content-s
 import { registerTrayHandlers, destroyTray } from './screen-recorder/windows/tray';
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
+import { destroyExportWorkerWindow } from './screen-recorder/windows/export-worker-window';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
@@ -230,6 +231,7 @@ app.on('before-quit', () => {
   destroyTray();
   destroyRecorderToolbar();
   destroySourcePickerOverlay();
+  destroyExportWorkerWindow();
 });
 
 // In this file you can include the rest of your app's specific main process

@@ -1,14 +1,13 @@
-import { promises as fs } from 'fs';
-import { dirname } from 'path';
-import type { FfmpegCommand } from 'fluent-ffmpeg';
+import { fsPromises as fs, dirname, type ResultPromise } from './node-bridge';
 import type { ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import type { DecodedFrame } from './video-decoder';
 import { probeSource, type SourceMeta } from './video-probe';
 import { decodeFrames, resolveCropRect, centerSquareCrop } from './video-decoder';
-import { FrameCompositor } from './frame-compositor';
 import { createEncoder } from './video-encoder';
+import { RenderWorkerClient } from './render-worker-client';
+import { smoothCursorPath } from '@shared/cursor-path';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
-import './ffmpeg-config';
+import { computeInnerRect } from '../rendering-engine/inner-rect';
 
 async function validate(options: ExportOptions): Promise<void> {
   try {
@@ -29,13 +28,28 @@ async function validate(options: ExportOptions): Promise<void> {
   }
 }
 
-function writeFrame(stdin: NodeJS.WritableStream, buffer: Buffer): Promise<void> {
+/**
+ * Resolves `true` once written, or `false` if the encoder already finished
+ * and closed its stdin -- ffmpeg's `-shortest` (used whenever there's an
+ * audio track) stops it as soon as the shorter of the video/audio streams
+ * ends, which can land a frame or two before our own frame-count estimate
+ * (`totalFramesFor`) expects, since the source's real frame rate is rarely
+ * exactly `frameRate` (e.g. a 29.5fps recording resampled to a 30fps
+ * export). Writing to that now-closed pipe is an expected, benign race, not
+ * a failure -- the caller stops feeding frames once this returns `false`.
+ */
+function writeFrame(stdin: NodeJS.WritableStream, buffer: Uint8Array): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const ok = stdin.write(buffer, (err) => {
-      if (err) reject(err);
+      if (!err) return;
+      if ((err as NodeJS.ErrnoException).code === 'EPIPE') {
+        resolve(false);
+        return;
+      }
+      reject(err);
     });
-    if (ok) resolve();
-    else stdin.once('drain', resolve);
+    if (ok) resolve(true);
+    else stdin.once('drain', () => resolve(true));
   });
 }
 
@@ -44,25 +58,38 @@ function totalFramesFor(segments: ExportOptions['segments'], frameRate: number):
   return Math.max(1, Math.round((totalMs / 1000) * frameRate));
 }
 
-class ExportManager {
+/** ffmpeg prints periodic `frame=  123 fps= 45 ...` status lines to stderr even without a dedicated progress flag. */
+function parseFrameCount(chunk: string): number | null {
+  const match = /frame=\s*(\d+)/.exec(chunk);
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * Runs entirely on the hidden export window's own thread (see
+ * export-worker-window.ts in main, which creates that window). Owns the
+ * ffmpeg decode/encode subprocesses directly (this window has Node
+ * integration) and hands frames to the nested PixiJS render Worker instead
+ * of a CPU compositor -- see the plan's architecture diagram for why
+ * everything lives in this one process.
+ */
+class ExportOrchestrator {
   async export(
     options: ExportOptions,
     onProgress: (progress: ExportProgress) => void
   ): Promise<void> {
-    const decoderCommands: FfmpegCommand[] = [];
-    let encoderCommand: FfmpegCommand | undefined;
+    const decoderCommands: ResultPromise[] = [];
+    let encoderCommand: ResultPromise | undefined;
+    let renderWorker: RenderWorkerClient | undefined;
 
     try {
       await validate(options);
       onProgress({ percent: 0, stage: 'rendering' });
+      console.log('[export] validated, probing source:', options.sourceVideoPath);
 
       const sourceMeta = await probeSource(options.sourceVideoPath);
+      console.log('[export] source probed:', sourceMeta);
       const totalFrames = totalFramesFor(options.segments, options.frameRate);
 
-      // Probed once up front (not per segment) -- durationMs/width/height are
-      // fixed for the whole file. Null whenever there's nothing to composite
-      // (webcam off, no recorded file, or the file failed to probe), in which
-      // case every segment below falls back to the placeholder PiP shape.
       const webcamVideoPath = options.project.webcam.enabled
         ? options.project.webcamVideoPath
         : null;
@@ -75,12 +102,10 @@ class ExportManager {
         }
       }
 
-      // The compositor/inner-rect are fixed for the whole export, so a single
-      // representative aspect ratio is needed up front even though crop is
-      // now per-segment -- use the first kept clip's own crop if it has one,
-      // else fall back to the full source frame. Each segment's *own* crop
-      // is still resolved and applied individually inside the decode loop
-      // below; this is only for sizing the shared output canvas.
+      // Same representative-aspect-ratio approach as before: a single shared
+      // output canvas is sized once up front from the first kept clip's own
+      // crop (or the full source frame), even though crop is resolved
+      // per-segment inside the loop below.
       const firstCropRect = resolveCropRect(
         options.segments[0]?.crop ?? null,
         sourceMeta.width,
@@ -89,14 +114,33 @@ class ExportManager {
       const sourceAspect = firstCropRect
         ? firstCropRect.width / firstCropRect.height
         : sourceMeta.width / sourceMeta.height;
-
-      const compositor = await FrameCompositor.create(
+      // ffmpeg scales/letterboxes decoded frames to this size directly (see
+      // video-decoder.ts's doc comment for why that stays in ffmpeg rather
+      // than being a GPU resize) -- same formula the render worker's scene
+      // evaluation uses per frame, computed once here since it's fixed for
+      // the whole export.
+      const innerRect = computeInnerRect(
         options.resolution.width,
         options.resolution.height,
         sourceAspect,
-        options.project
+        options.project.background.padding
       );
-      const innerRect = compositor.getInnerRect();
+
+      // Smoothing doesn't depend on `atMs`, so it's computed once up front
+      // and sent to the render worker rather than recomputed per frame.
+      const smoothedCursorPath = smoothCursorPath(
+        options.project.cursorPath,
+        options.project.cursor.smoothing
+      );
+
+      console.log('[export] creating render worker (PixiJS + OffscreenCanvas)...');
+      renderWorker = await RenderWorkerClient.create(
+        options.resolution.width,
+        options.resolution.height
+      );
+      console.log('[export] render worker ready, loading project...');
+      await renderWorker.loadProject(options.project, sourceAspect, smoothedCursorPath);
+      console.log('[export] project loaded, creating encoder (resolving hardware encoder)...');
 
       const encoder = await createEncoder({
         outputPath: options.outputPath,
@@ -111,38 +155,38 @@ class ExportManager {
         hasAudio: sourceMeta.hasAudio
       });
       encoderCommand = encoder.command;
+      encoderCommand.catch((err: unknown) => {
+        console.error('[export] encoder command rejected:', err);
+      });
+      console.log('[export] encoder spawned, starting decode/render/encode loop...');
 
       let fatalError: Error | null = null;
 
       let lastEncodingPercent = -1;
-      encoderCommand.on('progress', (p) => {
-        if (typeof p.frames !== 'number') return;
-        const percent = 50 + Math.min(50, Math.round((p.frames / totalFrames) * 50));
+      encoderCommand.stderr?.on('data', (chunk: Buffer) => {
+        const frames = parseFrameCount(chunk.toString());
+        if (frames === null) return;
+        const percent = 50 + Math.min(50, Math.round((frames / totalFrames) * 50));
         if (percent !== lastEncodingPercent) {
           lastEncodingPercent = percent;
           onProgress({ percent, stage: 'encoding' });
         }
       });
 
-      const encodingDone = new Promise<void>((resolve, reject) => {
-        encoderCommand?.on('end', () => resolve());
-        encoderCommand?.on('error', (err) =>
-          reject(err instanceof Error ? err : new Error(String(err)))
-        );
-      });
-
-      encoderCommand.run();
+      const encodingDone = encoderCommand.then(
+        () => undefined,
+        (err) => {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
+      );
 
       let frameIndex = 0;
       let lastRenderPercent = -1;
+      let encoderClosed = false;
       const msPerFrame = 1000 / options.frameRate;
 
-      // Decode each kept segment in order, writing every composited frame
-      // into the *same* encoder stdin -- this is what makes "cut out the
-      // middle" / "reorder clips" actually work: the encoder just sees one
-      // continuous stream of frames regardless of how many source ranges
-      // they came from.
       for (const segment of options.segments) {
+        if (encoderClosed) break;
         const segmentCropRect = resolveCropRect(segment.crop, sourceMeta.width, sourceMeta.height);
         const { frames, command: decoder } = decodeFrames({
           sourcePath: options.sourceVideoPath,
@@ -154,19 +198,10 @@ class ExportManager {
           speed: segment.speed
         });
         decoderCommands.push(decoder);
-        decoder.on('error', (err) => {
+        decoder.catch((err: unknown) => {
           fatalError = err instanceof Error ? err : new Error(String(err));
         });
 
-        // Second, independent decode of the same segment's time range from
-        // the parallel webcam file (see capture-engine.ts's `CaptureRequest.
-        // webcam`), shifted by the recorded start-time gap between the two
-        // recorders and clamped to the webcam file's own duration -- the two
-        // recordings don't necessarily start/end at exactly the same wall-
-        // clock moment. Null whenever the shifted range doesn't land inside
-        // the webcam file at all (e.g. this segment starts before the webcam
-        // recorder had finished spinning up), in which case this segment's
-        // frames fall back to the placeholder PiP shape.
         let webcamFrames: AsyncIterator<DecodedFrame> | null = null;
         let webcamFrameSize = 0;
         if (webcamMeta && webcamVideoPath) {
@@ -193,7 +228,7 @@ class ExportManager {
               speed: segment.speed
             });
             decoderCommands.push(webcamDecode.command);
-            webcamDecode.command.on('error', (err) => {
+            webcamDecode.command.catch((err: unknown) => {
               console.error(
                 '[export] webcam decode failed for this segment, using placeholder:',
                 err
@@ -203,16 +238,14 @@ class ExportManager {
           }
         }
 
-        // Zoom keyframes and the recorded cursor/click paths (project.zoomKeyframes,
-        // project.cursorPath, project.clickPath) are authored against the *source*
-        // recording's raw timeline, same as the live preview scrubbing the raw
-        // <video> element -- see ZoomTrack.tsx. So each frame must be composited at
-        // its real source-ms position within this segment, not its position in the
-        // ripple-edited output stream, or the animation/cursor drift out of sync
-        // with the content as soon as anything's been cut.
         let segmentFrameIndex = 0;
         for await (const frame of frames) {
           if (fatalError) throw fatalError;
+          if (segmentFrameIndex === 0) {
+            console.log(
+              `[export] first decoded frame for segment (${innerRect.width}x${innerRect.height})`
+            );
+          }
           const atMs = segment.range.startMs + segmentFrameIndex * msPerFrame * segment.speed;
 
           let webcamFrame: { buffer: Buffer; size: number } | undefined;
@@ -228,8 +261,31 @@ class ExportManager {
             }
           }
 
-          const composited = compositor.composite(options.project, atMs, frame.buffer, webcamFrame);
-          await writeFrame(encoder.stdin, composited);
+          const composited = await renderWorker.renderFrame(
+            atMs,
+            frame.buffer,
+            innerRect.width,
+            innerRect.height,
+            webcamFrame
+          );
+          if (segmentFrameIndex === 0) {
+            console.log('[export] first frame rendered by PixiJS worker, writing to encoder...');
+          }
+          const wrote = await writeFrame(encoder.stdin, composited);
+          if (!wrote) {
+            // Encoder already finished and closed its stdin (see
+            // writeFrame's doc comment) -- stop feeding it frames, but this
+            // isn't a failure, so don't touch `fatalError`. Both this
+            // segment's decoders (main + webcam, if any) are still running
+            // with nowhere left to drain their output -- kill them rather
+            // than leaving them blocked on a full pipe.
+            encoderClosed = true;
+            decoderCommands.forEach((cmd) => cmd.kill('SIGKILL'));
+            break;
+          }
+          if (segmentFrameIndex === 0) {
+            console.log('[export] first frame written to encoder stdin');
+          }
 
           segmentFrameIndex++;
           frameIndex++;
@@ -240,8 +296,9 @@ class ExportManager {
           }
         }
         if (fatalError) throw fatalError;
+        decoder.kill('SIGKILL');
       }
-      encoder.stdin.end();
+      if (!encoderClosed) encoder.stdin.end();
 
       await encodingDone;
       onProgress({ percent: 100, stage: 'done' });
@@ -251,8 +308,10 @@ class ExportManager {
       decoderCommands.forEach((cmd) => cmd.kill('SIGKILL'));
       encoderCommand?.kill('SIGKILL');
       throw err instanceof Error ? err : new Error(message);
+    } finally {
+      renderWorker?.destroy();
     }
   }
 }
 
-export const exportManager = new ExportManager();
+export const exportOrchestrator = new ExportOrchestrator();

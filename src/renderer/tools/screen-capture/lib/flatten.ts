@@ -168,6 +168,41 @@ export function backgroundInnerRect(
 }
 
 /**
+ * Default top-left for a new chip/text label in source-image coordinates.
+ * Without a background: inset from the image corner. With one: inset from
+ * the frame's top-left margin so the pill sits on the wallpaper — same
+ * frame-space padding the export uses via {@link backgroundInnerRect}.
+ */
+export function defaultChipPosition(
+  imageWidth: number,
+  imageHeight: number,
+  unit: number,
+  crop: Rect | null,
+  background: BackgroundConfig | null
+): { x: number; y: number } {
+  const pad = 16 * unit;
+  if (!background) return { x: pad, y: pad };
+
+  const viewWidth = crop?.width ?? imageWidth;
+  const viewHeight = crop?.height ?? imageHeight;
+  const inner = backgroundInnerRect(
+    background.width,
+    background.height,
+    viewWidth,
+    viewHeight,
+    background.marginPct
+  );
+  const k = inner.width / viewWidth;
+  const padFrame = pad * k;
+  const cropX = crop?.x ?? 0;
+  const cropY = crop?.y ?? 0;
+  return {
+    x: cropX + (padFrame - inner.x) / k,
+    y: cropY + (padFrame - inner.y) / k
+  };
+}
+
+/**
  * Fills the canvas with a wallpaper preset's linear gradient, converting the
  * CSS angle convention (0deg = to top, clockwise) that cssGradient() uses for
  * the live preview — mirrors main/screen-recorder/export/frame-compositor.ts.

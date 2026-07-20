@@ -22,6 +22,7 @@ import { Input } from '@renderer/components/ui/Input';
 import { Popover } from '@renderer/components/ui/Popover';
 import { Select } from '@renderer/components/ui/Select';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
+import { defaultChipPosition } from '../lib/flatten';
 import {
   BACKGROUND_SIZE_PRESETS,
   DEFAULT_BACKGROUND,
@@ -32,18 +33,20 @@ import {
 import type { EditorTool } from '../types/editor';
 
 /**
- * Unlike stage tools, a chip has a fixed default spot (image top-left), so
- * the rail button places it immediately — no placement click. Defaults:
- * white text, biggest font tier; edit via the layer's properties dropdown.
+ * Unlike stage tools, a chip has a fixed default spot (image top-left, or the
+ * background margin when a frame is enabled), so the rail button places it
+ * immediately — no placement click. Defaults: white text, biggest font tier;
+ * edit via the layer's properties dropdown.
  */
 function addChip(): void {
   const s = useCaptureEditorStore.getState();
+  const { x, y } = defaultChipPosition(s.imageWidth, s.imageHeight, s.unit, s.crop, s.background);
   s.setTool('select');
   s.addAnnotation({
     id: crypto.randomUUID(),
     kind: 'chip',
-    x: 16 * s.unit,
-    y: 16 * s.unit,
+    x,
+    y,
     text: 'Before',
     color: '#ffffff',
     fontSize: FONT_TIERS.at(-1)!.value * s.unit

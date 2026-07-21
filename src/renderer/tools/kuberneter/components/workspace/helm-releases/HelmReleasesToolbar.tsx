@@ -1,7 +1,6 @@
 import type React from 'react';
 import { KubeSearchbox } from '../../KubeSearchbox';
-import { Select } from '@renderer/components/ui/Select';
-import { Download, Tag } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 interface HelmReleasesToolbarProps {
   searchQuery: string;
@@ -24,9 +23,6 @@ export const HelmReleasesToolbar: React.FC<HelmReleasesToolbarProps> = ({
   useRegex,
   totalCount,
   selectedCount,
-  namespace,
-  namespaces,
-  onNamespaceChange,
   onSearchChange,
   onCaseSensitiveToggle,
   onRegexToggle,
@@ -35,24 +31,6 @@ export const HelmReleasesToolbar: React.FC<HelmReleasesToolbarProps> = ({
   return (
     <div className="flex items-center justify-between w-full gap-3">
       <div className="flex items-center gap-2 min-w-0">
-        <Select.Root value={namespace} onValueChange={(val) => val && onNamespaceChange(val)}>
-          <Select.Trigger
-            variant="outline"
-            size="sm"
-            icon={<Tag className="size-3.5 text-zinc-500" />}
-            className="h-7 min-w-36 text-xs font-sans justify-between"
-          >
-            <Select.Value />
-          </Select.Trigger>
-          <Select.Content side="bottom" align="start">
-            {namespaces.map((ns) => (
-              <Select.Item key={ns} value={ns}>
-                <Select.ItemText>{ns}</Select.ItemText>
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-
         <KubeSearchbox
           value={searchQuery}
           placeholder="Search Helm Releases..."

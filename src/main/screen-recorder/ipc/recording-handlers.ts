@@ -7,12 +7,19 @@ import { listCaptureSources } from '../capture/screen-source-provider';
 import { recordingController } from '../capture/recording-controller';
 import { cursorTracker, type CursorTrackerBounds } from '../capture/cursor-tracker';
 import { clickTracker } from '../capture/click-tracker';
-import { supportsNativeSystemPicker } from '../security/display-media-handler';
+import {
+  supportsNativeSystemPicker,
+  setPendingCaptureSourceId
+} from '../security/display-media-handler';
 
 export function registerRecordingHandlers(): void {
   ipcMain.handle(IpcChannels.GetCaptureSources, () => listCaptureSources());
 
   ipcMain.handle(IpcChannels.GetNativePickerSupport, () => supportsNativeSystemPicker());
+
+  ipcMain.handle(IpcChannels.PrepareDisplayMediaCapture, (_event, sourceId: string) =>
+    setPendingCaptureSourceId(sourceId)
+  );
 
   ipcMain.handle(
     IpcChannels.StartCursorTracking,

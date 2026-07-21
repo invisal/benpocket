@@ -1,6 +1,7 @@
 export const IpcChannels = {
   GetCaptureSources: 'capture:get-sources',
   GetNativePickerSupport: 'capture:get-native-picker-support',
+  PrepareDisplayMediaCapture: 'capture:prepare-display-media',
   StartRecording: 'recording:start',
   StopRecording: 'recording:stop',
   PauseRecording: 'recording:pause',

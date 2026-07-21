@@ -32,6 +32,77 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
 
   const { contentType, payload } = drawerState;
 
+  const prefixMap: Record<string, string> = {
+    pod: 'Pod',
+    deployment: 'Deployment',
+    daemonset: 'Daemon Set',
+    statefulset: 'Stateful Set',
+    replicaset: 'Replica Set',
+    job: 'Job',
+    cronjob: 'Cron Job',
+    configmap: 'Config Map',
+    secret: 'Secret',
+    resourcequota: 'Resource Quota',
+    limitrange: 'Limit Range',
+    horizontalpodautoscaler: 'Horizontal Pod Autoscaler',
+    hpa: 'Horizontal Pod Autoscaler',
+    poddisruptionbudget: 'Pod Disruption Budget',
+    pdb: 'Pod Disruption Budget',
+    priorityclass: 'Priority Class',
+    runtimeclass: 'Runtime Class',
+    lease: 'Lease',
+    service: 'Service',
+    persistentvolumeclaim: 'Persistent Volume Claim',
+    pvc: 'Persistent Volume Claim',
+    persistentvolume: 'Persistent Volume',
+    pv: 'Persistent Volume',
+    storageclass: 'Storage Class',
+    namespace: 'Namespace',
+    clusterrole: 'Cluster Role',
+    role: 'Role',
+    clusterrolebinding: 'Cluster Role Binding',
+    rolebinding: 'Role Binding',
+    application: 'Application',
+    app: 'Application',
+    nodes: 'Node',
+    node: 'Node',
+    event: 'Event',
+    endpointslice: 'Endpoint Slice',
+    endpoints: 'Endpoints',
+    endpoint: 'Endpoints',
+    ingresses: 'Ingress',
+    ingress: 'Ingress',
+    ingressclasses: 'Ingress Class',
+    ingressclass: 'Ingress Class',
+    networkpolicies: 'Network Policy',
+    networkpolicy: 'Network Policy',
+    mutatingwebhook: 'Mutating Webhook',
+    validatingwebhook: 'Validating Webhook',
+    serviceaccount: 'Service Account',
+    'helm-chart': 'Helm Chart',
+    'helm-release': 'Helm Release'
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getResourceName = (data: any): string => {
+    if (!data) return '';
+    return (
+      data.name ||
+      data.metadata?.name ||
+      data.instance ||
+      data.releaseName ||
+      data.chartName ||
+      data.involvedObject ||
+      data.reason ||
+      data.id ||
+      ''
+    );
+  };
+
+  const resourceName = getResourceName(payload);
+  const prefix = prefixMap[contentType] || contentType;
+  const headerTitle = resourceName ? `${prefix}: ${resourceName}` : `${prefix}: Details`;
+
   const handleClose = () => {
     setDrawerState(tabId, { isOpen: false });
   };
@@ -39,16 +110,13 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
   const handleMaximize = () => {
     if (!payload || !contentType) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resourceName = (payload as any).name || '';
-
     // Close drawer first
     setDrawerState(tabId, { isOpen: false });
 
     // Open new tab
     openTab({
-      id: `kuberneter-${contentType}-detail-${resourceName}-${activeInstanceId}`,
-      title: `${contentType}: ${resourceName}`,
+      id: `kuberneter-${contentType}-detail-${resourceName || 'item'}-${activeInstanceId}`,
+      title: headerTitle,
       type: 'kuberneter',
       instanceId: activeInstanceId,
       meta: {
@@ -89,71 +157,6 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     document.addEventListener('pointerup', handlePointerUp);
   };
 
-  const titleNames: Record<string, string> = {
-    pod: 'Pod Details',
-    deployment: 'Deployment Details',
-    daemonset: 'Daemon Set Details',
-    statefulset: 'Stateful Set Details',
-    replicaset: 'Replica Set Details',
-    service: 'Service Details',
-    persistentvolumeclaim: 'Persistent Volume Claim Details',
-    persistentvolume: 'Persistent Volume Details',
-    storageclass: 'Storage Class Details',
-    namespace: 'Namespace Details',
-    clusterrole: 'ClusterRole Details',
-    role: 'Role Details',
-    clusterrolebinding: 'ClusterRoleBinding Details',
-    rolebinding: 'RoleBinding Details',
-    application: 'Application Details',
-    nodes: 'Node Details',
-    event: 'Event Details',
-    endpointslice: 'Endpoint Slice Details',
-    job: 'Job Details',
-    cronjob: 'Cron Job Details',
-    configmap: 'Config Map Details',
-    secret: 'Secret Details',
-    resourcequota: 'Resource Quota Details',
-    limitrange: 'Limit Range Details',
-    horizontalpodautoscaler: 'Horizontal Pod Autoscaler Details',
-    poddisruptionbudget: 'Pod Disruption Budget Details',
-    priorityclass: 'Priority Class Details',
-    runtimeclass: 'Runtime Class Details',
-    lease: 'Lease Details',
-    serviceaccount: 'Service Account Details',
-    mutatingwebhook: 'Mutating Webhook Configuration Details',
-    validatingwebhook: 'Validating Webhook Configuration Details',
-    endpoints: 'Endpoints Details',
-    ingresses: 'Ingress Details',
-    ingressclasses: 'Ingress Class Details',
-    networkpolicies: 'Network Policy Details',
-    'helm-chart': 'Helm Chart Details',
-    'helm-release': 'Helm Release Details'
-  };
-
-  const prefixMap: Record<string, string> = {
-    endpoints: 'Endpoints',
-    ingresses: 'Ingress',
-    ingressclasses: 'Ingress Class',
-    networkpolicies: 'Network Policy',
-    persistentvolumeclaim: 'PersistentVolumeClaim',
-    persistentvolume: 'PersistentVolume',
-    storageclass: 'StorageClass',
-    namespace: 'Namespace',
-    clusterrole: 'ClusterRole',
-    role: 'Role',
-    clusterrolebinding: 'ClusterRoleBinding',
-    rolebinding: 'RoleBinding',
-    application: 'ApplicationInstance',
-    nodes: 'Node',
-    event: 'Event',
-    serviceaccount: 'ServiceAccount',
-    'helm-chart': 'Chart',
-    'helm-release': 'Release'
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resourceName = (payload as any)?.name || (payload as any)?.instance || '';
-
   return (
     <div
       ref={drawerRef}
@@ -169,15 +172,9 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
       <div className="h-11 shrink-0 flex items-center gap-2 px-4 border-b border-border-dark min-w-0">
         <span
           className="text-xs font-bold text-white uppercase tracking-wider truncate min-w-0 flex-1"
-          title={
-            prefixMap[contentType]
-              ? `${prefixMap[contentType]}: ${resourceName}`
-              : titleNames[contentType] || 'Details'
-          }
+          title={headerTitle}
         >
-          {prefixMap[contentType]
-            ? `${prefixMap[contentType]}: ${resourceName}`
-            : titleNames[contentType] || 'Details'}
+          {headerTitle}
         </span>
         <div className="flex items-center gap-2 shrink-0">
           {contentType === 'ingressclasses' && (

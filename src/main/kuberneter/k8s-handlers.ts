@@ -76,6 +76,7 @@ export function registerK8sHandlers(): void {
           'nodes',
           'namespaces',
           'clusterroles',
+          'clusterrolebindings',
           'storageclasses',
           'persistentvolumes',
           'pvs'

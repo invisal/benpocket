@@ -155,6 +155,7 @@ export const KuberneterSidebar: React.FC = () => {
     serviceaccounts: 'accessControl',
     clusterroles: 'accessControl',
     roles: 'accessControl',
+    clusterrolebindings: 'accessControl',
     bindings: 'accessControl',
     'helm-charts': 'helm',
     'helm-releases': 'helm'
@@ -262,6 +263,7 @@ export const KuberneterSidebar: React.FC = () => {
         { id: 'serviceaccounts', label: 'Service Accounts' },
         { id: 'clusterroles', label: 'Cluster Roles' },
         { id: 'roles', label: 'Roles' },
+        { id: 'clusterrolebindings', label: 'Cluster Role Bindings' },
         { id: 'bindings', label: 'Role Bindings' }
       ]
     }
@@ -274,7 +276,7 @@ export const KuberneterSidebar: React.FC = () => {
         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
           Disconnected
         </span>
-        <p className="text-[10px] text-zinc-600 leading-relaxed max-w-[180px]">
+        <p className="text-[10px] text-zinc-600 leading-relaxed max-w-45">
           Please open the Kuberneter Home tab and connect to a cluster context to enable sidebar
           navigation.
         </p>
@@ -290,7 +292,7 @@ export const KuberneterSidebar: React.FC = () => {
   return (
     <div className="flex flex-col h-full text-zinc-300 select-none animate-in fade-in duration-300 kuberneter-sidebar">
       {/* 1. Namespace header — same height as tab bar (h-9) */}
-      <div className="h-9 shrink-0 flex items-center mx-[-12px] mt-[-12px] px-3 border-b border-border-dark">
+      <div className="h-9 shrink-0 flex items-center -mx-3 -mt-3 px-3 border-b border-border-dark">
         <Select.Root
           value={namespace}
           onValueChange={(val) => val && setKuberneterInstanceNamespace(activeInstanceId, val)}
@@ -314,7 +316,7 @@ export const KuberneterSidebar: React.FC = () => {
       </div>
 
       {/* 2. Search section — same height as workspace header (h-11) */}
-      <div className="h-11 shrink-0 flex items-center border-b border-border-dark mx-[-12px] px-3">
+      <div className="h-11 shrink-0 flex items-center border-b border-border-dark -mx-3 px-3">
         <KubeSearchbox
           value={searchTerm}
           placeholder="Search navigation..."
@@ -324,7 +326,7 @@ export const KuberneterSidebar: React.FC = () => {
       </div>
 
       {/* 3. Navigation section — remaining height */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 mr-[-12px] pr-[12px] pt-2 kuberneter-sidebar-scroll">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 -mr-3 pr-3 pt-2 kuberneter-sidebar-scroll">
         <span
           className="text-xs font-bold text-zinc-200 uppercase tracking-wider px-1 mb-1.5 font-sans flex items-center gap-2 truncate"
           title={cluster}

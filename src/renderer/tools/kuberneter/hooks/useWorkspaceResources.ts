@@ -34,6 +34,7 @@ import { useEvents } from './useEvents';
 import { useServiceAccounts } from './useServiceAccounts';
 import { useClusterRoles } from './useClusterRoles';
 import { useRoles } from './useRoles';
+import { useClusterRoleBindings } from './useClusterRoleBindings';
 
 export function useWorkspaceResources(resource: string) {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
@@ -78,6 +79,7 @@ export function useWorkspaceResources(resource: string) {
   const serviceaccounts = useServiceAccounts(resource === 'serviceaccounts');
   const clusterroles = useClusterRoles(resource === 'clusterroles');
   const roles = useRoles(resource === 'roles');
+  const clusterrolebindings = useClusterRoleBindings(resource === 'clusterrolebindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
   if (resource === 'pods') activeQuery = pods;
@@ -114,6 +116,7 @@ export function useWorkspaceResources(resource: string) {
   else if (resource === 'serviceaccounts') activeQuery = serviceaccounts;
   else if (resource === 'clusterroles') activeQuery = clusterroles;
   else if (resource === 'roles') activeQuery = roles;
+  else if (resource === 'clusterrolebindings') activeQuery = clusterrolebindings;
 
   return {
     kuberneterSelectedCluster,
@@ -152,6 +155,7 @@ export function useWorkspaceResources(resource: string) {
     serviceAccountsData: serviceaccounts.data,
     clusterRolesData: clusterroles.data,
     rolesData: roles.data,
+    clusterRoleBindingsData: clusterrolebindings.data,
     isLoading: activeQuery ? activeQuery.isLoading : false,
     errorMsg: activeQuery ? activeQuery.errorMsg : null
   };

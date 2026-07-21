@@ -102,6 +102,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     namespace: 'Namespace Details',
     clusterrole: 'ClusterRole Details',
     role: 'Role Details',
+    clusterrolebinding: 'ClusterRoleBinding Details',
     event: 'Event Details',
     endpointslice: 'Endpoint Slice Details',
     job: 'Job Details',
@@ -137,6 +138,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     namespace: 'Namespace',
     clusterrole: 'ClusterRole',
     role: 'Role',
+    clusterrolebinding: 'ClusterRoleBinding',
     event: 'Event',
     serviceaccount: 'ServiceAccount',
     'helm-chart': 'Chart',
@@ -179,7 +181,8 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
           )}
           {(contentType === 'ingressclasses' ||
             contentType === 'clusterrole' ||
-            contentType === 'role') && (
+            contentType === 'role' ||
+            contentType === 'clusterrolebinding') && (
             <>
               <button
                 title="Edit"

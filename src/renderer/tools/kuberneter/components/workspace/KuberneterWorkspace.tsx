@@ -41,6 +41,7 @@ import { HelmReleases } from './helm-releases/HelmReleases';
 import { ServiceAccounts } from './serviceaccounts/ServiceAccounts';
 import { ClusterRoles } from './clusterroles/ClusterRoles';
 import { Roles } from './roles/Roles';
+import { ClusterRoleBindings } from './clusterrolebindings/ClusterRoleBindings';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -89,6 +90,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     serviceAccountsData,
     clusterRolesData,
     rolesData,
+    clusterRoleBindingsData,
     isLoading,
     errorMsg
   } = useWorkspaceResources(resource);
@@ -328,6 +330,10 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'clusterroles' && <ClusterRoles clusterRolesData={clusterRolesData} />}
 
           {resource === 'roles' && <Roles rolesData={rolesData} />}
+
+          {resource === 'clusterrolebindings' && (
+            <ClusterRoleBindings clusterRoleBindingsData={clusterRoleBindingsData} />
+          )}
 
           {resource === 'nodes' && <Nodes nodesData={nodesData} />}
         </>

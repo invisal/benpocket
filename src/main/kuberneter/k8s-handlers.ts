@@ -138,7 +138,12 @@ export function registerK8sHandlers(): void {
           stdout = await runKubectl(args, resolvedKubeconfig);
         } catch {
           // Fallback to generating mock node metrics based on get resources
-          const nodesRes = await runKubectl(['get', 'nodes', '-o', 'json'], resolvedKubeconfig);
+          const getNodesArgs = [];
+          if (contextName) {
+            getNodesArgs.push('--context', contextName);
+          }
+          getNodesArgs.push('get', 'nodes', '-o', 'json');
+          const nodesRes = await runKubectl(getNodesArgs, resolvedKubeconfig);
           const nodesData = JSON.parse(nodesRes);
           const nodeItems = Array.isArray(nodesData?.items) ? nodesData.items : [];
 
@@ -212,7 +217,11 @@ export function registerK8sHandlers(): void {
           stdout = await runKubectl(args, resolvedKubeconfig);
         } catch {
           // Fallback to generating mock pod metrics based on get resources
-          const getPodsArgs = ['get', 'pods'];
+          const getPodsArgs = [];
+          if (contextName) {
+            getPodsArgs.push('--context', contextName);
+          }
+          getPodsArgs.push('get', 'pods');
           if (namespace && namespace !== 'All Namespaces') {
             getPodsArgs.push('-n', namespace);
           } else {

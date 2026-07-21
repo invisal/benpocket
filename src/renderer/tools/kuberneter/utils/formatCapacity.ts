@@ -28,7 +28,7 @@ export const parseK8sCapacity = (value: string): number => {
 export const formatCapacity = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const idx = Math.min(Math.max(0, i), sizes.length - 1);
   return parseFloat((bytes / Math.pow(k, idx)).toFixed(1)) + ' ' + sizes[idx];

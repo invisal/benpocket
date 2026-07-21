@@ -4,6 +4,7 @@ import { type PodData } from '../types/PodData';
 import { type PodResource, type ContainerStatus } from '../types/PodResource';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
+import { parseK8sCapacity, formatCapacity } from '../utils/formatCapacity';
 
 export function usePods(enabled: boolean) {
   const transform = useMemo(
@@ -39,11 +40,7 @@ export function usePods(enabled: boolean) {
         let memDisplay = 'N/A';
         if (podMetric && podMetric.memory) {
           const rawMem = podMetric.memory.trim();
-          if (rawMem.match(/[KMG]i$/)) {
-            memDisplay = rawMem + 'B';
-          } else {
-            memDisplay = rawMem;
-          }
+          memDisplay = formatCapacity(parseK8sCapacity(rawMem));
         }
 
         const containers = containerStatuses.map((c: ContainerStatus) => ({

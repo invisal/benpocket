@@ -42,6 +42,7 @@ import { ServiceAccounts } from './serviceaccounts/ServiceAccounts';
 import { ClusterRoles } from './clusterroles/ClusterRoles';
 import { Roles } from './roles/Roles';
 import { ClusterRoleBindings } from './clusterrolebindings/ClusterRoleBindings';
+import { RoleBindings } from './rolebindings/RoleBindings';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -91,6 +92,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     clusterRolesData,
     rolesData,
     clusterRoleBindingsData,
+    roleBindingsData,
     isLoading,
     errorMsg
   } = useWorkspaceResources(resource);
@@ -334,6 +336,8 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'clusterrolebindings' && (
             <ClusterRoleBindings clusterRoleBindingsData={clusterRoleBindingsData} />
           )}
+
+          {resource === 'bindings' && <RoleBindings roleBindingsData={roleBindingsData} />}
 
           {resource === 'nodes' && <Nodes nodesData={nodesData} />}
         </>

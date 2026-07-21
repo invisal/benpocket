@@ -166,13 +166,20 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
         className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-accent/40 active:bg-accent transition-colors z-40"
       />
 
-      <div className="h-11 shrink-0 flex items-center justify-between px-4 border-b border-border-dark">
-        <span className="text-xs font-bold text-white uppercase tracking-wider">
+      <div className="h-11 shrink-0 flex items-center gap-2 px-4 border-b border-border-dark min-w-0">
+        <span
+          className="text-xs font-bold text-white uppercase tracking-wider truncate min-w-0 flex-1"
+          title={
+            prefixMap[contentType]
+              ? `${prefixMap[contentType]}: ${resourceName}`
+              : titleNames[contentType] || 'Details'
+          }
+        >
           {prefixMap[contentType]
             ? `${prefixMap[contentType]}: ${resourceName}`
             : titleNames[contentType] || 'Details'}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {contentType === 'ingressclasses' && (
             <button
               title={`${(payload as IngressClassData).isDefault ? 'Remove default' : 'Set as default'}`}

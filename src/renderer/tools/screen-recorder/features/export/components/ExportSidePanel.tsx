@@ -40,10 +40,10 @@ export function ExportSidePanel(): JSX.Element {
   });
 
   return (
-    <aside className="flex w-70 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface-sunken p-4">
+    <aside className="flex w-70 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface p-4">
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Estimated output
           </span>
           {estimate.reductionPercent > 0 && (
@@ -55,12 +55,12 @@ export function ExportSidePanel(): JSX.Element {
 
         <div>
           <p className="font-mono text-2xl font-bold">{formatMb(estimate.estimatedBytes)}</p>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-muted-foreground">
             from {formatMb(originalSizeBytes)} · {Math.round(durationSeconds)}s
           </p>
         </div>
 
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
           <div
             className="h-full rounded-full bg-accent transition-all"
             style={{ width: `${Math.max(4, 100 - estimate.reductionPercent)}%` }}
@@ -75,7 +75,9 @@ export function ExportSidePanel(): JSX.Element {
       </section>
 
       <section className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/40">Presets</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Presets
+        </span>
         <div className="grid grid-cols-2 gap-2">
           {EXPORT_PRESETS.map((preset) => {
             const isSelected = store.presetId === preset.id;
@@ -85,7 +87,7 @@ export function ExportSidePanel(): JSX.Element {
                 onClick={() => store.setPreset(preset.id)}
                 className={cn(
                   'relative rounded-lg border p-2.5 text-left transition-colors',
-                  isSelected ? 'border-accent bg-accent/10' : 'border-line hover:border-white/20'
+                  isSelected ? 'border-accent bg-accent/10' : 'border-line hover:border-accent/40'
                 )}
               >
                 {isSelected && (
@@ -94,7 +96,7 @@ export function ExportSidePanel(): JSX.Element {
                   </span>
                 )}
                 <p className="text-xs font-medium">{preset.label}</p>
-                <p className="text-[11px] text-white/40">{preset.description}</p>
+                <p className="text-[11px] text-muted-foreground">{preset.description}</p>
               </button>
             );
           })}
@@ -102,7 +104,9 @@ export function ExportSidePanel(): JSX.Element {
       </section>
 
       <section className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/40">Format</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Format
+        </span>
         <div className="grid grid-cols-4 gap-2">
           {FORMAT_OPTIONS.map((option) => (
             <button
@@ -112,7 +116,7 @@ export function ExportSidePanel(): JSX.Element {
                 'rounded-lg border py-1.5 text-xs font-medium transition-colors',
                 store.format === option.id
                   ? 'border-accent text-accent'
-                  : 'border-line text-white/60 hover:border-white/20'
+                  : 'border-line text-muted-foreground hover:border-accent/40'
               )}
             >
               {option.label}
@@ -123,8 +127,10 @@ export function ExportSidePanel(): JSX.Element {
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Codec</span>
-          <span className="text-xs text-white/30">smaller →</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Codec
+          </span>
+          <span className="text-xs text-muted-foreground/70">smaller →</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {CODEC_OPTIONS.map((option) => (
@@ -135,7 +141,7 @@ export function ExportSidePanel(): JSX.Element {
                 'rounded-lg border py-1.5 text-center transition-colors',
                 store.codec === option.id
                   ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-line text-white/70 hover:border-white/20'
+                  : 'border-line text-muted-foreground hover:border-accent/40'
               )}
             >
               <p className="text-xs font-medium">{option.label}</p>
@@ -147,7 +153,9 @@ export function ExportSidePanel(): JSX.Element {
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Quality</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Quality
+          </span>
           <span className="text-xs font-medium text-accent">
             {qualityLabel(store.quality)} {store.quality}
           </span>
@@ -160,7 +168,7 @@ export function ExportSidePanel(): JSX.Element {
           onChange={(e) => store.setQuality(Number(e.target.value))}
           className="w-full accent-accent"
         />
-        <div className="flex justify-between text-[10px] text-white/30">
+        <div className="flex justify-between text-[10px] text-muted-foreground/70">
           <span>Draft</span>
           <span>Balanced</span>
           <span>High</span>
@@ -170,7 +178,7 @@ export function ExportSidePanel(): JSX.Element {
 
       <section className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Resolution
           </span>
           <select
@@ -180,7 +188,7 @@ export function ExportSidePanel(): JSX.Element {
               const option = RESOLUTION_OPTIONS.find((o) => o.width === longEdge);
               if (option) store.setResolution({ width: option.width, height: option.height });
             }}
-            className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs"
+            className="rounded-lg border border-line bg-surface px-2 py-1.5 text-xs"
           >
             {/* `option`s are authored as 16:9 pairs (long edge x short edge) --
                 the select always shows/picks by long edge ("quality tier"),
@@ -193,13 +201,13 @@ export function ExportSidePanel(): JSX.Element {
           </select>
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Frame rate
           </span>
           <select
             value={store.frameRate}
             onChange={(e) => store.setFrameRate(Number(e.target.value))}
-            className="rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs"
+            className="rounded-lg border border-line bg-surface px-2 py-1.5 text-xs"
           >
             {FRAME_RATE_OPTIONS.map((fps) => (
               <option key={fps} value={fps}>
@@ -222,7 +230,7 @@ function ExportAction(): JSX.Element {
     <div className="mt-auto flex flex-col gap-2 border-t border-line pt-4">
       {status === 'error' && error && <p className="text-xs text-red-400">{error}</p>}
       {status === 'exporting' && progress && (
-        <p className="text-xs text-white/50">
+        <p className="text-xs text-muted-foreground">
           {progress.stage} · {progress.percent}%
         </p>
       )}
@@ -240,9 +248,9 @@ function ExportAction(): JSX.Element {
 
 function Stat({ label, value }: { label: string; value: string }): JSX.Element {
   return (
-    <div className="rounded-lg bg-white/5 px-2 py-1">
-      <p className="text-[10px] uppercase tracking-wide text-white/30">{label}</p>
-      <p className="font-mono text-xs text-white/80">{value}</p>
+    <div className="rounded-lg bg-surface px-2 py-1">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">{label}</p>
+      <p className="font-mono text-xs text-foreground">{value}</p>
     </div>
   );
 }

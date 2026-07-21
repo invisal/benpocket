@@ -35,7 +35,7 @@ export function AudioSourceToggle(): JSX.Element {
         System audio
       </label>
       {audio.systemAudioEnabled && isLikelyMac && (
-        <p className="text-[11px] text-white/40">
+        <p className="text-[11px] text-muted-foreground">
           System audio capture is unreliable on macOS without a virtual audio driver -- this may
           record silence.
         </p>

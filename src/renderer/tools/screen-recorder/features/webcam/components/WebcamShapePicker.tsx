@@ -12,7 +12,7 @@ export function WebcamShapePicker(): JSX.Element {
             key={option}
             onClick={() => setShape(option)}
             className={`truncate rounded-lg border px-2 py-1 text-[11px] ${
-              shape === option ? 'border-accent text-accent' : 'border-line text-white/60'
+              shape === option ? 'border-accent text-accent' : 'border-line text-muted-foreground'
             }`}
           >
             {option}

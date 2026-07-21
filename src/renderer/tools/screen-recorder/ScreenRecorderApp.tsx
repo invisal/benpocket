@@ -33,7 +33,7 @@ export function ScreenRecorderApp(): JSX.Element {
   return (
     <RecordingControllerProvider>
       <RecorderToolbarBridge />
-      <div className="flex flex-1 flex-col min-h-0 bg-surface text-white/90">
+      <div className="flex flex-1 flex-col min-h-0 bg-surface text-foreground">
         <nav className="flex shrink-0 items-center gap-1 border-b border-line px-4 py-2">
           {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon }) => (
             <button
@@ -43,7 +43,7 @@ export function ScreenRecorderApp(): JSX.Element {
                 'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
                 route === itemRoute
                   ? 'bg-accent/10 text-accent'
-                  : 'text-white/50 hover:bg-white/5 hover:text-white/80'
+                  : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
               )}
             >
               <Icon size={13} />
@@ -58,7 +58,7 @@ export function ScreenRecorderApp(): JSX.Element {
               'ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-30',
               route === 'editor'
                 ? 'bg-accent/10 text-accent'
-                : 'text-white/50 hover:bg-white/5 hover:text-white/80'
+                : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
             )}
           >
             Editor
@@ -67,7 +67,7 @@ export function ScreenRecorderApp(): JSX.Element {
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1">
-            <div className="w-64 shrink-0 overflow-y-auto border-r border-line p-3">
+            <div className="w-64 shrink-0 overflow-y-auto border-r border-line bg-surface p-3">
               <ScreenRecorderSidebar />
             </div>
 

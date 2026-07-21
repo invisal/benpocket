@@ -47,7 +47,7 @@ export function Slider({ value, min, max, step, onChange, className }: SliderPro
       onChange={(e) => onChange(Number(e.target.value))}
       onPointerDown={handlePointerDown}
       className={cn(
-        'h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-accent',
+        'h-1 w-full cursor-pointer appearance-none rounded-full bg-surface-3 accent-accent',
         className
       )}
     />

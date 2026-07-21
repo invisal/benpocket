@@ -18,7 +18,7 @@ export function Switch({ checked, onChange, label, className }: SwitchProps): JS
       onClick={() => onChange(!checked)}
       className={cn(
         'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors',
-        checked ? 'bg-accent' : 'bg-white/15',
+        checked ? 'bg-accent' : 'bg-surface-4',
         className
       )}
     >

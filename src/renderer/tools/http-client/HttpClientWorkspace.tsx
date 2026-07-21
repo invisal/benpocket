@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { FileText, Globe, Waves, X } from 'lucide-react';
 import { cn } from 'cnfast';
+import type { SavedRequest } from '../../../preload/http-client/types';
 import { usePostmanTabsStore, type PostmanTab } from './store/tabs.store';
 import { useCollectionsStore } from './store/collections.store';
 import { useEnvironmentsStore } from './store/environments.store';
@@ -275,14 +276,13 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         client.http.send();
       } else if (e.key.toLowerCase() === 's') {
         e.preventDefault();
-        if (client.protocol === 'HTTP' && client.binding) {
-          useCollectionsStore
-            .getState()
-            .saveRequest(
-              client.binding.collectionId,
-              {
+        if (!client.binding) return;
+        const request: SavedRequest =
+          client.protocol === 'HTTP'
+            ? {
                 id: client.binding.requestId,
                 name: tab?.title ?? 'Untitled Request',
+                protocol: 'HTTP',
                 method: client.http.state.method,
                 url: client.http.state.url,
                 headers: client.http.state.headers,
@@ -290,13 +290,25 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 bodyType: client.http.state.bodyType,
                 body: client.http.state.body,
                 updatedAt: Date.now()
-              },
-              null
-            )
-            .catch((err: unknown) => {
-              setSaveError(err instanceof Error ? err.message : 'Save failed.');
-            });
-        }
+              }
+            : {
+                id: client.binding.requestId,
+                name: tab?.title ?? 'Untitled Request',
+                protocol: 'WEBSOCKET',
+                method: 'GET',
+                url: client.ws.state.url,
+                headers: [],
+                params: [],
+                bodyType: 'none',
+                body: '',
+                updatedAt: Date.now()
+              };
+        useCollectionsStore
+          .getState()
+          .saveRequest(client.binding.collectionId, request, null)
+          .catch((err: unknown) => {
+            setSaveError(err instanceof Error ? err.message : 'Save failed.');
+          });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -337,32 +349,31 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           <div className="flex items-center gap-2">
             <EnvironmentSelector />
             {client.protocol === 'HTTP' && (
-              <>
-                <CodeSnippetPopover
-                  method={client.http.state.method}
-                  url={client.http.state.url}
-                  headers={client.http.state.headers}
-                  bodyType={client.http.state.bodyType}
-                  body={client.http.state.body}
-                />
-                <SaveRequestPopover
-                  tabTitle={tab?.title ?? 'New API Request'}
-                  method={client.http.state.method}
-                  url={client.http.state.url}
-                  headers={client.http.state.headers}
-                  params={client.http.state.params}
-                  bodyType={client.http.state.bodyType}
-                  body={client.http.state.body}
-                  binding={client.binding}
-                  defaultCollectionId={seed?.defaultCollectionId}
-                  defaultFolderId={seed?.defaultFolderId}
-                  onSaved={(binding, name) => {
-                    client.bindTo(binding);
-                    renameTab(tabId, name);
-                  }}
-                />
-              </>
+              <CodeSnippetPopover
+                method={client.http.state.method}
+                url={client.http.state.url}
+                headers={client.http.state.headers}
+                bodyType={client.http.state.bodyType}
+                body={client.http.state.body}
+              />
             )}
+            <SaveRequestPopover
+              tabTitle={tab?.title ?? 'New API Request'}
+              protocol={client.protocol}
+              url={client.protocol === 'HTTP' ? client.http.state.url : client.ws.state.url}
+              method={client.protocol === 'HTTP' ? client.http.state.method : undefined}
+              headers={client.protocol === 'HTTP' ? client.http.state.headers : undefined}
+              params={client.protocol === 'HTTP' ? client.http.state.params : undefined}
+              bodyType={client.protocol === 'HTTP' ? client.http.state.bodyType : undefined}
+              body={client.protocol === 'HTTP' ? client.http.state.body : undefined}
+              binding={client.binding}
+              defaultCollectionId={seed?.defaultCollectionId}
+              defaultFolderId={seed?.defaultFolderId}
+              onSaved={(binding, name) => {
+                client.bindTo(binding);
+                renameTab(tabId, name);
+              }}
+            />
           </div>
         </nav>
 

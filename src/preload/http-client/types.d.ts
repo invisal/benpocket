@@ -7,6 +7,8 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 
 
 export type HttpBodyType = 'none' | 'json' | 'text' | 'form';
 
+export type RequestProtocol = 'HTTP' | 'WEBSOCKET';
+
 export interface KeyValuePair {
   id: string;
   key: string;
@@ -77,11 +79,18 @@ export type WsEvent =
 export interface SavedRequest {
   id: string;
   name: string;
+  /** Defaults to 'HTTP' for requests saved before WebSocket requests were saveable. */
+  protocol: RequestProtocol;
+  /** HTTP-only; holds a placeholder value for 'WEBSOCKET' requests. */
   method: HttpMethod;
   url: string;
+  /** HTTP-only; empty for 'WEBSOCKET' requests. */
   headers: KeyValuePair[];
+  /** HTTP-only; empty for 'WEBSOCKET' requests. */
   params: KeyValuePair[];
+  /** HTTP-only; 'none' for 'WEBSOCKET' requests. */
   bodyType: HttpBodyType;
+  /** HTTP-only; empty for 'WEBSOCKET' requests. */
   body: string;
   updatedAt: number;
 }

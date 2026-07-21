@@ -5,15 +5,21 @@ type RequestContainer = Pick<Collection, 'requests' | 'folders'>;
 
 /** Ensures legacy collections (saved before folders existed) have well-formed `requests`/`folders` arrays, recursively. */
 export function normalizeCollection(collection: Collection): Collection {
-  collection.requests = collection.requests ?? [];
+  collection.requests = (collection.requests ?? []).map(normalizeRequest);
   collection.folders = (collection.folders ?? []).map(normalizeFolder);
   return collection;
 }
 
 function normalizeFolder(folder: CollectionFolder): CollectionFolder {
-  folder.requests = folder.requests ?? [];
+  folder.requests = (folder.requests ?? []).map(normalizeRequest);
   folder.folders = (folder.folders ?? []).map(normalizeFolder);
   return folder;
+}
+
+/** Stamps requests saved before WebSocket requests were saveable with the 'HTTP' protocol they always were. */
+function normalizeRequest(request: SavedRequest): SavedRequest {
+  request.protocol = request.protocol ?? 'HTTP';
+  return request;
 }
 
 /** Recursively finds the container (collection root or folder) that directly holds the given request. */

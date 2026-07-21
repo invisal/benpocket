@@ -58,6 +58,8 @@ function readDragPayload(dataTransfer: DataTransfer): DragPayload | null {
 
 function methodBadgeClass(method: string): string {
   switch (method) {
+    case 'WEBSOCKET':
+      return 'bg-cyan-950/40 text-cyan-500';
     case 'GET':
       return 'bg-emerald-950/40 text-emerald-500';
     case 'POST':
@@ -71,6 +73,10 @@ function methodBadgeClass(method: string): string {
     default:
       return 'bg-zinc-800 text-zinc-400';
   }
+}
+
+function requestBadgeLabel(request: SavedRequest): string {
+  return request.protocol === 'WEBSOCKET' ? 'WEBSOCKET' : request.method;
 }
 
 export const HttpClientSidebar: React.FC = () => {
@@ -152,16 +158,25 @@ export const HttpClientSidebar: React.FC = () => {
 
   const openSavedRequest = (collection: Collection, request: SavedRequest): void => {
     const tabId = `postman-saved-${collection.id}-${request.id}`;
-    const seed: PostmanTabSeed = {
-      method: request.method,
-      url: request.url,
-      headers: request.headers,
-      params: request.params,
-      bodyType: request.bodyType,
-      body: request.body,
-      savedCollectionId: collection.id,
-      savedRequestId: request.id
-    };
+    const seed: PostmanTabSeed =
+      request.protocol === 'WEBSOCKET'
+        ? {
+            protocol: 'WEBSOCKET',
+            wsUrl: request.url,
+            savedCollectionId: collection.id,
+            savedRequestId: request.id
+          }
+        : {
+            protocol: 'HTTP',
+            method: request.method,
+            url: request.url,
+            headers: request.headers,
+            params: request.params,
+            bodyType: request.bodyType,
+            body: request.body,
+            savedCollectionId: collection.id,
+            savedRequestId: request.id
+          };
     openTab({
       id: tabId,
       title: request.name,
@@ -1134,9 +1149,9 @@ const RequestItem: React.FC<RequestItemProps> = ({
         className="flex items-center gap-2 p-1.5 rounded border border-accent bg-editor-bg"
       >
         <span
-          className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}
+          className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(requestBadgeLabel(request))}`}
         >
-          {request.method}
+          {requestBadgeLabel(request)}
         </span>
         <input
           type="text"
@@ -1182,7 +1197,7 @@ const RequestItem: React.FC<RequestItemProps> = ({
       <span
         className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}
       >
-        {request.method}
+        {request.protocol === 'HTTP' ? request.method : request.protocol}
       </span>
       <span
         className={`truncate flex-1 ${isActive ? 'text-white' : 'text-zinc-300 group-hover:text-white'}`}

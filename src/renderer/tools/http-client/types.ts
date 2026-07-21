@@ -1,4 +1,4 @@
-import type { HttpBodyType, HttpMethod } from '../../../preload/http-client/types';
+import type { HttpBodyType, HttpMethod, RequestProtocol } from '../../../preload/http-client/types';
 import type { KeyValueRow } from './lib/keyValueRows';
 
 /** Binds a tab to a saved request, so a repeat Save updates it in place instead of creating a duplicate. */
@@ -9,6 +9,8 @@ export interface SavedBinding {
 
 /** Shape a Postman tab's `meta` may carry when opened pre-filled (from sidebar history or a saved request). */
 export interface PostmanTabSeed {
+  /** Which protocol tab to land on when opening this seed. Defaults to 'HTTP' when omitted. */
+  protocol?: RequestProtocol;
   method?: HttpMethod;
   url?: string;
   headers?: KeyValueRow[];

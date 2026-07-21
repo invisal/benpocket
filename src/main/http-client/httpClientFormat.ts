@@ -141,6 +141,7 @@ function toSavedRequest(name: string, request: PostmanRequest): SavedRequest {
   return {
     id: randomUUID(),
     name,
+    protocol: 'HTTP',
     method: normalizeMethod(request.method),
     url: urlString,
     headers: importHeaders(request.header),

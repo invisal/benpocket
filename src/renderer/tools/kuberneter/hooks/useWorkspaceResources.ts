@@ -33,6 +33,7 @@ import { useNamespaces } from './useNamespaces';
 import { useEvents } from './useEvents';
 import { useServiceAccounts } from './useServiceAccounts';
 import { useClusterRoles } from './useClusterRoles';
+import { useRoles } from './useRoles';
 
 export function useWorkspaceResources(resource: string) {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
@@ -76,6 +77,7 @@ export function useWorkspaceResources(resource: string) {
   const events = useEvents(resource === 'events');
   const serviceaccounts = useServiceAccounts(resource === 'serviceaccounts');
   const clusterroles = useClusterRoles(resource === 'clusterroles');
+  const roles = useRoles(resource === 'roles');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
   if (resource === 'pods') activeQuery = pods;
@@ -111,6 +113,7 @@ export function useWorkspaceResources(resource: string) {
   else if (resource === 'events') activeQuery = events;
   else if (resource === 'serviceaccounts') activeQuery = serviceaccounts;
   else if (resource === 'clusterroles') activeQuery = clusterroles;
+  else if (resource === 'roles') activeQuery = roles;
 
   return {
     kuberneterSelectedCluster,
@@ -148,6 +151,7 @@ export function useWorkspaceResources(resource: string) {
     eventsData: events.data,
     serviceAccountsData: serviceaccounts.data,
     clusterRolesData: clusterroles.data,
+    rolesData: roles.data,
     isLoading: activeQuery ? activeQuery.isLoading : false,
     errorMsg: activeQuery ? activeQuery.errorMsg : null
   };

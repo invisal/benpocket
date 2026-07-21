@@ -101,6 +101,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     storageclass: 'Storage Class Details',
     namespace: 'Namespace Details',
     clusterrole: 'ClusterRole Details',
+    role: 'Role Details',
     event: 'Event Details',
     endpointslice: 'Endpoint Slice Details',
     job: 'Job Details',
@@ -135,6 +136,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     storageclass: 'StorageClass',
     namespace: 'Namespace',
     clusterrole: 'ClusterRole',
+    role: 'Role',
     event: 'Event',
     serviceaccount: 'ServiceAccount',
     'helm-chart': 'Chart',
@@ -175,7 +177,9 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
               )}
             </button>
           )}
-          {(contentType === 'ingressclasses' || contentType === 'clusterrole') && (
+          {(contentType === 'ingressclasses' ||
+            contentType === 'clusterrole' ||
+            contentType === 'role') && (
             <>
               <button
                 title="Edit"

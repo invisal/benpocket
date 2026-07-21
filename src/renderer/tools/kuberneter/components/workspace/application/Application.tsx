@@ -4,6 +4,8 @@ import { type ApplicationData } from '../../../types/ApplicationData';
 import { ApplicationsToolbar } from './ApplicationsToolbar';
 import { ApplicationsTable } from './ApplicationsTable';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 
 interface ApplicationProps {
   applicationsData: ApplicationData[];
@@ -18,6 +20,30 @@ export const Application: React.FC<ApplicationProps> = ({
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const activeTabId = useLayoutStore((s) => s.activeTabId);
+  const setDrawerState = useKuberneterStore((s) => s.setKuberneterTabDrawerState);
+  const drawerState = useKuberneterStore((s) =>
+    activeTabId ? s.kuberneterTabDrawers[activeTabId] : null
+  );
+
+  const selectedApplicationId =
+    drawerState?.isOpen && drawerState?.contentType === 'application'
+      ? (drawerState?.payload as ApplicationData)?.id
+      : undefined;
+
+  const handleSelectApplication = useCallback(
+    (app: ApplicationData) => {
+      if (activeTabId) {
+        setDrawerState(activeTabId, {
+          isOpen: true,
+          contentType: 'application',
+          payload: app
+        });
+      }
+    },
+    [activeTabId, setDrawerState]
+  );
 
   // Filter rows by namespace + search query
   const filteredData = useMemo(() => {
@@ -93,6 +119,8 @@ export const Application: React.FC<ApplicationProps> = ({
         selectedIds={selectedIds}
         onSelectAll={handleSelectAll}
         onSelectRow={handleSelectRow}
+        onSelectApplication={handleSelectApplication}
+        selectedApplicationId={selectedApplicationId}
       />
     </KubeWorkspaceLayout>
   );

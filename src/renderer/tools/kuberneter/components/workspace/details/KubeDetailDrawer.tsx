@@ -104,6 +104,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     role: 'Role Details',
     clusterrolebinding: 'ClusterRoleBinding Details',
     rolebinding: 'RoleBinding Details',
+    application: 'Application Details',
     event: 'Event Details',
     endpointslice: 'Endpoint Slice Details',
     job: 'Job Details',
@@ -141,6 +142,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     role: 'Role',
     clusterrolebinding: 'ClusterRoleBinding',
     rolebinding: 'RoleBinding',
+    application: 'ApplicationInstance',
     event: 'Event',
     serviceaccount: 'ServiceAccount',
     'helm-chart': 'Chart',
@@ -148,7 +150,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resourceName = (payload as any)?.name || '';
+  const resourceName = (payload as any)?.name || (payload as any)?.instance || '';
 
   return (
     <div

@@ -11,13 +11,17 @@ interface ApplicationsTableProps {
   selectedIds: Set<string>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
+  onSelectApplication?: (app: ApplicationData) => void;
+  selectedApplicationId?: string;
 }
 
 export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   filteredData,
   selectedIds,
   onSelectAll,
-  onSelectRow
+  onSelectRow,
+  onSelectApplication,
+  selectedApplicationId
 }) => {
   const columns = useMemo<Column<ApplicationData>[]>(
     () => [
@@ -158,6 +162,8 @@ export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       data={filteredData}
       getRowKey={(row) => row.id}
       className="flex-1"
+      onRowClick={onSelectApplication}
+      selectedRowKey={selectedApplicationId}
       emptyMessage="No applications match the search filters."
     />
   );

@@ -92,6 +92,8 @@ interface PodTableRow {
   namespace: string;
   ready: string;
   status: string;
+  cpuVal: number;
+  memVal: number;
   rawItem: PodRawResource;
 }
 
@@ -107,6 +109,9 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
   const [loading, setLoading] = useState(true);
   const [rawNode, setRawNode] = useState<NodeRawResource | null>(null);
   const [nodePods, setNodePods] = useState<PodRawResource[]>([]);
+  const [topPods, setTopPods] = useState<
+    { name?: string; namespace?: string; cpu?: string; memory?: string }[]
+  >([]);
 
   // Metric options
   const [timeRange, setTimeRange] = useState('1h');
@@ -131,9 +136,10 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       setLoading(true);
       try {
         const configPathArg = configPath === 'default' ? undefined : configPath;
-        const [nodesRes, podsRes] = await Promise.all([
+        const [nodesRes, podsRes, topPodsRes] = await Promise.all([
           window.kuberneter.getResources(configPathArg, cluster, 'nodes'),
-          window.kuberneter.getResources(configPathArg, cluster, 'pods')
+          window.kuberneter.getResources(configPathArg, cluster, 'pods'),
+          window.kuberneter.getTopPods(configPathArg, cluster, 'All Namespaces')
         ]);
 
         if (active) {
@@ -149,6 +155,16 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
             : [];
           const filteredPods = pods.filter((p) => p.spec?.nodeName === payload.name);
           setNodePods(filteredPods);
+
+          const topPodsItems = Array.isArray(topPodsRes?.items)
+            ? (topPodsRes.items as {
+                name?: string;
+                namespace?: string;
+                cpu?: string;
+                memory?: string;
+              }[])
+            : [];
+          setTopPods(topPodsItems);
         }
       } catch (err) {
         console.error('Failed to load Node details and Pods:', err);
@@ -419,6 +435,30 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       const phase = p.status?.phase || 'Unknown';
       const hasWarning = phase !== 'Running' && phase !== 'Succeeded';
 
+      // Find metric
+      const metric = topPods.find((m) => m.name === name && m.namespace === namespace);
+      let cpuVal = 0;
+      if (metric?.cpu) {
+        const rawCpu = metric.cpu.trim();
+        if (rawCpu.endsWith('m')) {
+          cpuVal = parseInt(rawCpu.slice(0, -1), 10);
+        } else {
+          cpuVal = parseFloat(rawCpu) * 1000;
+        }
+      }
+
+      let memVal = 0;
+      if (metric?.memory) {
+        const rawMem = metric.memory.trim();
+        if (rawMem.endsWith('Mi')) {
+          memVal = parseInt(rawMem.slice(0, -2), 10);
+        } else if (rawMem.endsWith('Gi')) {
+          memVal = parseInt(rawMem.slice(0, -2), 10) * 1024;
+        } else if (rawMem.endsWith('Ki')) {
+          memVal = parseInt(rawMem.slice(0, -2), 10) / 1024;
+        }
+      }
+
       return {
         id: `${namespace}/${name}/${idx}`,
         name,
@@ -427,10 +467,12 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
         namespace,
         ready: readyStr,
         status: phase,
+        cpuVal,
+        memVal,
         rawItem: p
       };
     });
-  }, [nodePods]);
+  }, [nodePods, topPods]);
 
   const podsColumns = useMemo<Column<PodTableRow>[]>(
     () => [
@@ -496,11 +538,20 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'cpu_spark',
         header: 'CPU',
-        render: () => (
-          <div className="h-1.5 w-16 bg-zinc-800 rounded-full overflow-hidden relative">
-            <div className="absolute top-0 left-0 h-full bg-zinc-650" style={{ width: '40%' }} />
-          </div>
-        ),
+        render: (row) => {
+          const pct = Math.min(100, Math.max(3, (row.cpuVal / 1000) * 100));
+          return (
+            <div
+              className="h-1.5 w-16 bg-zinc-800 rounded-full overflow-hidden relative"
+              title={`${row.cpuVal}m`}
+            >
+              <div
+                className="absolute top-0 left-0 h-full bg-zinc-650"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          );
+        },
         className: 'w-20',
         initialWidth: 80,
         resizable: false
@@ -508,11 +559,20 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'memory_spark',
         header: 'Memory',
-        render: () => (
-          <div className="h-1.5 w-16 bg-zinc-800 rounded-full overflow-hidden relative">
-            <div className="absolute top-0 left-0 h-full bg-indigo-500" style={{ width: '65%' }} />
-          </div>
-        ),
+        render: (row) => {
+          const pct = Math.min(100, Math.max(3, (row.memVal / 512) * 100));
+          return (
+            <div
+              className="h-1.5 w-16 bg-zinc-800 rounded-full overflow-hidden relative"
+              title={`${row.memVal}MiB`}
+            >
+              <div
+                className="absolute top-0 left-0 h-full bg-indigo-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          );
+        },
         className: 'w-20',
         initialWidth: 80,
         resizable: false

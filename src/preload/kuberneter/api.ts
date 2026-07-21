@@ -64,6 +64,13 @@ export interface KuberneterApi {
     kubeconfigPath?: string,
     contextName?: string
   ) => Promise<HelmReleaseItem[] | { error: string }>;
+  helmGetReleaseValues: (
+    releaseName: string,
+    namespace: string,
+    allValues?: boolean,
+    kubeconfigPath?: string,
+    contextName?: string
+  ) => Promise<{ values: string } | { error: string }>;
 }
 
 export interface HelmChartItem {
@@ -143,5 +150,14 @@ export const kuberneterApi: KuberneterApi = {
     ),
   helmGetChartIcons: () => ipcRenderer.invoke('kuberneter:helm-get-chart-icons'),
   helmListReleases: (kubeconfigPath, contextName) =>
-    ipcRenderer.invoke('kuberneter:helm-list-releases', kubeconfigPath, contextName)
+    ipcRenderer.invoke('kuberneter:helm-list-releases', kubeconfigPath, contextName),
+  helmGetReleaseValues: (releaseName, namespace, allValues, kubeconfigPath, contextName) =>
+    ipcRenderer.invoke(
+      'kuberneter:helm-get-release-values',
+      releaseName,
+      namespace,
+      allValues,
+      kubeconfigPath,
+      contextName
+    )
 };

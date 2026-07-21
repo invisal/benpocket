@@ -37,6 +37,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { DetailContent } from './details/DetailContent';
 import { HelmCharts } from './helm-charts/HelmCharts';
+import { HelmReleases } from './helm-releases/HelmReleases';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -300,7 +301,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
             <ValidatingWebhooks validatingWebhooksData={validatingWebhooksData} />
           )}
 
-          {(resource === 'apps' || resource === 'helm-releases') && (
+          {resource === 'apps' && (
             <Application
               applicationsData={applicationsData}
               kuberneterSelectedNamespace={kuberneterSelectedNamespace}
@@ -308,6 +309,8 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           )}
 
           {resource === 'helm-charts' && <HelmCharts />}
+
+          {resource === 'helm-releases' && <HelmReleases />}
 
           {resource === 'nodes' && <Nodes nodesData={nodesData} />}
         </>

@@ -35,7 +35,8 @@ import { IngressDetail } from './IngressDetail';
 import { IngressClassDetail } from './IngressClassDetail';
 import { NetworkPolicyDetail } from './NetworkPolicyDetail';
 import { HelmChartDetail } from './HelmChartDetail';
-import { type HelmChartItem } from '../../../../../../preload/kuberneter/api';
+import { HelmReleaseDetail } from './HelmReleaseDetail';
+import { type HelmChartItem, type HelmReleaseItem } from '../../../../../../preload/kuberneter/api';
 
 import { type PodData } from '../../../types/PodData';
 import { type DeployData } from '../../../types/DeployData';
@@ -153,6 +154,8 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       );
     case 'helm-chart':
       return <HelmChartDetail payload={payload as HelmChartItem} isTab={isTab} />;
+    case 'helm-release':
+      return <HelmReleaseDetail payload={payload as HelmReleaseItem} isTab={isTab} />;
     default:
       return (
         <div className="p-4 text-xs text-zinc-500">

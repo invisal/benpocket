@@ -119,7 +119,8 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     ingresses: 'Ingress Details',
     ingressclasses: 'Ingress Class Details',
     networkpolicies: 'Network Policy Details',
-    'helm-chart': 'Helm Chart Details'
+    'helm-chart': 'Helm Chart Details',
+    'helm-release': 'Helm Release Details'
   };
 
   const prefixMap: Record<string, string> = {
@@ -132,7 +133,8 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     storageclass: 'StorageClass',
     namespace: 'Namespace',
     event: 'Event',
-    'helm-chart': 'Chart'
+    'helm-chart': 'Chart',
+    'helm-release': 'Release'
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,7 +149,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
       {/* Resize Handle on the left side of the drawer */}
       <div
         onPointerDown={handlePointerDown}
-        className="absolute top-0 left-0 w-[4px] h-full cursor-col-resize hover:bg-accent/40 active:bg-accent transition-colors z-40"
+        className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-accent/40 active:bg-accent transition-colors z-40"
       />
 
       <div className="h-11 shrink-0 flex items-center justify-between px-4 border-b border-border-dark">

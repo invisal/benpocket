@@ -8,7 +8,6 @@ import { AnnotationsPanel } from '../../features/annotations/components/Annotati
 import { BlurMaskPanel } from '../../features/blur-mask/components/BlurMaskPanel';
 import { ZoomKeyframeEditor } from '../../features/zoom/components/ZoomKeyframeEditor';
 import { ClipSettingsPanel } from '../../features/timeline/components/ClipSettingsPanel';
-import { ExportSidePanel } from '../../features/export/components/ExportSidePanel';
 import { EDITOR_TOOLS, type EditorTool } from './editorTools';
 
 interface EditorToolPanelProps {
@@ -24,8 +23,6 @@ export function EditorToolPanel({
   sourceResolution,
   selectedSegment
 }: EditorToolPanelProps): JSX.Element {
-  if (tool === 'export') return <ExportSidePanel />;
-
   const label = EDITOR_TOOLS.find((t) => t.id === tool)?.label ?? '';
 
   return (

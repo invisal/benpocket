@@ -9,6 +9,7 @@ import { resolveCropRect, centerSquareCrop } from './rendering/crop';
 import { StreamingVideoDecoder } from './streaming-decoder';
 import { WebcamFrameQueue } from './webcam-frame-queue';
 import type { VideoExportRequest } from './export-orchestrator';
+import { EXPORT_CANCELLED_MESSAGE } from './cancel';
 
 /**
  * GIF export reuses the exact same decode+render loop as MP4/WebM/MOV
@@ -21,12 +22,21 @@ export async function exportGif(
   request: VideoExportRequest,
   canvas: OffscreenCanvas,
   onProgress: (progress: ExportProgress) => void,
-  wasmUrl: string
+  wasmUrl: string,
+  signal?: AbortSignal
 ): Promise<Blob> {
   const { options, sourceFile, webcamFile } = request;
   const decoder = new StreamingVideoDecoder(wasmUrl);
   let webcamDecoder: StreamingVideoDecoder | null = null;
   let renderer: PixiSceneRenderer | null = null;
+  let gifInstance: GIF | null = null;
+
+  const onAbort = () => {
+    decoder.cancel();
+    webcamDecoder?.cancel();
+    gifInstance?.abort();
+  };
+  signal?.addEventListener('abort', onAbort);
 
   try {
     const sourceInfo = await decoder.loadMetadata(sourceFile);
@@ -65,6 +75,7 @@ export async function exportGif(
       background: '#000000',
       dither: 'FloydSteinberg'
     });
+    gifInstance = gif;
 
     // gif.js's `addFrame` only accepts `ImageData`, a 2D/WebGL rendering
     // context, or a DOM element (it feature-detects via `childNodes`) --
@@ -126,6 +137,7 @@ export async function exportGif(
       options.segments,
       async (videoFrame, _exportTimestampUs, sourceTimestampMs, segment) => {
         try {
+          if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
           const cropRect = resolveCropRect(segment.crop, sourceInfo.width, sourceInfo.height);
           const scene = evaluateSceneAtMs(
             options.project,
@@ -174,9 +186,16 @@ export async function exportGif(
     if (webcamDecodePromise) await webcamDecodePromise.catch(() => undefined);
     webcamQueue?.destroy();
 
+    if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
+
     onProgress({ percent: 90, stage: 'encoding' });
     return await new Promise<Blob>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new Error(EXPORT_CANCELLED_MESSAGE));
+        return;
+      }
       gif.on('finished', (blob: Blob) => resolve(blob));
+      gif.on('abort', () => reject(new Error(EXPORT_CANCELLED_MESSAGE)));
       gif.on('progress', (progress: number) => {
         onProgress({ percent: 90 + Math.round(progress * 10), stage: 'encoding' });
       });
@@ -187,6 +206,7 @@ export async function exportGif(
       }
     });
   } finally {
+    signal?.removeEventListener('abort', onAbort);
     decoder.destroy();
     webcamDecoder?.destroy();
     renderer?.destroy();

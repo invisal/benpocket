@@ -10,6 +10,7 @@ import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 import { CutTimeline } from './features/timeline/components/CutTimeline';
 import { RecordingControllerProvider } from './features/recording/context/RecordingControllerContext';
 import { RecorderToolbarBridge } from './features/recording/components/RecorderToolbarBridge';
+import { ExportPopoverButton } from './features/export/components/ExportPopoverButton';
 
 const NAV_ITEMS: {
   route: ScreenRecorderRoute;
@@ -63,6 +64,7 @@ export function ScreenRecorderApp(): JSX.Element {
           >
             Editor
           </button>
+          {route === 'editor' && <ExportPopoverButton />}
         </nav>
 
         <div className="flex min-h-0 flex-1 flex-col">

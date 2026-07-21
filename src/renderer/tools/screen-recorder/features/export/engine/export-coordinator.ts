@@ -11,6 +11,7 @@ import { VideoMuxer } from './muxer';
 import { AudioProcessor } from './audio-encoder';
 import { isSourceCopyEligible } from './export-orchestrator';
 import { resolveWebDemuxerWasmPath } from './wasm-path';
+import { EXPORT_CANCELLED_MESSAGE } from './cancel';
 
 /**
  * Runs on the renderer's main thread (called directly from
@@ -23,8 +24,11 @@ import { resolveWebDemuxerWasmPath } from './wasm-path';
  */
 export async function runExport(
   options: ExportOptions,
-  onProgress: (progress: ExportProgress) => void
+  onProgress: (progress: ExportProgress) => void,
+  signal?: AbortSignal
 ): Promise<void> {
+  if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
+
   const wasmUrl = resolveWebDemuxerWasmPath();
   const sourceBytes = await window.screenRecorder.export.readFileBytes(options.sourceVideoPath);
   const sourceFileName = options.sourceVideoPath.split(/[/\\]/).pop() ?? 'source';
@@ -72,7 +76,8 @@ export async function runExport(
       webcamBytes,
       webcamFileName,
       onProgress,
-      wasmUrl
+      wasmUrl,
+      signal
     );
     onProgress({ percent: 100, stage: 'encoding' });
     await window.screenRecorder.export.writeFileBytes(options.outputPath, outputBytes);
@@ -90,9 +95,14 @@ function runWorker(
   webcamBytes: ArrayBuffer | null,
   webcamFileName: string | null,
   onProgress: (progress: ExportProgress) => void,
-  wasmUrl: string
+  wasmUrl: string,
+  signal?: AbortSignal
 ): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
+    const onAbort = () => worker.postMessage({ type: 'cancel' } satisfies ExportWorkerInMessage);
+    signal?.addEventListener('abort', onAbort);
+    const cleanup = () => signal?.removeEventListener('abort', onAbort);
+
     worker.onmessage = (event: MessageEvent<ExportWorkerOutMessage>) => {
       const msg = event.data;
       if (msg.type === 'progress') {
@@ -100,18 +110,22 @@ function runWorker(
         return;
       }
       if (msg.type === 'error') {
+        cleanup();
         reject(new Error(msg.message));
         return;
       }
       if (msg.type === 'gif-result') {
+        cleanup();
         void msg.blob.arrayBuffer().then(resolve, reject);
         return;
       }
       // video-result: needs audio processing (main-thread only, see module
       // doc comment) and final muxing before it's ready to write out.
-      void finishVideoExport(options, sourceFile, msg, wasmUrl).then(resolve, reject);
+      cleanup();
+      void finishVideoExport(options, sourceFile, msg, wasmUrl, signal).then(resolve, reject);
     };
     worker.onerror = (event: ErrorEvent) => {
+      cleanup();
       reject(new Error(event.message || 'export worker crashed'));
     };
 
@@ -139,15 +153,18 @@ async function finishVideoExport(
   options: ExportOptions,
   sourceFile: File,
   result: Extract<ExportWorkerOutMessage, { type: 'video-result' }>,
-  wasmUrl: string
+  wasmUrl: string,
+  signal?: AbortSignal
 ): Promise<ArrayBuffer> {
+  if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
+  const includeAudio = result.sourceHasAudio && options.includeAudio;
   const muxer = new VideoMuxer(
     {
       format: options.format as Exclude<typeof options.format, 'gif'>,
       frameRate: options.frameRate,
       videoCodec: result.muxerCodec
     },
-    result.sourceHasAudio,
+    includeAudio,
     options.format === 'webm' ? 'opus' : 'aac'
   );
   await muxer.initialize();
@@ -156,7 +173,7 @@ async function finishVideoExport(
     await muxer.addVideoChunk(chunk, meta);
   }
 
-  if (result.sourceHasAudio) {
+  if (includeAudio) {
     // Short-lived, used only to pick a codec -- destroyed before real audio
     // processing starts so AudioProcessor.process() (which may itself open
     // demuxers) never has two WebDemuxer-spawned WASM Workers alive at once.
@@ -171,8 +188,10 @@ async function finishVideoExport(
 
     if (exportCodec) {
       const sourceObjectUrl = URL.createObjectURL(sourceFile);
+      const audioProcessor = new AudioProcessor();
+      const onAbort = () => audioProcessor.cancel();
+      signal?.addEventListener('abort', onAbort);
       try {
-        const audioProcessor = new AudioProcessor();
         await audioProcessor.process(
           sourceFile,
           muxer,
@@ -182,10 +201,14 @@ async function finishVideoExport(
           wasmUrl
         );
       } finally {
+        signal?.removeEventListener('abort', onAbort);
         URL.revokeObjectURL(sourceObjectUrl);
       }
     }
   }
+
+  if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
+
   const blob = await muxer.finalize();
   return blob.arrayBuffer();
 }

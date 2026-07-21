@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useExportStore } from '../store/export-store';
 import { buildExportProject } from '../lib/build-export-project';
 import { runExport } from '../engine/export-coordinator';
+import { isExportCancelled } from '../engine/cancel';
 
 export type ExportStatus = 'idle' | 'exporting' | 'error';
 
@@ -19,6 +20,7 @@ interface UseExportActionResult {
   progress: ExportProgressState | null;
   canExport: boolean;
   handleExport: () => Promise<void>;
+  handleCancel: () => void;
 }
 
 /**
@@ -35,6 +37,7 @@ export function useExportAction(): UseExportActionResult {
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ExportProgressState | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   async function handleExport(): Promise<void> {
     const sourceVideoPath = lastRecording?.filePath ?? null;
@@ -59,6 +62,9 @@ export function useExportAction(): UseExportActionResult {
     setError(null);
     setProgress({ percent: 0, stage: 'rendering' });
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const durationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
       await runExport(
@@ -69,6 +75,7 @@ export function useExportAction(): UseExportActionResult {
           resolution: store.resolution,
           frameRate: store.frameRate,
           quality: store.quality,
+          includeAudio: store.includeAudio,
           outputPath,
           sourceVideoPath,
           segments: segments.map((s) => ({ range: s.range, crop: s.crop, speed: s.speed })),
@@ -77,15 +84,34 @@ export function useExportAction(): UseExportActionResult {
         (p) => {
           setProgress({ percent: p.percent, stage: p.stage });
           if (p.stage === 'error' && p.error) setError(p.error);
-        }
+        },
+        controller.signal
       );
       setStatus('idle');
       setProgress(null);
     } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
+      if (isExportCancelled(err)) {
+        setStatus('idle');
+        setProgress(null);
+      } else {
+        setStatus('error');
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      abortControllerRef.current = null;
     }
   }
 
-  return { status, error, progress, canExport: Boolean(lastRecording), handleExport };
+  function handleCancel(): void {
+    abortControllerRef.current?.abort();
+  }
+
+  return {
+    status,
+    error,
+    progress,
+    canExport: Boolean(lastRecording),
+    handleExport,
+    handleCancel
+  };
 }

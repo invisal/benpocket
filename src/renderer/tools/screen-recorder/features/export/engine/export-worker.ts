@@ -4,6 +4,7 @@ import type { VideoCodec } from 'mediabunny';
 import type { ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import { exportVideoOnly } from './export-orchestrator';
 import { exportGif } from './gif-exporter';
+import { EXPORT_CANCELLED_MESSAGE } from './cancel';
 
 // PixiJS defaults to `BrowserAdapter`, which assumes `document` exists (used
 // e.g. by BlurFilter's shader-precision detection). This module runs inside
@@ -29,7 +30,11 @@ export interface RunExportMessage {
   wasmUrl: string;
 }
 
-export type ExportWorkerInMessage = RunExportMessage;
+export interface CancelExportMessage {
+  type: 'cancel';
+}
+
+export type ExportWorkerInMessage = RunExportMessage | CancelExportMessage;
 
 export interface ProgressOutMessage {
   type: 'progress';
@@ -58,8 +63,20 @@ function post(message: ExportWorkerOutMessage): void {
   worker.postMessage(message);
 }
 
+// Only one export ever runs per Worker instance (the coordinator spawns a
+// fresh Worker per export), so a single module-level controller is enough --
+// a 'cancel' message just aborts whichever run is currently in flight.
+let activeAbortController: AbortController | null = null;
+
 worker.onmessage = async (event: MessageEvent<ExportWorkerInMessage>) => {
   const msg = event.data;
+  if (msg.type === 'cancel') {
+    activeAbortController?.abort();
+    return;
+  }
+
+  const controller = new AbortController();
+  activeAbortController = controller;
   try {
     const sourceFile = new File([msg.sourceBytes], msg.sourceFileName);
     const webcamFile = msg.webcamBytes
@@ -71,12 +88,18 @@ worker.onmessage = async (event: MessageEvent<ExportWorkerInMessage>) => {
     const onProgress = (progress: ExportProgress) => post({ type: 'progress', progress });
 
     if (msg.options.format === 'gif') {
-      const blob = await exportGif(request, canvas, onProgress, msg.wasmUrl);
+      const blob = await exportGif(request, canvas, onProgress, msg.wasmUrl, controller.signal);
       post({ type: 'gif-result', blob });
       return;
     }
 
-    const result = await exportVideoOnly(request, canvas, onProgress, msg.wasmUrl);
+    const result = await exportVideoOnly(
+      request,
+      canvas,
+      onProgress,
+      msg.wasmUrl,
+      controller.signal
+    );
     post({
       type: 'video-result',
       muxerCodec: result.muxerCodec,
@@ -85,7 +108,11 @@ worker.onmessage = async (event: MessageEvent<ExportWorkerInMessage>) => {
       sourceDurationSec: result.sourceDurationSec
     });
   } catch (err) {
-    console.error('[export-worker]', err);
+    if (!(err instanceof Error && err.message === EXPORT_CANCELLED_MESSAGE)) {
+      console.error('[export-worker]', err);
+    }
     post({ type: 'error', message: err instanceof Error ? err.message : String(err) });
+  } finally {
+    activeAbortController = null;
   }
 };

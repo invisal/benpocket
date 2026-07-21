@@ -7,6 +7,7 @@ import { resolveCropRect, centerSquareCrop } from './rendering/crop';
 import { StreamingVideoDecoder } from './streaming-decoder';
 import { createVideoEncoder, getEncoderPreferences } from './video-encoder';
 import { WebcamFrameQueue } from './webcam-frame-queue';
+import { EXPORT_CANCELLED_MESSAGE, isExportCancelled } from './cancel';
 
 export interface VideoExportRequest {
   options: ExportOptions;
@@ -33,6 +34,7 @@ export function isSourceCopyEligible(
   sourceInfo: { width: number; height: number; durationMs: number }
 ): boolean {
   if (options.format === 'gif') return false;
+  if (!options.includeAudio) return false;
   if (
     options.resolution.width !== sourceInfo.width ||
     options.resolution.height !== sourceInfo.height
@@ -78,7 +80,8 @@ export async function exportVideoOnly(
   request: VideoExportRequest,
   canvas: OffscreenCanvas,
   onProgress: (progress: ExportProgress) => void,
-  wasmUrl: string
+  wasmUrl: string,
+  signal?: AbortSignal
 ): Promise<VideoExportResult> {
   const { options, sourceFile, webcamFile } = request;
   let lastError: Error | null = null;
@@ -92,10 +95,12 @@ export async function exportVideoOnly(
         canvas,
         hardwareAcceleration,
         onProgress,
-        wasmUrl
+        wasmUrl,
+        signal
       );
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      if (isExportCancelled(lastError)) throw lastError;
       console.warn(`[export] ${hardwareAcceleration} attempt failed:`, lastError);
     }
   }
@@ -110,12 +115,19 @@ async function runOnce(
   canvas: OffscreenCanvas,
   hardwareAcceleration: HardwareAcceleration,
   onProgress: (progress: ExportProgress) => void,
-  wasmUrl: string
+  wasmUrl: string,
+  signal?: AbortSignal
 ): Promise<VideoExportResult> {
   const decoder = new StreamingVideoDecoder(wasmUrl);
   let webcamDecoder: StreamingVideoDecoder | null = null;
   let renderer: PixiSceneRenderer | null = null;
   let fatalError: Error | null = null;
+
+  const onAbort = () => {
+    decoder.cancel();
+    webcamDecoder?.cancel();
+  };
+  signal?.addEventListener('abort', onAbort);
 
   try {
     const sourceInfo = await decoder.loadMetadata(sourceFile);
@@ -211,6 +223,7 @@ async function runOnce(
       async (videoFrame, _exportTimestampUs, sourceTimestampMs, segment) => {
         try {
           if (fatalError) throw fatalError;
+          if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
 
           const cropRect = resolveCropRect(segment.crop, sourceInfo.width, sourceInfo.height);
 
@@ -263,6 +276,7 @@ async function runOnce(
     );
 
     if (fatalError) throw fatalError;
+    if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
 
     webcamDecoder?.cancel();
     if (webcamDecodePromise) await webcamDecodePromise.catch(() => undefined);
@@ -279,6 +293,7 @@ async function runOnce(
       sourceDurationSec: sourceInfo.duration
     };
   } finally {
+    signal?.removeEventListener('abort', onAbort);
     decoder.destroy();
     webcamDecoder?.destroy();
     renderer?.destroy();

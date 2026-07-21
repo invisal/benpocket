@@ -4,6 +4,8 @@ import { type NodeData } from '../../../types/NodeData';
 import { NodesToolbar } from './NodesToolbar';
 import { NodesTable } from './NodesTable';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 
 interface NodesProps {
   nodesData: NodeData[];
@@ -14,6 +16,30 @@ export const Nodes: React.FC<NodesProps> = ({ nodesData }) => {
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const activeTabId = useLayoutStore((s) => s.activeTabId);
+  const setDrawerState = useKuberneterStore((s) => s.setKuberneterTabDrawerState);
+  const drawerState = useKuberneterStore((s) =>
+    activeTabId ? s.kuberneterTabDrawers[activeTabId] : null
+  );
+
+  const selectedNodeId =
+    drawerState?.isOpen && drawerState?.contentType === 'nodes'
+      ? (drawerState?.payload as NodeData)?.id
+      : undefined;
+
+  const handleSelectNode = useCallback(
+    (node: NodeData) => {
+      if (activeTabId) {
+        setDrawerState(activeTabId, {
+          isOpen: true,
+          contentType: 'nodes',
+          payload: node
+        });
+      }
+    },
+    [activeTabId, setDrawerState]
+  );
 
   // Filter rows by search query
   const filteredData = useMemo(() => {
@@ -116,6 +142,8 @@ export const Nodes: React.FC<NodesProps> = ({ nodesData }) => {
         selectedIds={selectedIds}
         onSelectAll={handleSelectAll}
         onSelectRow={handleSelectRow}
+        onSelectNode={handleSelectNode}
+        selectedNodeId={selectedNodeId}
       />
     </KubeWorkspaceLayout>
   );

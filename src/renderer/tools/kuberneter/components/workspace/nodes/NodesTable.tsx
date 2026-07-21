@@ -10,6 +10,8 @@ interface NodesTableProps {
   selectedIds: Set<string>;
   onSelectAll: (checked: boolean) => void;
   onSelectRow: (id: string, checked: boolean) => void;
+  onSelectNode?: (node: NodeData) => void;
+  selectedNodeId?: string;
 }
 
 const MetricCell = ({ percent, capacity }: { percent: number; capacity: string }) => {
@@ -30,7 +32,9 @@ export const NodesTable: React.FC<NodesTableProps> = ({
   filteredData,
   selectedIds,
   onSelectAll,
-  onSelectRow
+  onSelectRow,
+  onSelectNode,
+  selectedNodeId
 }) => {
   const columns = useMemo<Column<NodeData>[]>(
     () => [
@@ -208,6 +212,8 @@ export const NodesTable: React.FC<NodesTableProps> = ({
       data={filteredData}
       getRowKey={(row) => row.id}
       className="flex-1"
+      onRowClick={onSelectNode}
+      selectedRowKey={selectedNodeId}
       emptyMessage="No nodes match the search filters."
     />
   );

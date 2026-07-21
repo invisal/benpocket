@@ -25,6 +25,7 @@ import { RoleDetail } from './RoleDetail';
 import { ClusterRoleBindingDetail } from './ClusterRoleBindingDetail';
 import { RoleBindingDetail } from './RoleBindingDetail';
 import { ApplicationDetail } from './ApplicationDetail';
+import { NodeDetail } from './NodeDetail';
 import { EventDetail } from './EventDetail';
 import { MutatingWebhookDetail } from './MutatingWebhookDetail';
 import { type PersistentVolumeClaimData } from '../../../types/PersistentVolumeClaimData';
@@ -36,6 +37,7 @@ import { type RoleData } from '../../../types/RoleData';
 import { type ClusterRoleBindingData } from '../../../types/ClusterRoleBindingData';
 import { type RoleBindingData } from '../../../types/RoleBindingData';
 import { type ApplicationData } from '../../../types/ApplicationData';
+import { type NodeData } from '../../../types/NodeData';
 import { type EventData } from '../../../types/EventData';
 
 import { ValidatingWebhookDetail } from './ValidatingWebhookDetail';
@@ -148,6 +150,8 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       return <RoleBindingDetail payload={payload as RoleBindingData} isTab={isTab} />;
     case 'application':
       return <ApplicationDetail payload={payload as ApplicationData} isTab={isTab} />;
+    case 'nodes':
+      return <NodeDetail payload={payload as NodeData} isTab={isTab} />;
     case 'event':
       return <EventDetail payload={payload as EventData} isTab={isTab} />;
     case 'endpointslice':

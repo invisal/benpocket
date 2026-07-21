@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useRef, useEffect } from 'react';
-import { Maximize2, Pencil, Star, Trash2, X } from 'lucide-react';
+import { Maximize2, Pencil, Star, Trash2, X, Terminal, Pause, RefreshCw } from 'lucide-react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { DetailContent } from './DetailContent';
@@ -105,6 +105,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     clusterrolebinding: 'ClusterRoleBinding Details',
     rolebinding: 'RoleBinding Details',
     application: 'Application Details',
+    nodes: 'Node Details',
     event: 'Event Details',
     endpointslice: 'Endpoint Slice Details',
     job: 'Job Details',
@@ -143,6 +144,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     clusterrolebinding: 'ClusterRoleBinding',
     rolebinding: 'RoleBinding',
     application: 'ApplicationInstance',
+    nodes: 'Node',
     event: 'Event',
     serviceaccount: 'ServiceAccount',
     'helm-chart': 'Chart',
@@ -182,6 +184,40 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
                 <Star className="size-3.5" />
               )}
             </button>
+          )}
+          {contentType === 'nodes' && (
+            <>
+              <button
+                title="Node Shell"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Terminal className="size-3.5" />
+              </button>
+              <button
+                title="Cordon Node"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Pause className="size-3.5" />
+              </button>
+              <button
+                title="Refresh"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <RefreshCw className="size-3.5" />
+              </button>
+              <button
+                title="Edit"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+              <button
+                title="Delete"
+                className="text-zinc-400 hover:text-red-400 cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </>
           )}
           {(contentType === 'ingressclasses' ||
             contentType === 'clusterrole' ||

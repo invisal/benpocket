@@ -1,11 +1,15 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import type {
+  Environment,
   ExportCollectionPayload,
   ExportCollectionResult,
-  ImportCollectionResult
+  ImportCollectionResult,
+  KeyValuePair
 } from '../../../preload/http-client/types';
 import { readCollections, writeCollections } from './collections';
+import { readEnvironments, writeEnvironments } from './environments';
 import {
   exportCollectionToPostman,
   importPostmanCollection,
@@ -18,6 +22,49 @@ const SUPPORTED_SCHEMAS_MESSAGE =
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'collection';
+}
+
+/** Case-insensitive, trimmed match — good enough to pair a collection with "its" environment by name. */
+function sameEnvironmentName(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/** Adds/updates `incoming` variables into `existing` by key, preserving any variables `existing` already has that aren't in `incoming`. */
+function mergeVariables(existing: KeyValuePair[], incoming: KeyValuePair[]): KeyValuePair[] {
+  const merged = [...existing];
+  for (const variable of incoming) {
+    const index = merged.findIndex((v) => v.key === variable.key);
+    if (index === -1) merged.push(variable);
+    else merged[index] = { ...merged[index], value: variable.value, enabled: variable.enabled };
+  }
+  return merged;
+}
+
+/** Writes an imported Postman collection's variables into the environment matching its name in the same workspace, creating one if none exists yet. Returns the environment id. */
+async function upsertImportedVariables(
+  workspaceId: string,
+  collectionName: string,
+  variables: KeyValuePair[]
+): Promise<string> {
+  const environments = await readEnvironments();
+  const existing = environments.find(
+    (e) => e.workspaceId === workspaceId && sameEnvironmentName(e.name, collectionName)
+  );
+  if (existing) {
+    existing.variables = mergeVariables(existing.variables, variables);
+    await writeEnvironments(environments);
+    return existing.id;
+  }
+  const environment: Environment = {
+    id: randomUUID(),
+    name: collectionName,
+    createdAt: Date.now(),
+    workspaceId,
+    variables
+  };
+  environments.push(environment);
+  await writeEnvironments(environments);
+  return environment.id;
 }
 
 export function registerCollectionTransferHandlers(): void {
@@ -39,7 +86,12 @@ export function registerCollectionTransferHandlers(): void {
         : await dialog.showSaveDialog(saveOptions);
       if (result.canceled || !result.filePath) return { ok: true, canceled: true };
 
-      const postmanFile = exportCollectionToPostman(collection);
+      const environments = await readEnvironments();
+      const matchingEnvironment = environments.find(
+        (e) =>
+          e.workspaceId === collection.workspaceId && sameEnvironmentName(e.name, collection.name)
+      );
+      const postmanFile = exportCollectionToPostman(collection, matchingEnvironment?.variables);
       await fs.promises.writeFile(result.filePath, JSON.stringify(postmanFile, null, 2), 'utf-8');
       return { ok: true, filePath: result.filePath };
     }
@@ -81,11 +133,22 @@ export function registerCollectionTransferHandlers(): void {
         };
       }
 
-      const { collection, schemaVersion } = importPostmanCollection(parsed, workspaceId);
+      const { collection, schemaVersion, variables } = importPostmanCollection(parsed, workspaceId);
       const collections = await readCollections();
       collections.push(collection);
       await writeCollections(collections);
-      return { ok: true, collection, schemaVersion };
+
+      if (variables.length === 0) {
+        return { ok: true, collection, schemaVersion };
+      }
+      const environmentId = await upsertImportedVariables(workspaceId, collection.name, variables);
+      return {
+        ok: true,
+        collection,
+        schemaVersion,
+        importedVariableCount: variables.length,
+        environmentId
+      };
     }
   );
 }

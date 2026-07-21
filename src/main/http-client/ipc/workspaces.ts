@@ -46,15 +46,19 @@ export async function getOrCreateDefaultWorkspace(): Promise<Workspace> {
 /**
  * One-time (idempotent) startup migration: stamps any collection/environment saved
  * before workspaces existed with the default workspace's id, so pre-existing user data
- * isn't orphaned once collections/environments become workspace-scoped.
+ * isn't orphaned once collections/environments become workspace-scoped. Also guarantees
+ * a default "Personal" workspace exists on a completely fresh install, where there's
+ * nothing to migrate but the workspace list would otherwise stay empty.
  */
 export async function migrateWorkspaceData(): Promise<void> {
   const [collections, environments] = await Promise.all([readCollections(), readEnvironments()]);
   const needsMigration =
     collections.some((c) => !c.workspaceId) || environments.some((e) => !e.workspaceId);
-  if (!needsMigration) return;
+  const existingWorkspaces = await readWorkspaces();
+  if (!needsMigration && existingWorkspaces.length > 0) return;
 
   const defaultWorkspace = await getOrCreateDefaultWorkspace();
+  if (!needsMigration) return;
 
   if (collections.some((c) => !c.workspaceId)) {
     await writeCollections(

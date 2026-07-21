@@ -16,10 +16,12 @@ import {
   Send,
   Trash2,
   Upload,
+  Waves,
   X
 } from 'lucide-react';
 import { usePostmanTabsStore } from './store/tabs.store';
 import { useCollectionsStore } from './store/collections.store';
+import { useEnvironmentsStore } from './store/environments.store';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
 import type {
   Collection,
@@ -56,22 +58,50 @@ function readDragPayload(dataTransfer: DataTransfer): DragPayload | null {
   }
 }
 
+// Bordered so the badge still reads as a distinct chip against a light-theme
+// surface, where the `-950` fill alone blends into near-white; the border
+// pins the shape while the fill/text colors do the rest (`--color-purple-400`
+// gets a light-theme override in main.css since its default is too washed out
+// on a white background).
 function methodBadgeClass(method: string): string {
   switch (method) {
+    case 'WEBSOCKET':
+      return 'text-cyan-500';
     case 'GET':
-      return 'bg-emerald-950/40 text-emerald-500';
+      return 'text-emerald-500';
     case 'POST':
-      return 'bg-amber-950/40 text-amber-500';
+      return 'text-amber-500';
     case 'PUT':
-      return 'bg-sky-950/40 text-sky-500';
+      return 'text-sky-500';
     case 'PATCH':
-      return 'bg-purple-950/40 text-purple-400';
+      return 'text-purple-400';
     case 'DELETE':
-      return 'bg-red-950/40 text-red-500';
+      return 'text-red-500';
     default:
-      return 'bg-zinc-800 text-zinc-400';
+      return 'text-zinc-400';
   }
 }
+
+/** Method/protocol badge for a saved request: the HTTP verb, or a WebSocket icon for WS requests. */
+const RequestMethodBadge: React.FC<{ request: SavedRequest }> = ({ request }) => {
+  if (request.protocol === 'WEBSOCKET') {
+    return (
+      <span
+        title="WebSocket request"
+        className={`flex items-center justify-center px-1 py-0.5 rounded shrink-0 ${methodBadgeClass('WEBSOCKET')}`}
+      >
+        <Waves size={9} strokeWidth={3} />
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}
+    >
+      {request.method}
+    </span>
+  );
+};
 
 export const HttpClientSidebar: React.FC = () => {
   const { tabs, activeTabId, openTab, openNewRequestTab } = usePostmanTabsStore();
@@ -152,16 +182,25 @@ export const HttpClientSidebar: React.FC = () => {
 
   const openSavedRequest = (collection: Collection, request: SavedRequest): void => {
     const tabId = `postman-saved-${collection.id}-${request.id}`;
-    const seed: PostmanTabSeed = {
-      method: request.method,
-      url: request.url,
-      headers: request.headers,
-      params: request.params,
-      bodyType: request.bodyType,
-      body: request.body,
-      savedCollectionId: collection.id,
-      savedRequestId: request.id
-    };
+    const seed: PostmanTabSeed =
+      request.protocol === 'WEBSOCKET'
+        ? {
+            protocol: 'WEBSOCKET',
+            wsUrl: request.url,
+            savedCollectionId: collection.id,
+            savedRequestId: request.id
+          }
+        : {
+            protocol: 'HTTP',
+            method: request.method,
+            url: request.url,
+            headers: request.headers,
+            params: request.params,
+            bodyType: request.bodyType,
+            body: request.body,
+            savedCollectionId: collection.id,
+            savedRequestId: request.id
+          };
     openTab({
       id: tabId,
       title: request.name,
@@ -215,10 +254,17 @@ export const HttpClientSidebar: React.FC = () => {
         result.schemaVersion && result.schemaVersion !== 'unknown'
           ? ` (Postman Collection v${result.schemaVersion})`
           : '';
+      const variablesLabel = result.importedVariableCount
+        ? `, ${result.importedVariableCount} variable${result.importedVariableCount === 1 ? '' : 's'}`
+        : '';
       setStatusMessage({
         type: 'success',
-        text: `Imported "${result.collection.name}" (${countRequestsRecursive(result.collection)} requests)${versionLabel}.`
+        text: `Imported "${result.collection.name}" (${countRequestsRecursive(result.collection)} requests${variablesLabel})${versionLabel}.`
       });
+      if (result.environmentId) {
+        await useEnvironmentsStore.getState().load();
+        useEnvironmentsStore.getState().setActiveEnvironmentId(result.environmentId);
+      }
     }
   };
 
@@ -1133,11 +1179,7 @@ const RequestItem: React.FC<RequestItemProps> = ({
         style={style}
         className="flex items-center gap-2 p-1.5 rounded border border-accent bg-editor-bg"
       >
-        <span
-          className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}
-        >
-          {request.method}
-        </span>
+        <RequestMethodBadge request={request} />
         <input
           type="text"
           autoFocus
@@ -1179,11 +1221,7 @@ const RequestItem: React.FC<RequestItemProps> = ({
       }`}
     >
       {isActive && <span className="w-1 h-1 rounded-full bg-accent shrink-0" />}
-      <span
-        className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}
-      >
-        {request.method}
-      </span>
+      <RequestMethodBadge request={request} />
       <span
         className={`truncate flex-1 ${isActive ? 'text-white' : 'text-zinc-300 group-hover:text-white'}`}
       >

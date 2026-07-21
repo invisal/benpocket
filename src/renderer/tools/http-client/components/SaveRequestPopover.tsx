@@ -3,19 +3,26 @@ import { useEffect, useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Save } from 'lucide-react';
 import { useCollectionsStore } from '../store/collections.store';
-import type { HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
+import type {
+  HttpBodyType,
+  HttpMethod,
+  RequestProtocol,
+  SavedRequest
+} from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import type { SavedBinding } from '../types';
 import { findRequestInContainer, flattenFolderOptions } from '../lib/collectionTree';
 
 interface SaveRequestPopoverProps {
   tabTitle: string;
-  method: HttpMethod;
+  protocol: RequestProtocol;
   url: string;
-  headers: KeyValueRow[];
-  params: KeyValueRow[];
-  bodyType: HttpBodyType;
-  body: string;
+  /** HTTP-only. */
+  method?: HttpMethod;
+  headers?: KeyValueRow[];
+  params?: KeyValueRow[];
+  bodyType?: HttpBodyType;
+  body?: string;
   binding: SavedBinding | null;
   /** Pre-select this collection/folder on first open, e.g. when the tab was opened via "new request in folder". Ignored once `binding` is set. */
   defaultCollectionId?: string;
@@ -30,6 +37,7 @@ function makeRequestId(): string {
 
 export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
   tabTitle,
+  protocol,
   method,
   url,
   headers,
@@ -106,21 +114,33 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
         binding && binding.collectionId === targetCollectionId
           ? binding.requestId
           : makeRequestId();
-      await saveRequest(
-        targetCollectionId,
-        {
-          id: requestId,
-          name: trimmedName,
-          method,
-          url,
-          headers,
-          params,
-          bodyType,
-          body,
-          updatedAt: Date.now()
-        },
-        folderId || null
-      );
+      const request: SavedRequest =
+        protocol === 'HTTP'
+          ? {
+              id: requestId,
+              name: trimmedName,
+              protocol: 'HTTP',
+              method: method ?? 'GET',
+              url,
+              headers: headers ?? [],
+              params: params ?? [],
+              bodyType: bodyType ?? 'none',
+              body: body ?? '',
+              updatedAt: Date.now()
+            }
+          : {
+              id: requestId,
+              name: trimmedName,
+              protocol: 'WEBSOCKET',
+              method: 'GET',
+              url,
+              headers: [],
+              params: [],
+              bodyType: 'none',
+              body: '',
+              updatedAt: Date.now()
+            };
+      await saveRequest(targetCollectionId, request, folderId || null);
       onSaved({ collectionId: targetCollectionId, requestId }, trimmedName);
       setOpen(false);
     } finally {

@@ -61,10 +61,17 @@ interface PostmanItem {
   request?: PostmanRequest;
 }
 
+interface PostmanVariable {
+  key: string;
+  value?: string;
+  type?: string;
+  disabled?: boolean;
+}
+
 export interface PostmanCollectionFile {
   info?: { _postman_id?: string; name?: string; schema?: string };
   item?: PostmanItem[];
-  variable?: { key: string; value: string }[];
+  variable?: PostmanVariable[];
 }
 
 const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
@@ -100,6 +107,13 @@ function importHeaders(headers: PostmanHeader[] | undefined): KeyValuePair[] {
   return (headers ?? [])
     .filter((h) => h.key)
     .map((h) => ({ id: randomUUID(), key: h.key, value: h.value ?? '', enabled: !h.disabled }));
+}
+
+/** Postman's collection-level `variable` array (Postman's own `{{key}}` variables) -> our `KeyValuePair[]`, the same shape environments use. */
+function importCollectionVariables(variables: PostmanVariable[] | undefined): KeyValuePair[] {
+  return (variables ?? [])
+    .filter((v) => v.key)
+    .map((v) => ({ id: randomUUID(), key: v.key, value: v.value ?? '', enabled: !v.disabled }));
 }
 
 function importBody(body: PostmanBody | undefined): { bodyType: HttpBodyType; body: string } {
@@ -141,6 +155,7 @@ function toSavedRequest(name: string, request: PostmanRequest): SavedRequest {
   return {
     id: randomUUID(),
     name,
+    protocol: 'HTTP',
     method: normalizeMethod(request.method),
     url: urlString,
     headers: importHeaders(request.header),
@@ -197,6 +212,8 @@ export function detectPostmanSchemaVersion(file: PostmanCollectionFile): Postman
 export interface PostmanImportResult {
   collection: Collection;
   schemaVersion: PostmanSchemaVersion;
+  /** Collection-level variables from the imported file (Postman's `variable` array), for the caller to write into an Environment. Empty if the file had none. */
+  variables: KeyValuePair[];
 }
 
 /** Postman Collection v2.0 / v2.1 -> our internal Collection, preserving folder nesting. */
@@ -215,7 +232,8 @@ export function importPostmanCollection(
       requests,
       folders
     },
-    schemaVersion: detectPostmanSchemaVersion(file)
+    schemaVersion: detectPostmanSchemaVersion(file),
+    variables: importCollectionVariables(file.variable)
   };
 }
 
@@ -247,6 +265,13 @@ function exportBody(bodyType: HttpBodyType, body: string): PostmanBody | undefin
     raw: body,
     options: { raw: { language: bodyType === 'json' ? 'json' : 'text' } }
   };
+}
+
+/** Our `KeyValuePair[]` -> Postman's collection-level `variable` array. */
+function exportCollectionVariables(variables: KeyValuePair[]): PostmanVariable[] {
+  return variables
+    .filter((v) => v.key.trim())
+    .map((v) => ({ key: v.key, value: v.value, type: 'string', disabled: !v.enabled }));
 }
 
 function exportUrl(url: string): PostmanUrl {
@@ -284,13 +309,18 @@ function exportItems(container: {
   return [...folderItems, ...requestItems];
 }
 
-export function exportCollectionToPostman(collection: Collection): PostmanCollectionFile {
+/** `variables` is optional: the environment (if any) whose variables should travel with the exported collection, matching Postman's own collection-level `variable` array. */
+export function exportCollectionToPostman(
+  collection: Collection,
+  variables?: KeyValuePair[]
+): PostmanCollectionFile {
   return {
     info: {
       _postman_id: randomUUID(),
       name: collection.name,
       schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
     },
-    item: exportItems(collection)
+    item: exportItems(collection),
+    ...(variables?.length ? { variable: exportCollectionVariables(variables) } : {})
   };
 }

@@ -126,6 +126,10 @@
   --color-amber-200: #78350f;
   --color-amber-400: #b45309;
   --color-amber-500: #d97706;
+  /* purple-400's default is a pale lavender meant to pop on dark surfaces
+     (e.g. http-client's PATCH method badge) -- too washed out on a white
+     background, so darken it to Catppuccin Latte's Mauve. */
+  --color-purple-400: #8839ef;
 }
 
 /* Custom scrollbars matching the active theme */

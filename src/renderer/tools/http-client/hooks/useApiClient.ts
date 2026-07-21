@@ -15,7 +15,11 @@ function createDefaultBinding(tabId: string): SavedBinding | null {
   return null;
 }
 
-const protocolStore = createTabScopedStore<ProtocolTab>(() => 'HTTP', {
+function createDefaultProtocol(tabId: string): ProtocolTab {
+  return readTabSeed(tabId)?.protocol === 'WEBSOCKET' ? 'WEBSOCKET' : 'HTTP';
+}
+
+const protocolStore = createTabScopedStore<ProtocolTab>(createDefaultProtocol, {
   key: (tabId) => `postman-protocol-${tabId}`,
   serialize: (s) => s,
   deserialize: (raw) => (raw === 'WEBSOCKET' ? 'WEBSOCKET' : 'HTTP')

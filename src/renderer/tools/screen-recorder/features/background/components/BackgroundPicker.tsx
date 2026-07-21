@@ -34,7 +34,7 @@ const TABS: { id: 'wallpaper' | 'gradient' | 'color' | 'image'; label: string }[
 
 function swatchClass(isSelected: boolean): string {
   return cn(
-    'aspect-square rounded-lg ring-2 ring-offset-2 ring-offset-surface-sunken transition-all',
+    'aspect-square rounded-lg ring-2 ring-offset-2 ring-offset-surface transition-all',
     isSelected ? 'ring-white/80' : 'ring-transparent hover:ring-white/40'
   );
 }
@@ -81,10 +81,10 @@ export function BackgroundPicker(): JSX.Element {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Background
         </span>
-        <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+        <div className="flex gap-1 rounded-lg border border-border p-1">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -92,8 +92,8 @@ export function BackgroundPicker(): JSX.Element {
               className={cn(
                 'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
                 kind === tab.id
-                  ? 'bg-surface-raised text-white'
-                  : 'text-white/50 hover:text-white/80'
+                  ? 'bg-surface-2 text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {tab.label}
@@ -104,7 +104,7 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'wallpaper' && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Wallpaper
           </span>
           <div className="grid grid-cols-4 gap-2">
@@ -124,7 +124,7 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'gradient' && gradient && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Gradient
           </span>
           <div className="grid grid-cols-5 gap-2">
@@ -162,7 +162,7 @@ export function BackgroundPicker(): JSX.Element {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] text-white/40">Angle · {gradient.angleDeg}°</span>
+            <span className="text-[11px] text-muted-foreground">Angle · {gradient.angleDeg}°</span>
             <Slider
               value={gradient.angleDeg}
               min={0}
@@ -176,13 +176,15 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'color' && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Color</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Color
+          </span>
           <div className="grid grid-cols-8 gap-2">
             {COLOR_SWATCHES.map((color) => (
               <button
                 key={color}
                 onClick={() => setValue(color)}
-                className={cn(swatchClass(value === color), 'border border-white/10')}
+                className={cn(swatchClass(value === color), 'border border-border-dark')}
                 style={{ background: color }}
               />
             ))}
@@ -198,7 +200,9 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'image' && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Image</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Image
+          </span>
           {value && (
             <div className="aspect-video overflow-hidden rounded-lg border border-line">
               <img src={value} alt="Background" className="h-full w-full object-cover" />
@@ -219,14 +223,14 @@ export function BackgroundPicker(): JSX.Element {
 
       <div className="flex flex-col gap-2 border-t border-line pt-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Background blur
           </span>
-          <span className="text-xs text-white/50">{blur}px</span>
+          <span className="text-xs text-muted-foreground">{blur}px</span>
         </div>
         <Slider value={blur} min={0} max={20} step={1} onChange={setBlur} />
         {kind !== 'image' && (
-          <p className="text-[11px] text-white/30">
+          <p className="text-[11px] text-muted-foreground/70">
             Only affects Image backgrounds -- gradients have nothing to blur.
           </p>
         )}
@@ -234,28 +238,30 @@ export function BackgroundPicker(): JSX.Element {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">Padding</span>
-          <span className="text-xs text-white/50">{padding}%</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Padding
+          </span>
+          <span className="text-xs text-muted-foreground">{padding}%</span>
         </div>
         <Slider value={padding} min={0} max={30} step={1} onChange={setPadding} />
       </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Corner radius
           </span>
-          <span className="text-xs text-white/50">{cornerRadius}px</span>
+          <span className="text-xs text-muted-foreground">{cornerRadius}px</span>
         </div>
         <Slider value={cornerRadius} min={0} max={40} step={1} onChange={setCornerRadius} />
       </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Drop shadow
           </span>
-          <span className="text-xs text-white/50">{shadow}</span>
+          <span className="text-xs text-muted-foreground">{shadow}</span>
         </div>
         <Slider value={shadow} min={0} max={100} step={1} onChange={setShadow} />
       </div>

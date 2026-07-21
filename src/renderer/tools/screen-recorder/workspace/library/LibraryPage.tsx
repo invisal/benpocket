@@ -57,7 +57,7 @@ export function LibraryPage(): JSX.Element {
       <h1 className="text-xl font-semibold">Library</h1>
 
       {!lastRecording ? (
-        <p className="text-sm text-white/40">
+        <p className="text-sm text-muted-foreground">
           No recordings yet. Head to Record to make your first one.
         </p>
       ) : (
@@ -66,7 +66,7 @@ export function LibraryPage(): JSX.Element {
             render={
               <button
                 onClick={() => setRoute('editor')}
-                className="w-64 rounded-xl border border-line bg-surface-raised p-2 text-left hover:border-accent/60"
+                className="w-64 rounded-xl border border-line bg-surface p-2 text-left transition-colors hover:bg-surface-2 hover:border-accent/60"
               >
                 <video
                   src={lastRecording.previewUrl}
@@ -78,7 +78,7 @@ export function LibraryPage(): JSX.Element {
                   }
                 />
                 <p className="mt-2 truncate text-sm">Screen Recording</p>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-muted-foreground">
                   {formatBytes(lastRecording.sizeBytes)} · {formatTimeAgo(lastRecording.createdAt)}
                 </p>
               </button>

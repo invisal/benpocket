@@ -39,6 +39,22 @@ export default defineConfig({
         }
       }
     },
+    // The export Worker (features/export/engine/export-worker.ts, imported
+    // via a `?worker` suffix from the export coordinator) pulls in pixi.js, which
+    // internally code-splits (autoDetectRenderer dynamically imports the
+    // WebGL/WebGPU backend) -- Vite's default worker format ('iife') can't
+    // support that, so this worker output needs ES modules, matching the
+    // `{ type: 'module' }` the Worker is already constructed with.
+    worker: {
+      format: 'es'
+    },
+    // In `electron-vite dev`, this Worker's dev-mode module wrapper runs
+    // with an opaque ("null") origin, so any `fetch()` it makes -- e.g.
+    // `web-demuxer` loading its WASM file -- is treated as cross-origin even
+    // against this same dev server, and gets blocked by CORS without this.
+    server: {
+      cors: true
+    },
     define: {
       __APP_VERSION__: JSON.stringify(version)
     },

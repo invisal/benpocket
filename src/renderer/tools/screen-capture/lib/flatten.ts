@@ -205,7 +205,8 @@ export function defaultChipPosition(
 /**
  * Fills the canvas with a wallpaper preset's linear gradient, converting the
  * CSS angle convention (0deg = to top, clockwise) that cssGradient() uses for
- * the live preview — mirrors main/screen-recorder/export/frame-compositor.ts.
+ * the live preview — mirrors screen-recorder's
+ * features/export/engine/rendering/effects/background.ts.
  */
 function fillWallpaper(
   ctx: CanvasRenderingContext2D,

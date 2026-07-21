@@ -31,32 +31,38 @@ export const ScreenRecorderSidebar: React.FC = () => {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           ScreenRecorder
         </span>
       </div>
 
       <Button onClick={handleNewRecord} variant="secondary" className="w-full" disabled={disabled}>
         {isRecording ? (
-          <Square size={12} className="text-zinc-500" fill="currentColor" />
+          <Square size={12} className="text-muted-foreground" fill="currentColor" />
         ) : (
-          <Circle size={12} className="text-red-500" fill="currentColor" />
+          <Circle size={12} className="text-danger" fill="currentColor" />
         )}
         <span>Launch Recorder</span>
       </Button>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold text-zinc-500 uppercase">Audio</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Audio
+        </span>
         <AudioSourceToggle />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold text-zinc-500 uppercase">Webcam</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Webcam
+        </span>
         <WebcamShapePicker />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold text-zinc-500 uppercase">Zoom</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Zoom
+        </span>
         <AutoZoomToggle />
       </div>
     </div>

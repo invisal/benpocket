@@ -6,7 +6,7 @@ import type {
   RecordingSession
 } from '@screen-recorder/types/recording';
 import type { Project, CursorPathPoint } from '@screen-recorder/types/project';
-import type { ExportFormat, ExportOptions, ExportProgress } from '@screen-recorder/types/export';
+import type { ExportFormat } from '@screen-recorder/types/export';
 import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
 import type {
   ScreenRect,
@@ -60,13 +60,12 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.SaveProject, project)
   },
   export: {
-    start: (options: ExportOptions): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.ExportVideo, options),
-    onProgress: (callback: (progress: ExportProgress) => void): (() => void) => {
-      const listener = (_event: unknown, progress: ExportProgress): void => callback(progress);
-      ipcRenderer.on(IpcChannels.ExportProgress, listener);
-      return () => ipcRenderer.removeListener(IpcChannels.ExportProgress, listener);
-    }
+    /** Reads a local file's raw bytes for the in-renderer WebCodecs export pipeline (feeding the WASM demuxer) -- unbounded, unlike file-explorer's preview-scoped binary read. */
+    readFileBytes: (filePath: string): Promise<ArrayBuffer> =>
+      ipcRenderer.invoke(IpcChannels.ExportReadFileBytes, filePath),
+    /** Writes the finished export's bytes to the already-chosen output path (see dialog.showSaveExportPath). */
+    writeFileBytes: (filePath: string, data: ArrayBuffer): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.ExportWriteFileBytes, filePath, data)
   },
   settings: {
     get: (): Promise<Record<string, unknown>> => ipcRenderer.invoke(IpcChannels.GetSettings),

@@ -31,7 +31,7 @@ export function CursorSettingsPanel(): JSX.Element {
       <p
         className={cn(
           'rounded-md px-2 py-1.5 text-[11px]',
-          cursorPointCount > 0 ? 'bg-accent/10 text-accent' : 'bg-white/5 text-white/40'
+          cursorPointCount > 0 ? 'bg-accent/10 text-accent' : 'bg-surface text-muted-foreground'
         )}
       >
         {cursorPointCount > 0
@@ -40,17 +40,17 @@ export function CursorSettingsPanel(): JSX.Element {
       </p>
 
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-white/70">Show Cursor</span>
+        <span className="text-xs font-medium text-muted-foreground">Show Cursor</span>
         <Switch checked={visible} onChange={setVisible} label="Show cursor" />
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-white/70">Clip to Canvas</span>
+        <span className="text-xs font-medium text-muted-foreground">Clip to Canvas</span>
         <Switch checked={clipToCanvas} onChange={setClipToCanvas} label="Clip cursor to canvas" />
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Cursor Style
         </span>
         <div className="grid grid-cols-4 gap-2">
@@ -63,7 +63,7 @@ export function CursorSettingsPanel(): JSX.Element {
                 'flex items-center justify-center rounded-lg border py-2 transition-colors',
                 style === preset.id
                   ? 'border-accent bg-accent/10'
-                  : 'border-line hover:border-white/20'
+                  : 'border-line hover:border-accent/40'
               )}
             >
               <CursorStyleIcon fill={preset.fill} stroke={preset.stroke} />
@@ -75,38 +75,40 @@ export function CursorSettingsPanel(): JSX.Element {
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-white/40">Size</span>
-            <span className="text-xs text-white/50">{size.toFixed(1)}</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Size
+            </span>
+            <span className="text-xs text-muted-foreground">{size.toFixed(1)}</span>
           </div>
           <Slider value={size} min={2} max={20} step={0.1} onChange={setSize} />
         </div>
 
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Smoothing
             </span>
-            <span className="text-xs text-white/50">{Math.round(smoothing * 100)}%</span>
+            <span className="text-xs text-muted-foreground">{Math.round(smoothing * 100)}%</span>
           </div>
           <Slider value={smoothing} min={0} max={1} step={0.01} onChange={setSmoothing} />
         </div>
 
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Motion Blur
             </span>
-            <span className="text-xs text-white/50">{Math.round(motionBlur * 100)}%</span>
+            <span className="text-xs text-muted-foreground">{Math.round(motionBlur * 100)}%</span>
           </div>
           <Slider value={motionBlur} min={0} max={1} step={0.01} onChange={setMotionBlur} />
         </div>
 
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Click Bounce
             </span>
-            <span className="text-xs text-white/50">{clickBounce.toFixed(1)}</span>
+            <span className="text-xs text-muted-foreground">{clickBounce.toFixed(1)}</span>
           </div>
           <Slider value={clickBounce} min={0} max={5} step={0.1} onChange={setClickBounce} />
         </div>

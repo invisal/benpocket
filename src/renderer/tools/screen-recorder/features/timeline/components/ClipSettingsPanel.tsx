@@ -30,7 +30,7 @@ function TimeField({
 }): JSX.Element {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] text-white/40">{label}</span>
+      <span className="text-[11px] text-muted-foreground">{label}</span>
       <input
         type="number"
         min={0}
@@ -46,7 +46,7 @@ function TimeField({
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
-        className="w-full rounded-md border border-line bg-transparent px-1.5 py-1 text-[11px] text-white/80 outline-none focus:border-accent disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-md border border-line bg-transparent px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-accent disabled:cursor-not-allowed disabled:opacity-40"
       />
     </label>
   );
@@ -62,7 +62,9 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
   const setSegmentSpeed = useTimelineStore((s) => s.setSegmentSpeed);
 
   if (!segment) {
-    return <p className="text-xs text-white/40">Select a clip on the timeline to edit it.</p>;
+    return (
+      <p className="text-xs text-muted-foreground">Select a clip on the timeline to edit it.</p>
+    );
   }
 
   const outputDurationMs = getSegmentOutputDurationMs(segment);
@@ -70,7 +72,9 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/40">Trim</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Trim
+        </span>
         <div className="grid grid-cols-2 gap-2">
           <TimeField
             label="Start"
@@ -87,7 +91,7 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
             onCommit={(ms) => resizeSegmentEdge(segment.id, 'end', ms)}
           />
         </div>
-        <p className="text-[11px] text-white/30">
+        <p className="text-[11px] text-muted-foreground/70">
           Plays for {formatTime(outputDurationMs)} at {segment.speed}x
           {segment.speed !== 1
             ? ` (source is ${formatTime(segment.range.endMs - segment.range.startMs)})`
@@ -97,7 +101,9 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/40">Speed</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Speed
+        </span>
         <div className="grid grid-cols-5 gap-1">
           {SPEED_OPTIONS.map((speed) => (
             <button
@@ -107,7 +113,7 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
                 'rounded-md border py-1.5 text-[11px] font-medium transition-colors',
                 segment.speed === speed
                   ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-line text-white/60 hover:border-white/20'
+                  : 'border-line text-muted-foreground hover:border-accent/40'
               )}
             >
               {speed}x

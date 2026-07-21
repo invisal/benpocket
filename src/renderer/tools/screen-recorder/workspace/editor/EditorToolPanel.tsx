@@ -8,7 +8,6 @@ import { AnnotationsPanel } from '../../features/annotations/components/Annotati
 import { BlurMaskPanel } from '../../features/blur-mask/components/BlurMaskPanel';
 import { ZoomKeyframeEditor } from '../../features/zoom/components/ZoomKeyframeEditor';
 import { ClipSettingsPanel } from '../../features/timeline/components/ClipSettingsPanel';
-import { ExportSidePanel } from '../../features/export/components/ExportSidePanel';
 import { EDITOR_TOOLS, type EditorTool } from './editorTools';
 
 interface EditorToolPanelProps {
@@ -24,13 +23,13 @@ export function EditorToolPanel({
   sourceResolution,
   selectedSegment
 }: EditorToolPanelProps): JSX.Element {
-  if (tool === 'export') return <ExportSidePanel />;
-
   const label = EDITOR_TOOLS.find((t) => t.id === tool)?.label ?? '';
 
   return (
-    <aside className="flex w-70 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-surface-sunken p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-white/60">{label}</h2>
+    <aside className="flex w-70 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-surface p-4">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </h2>
       {tool === 'background' && <BackgroundPicker />}
       {tool === 'cursor' && <CursorSettingsPanel />}
       {tool === 'webcam' && <WebcamPanel />}

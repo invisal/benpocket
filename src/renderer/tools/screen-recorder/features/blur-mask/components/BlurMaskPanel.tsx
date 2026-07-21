@@ -62,11 +62,13 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
           <Square size={14} /> Mask
         </Button>
       </div>
-      <p className="text-[11px] leading-snug text-white/30">
+      <p className="text-[11px] leading-snug text-muted-foreground/70">
         Adds at {formatTime(currentTimeMs)} -- drag directly on the preview to reposition or resize.
       </p>
 
-      {sorted.length === 0 && <p className="text-xs text-white/40">No blur/mask regions yet.</p>}
+      {sorted.length === 0 && (
+        <p className="text-xs text-muted-foreground">No blur/mask regions yet.</p>
+      )}
 
       {sorted.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -80,12 +82,12 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
                   'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-xs transition-colors',
                   selectedRegionId === region.id
                     ? 'border-accent bg-accent/10 text-accent'
-                    : 'border-line text-white/60 hover:border-white/20'
+                    : 'border-line text-muted-foreground hover:border-accent/40'
                 )}
               >
                 <Icon size={13} className="shrink-0" />
                 <span className="flex-1 truncate">{regionLabel(region)}</span>
-                <span className="shrink-0 font-mono text-[10px] text-white/40">
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                   {formatTime(region.atMs)}
                 </span>
               </button>
@@ -97,19 +99,19 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
       {selected && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-white/40">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {regionLabel(selected)}
             </span>
             <button
               onClick={() => removeRegion(selected.id)}
-              className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-red-400"
+              className="rounded p-1 text-muted-foreground hover:bg-surface-2 hover:text-danger"
             >
               <Trash2 size={13} />
             </button>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Shape
             </span>
             <div className="grid grid-cols-2 gap-1.5">
@@ -121,7 +123,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
                     'rounded-md border px-1.5 py-1 text-[10px] font-medium transition-colors',
                     selected.shape === shape.id
                       ? 'border-accent text-accent'
-                      : 'border-line text-white/50 hover:border-white/20'
+                      : 'border-line text-muted-foreground hover:border-accent/40'
                   )}
                 >
                   {shape.label}
@@ -133,10 +135,10 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
           {selected.kind === 'blur' && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Intensity
                 </span>
-                <span className="text-[11px] text-white/50">{selected.intensity}</span>
+                <span className="text-[11px] text-muted-foreground">{selected.intensity}</span>
               </div>
               <Slider
                 value={selected.intensity}
@@ -150,7 +152,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
 
           {selected.kind === 'mask' && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 Color
               </span>
               <div className="grid grid-cols-6 gap-1.5">
@@ -161,7 +163,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
                     title={color}
                     aria-label={color}
                     className={cn(
-                      'aspect-square rounded-md ring-2 ring-offset-2 ring-offset-surface-sunken transition-all',
+                      'aspect-square rounded-md ring-2 ring-offset-2 ring-offset-surface transition-all',
                       selected.color === color
                         ? 'ring-white/80'
                         : 'ring-transparent hover:ring-white/40'
@@ -181,10 +183,10 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 Duration
               </span>
-              <span className="text-[11px] text-white/50">
+              <span className="text-[11px] text-muted-foreground">
                 {(selected.durationMs / 1000).toFixed(1)}s
               </span>
             </div>

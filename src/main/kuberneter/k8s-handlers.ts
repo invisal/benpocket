@@ -3,17 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { runKubectl, listKubeconfigContexts } from './k8s-cli';
 
-interface KubeGetItem {
-  metadata?: {
-    name?: string;
-    namespace?: string;
-  };
-  status?: {
-    capacity?: {
-      cpu?: string;
-    };
-  };
-}
+
 
 export function registerK8sHandlers(): void {
   // 1. List contexts of a given kubeconfig path (or default)
@@ -137,31 +127,8 @@ export function registerK8sHandlers(): void {
         try {
           stdout = await runKubectl(args, resolvedKubeconfig);
         } catch {
-          // Fallback to generating mock node metrics based on get resources
-          const getNodesArgs = [];
-          if (contextName) {
-            getNodesArgs.push('--context', contextName);
-          }
-          getNodesArgs.push('get', 'nodes', '-o', 'json');
-          const nodesRes = await runKubectl(getNodesArgs, resolvedKubeconfig);
-          const nodesData = JSON.parse(nodesRes);
-          const nodeItems = Array.isArray(nodesData?.items) ? nodesData.items : [];
-
-          const mockItems = (nodeItems as KubeGetItem[]).map((n) => {
-            const name = n.metadata?.name || '';
-            const hash = name.length;
-            const cpuPct = ((hash * 3 + 12) % 30) + 5;
-            const memoryPct = ((hash * 5 + 24) % 40) + 20;
-            const cpuCap = parseInt(n.status?.capacity?.cpu || '4', 10);
-            return {
-              name,
-              cpu: `${Math.round(cpuCap * cpuPct * 10)}m`,
-              cpuPct: `${cpuPct}%`,
-              memory: `${Math.round(cpuPct * 1.5)}Gi`,
-              memoryPct: `${memoryPct}%`
-            };
-          });
-          return { items: mockItems };
+          // Metrics API not available - return empty items so UI shows N/A
+          return { items: [] };
         }
 
         const lines = stdout.trim().split('\n');
@@ -216,37 +183,8 @@ export function registerK8sHandlers(): void {
         try {
           stdout = await runKubectl(args, resolvedKubeconfig);
         } catch {
-          // Fallback to generating mock pod metrics based on get resources
-          const getPodsArgs = [];
-          if (contextName) {
-            getPodsArgs.push('--context', contextName);
-          }
-          getPodsArgs.push('get', 'pods');
-          if (namespace && namespace !== 'All Namespaces') {
-            getPodsArgs.push('-n', namespace);
-          } else {
-            getPodsArgs.push('-A');
-          }
-          getPodsArgs.push('-o', 'json');
-
-          const podsRes = await runKubectl(getPodsArgs, resolvedKubeconfig);
-          const podsData = JSON.parse(podsRes);
-          const podItems = Array.isArray(podsData?.items) ? podsData.items : [];
-
-          const mockItems = (podItems as KubeGetItem[]).map((p) => {
-            const name = p.metadata?.name || '';
-            const ns = p.metadata?.namespace || 'default';
-            const hash = name.length;
-            const mockCpu = `${((hash * 2 + 5) % 45) + 5}m`;
-            const mockMem = `${((hash * 4 + 16) % 128) + 32}Mi`;
-            return {
-              namespace: ns,
-              name,
-              cpu: mockCpu,
-              memory: mockMem
-            };
-          });
-          return { items: mockItems };
+          // Metrics API not available - return empty items so UI shows N/A
+          return { items: [] };
         }
 
         const lines = stdout.trim().split('\n');

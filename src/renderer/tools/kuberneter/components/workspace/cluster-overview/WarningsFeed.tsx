@@ -1,28 +1,8 @@
 import type React from 'react';
+import { useMemo } from 'react';
 import { ShieldCheck, AlertTriangle, Info } from 'lucide-react';
 import { KubeTable, type Column } from '../../kubeTable';
-
-interface EventResource {
-  metadata?: {
-    name?: string;
-    namespace?: string;
-    creationTimestamp?: string;
-  };
-  involvedObject?: {
-    kind?: string;
-    name?: string;
-    namespace?: string;
-  };
-  source?: {
-    component?: string;
-  };
-  reason?: string;
-  message?: string;
-  type?: string;
-  lastTimestamp?: string;
-  firstTimestamp?: string;
-  count?: number;
-}
+import type { EventResource } from './types';
 
 interface WarningsFeedProps {
   events: EventResource[];
@@ -44,25 +24,29 @@ function formatEventAge(timestamp: string | undefined): string {
 }
 
 export const WarningsFeed: React.FC<WarningsFeedProps> = ({ events, namespace }) => {
-  // Filter and limit to warning events
-  const warningEvents = events
-    .filter((e) => {
-      // 1. Namespace filter matching kubectl behavior
-      if (
-        namespace &&
-        namespace !== 'All Namespaces' &&
-        e.involvedObject?.namespace !== namespace
-      ) {
-        return false;
-      }
-      return e.type?.toLowerCase() === 'warning';
-    })
-    // 3. Sort by timestamp descending (newest first)
-    .sort((a, b) => {
-      const timeA = new Date(a.lastTimestamp || a.metadata?.creationTimestamp || 0).getTime();
-      const timeB = new Date(b.lastTimestamp || b.metadata?.creationTimestamp || 0).getTime();
-      return timeB - timeA;
-    });
+  // Memoize filtering + sorting — only recomputes when events or namespace changes.
+  // Capped at 200 entries to keep rendering fast even with large event lists.
+  const warningEvents = useMemo(
+    () =>
+      events
+        .filter((e) => {
+          if (
+            namespace &&
+            namespace !== 'All Namespaces' &&
+            e.involvedObject?.namespace !== namespace
+          ) {
+            return false;
+          }
+          return e.type?.toLowerCase() === 'warning';
+        })
+        .sort((a, b) => {
+          const timeA = new Date(a.lastTimestamp || a.metadata?.creationTimestamp || 0).getTime();
+          const timeB = new Date(b.lastTimestamp || b.metadata?.creationTimestamp || 0).getTime();
+          return timeB - timeA;
+        })
+        .slice(0, 200),
+    [events, namespace]
+  );
 
   const columns: Column<EventResource>[] = [
     {
@@ -169,19 +153,18 @@ export const WarningsFeed: React.FC<WarningsFeedProps> = ({ events, namespace })
   ];
 
   return (
-    <div className="flex-1 flex flex-col gap-2 select-none min-w-0 w-full relative min-h-0">
-      <div className="px-4">
-        <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
-          Warning Events Log
-        </span>
-      </div>
+    <div className="flex flex-col gap-2 select-none min-w-0 w-full">
+      <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
+        Warning Events Log
+      </span>
 
-      <div className="flex-1 min-h-0 flex flex-col mt-2">
+      {/* min-h: 5 rows floor (180px); max-h: 10 rows ceiling (330px) — table scrolls within this range */}
+      <div className="flex-1 min-h-0 overflow-y-auto" style={{ minHeight: 180, maxHeight: 330 }}>
         <KubeTable
           columns={columns}
           data={warningEvents}
           getRowKey={(evt) => evt.metadata?.name || Math.random().toString()}
-          className="flex-1 overflow-x-auto"
+          className="overflow-x-auto"
           hideHeaderWhenEmpty
           emptyState={
             <div className="w-full flex flex-col items-center justify-center text-zinc-550 gap-2 py-8 select-none">

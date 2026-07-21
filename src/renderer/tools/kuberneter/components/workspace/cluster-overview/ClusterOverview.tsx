@@ -7,123 +7,9 @@ import { HistoryChart } from './HistoryChart';
 import { WarningsFeed } from './WarningsFeed';
 import { ClusterOverviewHeader } from './ClusterOverviewHeader';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { getCapacitySums, getWorkloadMetrics, getLiveMetrics } from './clusterMetrics';
+import type { NodeResource, PodResource, EventResource, NodeMetric } from './types';
 import { AlertCircle, Loader2 } from 'lucide-react';
-
-// Quantity parsers for Kubernetes resource values
-function parseCpu(val: string | undefined | null): number {
-  if (!val) return 0;
-  const str = val.trim();
-  if (str.endsWith('m')) {
-    return parseInt(str.slice(0, -1), 10);
-  }
-  return parseFloat(str) * 1000;
-}
-
-function parseMemoryToMiB(val: string | undefined | null): number {
-  if (!val) return 0;
-  const str = val.trim();
-  const num = parseFloat(str);
-  if (isNaN(num)) return 0;
-
-  const unit = str
-    .replace(/[0-9.]/g, '')
-    .trim()
-    .toLowerCase();
-  switch (unit) {
-    case 'ki':
-    case 'k':
-      return num / 1024;
-    case 'mi':
-    case 'm':
-      return num;
-    case 'gi':
-    case 'g':
-      return num * 1024;
-    case 'ti':
-    case 't':
-      return num * 1024 * 1024;
-    default:
-      return num / (1024 * 1024); // assuming raw bytes
-  }
-}
-
-interface NodeCondition {
-  type: string;
-  status: string;
-  reason?: string;
-  message?: string;
-}
-
-interface NodeResource {
-  metadata?: {
-    name?: string;
-    labels?: Record<string, string>;
-  };
-  status?: {
-    conditions?: NodeCondition[];
-    capacity?: {
-      cpu?: string;
-      memory?: string;
-      pods?: string;
-    };
-    allocatable?: {
-      cpu?: string;
-      memory?: string;
-      pods?: string;
-    };
-    nodeInfo?: {
-      kubeletVersion?: string;
-      osImage?: string;
-      architecture?: string;
-      kernelVersion?: string;
-      containerRuntimeVersion?: string;
-    };
-  };
-}
-
-interface PodResource {
-  metadata?: {
-    name?: string;
-    namespace?: string;
-  };
-  status?: {
-    phase?: string;
-  };
-  spec?: {
-    containers?: {
-      resources?: {
-        requests?: {
-          cpu?: string;
-          memory?: string;
-        };
-        limits?: {
-          cpu?: string;
-          memory?: string;
-        };
-      };
-    }[];
-  };
-}
-
-interface NodeMetric {
-  name: string;
-  cpu: string;
-  cpuPct: string;
-  memory: string;
-  memoryPct: string;
-}
-
-interface EventResource {
-  type?: string;
-  reason?: string;
-  message?: string;
-  lastTimestamp?: string;
-  involvedObject?: {
-    kind?: string;
-    name?: string;
-    namespace?: string;
-  };
-}
 
 export const ClusterOverview: React.FC = () => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
@@ -160,121 +46,9 @@ export const ClusterOverview: React.FC = () => {
   // Historical metrics timeline data
   const [history, setHistory] = useState<{ time: string; cpu: number; mem: number }[]>([]);
 
-  // Calculate resources aggregated from live node list
-  const getCapacitySums = () => {
-    let capacityCpu = 0;
-    let capacityMem = 0;
-    let capacityPods = 0;
-
-    let allocatableCpu = 0;
-    let allocatableMem = 0;
-    let allocatablePods = 0;
-
-    nodes.forEach((node) => {
-      const cap = node.status?.capacity || {};
-      const alloc = node.status?.allocatable || {};
-
-      capacityCpu += parseCpu(cap.cpu);
-      capacityMem += parseMemoryToMiB(cap.memory);
-      capacityPods += parseInt(cap.pods || '0', 10);
-
-      allocatableCpu += parseCpu(alloc.cpu);
-      allocatableMem += parseMemoryToMiB(alloc.memory);
-      allocatablePods += parseInt(alloc.pods || '0', 10);
-    });
-
-    return {
-      capacityCpu: capacityCpu / 1000, // convert cores to units
-      capacityMem: capacityMem / 1024, // convert MiB to GiB
-      capacityPods,
-      allocatableCpu: allocatableCpu / 1000,
-      allocatableMem: allocatableMem / 1024,
-      allocatablePods
-    };
-  };
-
-  // Calculate requests, limits and phase metrics filtered by namespace selection
-  const getWorkloadMetrics = () => {
-    let requestsCpu = 0;
-    let requestsMem = 0;
-    let limitsCpu = 0;
-    let limitsMem = 0;
-
-    const podsStatus = {
-      total: 0,
-      running: 0,
-      failed: 0,
-      pending: 0,
-      succeeded: 0,
-      unknown: 0
-    };
-
-    pods.forEach((pod) => {
-      if (
-        kuberneterSelectedNamespace === 'All Namespaces' ||
-        pod.metadata?.namespace === kuberneterSelectedNamespace
-      ) {
-        podsStatus.total++;
-        const phase = (pod.status?.phase || 'unknown').toLowerCase();
-        if (phase === 'running') podsStatus.running++;
-        else if (phase === 'failed') podsStatus.failed++;
-        else if (phase === 'pending') podsStatus.pending++;
-        else if (phase === 'succeeded') podsStatus.succeeded++;
-        else podsStatus.unknown++;
-
-        // Sum container limits and requests
-        const containers = pod.spec?.containers || [];
-        containers.forEach((c) => {
-          const res = c.resources || {};
-          const req = res.requests || {};
-          const lim = res.limits || {};
-
-          requestsCpu += parseCpu(req.cpu);
-          requestsMem += parseMemoryToMiB(req.memory);
-          limitsCpu += parseCpu(lim.cpu);
-          limitsMem += parseMemoryToMiB(lim.memory);
-        });
-      }
-    });
-
-    return {
-      requestsCpu: requestsCpu / 1000,
-      requestsMem: requestsMem / 1024,
-      limitsCpu: limitsCpu / 1000,
-      limitsMem: limitsMem / 1024,
-      podsStatus
-    };
-  };
-
-  // Parse current CPU & Memory utilization from node metrics command output
-  const getLiveMetrics = (capacityCpu: number, capacityMem: number) => {
-    let liveCpuGores = 0;
-    let liveMemGiB = 0;
-
-    Object.values(nodeMetrics).forEach((metric) => {
-      liveCpuGores += parseCpu(metric.cpu);
-      liveMemGiB += parseMemoryToMiB(metric.memory);
-    });
-
-    // CPU is parsed in milli-cores, convert to core units
-    liveCpuGores = liveCpuGores / 1000;
-    // Memory is parsed in MiB, convert to GiB
-    liveMemGiB = liveMemGiB / 1024;
-
-    const cpuPct = capacityCpu > 0 ? (liveCpuGores / capacityCpu) * 100 : 0;
-    const memPct = capacityMem > 0 ? (liveMemGiB / capacityMem) * 100 : 0;
-
-    return {
-      usageCpu: liveCpuGores,
-      usageMem: liveMemGiB,
-      cpuPct,
-      memPct
-    };
-  };
-
-  const capacities = getCapacitySums();
-  const utilization = getLiveMetrics(capacities.capacityCpu, capacities.capacityMem);
-  const workloads = getWorkloadMetrics();
+  const capacities = getCapacitySums(nodes);
+  const utilization = getLiveMetrics(nodeMetrics, capacities.capacityCpu, capacities.capacityMem);
+  const workloads = getWorkloadMetrics(pods, kuberneterSelectedNamespace);
 
   const fetchData = async (isBackground = false) => {
     if (!kuberneterSelectedCluster) return;
@@ -463,7 +237,8 @@ export const ClusterOverview: React.FC = () => {
         />
       }
     >
-      <div className="flex-1 flex flex-col gap-3.5 min-h-0">
+      {/* Scrollable body — page scrolls when viewport is small; WarningsFeed manages its own height */}
+      <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto min-h-0 py-3.5">
         {/* Row 1: ECharts Concentric gauges */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 shrink-0 px-4">
           <MetricGauge
@@ -516,8 +291,8 @@ export const ClusterOverview: React.FC = () => {
           <HistoryChart history={filteredHistory} />
         </div>
 
-        {/* Row 3: Live Warnings Feed */}
-        <div className="flex-1 flex flex-col min-h-0">
+        {/* Row 3: Live Warnings Feed — shrink-0 since WarningsFeed has its own min/max height */}
+        <div className="shrink-0 px-4 pb-1">
           <WarningsFeed events={events} namespace={kuberneterSelectedNamespace} />
         </div>
       </div>

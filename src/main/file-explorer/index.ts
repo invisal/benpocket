@@ -1,7 +1,8 @@
-import { ipcMain, app, shell } from 'electron';
+import { ipcMain, app, shell, nativeImage } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import appIcon from '../../../resources/icon.png?asset';
 import {
   readFilesFromClipboard,
   writeFilesToClipboard,
@@ -39,6 +40,15 @@ export interface SidebarSections {
 }
 
 const iconCache = new Map<string, string>();
+
+// A per-file icon would need an async app.getFileIcon() lookup, which risks
+// losing the drag gesture to timing (the OS drag must start while the mouse
+// button is still down) -- a single static icon avoids that entirely.
+let dragIcon: Electron.NativeImage | null = null;
+function getDragIcon(): Electron.NativeImage {
+  if (!dragIcon) dragIcon = nativeImage.createFromPath(appIcon).resize({ width: 32, height: 32 });
+  return dragIcon;
+}
 
 function getFavorites(): SidebarItem[] {
   const candidates: SidebarItem[] = [
@@ -268,4 +278,18 @@ export function registerFileExplorerHandlers(): void {
       return getDriverForLocation(destDirUri).createFolder(destDirUri, name);
     }
   );
+
+  // Fire-and-forget: lets a row drag hand off to a real OS drag session (so it
+  // can be dropped onto Explorer/Finder or another app), not a request/response
+  // call. Only ever invoked with local paths -- R2 entries have no path on disk.
+  ipcMain.on(IpcChannels.FileExplorerStartNativeDrag, (event, rawPaths: unknown) => {
+    if (!Array.isArray(rawPaths)) return;
+    const paths = rawPaths.filter((p): p is string => typeof p === 'string' && pathExists(p));
+    if (paths.length === 0) return;
+    try {
+      event.sender.startDrag({ file: paths[0], files: paths, icon: getDragIcon() });
+    } catch (error) {
+      console.error('[file-explorer] startDrag failed:', error);
+    }
+  });
 }

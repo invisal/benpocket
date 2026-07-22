@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, webUtils } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
 
 export interface FileEntry {
@@ -113,6 +113,10 @@ export interface FileExplorerApi {
     destDir: string
   ) => Promise<{ success: true } | { error: string }>;
   onTransferProgress: (callback: (progress: TransferProgress) => void) => () => void;
+  /** Hands a row drag off to a real OS drag session -- lets it be dropped onto Explorer/Finder or another app. */
+  startNativeDrag: (paths: string[]) => void;
+  /** Resolves the real filesystem path of a File dropped in from the OS (e.g. a native drag re-entering the app). */
+  getPathForFile: (file: File) => string;
   writeClipboardFiles: (paths: string[], mode: ClipboardMode) => Promise<void>;
   readClipboardFiles: () => Promise<ClipboardFiles | null>;
   createFile: (
@@ -165,6 +169,8 @@ export const fileExplorerApi: FileExplorerApi = {
     ipcRenderer.on(IpcChannels.FileExplorerTransferProgress, listener);
     return () => ipcRenderer.removeListener(IpcChannels.FileExplorerTransferProgress, listener);
   },
+  startNativeDrag: (paths) => ipcRenderer.send(IpcChannels.FileExplorerStartNativeDrag, paths),
+  getPathForFile: (file) => webUtils.getPathForFile(file),
   writeClipboardFiles: (paths, mode) =>
     ipcRenderer.invoke('file-explorer:clipboard-write', paths, mode),
   readClipboardFiles: () => ipcRenderer.invoke('file-explorer:clipboard-read'),

@@ -298,8 +298,15 @@ export function ListView<TData>({
     onRowClick?.(entry);
   };
 
+  // A native OS drag (e.g. a row handed off to Electron's webContents.startDrag
+  // for dragging out to Explorer/Finder) carries a real 'Files' type instead of
+  // the list's own custom mime type -- accept it too, so a drag that re-enters
+  // this app (another pane, or the same list) still lands as a valid drop
+  // rather than being treated as a foreign drag.
   const isForeignDrag = (e: DragEvent<HTMLDivElement>) =>
-    dragMimeType !== undefined && !e.dataTransfer.types.includes(dragMimeType);
+    dragMimeType !== undefined &&
+    !e.dataTransfer.types.includes(dragMimeType) &&
+    !e.dataTransfer.types.includes('Files');
 
   const handleRowDragStart = (entry: TData, id: string, e: DragEvent<HTMLDivElement>) => {
     const draggedIds = selectedIds.has(id) ? selectedIds : new Set([id]);
@@ -307,11 +314,15 @@ export function ListView<TData>({
       onSelectionChange(draggedIds);
       anchorIdRef.current = id;
     }
-    setDraggingIds(draggedIds);
     const draggedRows = rows
       .filter((r) => draggedIds.has(getRowId(r.original)))
       .map((r) => r.original);
     onRowDragStart?.(entry, draggedRows, e);
+    // A drag handed off to a native OS drag (dragstart preventDefault()'d) never
+    // fires dragend on this element -- that's a separate, OS-brokered session
+    // now, not a DOM drag -- so skip the dimming state instead of leaving the
+    // row stuck dimmed with no event left to clear it.
+    if (!e.defaultPrevented) setDraggingIds(draggedIds);
   };
 
   const handleRowDragEnd = () => {

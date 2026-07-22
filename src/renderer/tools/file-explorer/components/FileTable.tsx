@@ -243,6 +243,17 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
     draggedEntries: FileEntry[],
     e: DragEvent<HTMLDivElement>
   ) => {
+    // R2 entries have no path on disk to hand to the OS, so only go native
+    // when every dragged row is a real local file -- a mixed selection falls
+    // back to the in-app-only drag below (still fine for cross-pane moves,
+    // just can't be dropped onto Explorer/Finder or another app).
+    const allLocal = draggedEntries.every((entry) => !entry.path.startsWith('r2://'));
+    if (allLocal) {
+      e.preventDefault();
+      window.fileExplorer.startNativeDrag(draggedEntries.map((entry) => entry.path));
+      return;
+    }
+
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData(
       FILE_DRAG_MIME_TYPE,
@@ -252,13 +263,24 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
 
   const readDragPaths = (e: DragEvent<HTMLDivElement>): string[] => {
     const raw = e.dataTransfer.getData(FILE_DRAG_MIME_TYPE);
-    if (!raw) return [];
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === 'string') : [];
-    } catch {
-      return [];
+    if (raw) {
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        return Array.isArray(parsed)
+          ? parsed.filter((p): p is string => typeof p === 'string')
+          : [];
+      } catch {
+        return [];
+      }
     }
+
+    // No custom mime data means this is a native OS drag -- either one of our
+    // own rows re-entering the app (started via startNativeDrag above) or a
+    // real file dragged in from Explorer/Finder. Either way, resolve real
+    // paths from the dropped File objects instead.
+    return Array.from(e.dataTransfer.files)
+      .map((file) => window.fileExplorer.getPathForFile(file))
+      .filter((p): p is string => !!p);
   };
 
   const handleDropCopy = (destDirUri: string, paths: string[]) => {

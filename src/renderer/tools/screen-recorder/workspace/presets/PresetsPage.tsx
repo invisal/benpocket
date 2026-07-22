@@ -16,7 +16,7 @@ export function PresetsPage(): JSX.Element {
     <div className="flex flex-1 flex-col gap-6 p-8">
       <div>
         <h1 className="text-xl font-semibold">Presets</h1>
-        <p className="text-sm text-white/40">
+        <p className="text-sm text-muted-foreground">
           Pick a default for Export, or fine-tune settings there and it&apos;ll show up as Custom.
         </p>
       </div>
@@ -33,7 +33,7 @@ export function PresetsPage(): JSX.Element {
               }}
               className={cn(
                 'relative rounded-xl border p-4 text-left transition-colors',
-                isSelected ? 'border-accent bg-accent/10' : 'border-line hover:border-white/20'
+                isSelected ? 'border-accent bg-accent/10' : 'border-line hover:border-accent/40'
               )}
             >
               {isSelected && (
@@ -42,8 +42,8 @@ export function PresetsPage(): JSX.Element {
                 </span>
               )}
               <p className="font-medium">{preset.label}</p>
-              <p className="text-xs text-white/40">{preset.description}</p>
-              <p className="mt-2 text-[11px] uppercase tracking-wide text-white/30">
+              <p className="text-xs text-muted-foreground">{preset.description}</p>
+              <p className="mt-2 text-[11px] uppercase tracking-wide text-muted-foreground/70">
                 {preset.format} · {preset.frameRate}fps
               </p>
             </button>

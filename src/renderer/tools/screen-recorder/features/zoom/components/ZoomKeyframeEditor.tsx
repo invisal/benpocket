@@ -35,13 +35,15 @@ function SliderField({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </span>
-        <span className="text-[11px] text-white/50">{valueLabel}</span>
+        <span className="text-[11px] text-muted-foreground">{valueLabel}</span>
       </div>
       {children}
-      {description && <p className="text-[10px] leading-snug text-white/30">{description}</p>}
+      {description && (
+        <p className="text-[10px] leading-snug text-muted-foreground/70">{description}</p>
+      )}
     </div>
   );
 }
@@ -77,7 +79,7 @@ function CoordinateInput({
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur();
       }}
-      className="w-full rounded-md border border-line bg-transparent px-1.5 py-1 text-[11px] text-white/80 outline-none focus:border-accent"
+      className="w-full rounded-md border border-line bg-transparent px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-accent"
     />
   );
 }
@@ -117,7 +119,7 @@ function KeyframeDetailPanel({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs text-white/70">{formatTime(kf.atMs)}</span>
+        <span className="font-mono text-xs text-muted-foreground">{formatTime(kf.atMs)}</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() =>
@@ -128,7 +130,7 @@ function KeyframeDetailPanel({
               'flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium',
               armedKeyframeId === kf.id
                 ? 'bg-accent/20 text-accent'
-                : 'text-white/40 hover:bg-white/10 hover:text-white/70'
+                : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
             )}
           >
             <Crosshair size={12} />
@@ -136,7 +138,7 @@ function KeyframeDetailPanel({
           </button>
           <button
             onClick={() => removeKeyframe(kf.id)}
-            className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-red-400"
+            className="rounded p-1 text-muted-foreground hover:bg-surface-2 hover:text-danger"
           >
             <Trash2 size={13} />
           </button>
@@ -172,18 +174,18 @@ function KeyframeDetailPanel({
                 }
               />
             </div>
-            <span className="shrink-0 text-[10px] text-white/30">
+            <span className="shrink-0 text-[10px] text-muted-foreground/70">
               {sourceResolution ? 'px' : '%'}
             </span>
             <button
               onClick={() => updateKeyframe(kf.id, { position: 'auto-cursor' })}
               title="Follow the recorded cursor instead of this fixed point"
-              className="shrink-0 text-[10px] text-white/40 underline decoration-dotted hover:text-white/70"
+              className="shrink-0 text-[10px] text-muted-foreground underline decoration-dotted hover:text-muted-foreground"
             >
               Follow cursor
             </button>
           </div>
-          <p className="text-[10px] leading-snug text-white/30">
+          <p className="text-[10px] leading-snug text-muted-foreground/70">
             Exact point the zoom centers on, instead of following the recorded cursor.
           </p>
         </div>
@@ -234,7 +236,7 @@ function KeyframeDetailPanel({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Easing
         </span>
         <div className="flex gap-1">
@@ -246,14 +248,16 @@ function KeyframeDetailPanel({
                 'flex-1 rounded-md border px-1.5 py-1 text-[10px] font-medium transition-colors',
                 kf.easing === easing
                   ? 'border-accent text-accent'
-                  : 'border-line text-white/50 hover:border-white/20'
+                  : 'border-line text-muted-foreground hover:border-accent/40'
               )}
             >
               {easing}
             </button>
           ))}
         </div>
-        <p className="text-[10px] leading-snug text-white/30">Curve the zoom follows in and out.</p>
+        <p className="text-[10px] leading-snug text-muted-foreground/70">
+          Curve the zoom follows in and out.
+        </p>
       </div>
     </div>
   );
@@ -292,7 +296,9 @@ export function ZoomKeyframeEditor({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-white/40">Zoom mode</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Zoom mode
+        </span>
         <div className="grid grid-cols-2 gap-2">
           {(['auto', 'manual'] as const).map((option) => (
             <button
@@ -302,14 +308,14 @@ export function ZoomKeyframeEditor({
                 'rounded-lg border py-1.5 text-xs font-medium capitalize transition-colors',
                 mode === option
                   ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-line text-white/60 hover:border-white/20'
+                  : 'border-line text-muted-foreground hover:border-accent/40'
               )}
             >
               {option}
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-white/30">
+        <p className="text-[11px] text-muted-foreground/70">
           {mode === 'auto'
             ? 'Zoom windows trigger on real clicks recorded during capture, and follow the recorded cursor path for the duration of each zoom.'
             : 'Add keyframes manually at the point you’re currently previewing.'}
@@ -334,10 +340,14 @@ export function ZoomKeyframeEditor({
         </p>
       )}
 
-      {sorted.length === 0 && <p className="text-xs text-white/40">No zoom keyframes yet.</p>}
+      {sorted.length === 0 && (
+        <p className="text-xs text-muted-foreground">No zoom keyframes yet.</p>
+      )}
 
       {sorted.length > 0 && !selected && (
-        <p className="text-xs text-white/40">Click a keyframe on the timeline below to edit it.</p>
+        <p className="text-xs text-muted-foreground">
+          Click a keyframe on the timeline below to edit it.
+        </p>
       )}
 
       {selected && (

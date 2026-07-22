@@ -19,6 +19,8 @@ export interface ExportOptions {
   resolution: { width: number; height: number };
   frameRate: number;
   quality: number;
+  /** When false, skips audio processing entirely -- the export has no audio track. */
+  includeAudio: boolean;
   outputPath: string;
   /** Absolute path to the recorded source file (lastRecording.filePath). */
   sourceVideoPath: string;

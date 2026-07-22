@@ -503,7 +503,7 @@ export function PreviewStage({
     <div className="m-6 flex flex-1 items-center justify-center overflow-hidden">
       <div
         ref={stageRef}
-        className="relative isolate flex max-h-full max-w-full overflow-hidden rounded-xl"
+        className="relative isolate flex max-h-full max-w-full overflow-hidden rounded-xl border border-border"
         style={{ padding: `${background.padding}%`, aspectRatio: stageAspectRatio }}
       >
         <div className="absolute inset-0 -z-10" style={backgroundLayerStyle(background)} />
@@ -517,11 +517,6 @@ export function PreviewStage({
             }}
           />
         )}
-
-        <span className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-          Source
-        </span>
 
         <div className="relative flex flex-1 items-center justify-center">
           <div
@@ -636,7 +631,7 @@ export function PreviewStage({
           {!isPlaying && !videoError && !cropToolActive && (
             <button
               onClick={() => videoRef.current?.play()}
-              className="absolute flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+              className="absolute flex h-16 w-16 items-center justify-center rounded-full bg-surface/70 text-foreground shadow-lg backdrop-blur-sm transition-colors hover:bg-surface-2/80"
             >
               <Play size={26} fill="currentColor" />
             </button>

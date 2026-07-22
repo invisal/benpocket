@@ -79,7 +79,7 @@ export function Playhead({
       <div
         onPointerDown={onPointerDown}
         title="Drag to scrub"
-        className="pointer-events-auto absolute top-0 -left-1.5  h-3.5 w-3.5 cursor-ew-resize rounded-full border-2 border-surface-raised bg-accent shadow-sm"
+        className="pointer-events-auto absolute top-0 -left-1.5  h-3.5 w-3.5 cursor-ew-resize rounded-full border-2 border-surface bg-accent shadow-sm"
       />
     </div>
   );

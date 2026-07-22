@@ -87,12 +87,12 @@ export function EditorTransportBar({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-3 px-6 pb-3 text-white/70">
+    <div className="flex shrink-0 items-center gap-3 px-6 pb-3 text-muted-foreground">
       <div className="relative">
         <select
           value={aspectRatio}
           onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
-          className="appearance-none rounded-lg border border-line bg-surface-raised py-1.5 pl-3 pr-7 text-xs font-medium text-white/80"
+          className="appearance-none rounded-lg border border-line bg-surface py-1.5 pl-3 pr-7 text-xs font-medium text-foreground"
         >
           {(Object.keys(ASPECT_LABELS) as AspectRatio[]).map((ratio) => (
             <option key={ratio} value={ratio}>
@@ -111,7 +111,7 @@ export function EditorTransportBar({
           onClick={undo}
           disabled={!canUndo}
           title="Undo"
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10 disabled:opacity-30"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
         >
           <Undo2 size={15} />
         </button>
@@ -119,7 +119,7 @@ export function EditorTransportBar({
           onClick={redo}
           disabled={!canRedo}
           title="Redo"
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10 disabled:opacity-30"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
         >
           <Redo2 size={15} />
         </button>
@@ -132,7 +132,7 @@ export function EditorTransportBar({
           'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
           cropToolActive
             ? 'border-accent bg-accent/10 text-accent'
-            : 'border-line text-white/60 hover:border-white/20'
+            : 'border-line text-muted-foreground hover:border-accent/40'
         )}
       >
         <Crop size={13} /> Crop
@@ -141,7 +141,7 @@ export function EditorTransportBar({
       <div className="flex items-center gap-1">
         <button
           onClick={() => videoRef.current && (videoRef.current.currentTime = 0)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2"
           title="Jump to start"
         >
           <SkipBack size={15} />
@@ -149,7 +149,7 @@ export function EditorTransportBar({
         <button
           onClick={togglePlay}
           title={isPlaying ? 'Pause' : 'Play'}
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2"
         >
           {isPlaying ? <Pause size={15} /> : <Play size={15} />}
         </button>
@@ -157,14 +157,14 @@ export function EditorTransportBar({
           onClick={() =>
             videoRef.current && (videoRef.current.currentTime = videoRef.current.duration || 0)
           }
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10"
+          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2"
           title="Jump to end"
         >
           <SkipForward size={15} />
         </button>
       </div>
 
-      <span className="font-mono text-xs tabular-nums text-white/50">
+      <span className="font-mono text-xs tabular-nums text-muted-foreground">
         {formatTime(currentTimeMs)} / {formatTime(durationMs)}
       </span>
 
@@ -177,7 +177,7 @@ export function EditorTransportBar({
         }
         className={cn(
           'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
-          cutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-white/10'
+          cutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
         )}
       >
         <Scissors size={14} />
@@ -192,7 +192,7 @@ export function EditorTransportBar({
         }
         className={cn(
           'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
-          isZoomToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-white/10'
+          isZoomToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
         )}
       >
         <ZoomIn size={14} />
@@ -202,7 +202,7 @@ export function EditorTransportBar({
         <button
           onClick={() => setTimelineZoom(Math.max(MIN_TIMELINE_ZOOM, timelineZoom - 0.5))}
           title="Zoom out timeline"
-          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-white/10"
+          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2"
         >
           <Minus size={13} />
         </button>
@@ -219,7 +219,7 @@ export function EditorTransportBar({
         <button
           onClick={() => setTimelineZoom(Math.min(MAX_TIMELINE_ZOOM, timelineZoom + 0.5))}
           title="Zoom in timeline"
-          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-white/10"
+          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2"
         >
           <Plus size={13} />
         </button>

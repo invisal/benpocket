@@ -78,6 +78,12 @@ async function copyAfterCapture(blob: Blob): Promise<boolean> {
   return copyViaRenderer(blob);
 }
 
+async function flattenFromEditorState(blob: Blob): Promise<Blob> {
+  const { annotations, cornerRadius, crop, background, watermark } =
+    useCaptureEditorStore.getState();
+  return flattenImage(blob, annotations, cornerRadius, crop, background, watermark);
+}
+
 // eslint-disable-next-line no-empty-pattern
 export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const usesOsPicker = window.api?.usesOsCapturePicker ?? false;
@@ -165,9 +171,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       timer = window.setTimeout(() => {
         generation += 1;
         const current = generation;
-        const { annotations, cornerRadius, crop, background, watermark } =
-          useCaptureEditorStore.getState();
-        void flattenImage(previewBlob, annotations, cornerRadius, crop, background, watermark)
+        void flattenFromEditorState(previewBlob)
           .then((blob) => (current === generation ? copyAfterCapture(blob) : true))
           .then((copied) => {
             if (!copied) console.error('Could not copy edited screenshot to clipboard.');
@@ -205,9 +209,11 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     setPreviewDataUrl(dataUrl);
     setPhase('result');
 
-    void copyAfterCapture(blob).then((copied) => {
-      if (!copied) console.error('Could not copy screenshot to clipboard.');
-    });
+    void flattenFromEditorState(blob).then((exportBlob) =>
+      copyAfterCapture(exportBlob).then((copied) => {
+        if (!copied) console.error('Could not copy screenshot to clipboard.');
+      })
+    );
   };
 
   const runRegionCapture = async (): Promise<void> => {
@@ -272,9 +278,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   /** Copy/Save export what's on the editor stage, not the raw capture. */
   const editedBlob = async (): Promise<Blob | null> => {
     if (!previewBlob) return null;
-    const { annotations, cornerRadius, crop, background, watermark } =
-      useCaptureEditorStore.getState();
-    return flattenImage(previewBlob, annotations, cornerRadius, crop, background, watermark);
+    return flattenFromEditorState(previewBlob);
   };
 
   const handleCopy = async (): Promise<void> => {

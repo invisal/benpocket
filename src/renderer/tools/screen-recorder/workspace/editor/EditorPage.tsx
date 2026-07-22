@@ -114,7 +114,7 @@ export function EditorPage(): JSX.Element {
   if (!lastRecording) {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
-        <p className="text-sm text-white/40">
+        <p className="text-sm text-muted-foreground">
           Record something first, then come back here to export it.
         </p>
       </div>
@@ -152,7 +152,7 @@ export function EditorPage(): JSX.Element {
         />
 
         {selectedSegment?.crop && (
-          <p className="shrink-0 px-6 pb-1 text-xs text-white/40">
+          <p className="shrink-0 px-6 pb-1 text-xs text-muted-foreground">
             Crop: {Math.round(selectedSegment.crop.width * 100)}% ×{' '}
             {Math.round(selectedSegment.crop.height * 100)}% of frame for this clip -- applied at
             export.

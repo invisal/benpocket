@@ -15,6 +15,15 @@ import { app, session } from 'electron';
 // same URL: <video src> hits media-src, but decoding it for the timeline's
 // waveform (features/timeline/lib/decode-waveform-peaks.ts) does
 // `fetch(previewUrl)` first, which CSP checks against connect-src instead.
+// worker-src needs 'blob:' and 'data:' because the export pipeline's
+// `web-demuxer` (features/export/engine/streaming-decoder.ts etc.) spins up
+// its own internal workers two different ways -- its main demux worker via
+// `new Worker(URL.createObjectURL(...))` (blob:) and at least one other via
+// an inline `data:text/javascript;base64,...` URL -- without an explicit
+// worker-src, Chromium falls back to default-src, which doesn't cover either
+// scheme and blocks the worker outright (silently hangs the export rather
+// than erroring, since the failure surfaces as a rejected internal promise
+// inside the library, not a catchable exception here).
 export function applyContentSecurityPolicy(): void {
   const isDev = !app.isPackaged;
 
@@ -23,6 +32,7 @@ export function applyContentSecurityPolicy(): void {
         "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
         "img-src 'self' data: blob: http: https:",
         "media-src 'self' blob:",
+        "worker-src 'self' blob: data:",
         "connect-src 'self' blob: ws: wss: http://localhost:* https://localhost:*"
       ].join('; ')
     : [
@@ -31,6 +41,7 @@ export function applyContentSecurityPolicy(): void {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: http: https:",
         "media-src 'self' blob:",
+        "worker-src 'self' blob: data:",
         "connect-src 'self' blob:"
       ].join('; ');
 

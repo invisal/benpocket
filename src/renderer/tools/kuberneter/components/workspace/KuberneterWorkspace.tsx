@@ -43,6 +43,7 @@ import { ClusterRoles } from './clusterroles/ClusterRoles';
 import { Roles } from './roles/Roles';
 import { ClusterRoleBindings } from './clusterrolebindings/ClusterRoleBindings';
 import { RoleBindings } from './rolebindings/RoleBindings';
+import { PortForwarding } from './portforwarding/PortForwarding';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -340,6 +341,8 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'bindings' && <RoleBindings roleBindingsData={roleBindingsData} />}
 
           {resource === 'nodes' && <Nodes nodesData={nodesData} />}
+
+          {resource === 'portforwarding' && <PortForwarding />}
         </>
       )}
     </div>

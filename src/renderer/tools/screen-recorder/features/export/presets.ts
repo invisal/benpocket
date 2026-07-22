@@ -73,32 +73,3 @@ export const EXPORT_PRESETS: ExportPreset[] = [
     quality: 46
   }
 ];
-
-export const CODEC_OPTIONS: { id: ExportCodec; label: string; description: string }[] = [
-  { id: 'h264', label: 'H.264', description: 'compatible' },
-  { id: 'h265', label: 'H.265', description: 'smaller' },
-  { id: 'av1', label: 'AV1', description: 'smallest' }
-];
-
-export const FORMAT_OPTIONS: { id: ExportFormat; label: string }[] = [
-  { id: 'mp4', label: 'MP4' },
-  { id: 'webm', label: 'WebM' },
-  { id: 'mov', label: 'MOV' },
-  { id: 'gif', label: 'GIF' }
-];
-
-export const RESOLUTION_OPTIONS = [
-  { width: 1280, height: 720, label: '720p' },
-  { width: 1920, height: 1080, label: '1080p' },
-  { width: 2560, height: 1440, label: '1440p' },
-  { width: 3840, height: 2160, label: '2160p' }
-];
-
-export const FRAME_RATE_OPTIONS = [24, 30, 60];
-
-export function qualityLabel(quality: number): string {
-  if (quality <= 25) return 'Draft';
-  if (quality <= 60) return 'Balanced';
-  if (quality <= 90) return 'High';
-  return 'Lossless';
-}

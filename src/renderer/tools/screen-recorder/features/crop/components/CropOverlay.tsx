@@ -265,14 +265,16 @@ export function CropOverlay({
         ))}
       </div>
 
-      <div className="pointer-events-auto absolute left-2 top-2 flex gap-1 rounded-lg bg-black/70 p-1">
+      <div className="pointer-events-auto absolute left-2 top-2 flex gap-1 rounded-lg bg-surface/80 p-1 shadow-md backdrop-blur-sm">
         {ASPECT_OPTIONS.map((option) => (
           <button
             key={option.id}
             onClick={() => selectAspect(option.id)}
             className={cn(
-              'rounded px-2 py-1 text-[11px] font-medium',
-              aspect === option.id ? 'bg-accent text-surface' : 'text-white/70 hover:bg-white/10'
+              'rounded px-2 py-1 text-[11px] font-medium transition-colors',
+              aspect === option.id
+                ? 'bg-accent text-surface'
+                : 'text-muted-foreground hover:bg-surface-2'
             )}
           >
             {option.label}
@@ -280,7 +282,7 @@ export function CropOverlay({
         ))}
         <button
           onClick={reset}
-          className="rounded px-2 py-1 text-[11px] font-medium text-white/50 hover:bg-white/10"
+          className="rounded px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-surface-2"
         >
           Reset
         </button>

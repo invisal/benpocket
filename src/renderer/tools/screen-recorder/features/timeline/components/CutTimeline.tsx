@@ -119,11 +119,11 @@ function CutMarker({
   return (
     <div className={cn('pointer-events-none absolute -top-10 z-10', anchorClassName)}>
       <div className="relative h-9 w-9">
-        <div className="absolute inset-0 -rotate-45 rounded-[50%_50%_50%_0] border-2 border-blue-500 bg-neutral-900 shadow-sm" />
+        <div className="absolute inset-0 -rotate-45 rounded-[50%_50%_50%_0] border-2 border-accent bg-surface-3 shadow-sm" />
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-px pt-0.5">
-          <Scissors size={12} className="text-white" />
+          <Scissors size={12} className="text-foreground" />
           {durationMs !== undefined && (
-            <span className="whitespace-nowrap text-[9px] font-medium leading-none text-white/85">
+            <span className="whitespace-nowrap text-[9px] font-medium leading-none text-foreground">
               {formatShortDuration(durationMs)}
             </span>
           )}
@@ -501,7 +501,7 @@ export function CutTimeline(): JSX.Element {
 
   return (
     <div
-      className="flex w-full shrink-0 flex-col border-t border-line bg-surface-raised"
+      className="flex w-full shrink-0 flex-col border-t border-line bg-surface"
       style={{ height: panelHeightPx }}
     >
       <div
@@ -576,13 +576,13 @@ export function CutTimeline(): JSX.Element {
                   >
                     {major ? (
                       <>
-                        <div className="h-2 w-px bg-white/25" />
-                        <span className="absolute left-0 top-2.5 -translate-x-1/2 whitespace-nowrap text-[9px] text-white/40">
+                        <div className="h-2 w-px bg-border-dark" />
+                        <span className="absolute left-0 top-2.5 -translate-x-1/2 whitespace-nowrap text-[9px] text-muted-foreground">
                           {formatTime(atMs)}
                         </span>
                       </>
                     ) : (
-                      <div className="absolute left-0 top-1 h-1 w-1 -translate-x-1/2 rounded-full bg-white/20" />
+                      <div className="absolute left-0 top-1 h-1 w-1 -translate-x-1/2 rounded-full bg-border" />
                     )}
                   </div>
                 ))}
@@ -795,8 +795,8 @@ export function CutTimeline(): JSX.Element {
                   className="pointer-events-none absolute inset-y-0.5 z-5 mx-0.5"
                   style={{ left: `${effectiveHoverFraction * 100}%` }}
                 >
-                  <div className="absolute inset-y-0 left-0 w-0.5 bg-white/40" />
-                  <div className="absolute -left-1 top-0 h-2.5 w-2.5 rounded-full border border-black/40 bg-white/70" />
+                  <div className="absolute inset-y-0 left-0 w-0.5 bg-muted-foreground/60" />
+                  <div className="absolute -left-1 top-0 h-2.5 w-2.5 rounded-full border border-border-dark bg-surface" />
                 </div>
               )}
             </div>

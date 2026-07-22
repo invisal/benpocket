@@ -15,7 +15,7 @@ isn't covered here.
 - `Select` — dropdown select (`Select.Trigger/Content/Item`), `SelectTrigger` renders as a `Button`.
 - `Popover` — anchored floating panel (`Popover.Root/Trigger/Content`).
 - `Tooltip` — hover hint (`Tooltip.Provider/Root/Trigger/Content`).
-- `Toolbar` — horizontal action bar (`Toolbar.Root/Button/Link/Input/Group/Separator`).
+- `Toolbar` — horizontal action bar (`Toolbar.Root/Button/Link/Input/Label/FreeSpace/Group/Separator`).
 - `ListView` — virtualized selectable row list backed by `@tanstack/react-table` + `react-virtual`; supports context menu, copy/cut/paste/delete, keyboard nav.
 - `ResizablePanel` — drag handle on one edge (`left`/`right`/`top`/`bottom`) that resizes a panel in `px` or `%`.
 

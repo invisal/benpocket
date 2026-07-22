@@ -1,6 +1,6 @@
 import { Toolbar as ToolbarPrimitive } from '@base-ui/react';
 import { cn } from 'cnfast';
-import { type ComponentProps } from 'react';
+import { type ComponentProps, type HTMLAttributes } from 'react';
 
 export function ToolbarRoot({ className, ...props }: ComponentProps<typeof ToolbarPrimitive.Root>) {
   return (
@@ -34,7 +34,7 @@ export function ToolbarButton({
   return (
     <ToolbarPrimitive.Button
       className={cn(
-        'h-full px-3 gap-1.5 outline-none select-none',
+        'h-full px-3 gap-1 outline-none select-none',
         'inline-flex items-center justify-center',
         'cursor-pointer',
         'text-xs',
@@ -52,7 +52,7 @@ export function ToolbarLink({ className, ...props }: ComponentProps<typeof Toolb
   return (
     <ToolbarPrimitive.Link
       className={cn(
-        'inline-flex h-7 items-center justify-center gap-1.5 rounded-sm px-2 text-[13px] text-text-dim outline-none select-none',
+        'inline-flex h-full items-center justify-center gap-1.5 rounded-sm px-2 text-[13px] text-text-dim outline-none select-none',
         'hover:bg-surface-2 hover:text-text-base',
         'focus-visible:bg-surface-2 focus-visible:text-text-base',
         className
@@ -69,12 +69,30 @@ export function ToolbarInput({
   return (
     <ToolbarPrimitive.Input
       className={cn(
-        'h-7 rounded-sm border border-border bg-surface px-2 text-[13px] text-text-base outline-none',
+        'h-full bg-surface hover:bg-surface-2 px-3 text-xs outline-none',
         'focus-visible:border-border-dark',
         className
       )}
       {...props}
     />
+  );
+}
+
+export function ToolbarLabel({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      className={cn(
+        'px-2 h-full flex items-center text-xs text-muted-foreground select-none',
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export function ToolbarFreeSpace({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn('h-full flex-1 bg-surface-2 bg-diagonal-stripes', className)} {...props} />
   );
 }
 
@@ -103,6 +121,8 @@ export const Toolbar = {
   Button: ToolbarButton,
   Link: ToolbarLink,
   Input: ToolbarInput,
+  Label: ToolbarLabel,
+  FreeSpace: ToolbarFreeSpace,
   Group: ToolbarGroup,
   Separator: ToolbarSeparator
 };

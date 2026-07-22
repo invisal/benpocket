@@ -25,6 +25,10 @@ let trayInstance: Tray | null = null;
 
 function createRecorderTray(iconPath: string, mainWindow: BrowserWindow): Tray {
   const image = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 });
+  // Monochrome glyph -- let macOS render it as a template image (black/white,
+  // following the menu bar's own light/dark appearance) instead of the flat
+  // black it'd otherwise paint from the PNG's RGB data.
+  image.setTemplateImage(true);
   const tray = new Tray(image);
   tray.setToolTip('benpocket -- click to record');
 
@@ -56,19 +60,23 @@ export function destroyTray(): void {
   trayInstance = null;
 }
 
-function focusAndSend(mainWindow: BrowserWindow, channel: string, ...args: unknown[]): void {
+/**
+ * Deliberately doesn't show/focus `mainWindow` first -- the renderer
+ * processes IPC and runs JS whether or not the window is on screen, and
+ * opening the recorder toolbar (see recorder-toolbar-window.ts) minimizes
+ * the owner window anyway. Showing it here first just produced a visible
+ * flash of the main window an instant before it got minimized again.
+ */
+function sendToMainWindow(mainWindow: BrowserWindow, channel: string, ...args: unknown[]): void {
   if (mainWindow.isDestroyed()) return;
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
   mainWindow.webContents.send(channel, ...args);
 }
 
 function showRecordMenu(tray: Tray, mainWindow: BrowserWindow): void {
   const template: MenuItemConstructorOptions[] = [
     {
-      label: 'Record Screen',
-      click: () => focusAndSend(mainWindow, IpcChannels.TrayOpenRecordPicker)
+      label: 'New Screen Recording',
+      click: () => sendToMainWindow(mainWindow, IpcChannels.TrayOpenRecordPicker)
     },
     { type: 'separator' },
     { label: 'Quit benpocket', click: () => app.quit() }

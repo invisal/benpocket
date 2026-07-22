@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
+import trayIcon from '../../resources/tray-icon-desktopTemplate.png?asset';
 import * as fs from 'fs';
 import * as path from 'path';
 import { registerHttpHandlers } from './http-client/ipc/http';
@@ -205,7 +206,7 @@ app.whenReady().then(() => {
 
   // Tray icon is created on demand -- see TrayBridge, which registers it
   // only while the Screen Recorder tool tab is open.
-  registerTrayHandlers(icon);
+  registerTrayHandlers(trayIcon);
 
   createWindow();
 

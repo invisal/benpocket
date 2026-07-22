@@ -81,6 +81,17 @@ export interface KuberneterApi {
     kubeconfigPath?: string,
     contextName?: string
   ) => Promise<{ values: string } | { error: string }>;
+  startPortForward: (params: {
+    id: string;
+    kubeconfigPath?: string;
+    contextName?: string;
+    namespace: string;
+    resourceKind: string;
+    resourceName: string;
+    localPort: number;
+    targetPort: number;
+  }) => Promise<{ success?: boolean; error?: string }>;
+  stopPortForward: (id: string) => Promise<{ success?: boolean; error?: string }>;
 }
 
 export interface HelmChartItem {
@@ -184,5 +195,7 @@ export const kuberneterApi: KuberneterApi = {
       allValues,
       kubeconfigPath,
       contextName
-    )
+    ),
+  startPortForward: (params) => ipcRenderer.invoke('kuberneter:start-port-forward', params),
+  stopPortForward: (id) => ipcRenderer.invoke('kuberneter:stop-port-forward', id)
 };

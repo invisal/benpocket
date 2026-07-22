@@ -1,5 +1,5 @@
 import type React from 'react';
-import { PodDetail } from './PodDetail';
+import { PodDetail } from './pod-detail';
 import { DeploymentDetail } from './DeploymentDetail';
 import { DaemonSetDetail } from './DaemonSetDetail';
 import { StatefulSetDetail } from './StatefulSetDetail';

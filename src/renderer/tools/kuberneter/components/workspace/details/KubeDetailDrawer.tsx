@@ -1,6 +1,17 @@
 import type React from 'react';
 import { useRef, useEffect } from 'react';
-import { Maximize2, Pencil, Star, Trash2, X, Terminal, Pause, RefreshCw } from 'lucide-react';
+import {
+  Maximize2,
+  Pencil,
+  Star,
+  Trash2,
+  X,
+  Terminal,
+  Pause,
+  RefreshCw,
+  FileText,
+  Share2
+} from 'lucide-react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { DetailContent } from './DetailContent';
@@ -192,6 +203,40 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
                 <Star className="size-3.5" />
               )}
             </button>
+          )}
+          {(contentType === 'pod' || contentType === 'pods') && (
+            <>
+              <button
+                title="Pod Terminal"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Terminal className="size-3.5" />
+              </button>
+              <button
+                title="Pod Logs"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <FileText className="size-3.5" />
+              </button>
+              <button
+                title="Attach / Share"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Share2 className="size-3.5" />
+              </button>
+              <button
+                title="Edit YAML"
+                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+              <button
+                title="Delete Pod"
+                className="text-zinc-400 hover:text-red-400 cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </>
           )}
           {contentType === 'nodes' && (
             <>

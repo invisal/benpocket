@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical } from 'lucide-react';
 import { type PortForwardData } from '../../../types/PortForwardData';
+import { usePortForwardingStore } from '../../../store/portForwarding.store';
 import { cn } from 'cnfast';
 
 interface PortForwardingTableProps {
@@ -130,11 +131,16 @@ export const PortForwardingTable: React.FC<PortForwardingTableProps> = ({
             <MoreVertical className="size-3.5 text-zinc-555" />
           </div>
         ),
-        render: () => (
+        render: (row) => (
           <div className="flex justify-center">
             <button
-              onClick={(e) => e.stopPropagation()}
-              className="p-1 rounded hover:bg-surface-3 text-zinc-500 hover:text-white cursor-pointer border-none bg-transparent"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await window.kuberneter.stopPortForward(row.id);
+                usePortForwardingStore.getState().removePortForward(row.id);
+              }}
+              title="Stop Port Forward"
+              className="p-1 rounded hover:bg-surface-3 text-zinc-400 hover:text-red-400 cursor-pointer border-none bg-transparent"
             >
               <MoreVertical className="size-3.5" />
             </button>

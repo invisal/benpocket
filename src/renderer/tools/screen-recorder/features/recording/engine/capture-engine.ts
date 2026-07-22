@@ -6,31 +6,23 @@ import type {
 } from '@screen-recorder/types/recording';
 import type { CaptureRegionSelection } from '@shared/capture-region';
 
-// Electron's legacy desktop-capture audio constraint (`chromeMediaSource`,
-// `mandatory`) predates the standard Constrainable properties and isn't in
-// lib.dom's MediaTrackConstraints type. See:
+// Electron's desktop capture constraints (`chromeMediaSource`, `mandatory`)
+// predate the standard Constrainable properties and aren't in lib.dom's
+// MediaTrackConstraints type. See:
 // https://www.electronjs.org/docs/latest/api/desktop-capturer
-// (Video used to go through this same legacy constraint shape too, keyed by
-// `chromeMediaSourceId` -- moved to `getDisplayMedia()` below instead, since
-// Chromium has never honored a cursor-hiding constraint on this legacy path;
-// see getDesktopStream's doc.)
 interface DesktopAudioConstraint {
   mandatory: {
     chromeMediaSource: 'desktop';
   };
 }
 
-/**
- * Standard Screen Capture API constraint (unlike the legacy one above) --
- * missing from lib.dom's `MediaTrackConstraints` even though browsers have
- * supported it for years. 'never' keeps the OS pointer out of the captured
- * video pixels entirely -- the app draws its own stylized cursor (see
- * features/cursor/) from `cursor-tracker.ts`'s separately-polled position
- * samples, so leaving the native one baked in would show both on top of
- * each other.
- */
-interface CursorVideoConstraint extends MediaTrackConstraints {
-  cursor?: 'never' | 'always' | 'motion';
+interface DesktopVideoConstraint {
+  mandatory: {
+    chromeMediaSource: 'desktop';
+    chromeMediaSourceId: string;
+    maxWidth?: number;
+    maxHeight?: number;
+  };
 }
 
 export interface CaptureRequest {
@@ -102,14 +94,16 @@ function videoBitsPerSecondFor(width: number, height: number): number {
  * only works reliably on Windows/Linux -- see AudioSourceToggle.tsx's macOS
  * caveat.
  *
- * Video goes through the standard `getDisplayMedia()` API rather than the
- * legacy `getUserMedia({ mandatory: { chromeMediaSource: 'desktop',
- * chromeMediaSourceId } })` constraint this used to use -- Chromium has
- * never honored a cursor-hiding constraint on that legacy path (still-open
- * Chromium bug 1007177 / electron#7584), only on the standards-track one.
- * `display-media-handler.ts`'s main-process handler resolves this call to
- * `source` with no OS picker dialog, since our own in-app source list
- * already picked it -- see `setPendingCaptureSourceId`.
+ * Uses the legacy `chromeMediaSource: 'desktop'` + `chromeMediaSourceId`
+ * constraint rather than the standard `getDisplayMedia()` API -- the latter
+ * is the only capture path Chromium honors a cursor-hiding constraint on
+ * (still-open Chromium bug 1007177 / electron#7584 confirm the legacy path
+ * here never has), but routing through it (main-process-resolved, no OS
+ * picker dialog) measurably raised CPU/thermal load over a multi-minute
+ * recording -- not worth trading for hiding the native pointer. So the
+ * native OS cursor stays baked into the captured video pixels, on top of
+ * (and separate from) the app's own stylized cursor overlay drawn in the
+ * editor/export from `cursor-tracker.ts`'s samples.
  */
 async function getDesktopStream(
   source: CaptureSource,
@@ -120,47 +114,37 @@ async function getDesktopStream(
   // A 'screen' source fills the full display, so bounding the capture to the
   // display's own resolution is correct. A 'window' source (e.g. the iOS
   // Simulator) is almost always much smaller than the display -- forcing the
-  // same full-display width/height there makes Chromium hand back a frame
-  // padded to that larger size, with the actual window content shrunk into
-  // a corner and the rest filled black. Sizing to the window's own bounds
-  // when known (or omitting the constraint entirely so Chromium just uses
-  // the window's native captured size) avoids the padding.
+  // same full-display maxWidth/maxHeight there makes Chromium hand back a
+  // frame padded to that larger size, with the actual window content
+  // shrunk into a corner and the rest filled black. Sizing to the window's
+  // own bounds when known (or omitting the constraint entirely so Chromium
+  // just uses the window's native captured size) avoids the padding.
   const sizeConstraint =
     source.type === 'screen'
-      ? {
-          width: { max: window.screen.width * scale },
-          height: { max: window.screen.height * scale }
-        }
+      ? { maxWidth: window.screen.width * scale, maxHeight: window.screen.height * scale }
       : source.displayBounds
         ? {
-            width: { max: Math.round(source.displayBounds.width * scale) },
-            height: { max: Math.round(source.displayBounds.height * scale) }
+            maxWidth: Math.round(source.displayBounds.width * scale),
+            maxHeight: Math.round(source.displayBounds.height * scale)
           }
         : {};
 
-  await window.screenRecorder.recording.prepareDisplayMediaCapture(source.id);
-
-  const videoStream = await navigator.mediaDevices.getDisplayMedia({
+  const constraints: MediaStreamConstraints = {
+    audio: wantSystemAudio
+      ? ({
+          mandatory: { chromeMediaSource: 'desktop' }
+        } as unknown as DesktopAudioConstraint as never)
+      : false,
     video: {
-      cursor: 'never',
-      ...sizeConstraint
-    } as CursorVideoConstraint
-  });
+      mandatory: {
+        chromeMediaSource: 'desktop',
+        chromeMediaSourceId: source.id,
+        ...sizeConstraint
+      }
+    } as unknown as DesktopVideoConstraint as never
+  };
 
-  // Desktop-wide loopback, never actually tied to `source`'s id (true of
-  // the old combined legacy call too) -- kept on the same legacy constraint
-  // rather than getDisplayMedia's own `audio: 'loopback'` handoff, since
-  // that's Windows-only, and this already works on Windows/Linux.
-  if (wantSystemAudio) {
-    const audioStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        mandatory: { chromeMediaSource: 'desktop' }
-      } as unknown as DesktopAudioConstraint as never
-    });
-    audioStream.getAudioTracks().forEach((track) => videoStream.addTrack(track));
-  }
-
-  return videoStream;
+  return navigator.mediaDevices.getUserMedia(constraints);
 }
 
 async function getMicrophoneStream(deviceId?: string): Promise<MediaStream> {

@@ -28,9 +28,6 @@ export const screenRecorderApi = {
     /** Whether getDisplayMedia() can hand off to the native macOS 15+ ScreenCaptureKit picker. */
     supportsNativeSystemPicker: (): Promise<boolean> =>
       ipcRenderer.invoke(IpcChannels.GetNativePickerSupport),
-    /** Tells the main process which source the next getDisplayMedia() call should silently resolve to -- see display-media-handler.ts. */
-    prepareDisplayMediaCapture: (sourceId: string): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.PrepareDisplayMediaCapture, sourceId),
     start: (request: RecordingRequest): Promise<RecordingSession> =>
       ipcRenderer.invoke(IpcChannels.StartRecording, request),
     stop: (): Promise<void> => ipcRenderer.invoke(IpcChannels.StopRecording),

@@ -823,21 +823,33 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     </>
   );
 
-  const watermarkLabel = watermark && (
-    <div
-      className="pointer-events-none absolute right-0 bottom-0 z-10 font-medium text-white/55"
-      style={{
-        // Matches flatten.ts drawWatermark: ~1.2% of output width, padded the same amount.
-        padding:
-          Math.max(8, (framed?.frame.width ?? view.width) * 0.012) * (framed ? frameFit : scale),
-        fontSize:
-          Math.max(12, (framed?.frame.width ?? view.width) * 0.012) * (framed ? frameFit : scale),
-        textShadow: '0 1px 2px rgba(0,0,0,0.35)'
-      }}
-    >
-      {BACKGROUND_WATERMARK}
-    </div>
-  );
+  const watermarkLabel =
+    watermark &&
+    (() => {
+      const srcWidth = framed?.frame.width ?? view.width;
+      const k = framed ? frameFit : scale;
+      const fontSize = Math.max(12, srcWidth * 0.012);
+      const margin = Math.max(8, srcWidth * 0.012);
+      const m = chipMetrics(fontSize);
+      return (
+        <div
+          className="pointer-events-none absolute right-0 bottom-0 z-10 font-semibold whitespace-pre"
+          style={{
+            // Matches flatten.ts drawWatermark: chip pill, ~1.2% of output width.
+            margin: margin * k,
+            padding: `${m.padY * k}px ${m.padX * k}px`,
+            fontSize: fontSize * k,
+            lineHeight: 1,
+            color: '#ffffff',
+            backgroundColor: CHIP_BG,
+            borderRadius: m.radius * k,
+            fontFamily: 'sans-serif'
+          }}
+        >
+          {BACKGROUND_WATERMARK}
+        </div>
+      );
+    })();
 
   const stage = (
     <div

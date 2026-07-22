@@ -311,16 +311,23 @@ function drawWatermark(
   frameHeight: number
 ): void {
   const fontSize = Math.max(12, Math.round(frameWidth * 0.012));
-  const pad = Math.max(8, Math.round(frameWidth * 0.012));
+  const margin = Math.max(8, Math.round(frameWidth * 0.012));
+  const { padX, padY, radius } = chipMetrics(fontSize);
   ctx.save();
-  ctx.font = `500 ${fontSize}px sans-serif`;
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'bottom';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-  ctx.shadowBlur = 2;
-  ctx.shadowOffsetY = 1;
-  ctx.fillText(BACKGROUND_WATERMARK, frameWidth - pad, frameHeight - pad);
+  ctx.font = `600 ${fontSize}px sans-serif`;
+  const textWidth = ctx.measureText(BACKGROUND_WATERMARK).width;
+  const width = textWidth + padX * 2;
+  const height = fontSize + padY * 2;
+  const x = frameWidth - margin - width;
+  const y = frameHeight - margin - height;
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+  ctx.fillStyle = CHIP_BG;
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(BACKGROUND_WATERMARK, x + padX, y + height / 2);
   ctx.restore();
 }
 

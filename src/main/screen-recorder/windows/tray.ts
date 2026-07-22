@@ -24,7 +24,7 @@ import { IpcChannels } from '@shared/ipc-channels';
 let trayInstance: Tray | null = null;
 
 function createRecorderTray(iconPath: string, mainWindow: BrowserWindow): Tray {
-  const image = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 });
+  const image = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
   // Monochrome glyph -- let macOS render it as a template image (black/white,
   // following the menu bar's own light/dark appearance) instead of the flat
   // black it'd otherwise paint from the PNG's RGB data.
@@ -75,7 +75,7 @@ function sendToMainWindow(mainWindow: BrowserWindow, channel: string, ...args: u
 function showRecordMenu(tray: Tray, mainWindow: BrowserWindow): void {
   const template: MenuItemConstructorOptions[] = [
     {
-      label: 'New Screen Recording',
+      label: 'New Recording',
       click: () => sendToMainWindow(mainWindow, IpcChannels.TrayOpenRecordPicker)
     },
     { type: 'separator' },

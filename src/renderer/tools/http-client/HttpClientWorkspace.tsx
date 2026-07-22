@@ -24,11 +24,19 @@ import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
 const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
 const DEFAULT_RESPONSE_PANEL_HEIGHT = 40;
+const SIDEBAR_WIDTH_KEY = 'craftbox-http-client-sidebar-width';
+const DEFAULT_SIDEBAR_WIDTH = 256;
 
 function readStoredResponsePanelHeight(): number {
   const stored = window.localStorage.getItem(RESPONSE_PANEL_HEIGHT_KEY);
   const parsed = stored ? Number(stored) : NaN;
   return Number.isFinite(parsed) ? parsed : DEFAULT_RESPONSE_PANEL_HEIGHT;
+}
+
+function readStoredSidebarWidth(): number {
+  const stored = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
+  const parsed = stored ? Number(stored) : NaN;
+  return Number.isFinite(parsed) ? parsed : DEFAULT_SIDEBAR_WIDTH;
 }
 
 // Mirrors the nav-item pattern in screen-recorder/ScreenRecorderApp.tsx, so every
@@ -91,11 +99,24 @@ export const HttpClientWorkspace: React.FC = () => {
     for (const t of tabs) handleCloseTab(t.id);
   };
 
+  const [sidebarWidth, setSidebarWidth] = useState<number>(readStoredSidebarWidth);
+  const handleSidebarResize = (size: number): void => {
+    setSidebarWidth(size);
+    window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(size));
+  };
+
   return (
     <div className="flex flex-1 min-h-0">
-      <aside className="w-64 shrink-0 border-r border-border-dark overflow-y-auto p-3">
+      <ResizablePanel
+        edge="right"
+        size={sidebarWidth}
+        onResize={handleSidebarResize}
+        min={200}
+        max={480}
+        className="border-r border-border-dark overflow-y-auto p-3"
+      >
         <HttpClientSidebar />
-      </aside>
+      </ResizablePanel>
 
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
         {tabs.length === 0 ? (

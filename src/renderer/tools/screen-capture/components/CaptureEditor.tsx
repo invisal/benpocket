@@ -21,7 +21,7 @@ import {
   resizeRect,
   type Rect
 } from '../lib/flatten';
-import { straightenStroke } from '../lib/recognize-stroke';
+import { recognizeStroke, straightenStroke } from '../lib/recognize-stroke';
 import type {
   BlurAnnotation,
   CaptureAnnotation,
@@ -450,22 +450,33 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
         if (points.length >= 2 && length >= MIN_DRAG_PX) {
           const id = crypto.randomUUID();
           const snap = store.getState().penSnap && !e.shiftKey;
-          // Snap only straightens — keep pen/highlight, never convert to line/rect/circle.
-          const straightened = snap ? straightenStroke(points) : null;
-          const strokePoints = straightened ? [...straightened] : [...points];
           if (kind === 'pen') {
+            if (snap) {
+              const shape = recognizeStroke(points);
+              if (shape) {
+                store.getState().addAnnotation({
+                  id,
+                  ...shape,
+                  color,
+                  strokeWidth
+                });
+                return;
+              }
+            }
             store.getState().addAnnotation({
               id,
               kind: 'pen',
-              points: strokePoints,
+              points: [...points],
               color,
               strokeWidth
             });
           } else {
+            // Highlight snap only straightens — never converts to line/rect/circle.
+            const straightened = snap ? straightenStroke(points) : null;
             store.getState().addAnnotation({
               id,
               kind: 'highlight',
-              points: strokePoints,
+              points: straightened ? [...straightened] : [...points],
               color,
               strokeWidth,
               lineCap

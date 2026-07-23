@@ -328,7 +328,7 @@ export function EditorToolbar(): JSX.Element {
                     onChange={(e) => setPenSnap(e.target.checked)}
                     className="accent-(--color-accent)"
                   />
-                  Snap straight
+                  Snap to line / rect / circle
                 </label>
                 {penSnap && (
                   <p className="mt-1 px-1 text-[11px] text-text-dim/80">Hold Shift for freehand</p>

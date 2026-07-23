@@ -48,11 +48,25 @@ interface PostmanBody {
   options?: { raw?: { language?: string } };
 }
 
+interface PostmanAuthParam {
+  key: string;
+  value?: string;
+  type?: string;
+}
+
+interface PostmanAuth {
+  type?: string;
+  bearer?: PostmanAuthParam[];
+  basic?: PostmanAuthParam[];
+  apikey?: PostmanAuthParam[];
+}
+
 interface PostmanRequest {
   method?: string;
   header?: PostmanHeader[];
   body?: PostmanBody;
   url?: string | PostmanUrl;
+  auth?: PostmanAuth;
 }
 
 interface PostmanItem {
@@ -109,6 +123,47 @@ function importHeaders(headers: PostmanHeader[] | undefined): KeyValuePair[] {
     .map((h) => ({ id: randomUUID(), key: h.key, value: h.value ?? '', enabled: !h.disabled }));
 }
 
+function findAuthParam(params: PostmanAuthParam[] | undefined, key: string): string {
+  return params?.find((p) => p.key === key)?.value ?? '';
+}
+
+/**
+ * Converts a request-level Postman `auth` block into the header it resolves to at
+ * send time (what Postman itself shows greyed-out under "Authorization" -> the
+ * actual `Authorization`/API-key header). Only the auth types that resolve to a
+ * static header are handled here - oauth2/digest/aws-sig-v4/hawk/ntlm need a live
+ * credential exchange Postman itself performs when sending, so there's no header
+ * to statically import for those.
+ */
+function importAuthHeader(auth: PostmanAuth | undefined): KeyValuePair | null {
+  if (!auth?.type || auth.type === 'noauth') return null;
+
+  switch (auth.type) {
+    case 'bearer': {
+      const token = findAuthParam(auth.bearer, 'token');
+      return token
+        ? { id: randomUUID(), key: 'Authorization', value: `Bearer ${token}`, enabled: true }
+        : null;
+    }
+    case 'basic': {
+      const username = findAuthParam(auth.basic, 'username');
+      const password = findAuthParam(auth.basic, 'password');
+      if (!username && !password) return null;
+      const encoded = Buffer.from(`${username}:${password}`).toString('base64');
+      return { id: randomUUID(), key: 'Authorization', value: `Basic ${encoded}`, enabled: true };
+    }
+    case 'apikey': {
+      const key = findAuthParam(auth.apikey, 'key');
+      const value = findAuthParam(auth.apikey, 'value');
+      const location = findAuthParam(auth.apikey, 'in');
+      if (!key || location === 'query') return null; // query-param API keys belong in Params, not Headers.
+      return { id: randomUUID(), key, value, enabled: true };
+    }
+    default:
+      return null;
+  }
+}
+
 /** Postman's collection-level `variable` array (Postman's own `{{key}}` variables) -> our `KeyValuePair[]`, the same shape environments use. */
 function importCollectionVariables(variables: PostmanVariable[] | undefined): KeyValuePair[] {
   return (variables ?? [])
@@ -152,13 +207,18 @@ function importBody(body: PostmanBody | undefined): { bodyType: HttpBodyType; bo
 function toSavedRequest(name: string, request: PostmanRequest): SavedRequest {
   const urlString = urlToString(request.url);
   const { bodyType, body } = importBody(request.body);
+  const headers = importHeaders(request.header);
+  const authHeader = importAuthHeader(request.auth);
+  if (authHeader && !headers.some((h) => h.key.toLowerCase() === authHeader.key.toLowerCase())) {
+    headers.push(authHeader);
+  }
   return {
     id: randomUUID(),
     name,
     protocol: 'HTTP',
     method: normalizeMethod(request.method),
     url: urlString,
-    headers: importHeaders(request.header),
+    headers,
     params: toKeyValueRows(parseQueryParams(urlString)),
     bodyType,
     body,
@@ -197,6 +257,51 @@ export function isLegacyPostmanV1Collection(data: unknown): boolean {
   const record = data as Record<string, unknown>;
   if (Array.isArray(record.item)) return false;
   return Array.isArray(record.requests) && Array.isArray(record.folders);
+}
+
+// --- Postman Environment (standalone `*.postman_environment.json` exports) ---
+
+interface PostmanEnvironmentValue {
+  key: string;
+  value?: string;
+  type?: string;
+  enabled?: boolean;
+}
+
+export interface PostmanEnvironmentFile {
+  id?: string;
+  name?: string;
+  values?: PostmanEnvironmentValue[];
+  _postman_variable_scope?: string;
+}
+
+/** Postman environment and global-variable exports share this exact shape. */
+export function isPostmanEnvironmentFile(data: unknown): data is PostmanEnvironmentFile {
+  if (!data || typeof data !== 'object') return false;
+  const record = data as Record<string, unknown>;
+  const scope = record._postman_variable_scope;
+  return (
+    typeof record.name === 'string' &&
+    Array.isArray(record.values) &&
+    (scope === undefined || scope === 'environment' || scope === 'globals')
+  );
+}
+
+export function importPostmanEnvironment(file: PostmanEnvironmentFile): {
+  name: string;
+  variables: KeyValuePair[];
+} {
+  return {
+    name: file.name?.trim() || 'Imported Environment',
+    variables: (file.values ?? [])
+      .filter((v) => v.key)
+      .map((v) => ({
+        id: randomUUID(),
+        key: v.key,
+        value: v.value ?? '',
+        enabled: v.enabled !== false
+      }))
+  };
 }
 
 export type PostmanSchemaVersion = '2.0.0' | '2.1.0' | 'unknown';

@@ -5,6 +5,7 @@ import { AlignLeft, Check, Minimize2, X } from 'lucide-react';
 import type { HttpBodyType, KeyValuePair } from '../../../../preload/http-client/types';
 import { tokenizeJson } from '../lib/jsonHighlight';
 import { findOpenToken, insertVariable, type OpenToken } from '../lib/variableToken';
+import { resolveJsonVariables } from '../lib/variables';
 
 interface BodyEditorProps {
   value: string;
@@ -54,15 +55,19 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
     [isJson, value]
   );
 
+  // Validates the JSON-aware resolved body (bare `{{var}}` placeholders auto-quoted,
+  // same as at send time - see resolveJsonVariables) rather than the raw template, so
+  // a body like `"username": {{username}}` isn't flagged invalid when it will in fact
+  // send valid JSON once the variable is substituted in.
   const jsonError = useMemo(() => {
     if (!isJson || !value.trim()) return null;
     try {
-      JSON.parse(value);
+      JSON.parse(resolveJsonVariables(value, variables));
       return null;
     } catch (err) {
       return err instanceof Error ? err.message : 'Invalid JSON';
     }
-  }, [isJson, value]);
+  }, [isJson, value, variables]);
 
   const names = useMemo(
     () => Array.from(new Set(variables.map((v) => v.key.trim()).filter(Boolean))),

@@ -15,6 +15,7 @@ import type {
   HttpRequestPayload,
   HttpResponsePayload,
   ImportCollectionResult,
+  ImportEnvironmentResult,
   MoveFolderPayload,
   MoveRequestPayload,
   RenameCollectionPayload,
@@ -22,6 +23,7 @@ import type {
   RenameFolderPayload,
   RenameRequestPayload,
   RenameWorkspacePayload,
+  ResolveEnvironmentImportPayload,
   SaveEnvironmentVariablesPayload,
   SaveRequestPayload,
   Workspace,
@@ -65,6 +67,10 @@ export interface PostmanBridge {
     rename: (payload: RenameEnvironmentPayload) => Promise<WsAckResult>;
     remove: (payload: DeleteEnvironmentPayload) => Promise<WsAckResult>;
     saveVariables: (payload: SaveEnvironmentVariablesPayload) => Promise<WsAckResult>;
+    importFromFile: (workspaceId: string) => Promise<ImportEnvironmentResult>;
+    resolveImportConflict: (
+      payload: ResolveEnvironmentImportPayload
+    ) => Promise<ImportEnvironmentResult>;
   };
   workspaces: {
     list: () => Promise<Workspace[]>;
@@ -140,7 +146,13 @@ export const postmanApi: PostmanBridge = {
     remove: (payload: DeleteEnvironmentPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('environments:delete', payload),
     saveVariables: (payload: SaveEnvironmentVariablesPayload): Promise<WsAckResult> =>
-      ipcRenderer.invoke('environments:saveVariables', payload)
+      ipcRenderer.invoke('environments:saveVariables', payload),
+    importFromFile: (workspaceId: string): Promise<ImportEnvironmentResult> =>
+      ipcRenderer.invoke('environments:importFromFile', workspaceId),
+    resolveImportConflict: (
+      payload: ResolveEnvironmentImportPayload
+    ): Promise<ImportEnvironmentResult> =>
+      ipcRenderer.invoke('environments:resolveImportConflict', payload)
   },
 
   // Workspaces - scope collections/environments into named groups, like Postman workspaces.

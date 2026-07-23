@@ -1,9 +1,11 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
-import type { HttpBodyType } from '../../../../preload/http-client/types';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
+import { getAutoHeaders } from '../lib/autoHeaders';
 import { KeyValueEditor } from './KeyValueEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
@@ -18,6 +20,8 @@ const BODY_TYPES: { value: HttpBodyType; label: string }[] = [
 ];
 
 interface RequestEditorPanelProps {
+  method: HttpMethod;
+  url: string;
   params: KeyValueRow[];
   onUpdateParam: (id: string, patch: Partial<KeyValueRow>) => void;
   onRemoveParam: (id: string) => void;
@@ -31,6 +35,8 @@ interface RequestEditorPanelProps {
 }
 
 export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
+  method,
+  url,
   params,
   onUpdateParam,
   onRemoveParam,
@@ -43,10 +49,15 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   onBodyChange
 }) => {
   const [activeTab, setActiveTab] = useState<RequestTabValue>('params');
+  const [showAutoHeaders, setShowAutoHeaders] = useState(false);
   const variables = useActiveEnvironmentVariables();
 
   const activeParamCount = params.filter((p) => p.enabled && p.key.trim()).length;
   const activeHeaderCount = headers.filter((h) => h.enabled && h.key.trim()).length;
+  const autoHeaders = useMemo(
+    () => getAutoHeaders(method, url, bodyType, body, headers, variables),
+    [method, url, bodyType, body, headers, variables]
+  );
 
   return (
     <Tabs.Root
@@ -106,6 +117,43 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           valuePlaceholder="Value or {{var}}"
           keySuggestions={COMMON_HTTP_HEADERS}
         />
+        {autoHeaders.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-border">
+            <button
+              onClick={() => setShowAutoHeaders((v) => !v)}
+              className="flex items-center gap-1 text-[10px] font-semibold text-zinc-555 hover:text-zinc-350 cursor-pointer transition-colors"
+            >
+              {showAutoHeaders ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              {autoHeaders.length} auto-generated header{autoHeaders.length === 1 ? '' : 's'}{' '}
+              {showAutoHeaders ? 'shown' : 'hidden'}
+            </button>
+            {showAutoHeaders && (
+              <div className="flex flex-col gap-1 mt-1.5">
+                {autoHeaders.map((h) => (
+                  <div
+                    key={h.key}
+                    className="grid grid-cols-[20px_1fr_1fr_24px] gap-2 items-center"
+                    title="Automatically generated from the URL/body - not editable here."
+                  >
+                    <input
+                      type="checkbox"
+                      checked
+                      disabled
+                      className="accent-accent opacity-40 justify-self-center"
+                    />
+                    <span className="bg-surface-2 border border-border text-xs rounded px-2 py-1 text-zinc-600 truncate">
+                      {h.key}
+                    </span>
+                    <span className="bg-surface-2 border border-border text-xs rounded px-2 py-1 text-zinc-600 truncate">
+                      {h.value}
+                    </span>
+                    <span />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Tabs.Panel>
 
       <Tabs.Panel value="body" className="flex flex-col gap-2">

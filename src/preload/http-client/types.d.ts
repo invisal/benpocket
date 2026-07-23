@@ -207,6 +207,34 @@ export interface Environment {
   variables: KeyValuePair[];
 }
 
+/** A parsed Postman Environment export, not yet written to disk - held in the renderer while the user resolves a name conflict. */
+export interface ImportedEnvironmentDraft {
+  name: string;
+  variables: KeyValuePair[];
+}
+
+export type EnvironmentImportConflictChoice = 'replace' | 'copy';
+
+export interface ImportEnvironmentResult {
+  ok: boolean;
+  canceled?: boolean;
+  environment?: Environment;
+  /** Set when an environment with the same name already exists in the workspace - the renderer should ask the user to Replace or Copy, then call `environments.resolveImportConflict` with their choice. */
+  conflict?: {
+    existingId: string;
+    existingName: string;
+    draft: ImportedEnvironmentDraft;
+  };
+  error?: string;
+}
+
+export interface ResolveEnvironmentImportPayload {
+  workspaceId: string;
+  existingId: string;
+  draft: ImportedEnvironmentDraft;
+  choice: EnvironmentImportConflictChoice;
+}
+
 export interface CreateEnvironmentPayload {
   name: string;
   workspaceId: string;

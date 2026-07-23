@@ -32,6 +32,27 @@ function hasHeader(headers: Record<string, string>, name: string): boolean {
   return Object.keys(headers).some((key) => key.toLowerCase() === target);
 }
 
+// Kept in sync with src/renderer/tools/http-client/lib/autoHeaders.ts, which shows
+// these same defaults as "hidden" headers in the Headers tab - both only apply
+// when the user hasn't set Content-Type themselves.
+const BODY_CONTENT_TYPES: Partial<Record<HttpRequestPayload['bodyType'], string>> = {
+  json: 'application/json',
+  text: 'text/plain',
+  form: 'application/x-www-form-urlencoded'
+};
+
+// Postman sends these on every request regardless of body, and shows them as
+// "hidden" headers in its Headers tab - matched here (and in autoHeaders.ts) so
+// the request behaves the same way our UI says it does. Node's own fetch/undici
+// already sends its own defaults for these, but they're runtime-dependent (e.g.
+// User-Agent: "node"), so they're pinned to fixed values instead of left implicit.
+const DEFAULT_HEADERS: Record<string, string> = {
+  'User-Agent': 'BenPocket-HTTPClient/1.0',
+  Accept: '*/*',
+  'Accept-Encoding': 'gzip, deflate, br',
+  Connection: 'keep-alive'
+};
+
 const NETWORK_ERROR_MESSAGES: Record<string, string> = {
   ENOTFOUND: "Couldn't resolve the host - check the URL is correct.",
   EAI_AGAIN: "Couldn't resolve the host - check the URL is correct.",
@@ -79,12 +100,17 @@ export function registerHttpHandlers(): void {
         }
         const headers = buildRequestHeaders(payload.headers);
 
+        for (const [name, value] of Object.entries(DEFAULT_HEADERS)) {
+          if (!hasHeader(headers, name)) headers[name] = value;
+        }
+
         const methodAllowsBody = !['GET', 'HEAD'].includes(payload.method);
         const hasBody =
           methodAllowsBody && payload.bodyType !== 'none' && payload.body.trim().length > 0;
 
-        if (hasBody && payload.bodyType === 'json' && !hasHeader(headers, 'content-type')) {
-          headers['Content-Type'] = 'application/json';
+        const contentType = hasBody ? BODY_CONTENT_TYPES[payload.bodyType] : undefined;
+        if (contentType && !hasHeader(headers, 'content-type')) {
+          headers['Content-Type'] = contentType;
         }
 
         const response = await fetch(requestUrl, {

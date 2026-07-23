@@ -439,6 +439,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
             />
 
             <RequestEditorPanel
+              method={client.http.state.method}
+              url={client.http.state.url}
               params={client.http.state.params}
               onUpdateParam={(id, patch) => {
                 pinIfPreview();

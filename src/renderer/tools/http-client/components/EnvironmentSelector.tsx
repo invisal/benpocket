@@ -1,11 +1,13 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
-import { ChevronDown, Globe, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { KeyValuePair } from '../../../../preload/http-client/types';
+import { ChevronDown, Globe, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import type { ImportedEnvironmentDraft, KeyValuePair } from '../../../../preload/http-client/types';
 import { useEnvironmentsStore } from '../store/environments.store';
 import { KeyValueEditor } from './KeyValueEditor';
 import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
+import { Dialog } from '@renderer/components/ui/Dialog';
+import { Button } from '@renderer/components/ui/Button';
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -19,7 +21,9 @@ export const EnvironmentSelector: React.FC = () => {
     createEnvironment,
     renameEnvironment,
     deleteEnvironment,
-    saveVariables
+    saveVariables,
+    importEnvironment,
+    resolveEnvironmentImportConflict
   } = useEnvironmentsStore();
 
   const [open, setOpen] = useState(false);
@@ -29,6 +33,11 @@ export const EnvironmentSelector: React.FC = () => {
   const [renameDraft, setRenameDraft] = useState('');
   const [localVariables, setLocalVariables] = useState<KeyValueRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<{
+    existingId: string;
+    existingName: string;
+    draft: ImportedEnvironmentDraft;
+  } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -110,6 +119,31 @@ export const EnvironmentSelector: React.FC = () => {
     }
   };
 
+  const handleImport = async (): Promise<void> => {
+    try {
+      const result = await importEnvironment();
+      if (result.canceled) return;
+      if (!result.ok) {
+        setError(result.error ?? 'Import failed.');
+        return;
+      }
+      if (result.conflict) setConflict(result.conflict);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    }
+  };
+
+  const handleResolveConflict = async (choice: 'replace' | 'copy'): Promise<void> => {
+    if (!conflict) return;
+    try {
+      await resolveEnvironmentImportConflict(conflict.existingId, conflict.draft, choice);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setConflict(null);
+    }
+  };
+
   return (
     <Popover.Root
       open={open}
@@ -130,16 +164,25 @@ export const EnvironmentSelector: React.FC = () => {
               <span className="font-bold text-zinc-300 uppercase tracking-wider text-[10px]">
                 Environment
               </span>
-              <button
-                onClick={() => {
-                  setIsCreating(true);
-                  setDraftName('');
-                }}
-                title="New Environment"
-                className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer"
-              >
-                <Plus size={13} />
-              </button>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={handleImport}
+                  title="Import Postman Environment (.postman_environment.json)"
+                  className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer"
+                >
+                  <Upload size={13} />
+                </button>
+                <button
+                  onClick={() => {
+                    setIsCreating(true);
+                    setDraftName('');
+                  }}
+                  title="New Environment"
+                  className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer"
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
             </div>
 
             {isCreating && (
@@ -242,6 +285,42 @@ export const EnvironmentSelector: React.FC = () => {
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
+
+      <Dialog.Root open={conflict !== null} onOpenChange={(next) => !next && setConflict(null)}>
+        <Dialog.Content className="max-w-sm p-0 overflow-hidden bg-surface border border-border-dark rounded-lg shadow-xl">
+          <div className="px-4 py-3 border-b border-border-dark">
+            <Dialog.Title className="text-xs font-semibold text-foreground">
+              Environment already exists
+            </Dialog.Title>
+          </div>
+          <div className="p-4 text-xs text-zinc-400 leading-relaxed">
+            An environment named{' '}
+            <span className="text-foreground font-semibold">
+              &ldquo;{conflict?.existingName}&rdquo;
+            </span>{' '}
+            already exists in this workspace. Replace its variables with the imported ones, or keep
+            both by importing this as a new copy.
+          </div>
+          <div className="flex items-center justify-end gap-2 px-4 py-3 bg-surface-2/40 border-t border-border-dark">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleResolveConflict('copy')}
+              className="text-xs font-medium"
+            >
+              Keep Both (Copy)
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleResolveConflict('replace')}
+              className="text-xs font-medium"
+            >
+              Replace
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Root>
     </Popover.Root>
   );
 };

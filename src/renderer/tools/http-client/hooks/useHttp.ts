@@ -7,7 +7,7 @@ import type {
 import { getActiveEnvironmentVariables } from '../store/environments.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
 import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
-import { resolveRows, resolveVariables } from '../lib/variables';
+import { resolveJsonVariables, resolveRows, resolveVariables } from '../lib/variables';
 import { readTabSeed } from '../lib/readTabSeed';
 
 export interface HttpState {
@@ -196,7 +196,10 @@ export function useHttp(tabId: string): UseHttpResult {
         headers: resolveRows(current.headers, variables),
         params: resolveRows(current.params, variables),
         bodyType: current.bodyType,
-        body: resolveVariables(current.body, variables),
+        body:
+          current.bodyType === 'json'
+            ? resolveJsonVariables(current.body, variables)
+            : resolveVariables(current.body, variables),
         timeoutMs: 30000
       })
       .then((response) => {

@@ -8,6 +8,7 @@ import {
   ClipboardCopy,
   Download,
   ImageUp,
+  Loader2,
   Scan
 } from 'lucide-react';
 import { cn } from 'cnfast';
@@ -94,6 +95,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [confirmed, setConfirmed] = useState<'copy' | 'save' | null>(null);
+  const [busy, setBusy] = useState<'copy' | 'save' | null>(null);
   const [hideApp, setHideApp] = useState(
     () => localStorage.getItem('screen-capture.hide-app') !== 'false'
   );
@@ -282,18 +284,28 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   };
 
   const handleCopy = async (): Promise<void> => {
-    const blob = await editedBlob();
-    if (!blob) return;
-    if (await copyToClipboard(blob)) {
-      flashConfirm('copy');
-    } else {
-      console.error('Could not copy screenshot to clipboard.');
+    if (busy) return;
+    setBusy('copy');
+    // Let the button spinner paint before main-thread flatten work.
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    try {
+      const blob = await editedBlob();
+      if (!blob) return;
+      if (await copyToClipboard(blob)) {
+        flashConfirm('copy');
+      } else {
+        console.error('Could not copy screenshot to clipboard.');
+      }
+    } finally {
+      setBusy(null);
     }
   };
 
   const handleSave = async (format: CaptureExportFormat): Promise<void> => {
-    if (!window.screenRecorder) return;
+    if (!window.screenRecorder || busy) return;
 
+    setBusy('save');
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     try {
       const edited = await editedBlob();
       if (!edited) return;
@@ -307,6 +319,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       if (filePath) flashConfirm('save');
     } catch (err) {
       console.error('Could not save screenshot.', err);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -405,25 +419,62 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
 
       {phase === 'result' && (
         <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border-dark bg-surface px-6 py-4">
-          <Button variant="secondary" size="sm" onClick={() => void handleCopy()}>
-            {confirmed === 'copy' ? <CircleCheck size={14} /> : <ClipboardCopy size={14} />}
+          <Button variant="secondary" size="sm" disabled={!!busy} onClick={() => void handleCopy()}>
+            {busy === 'copy' ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : confirmed === 'copy' ? (
+              <CircleCheck size={14} />
+            ) : (
+              <ClipboardCopy size={14} />
+            )}
             Copy to clipboard
           </Button>
-          <Menu.Root>
-            <Menu.Trigger render={<Button variant="secondary" size="sm" />}>
-              {confirmed === 'save' ? <CircleCheck size={14} /> : <Download size={14} />}
+          <div className="inline-flex">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!!busy}
+              className="rounded-r-none"
+              onClick={() => void handleSave('png')}
+            >
+              {busy === 'save' ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : confirmed === 'save' ? (
+                <CircleCheck size={14} />
+              ) : (
+                <Download size={14} />
+              )}
               Save to file
-              <ChevronDown size={14} />
-            </Menu.Trigger>
-            <Menu.Content side="top" align="end">
-              {CAPTURE_EXPORT_FORMATS.map((format) => (
-                <Menu.Item key={format.id} onClick={() => void handleSave(format.id)}>
-                  {format.label}
-                </Menu.Item>
-              ))}
-            </Menu.Content>
-          </Menu.Root>
-          <Button variant="primary" size="sm" onClick={handleCaptureAgain}>
+            </Button>
+            <Menu.Root>
+              <Menu.Trigger
+                disabled={!!busy}
+                aria-label="Save as…"
+                render={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!!busy}
+                    className="rounded-l-none border-l-0 px-1.5"
+                  />
+                }
+              >
+                <ChevronDown size={14} />
+              </Menu.Trigger>
+              <Menu.Content side="top" align="end">
+                {CAPTURE_EXPORT_FORMATS.map((format) => (
+                  <Menu.Item
+                    key={format.id}
+                    disabled={!!busy}
+                    onClick={() => void handleSave(format.id)}
+                  >
+                    {format.label}
+                  </Menu.Item>
+                ))}
+              </Menu.Content>
+            </Menu.Root>
+          </div>
+          <Button variant="primary" size="sm" disabled={!!busy} onClick={handleCaptureAgain}>
             <Camera size={14} />
             Capture again
           </Button>

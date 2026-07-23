@@ -6,19 +6,28 @@ interface SwitchProps {
   onChange: (checked: boolean) => void;
   label?: string;
   className?: string;
+  disabled?: boolean;
 }
 
-export function Switch({ checked, onChange, label, className }: SwitchProps): JSX.Element {
+export function Switch({
+  checked,
+  onChange,
+  label,
+  className,
+  disabled
+}: SwitchProps): JSX.Element {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
         'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors',
         checked ? 'bg-accent' : 'bg-surface-4',
+        disabled && 'cursor-not-allowed opacity-40',
         className
       )}
     >

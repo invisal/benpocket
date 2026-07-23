@@ -367,7 +367,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           className={cn(
-            'flex min-h-0 flex-1 flex-col gap-2',
+            'flex min-h-0 flex-1 flex-col gap-2 overflow-hidden',
             // Result phase goes edge-to-edge so the dotted editor canvas
             // fills the space between header and footer.
             phase !== 'result' && 'p-6 pb-4',
@@ -408,7 +408,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           )}
 
           {phase === 'result' && previewDataUrl && (
-            <div className="bg-dotted flex min-h-0 flex-1 gap-3 px-6 py-6">
+            <div className="bg-dotted flex min-h-0 flex-1 items-stretch gap-3 overflow-hidden px-6 py-6">
               <EditorToolbar />
               <CaptureEditor dataUrl={previewDataUrl} />
               <LayerPanel />

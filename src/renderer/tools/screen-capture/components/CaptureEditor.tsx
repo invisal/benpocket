@@ -449,10 +449,12 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
         setPenDraft(null);
         if (points.length >= 2 && length >= MIN_DRAG_PX) {
           const id = crypto.randomUUID();
-          const snap = store.getState().penSnap && !e.shiftKey;
+          const { penSnapShapes, highlightSnap } = store.getState();
           if (kind === 'pen') {
+            const snap =
+              !e.shiftKey && (penSnapShapes.line || penSnapShapes.rect || penSnapShapes.circle);
             if (snap) {
-              const shape = recognizeStroke(points);
+              const shape = recognizeStroke(points, penSnapShapes);
               if (shape) {
                 store.getState().addAnnotation({
                   id,
@@ -472,6 +474,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
             });
           } else {
             // Highlight snap only straightens — never converts to line/rect/circle.
+            const snap = highlightSnap && !e.shiftKey;
             const straightened = snap ? straightenStroke(points) : null;
             store.getState().addAnnotation({
               id,

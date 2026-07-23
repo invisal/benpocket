@@ -90,21 +90,20 @@ function tryRect(
   points: Point[],
   box: ReturnType<typeof bbox>,
   perimeter: number
-): RecognizedStroke | null {
+): { shape: RecognizedStroke; err: number } | null {
   if (!isClosed(points, perimeter)) return null;
   if (box.width < 12 || box.height < 12) return null;
-  const edgeErr = rectEdgeError(points, box);
-  const circErr = circleRadialError(points, box);
-  if (edgeErr > 0.14) return null;
-  // Circles/ellipses also hug the bbox edges (they touch mid-sides), so edgeErr
-  // alone is not enough. Only claim rect when edges fit *better* than the ellipse.
-  if (circErr <= edgeErr) return null;
+  const err = rectEdgeError(points, box);
+  if (err > 0.14) return null;
   return {
-    kind: 'rect',
-    x: box.x,
-    y: box.y,
-    width: Math.max(1, box.width),
-    height: Math.max(1, box.height)
+    err,
+    shape: {
+      kind: 'rect',
+      x: box.x,
+      y: box.y,
+      width: Math.max(1, box.width),
+      height: Math.max(1, box.height)
+    }
   };
 }
 
@@ -112,19 +111,22 @@ function tryCircle(
   points: Point[],
   box: ReturnType<typeof bbox>,
   perimeter: number
-): RecognizedStroke | null {
+): { shape: RecognizedStroke; err: number } | null {
   if (!isClosed(points, perimeter)) return null;
   if (box.width < 12 || box.height < 12) return null;
   const aspect = box.width / box.height;
   if (aspect < 0.7 || aspect > 1.4) return null;
-  const circErr = circleRadialError(points, box);
-  if (circErr > 0.18) return null;
+  const err = circleRadialError(points, box);
+  if (err > 0.18) return null;
   return {
-    kind: 'circle',
-    x: box.x,
-    y: box.y,
-    width: Math.max(1, box.width),
-    height: Math.max(1, box.height)
+    err,
+    shape: {
+      kind: 'circle',
+      x: box.x,
+      y: box.y,
+      width: Math.max(1, box.width),
+      height: Math.max(1, box.height)
+    }
   };
 }
 
@@ -142,14 +144,38 @@ function tryLine(points: Point[]): RecognizedStroke | null {
 /**
  * Classify a freehand polyline as a line, axis-aligned rect, or ellipse.
  * Used by free-draw snap — converts to a shape annotation.
+ * Only kinds with `allowed[kind] === true` are considered.
+ * Closed shapes are scored; the lower error wins (so squares stay rects,
+ * ovals stay circles even when both pass their absolute thresholds).
  */
-export function recognizeStroke(points: Point[]): RecognizedStroke | null {
+export function recognizeStroke(
+  points: Point[],
+  allowed: { line?: boolean; rect?: boolean; circle?: boolean } = {
+    line: true,
+    rect: true,
+    circle: true
+  }
+): RecognizedStroke | null {
   if (points.length < 3) return null;
   const len = pathLength(points);
   if (len < 16) return null;
   const box = bbox(points);
-  // Priority: closed rect → closed circle → open line.
-  return tryRect(points, box, len) ?? tryCircle(points, box, len) ?? tryLine(points);
+
+  const scored: { shape: RecognizedStroke; err: number }[] = [];
+  if (allowed.circle) {
+    const circ = tryCircle(points, box, len);
+    if (circ) scored.push(circ);
+  }
+  if (allowed.rect) {
+    const rect = tryRect(points, box, len);
+    if (rect) scored.push(rect);
+  }
+  if (scored.length > 0) {
+    scored.sort((a, b) => a.err - b.err);
+    return scored[0].shape;
+  }
+  if (allowed.line) return tryLine(points);
+  return null;
 }
 
 /**
@@ -229,6 +255,12 @@ function assertRecognizeStrokeSelfCheck(): void {
   }
   const ellipse = recognizeStroke(ellipsePts);
   assert(ellipse?.kind === 'circle', `expected ellipse→circle, got ${JSON.stringify(ellipse)}`);
+
+  const rectOnly = recognizeStroke(ellipsePts, { line: false, rect: true, circle: false });
+  assert(rectOnly?.kind === 'rect', `expected rect-only allow, got ${JSON.stringify(rectOnly)}`);
+
+  const none = recognizeStroke(ellipsePts, { line: false, rect: false, circle: false });
+  assert(none === null, `expected null when nothing allowed, got ${JSON.stringify(none)}`);
 
   const scribble = recognizeStroke([
     { x: 0, y: 0 },

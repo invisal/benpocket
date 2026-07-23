@@ -31,6 +31,15 @@ export const BLUR_TIERS = [
 /** Max corner radius as a multiple of `unit` (i.e. ~6.4% of image width). */
 export const MAX_CORNER_RADIUS_UNITS = 64;
 
+/** Free-draw snap targets the user can enable independently. */
+export type PenSnapShapes = { line: boolean; rect: boolean; circle: boolean };
+
+export const DEFAULT_PEN_SNAP_SHAPES: PenSnapShapes = {
+  line: true,
+  rect: true,
+  circle: true
+};
+
 /** Output frame sizes for the background tool; "Custom" is any width/height not matching one of these. */
 export const BACKGROUND_SIZE_PRESETS = [
   { id: 'full-hd', label: 'Full HD', width: 1920, height: 1080 },
@@ -128,14 +137,16 @@ interface EditorState {
    * at a different resolution gets the same relative roundness.
    */
   cornerRadiusUnits: number;
-  // ponytail: like cornerRadius, background/watermark/penSnap are not undo-tracked —
+  // ponytail: like cornerRadius, background/watermark/snap prefs are not undo-tracked —
   // every popover/toggle is self-reverting. Upgrade path: fold into Snapshot.
   /** Frame the export is composited onto, or null for the bare capture. */
   background: BackgroundConfig | null;
   /** Draws "benpocket/screen-capture" in the output's bottom-right corner. On by default. */
   watermark: boolean;
-  /** When on, freehand strokes snap to line/rect/circle (Shift still forces freehand). */
-  penSnap: boolean;
+  /** Free-draw snap targets — unchecked kinds stay freehand. */
+  penSnapShapes: PenSnapShapes;
+  /** Highlight: straighten roughly-linear strokes (Shift still forces freehand). */
+  highlightSnap: boolean;
   /** Highlight tool default: flat square tips (real marker) vs soft round. */
   highlightSquareEnds: boolean;
   /** Last color/stroke/font/blur per drawing tool — independent across tools. */
@@ -168,7 +179,8 @@ interface EditorState {
   setCornerRadius: (radius: number) => void;
   setBackground: (background: BackgroundConfig | null) => void;
   setWatermark: (watermark: boolean) => void;
-  setPenSnap: (penSnap: boolean) => void;
+  setPenSnapShape: (kind: keyof PenSnapShapes, enabled: boolean) => void;
+  setHighlightSnap: (highlightSnap: boolean) => void;
   setHighlightSquareEnds: (square: boolean) => void;
   setSelectedId: (id: string | null) => void;
   setEditingId: (id: string | null) => void;
@@ -248,7 +260,8 @@ const initialState = {
   cornerRadiusUnits: 0,
   background: null as BackgroundConfig | null,
   watermark: true,
-  penSnap: true,
+  penSnapShapes: { ...DEFAULT_PEN_SNAP_SHAPES },
+  highlightSnap: true,
   highlightSquareEnds: true,
   toolStyles: defaultToolStyles(),
   tool: 'select' as EditorTool,
@@ -265,7 +278,8 @@ const initialState = {
 /** Prefs written to localStorage — survive app restarts. */
 type PersistedEditorPrefs = {
   toolStyles: Record<StyleTool, ToolStyle>;
-  penSnap: boolean;
+  penSnapShapes: PenSnapShapes;
+  highlightSnap: boolean;
   highlightSquareEnds: boolean;
   watermark: boolean;
   background: BackgroundConfig | null;
@@ -353,7 +367,23 @@ function sanitizePrefs(raw: unknown): Partial<PersistedEditorPrefs> {
     out.toolStyles = toolStyles;
   }
 
-  if (typeof v.penSnap === 'boolean') out.penSnap = v.penSnap;
+  if (v.penSnapShapes && typeof v.penSnapShapes === 'object') {
+    const s = v.penSnapShapes as Record<string, unknown>;
+    out.penSnapShapes = {
+      line: typeof s.line === 'boolean' ? s.line : DEFAULT_PEN_SNAP_SHAPES.line,
+      rect: typeof s.rect === 'boolean' ? s.rect : DEFAULT_PEN_SNAP_SHAPES.rect,
+      circle: typeof s.circle === 'boolean' ? s.circle : DEFAULT_PEN_SNAP_SHAPES.circle
+    };
+  } else if (typeof v.penSnap === 'boolean') {
+    // Migrate legacy master toggle → all shapes on/off.
+    out.penSnapShapes = {
+      line: v.penSnap,
+      rect: v.penSnap,
+      circle: v.penSnap
+    };
+    out.highlightSnap = v.penSnap;
+  }
+  if (typeof v.highlightSnap === 'boolean') out.highlightSnap = v.highlightSnap;
   if (typeof v.highlightSquareEnds === 'boolean') out.highlightSquareEnds = v.highlightSquareEnds;
   if (typeof v.watermark === 'boolean') out.watermark = v.watermark;
   if ('background' in v) out.background = sanitizeBackground(v.background);
@@ -372,7 +402,8 @@ function sessionPrefs(
 ): Pick<
   EditorState,
   | 'toolStyles'
-  | 'penSnap'
+  | 'penSnapShapes'
+  | 'highlightSnap'
   | 'highlightSquareEnds'
   | 'watermark'
   | 'background'
@@ -384,7 +415,8 @@ function sessionPrefs(
 > {
   return {
     toolStyles: state.toolStyles,
-    penSnap: state.penSnap,
+    penSnapShapes: state.penSnapShapes,
+    highlightSnap: state.highlightSnap,
     highlightSquareEnds: state.highlightSquareEnds,
     watermark: state.watermark,
     background: state.background,
@@ -596,7 +628,12 @@ export const useCaptureEditorStore = create<EditorState>()(
 
       setWatermark: (watermark) => set({ watermark }),
 
-      setPenSnap: (penSnap) => set({ penSnap }),
+      setPenSnapShape: (kind, enabled) =>
+        set((state) => ({
+          penSnapShapes: { ...state.penSnapShapes, [kind]: enabled }
+        })),
+
+      setHighlightSnap: (highlightSnap) => set({ highlightSnap }),
 
       setHighlightSquareEnds: (highlightSquareEnds) => set({ highlightSquareEnds }),
 
@@ -695,7 +732,8 @@ export const useCaptureEditorStore = create<EditorState>()(
       name: PREFS_KEY,
       partialize: (state): PersistedEditorPrefs => ({
         toolStyles: state.toolStyles,
-        penSnap: state.penSnap,
+        penSnapShapes: state.penSnapShapes,
+        highlightSnap: state.highlightSnap,
         highlightSquareEnds: state.highlightSquareEnds,
         watermark: state.watermark,
         background: state.background,

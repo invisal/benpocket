@@ -190,23 +190,6 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
         </div>
       )}
 
-      {annotation.kind === 'highlight' && (
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
-          <input
-            type="checkbox"
-            checked={annotation.lineCap === 'square'}
-            onChange={(e) => {
-              focusLayer();
-              patchAnnotation(annotation.id, {
-                lineCap: e.target.checked ? 'square' : 'round'
-              });
-            }}
-            className="accent-(--color-accent)"
-          />
-          Square ends
-        </label>
-      )}
-
       {(annotation.kind === 'rect' ||
         annotation.kind === 'circle' ||
         annotation.kind === 'arrow' ||
@@ -237,6 +220,23 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
             );
           })}
         </div>
+      )}
+
+      {annotation.kind === 'highlight' && (
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
+          <input
+            type="checkbox"
+            checked={annotation.lineCap === 'square'}
+            onChange={(e) => {
+              focusLayer();
+              patchAnnotation(annotation.id, {
+                lineCap: e.target.checked ? 'square' : 'round'
+              });
+            }}
+            className="accent-(--color-accent)"
+          />
+          Square ends (marker tip)
+        </label>
       )}
 
       {(annotation.kind === 'text' || annotation.kind === 'chip') && (
@@ -318,7 +318,7 @@ export function LayerPanel(): JSX.Element {
   }
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-surface-2">
+    <aside className="flex min-h-0 w-56 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-surface-2">
       <header className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-2">
         <span className="min-w-0 flex-1 text-xs font-medium text-text-dim">Layers</span>
         <button
@@ -342,119 +342,123 @@ export function LayerPanel(): JSX.Element {
           <Redo2 size={14} strokeWidth={1.75} />
         </button>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-1.5">
-        {topFirst.length === 0 && <p className="px-2 py-3 text-xs text-text-dim">No edits yet.</p>}
-        {topFirst.map((annotation) => {
-          const Icon = KIND_ICONS[annotation.kind];
-          const isRenaming = renamingId === annotation.id;
-          // Only show props for the selected layer — avoids editing one row
-          // while the stage selection (and accent border) points at another.
-          const isExpanded = expandedId === annotation.id && selectedId === annotation.id;
-          return (
-            <div
-              key={annotation.id}
-              className={cn(
-                'overflow-hidden rounded-md border',
-                selectedId === annotation.id ? 'border-accent' : 'border-border'
-              )}
-            >
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
+        <div className="flex flex-col gap-1">
+          {topFirst.length === 0 && (
+            <p className="px-2 py-3 text-xs text-text-dim">No edits yet.</p>
+          )}
+          {topFirst.map((annotation) => {
+            const Icon = KIND_ICONS[annotation.kind];
+            const isRenaming = renamingId === annotation.id;
+            // Only show props for the selected layer — avoids editing one row
+            // while the stage selection (and accent border) points at another.
+            const isExpanded = expandedId === annotation.id && selectedId === annotation.id;
+            return (
               <div
-                draggable={!isRenaming}
-                onDragStart={() => setDragId(annotation.id)}
-                onDragEnd={() => setDragId(null)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (dragId && dragId !== annotation.id) {
-                    moveLayer(
-                      dragId,
-                      annotations.findIndex((a) => a.id === annotation.id)
-                    );
-                  }
-                  setDragId(null);
-                }}
-                onClick={() => setSelectedId(annotation.id)}
-                onDoubleClick={() => setRenamingId(annotation.id)}
+                key={annotation.id}
                 className={cn(
-                  'group flex cursor-grab items-center gap-2 px-2 py-1.5 text-xs select-none',
-                  selectedId === annotation.id
-                    ? 'bg-surface-4 text-text-base'
-                    : 'text-text-dim hover:bg-surface-3 hover:text-text-base',
-                  dragId === annotation.id && 'opacity-50'
+                  'overflow-hidden rounded-md border',
+                  selectedId === annotation.id ? 'border-accent' : 'border-border'
                 )}
               >
-                <button
-                  type="button"
-                  aria-label={annotation.hidden ? 'Show layer' : 'Hide layer'}
-                  aria-pressed={annotation.hidden ?? false}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    patchAnnotation(annotation.id, { hidden: !annotation.hidden });
+                <div
+                  draggable={!isRenaming}
+                  onDragStart={() => setDragId(annotation.id)}
+                  onDragEnd={() => setDragId(null)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragId && dragId !== annotation.id) {
+                      moveLayer(
+                        dragId,
+                        annotations.findIndex((a) => a.id === annotation.id)
+                      );
+                    }
+                    setDragId(null);
                   }}
-                  className="shrink-0 cursor-pointer rounded p-0.5 text-text-dim transition-colors hover:text-text-base"
+                  onClick={() => setSelectedId(annotation.id)}
+                  onDoubleClick={() => setRenamingId(annotation.id)}
+                  className={cn(
+                    'group flex cursor-grab items-center gap-2 px-2 py-1.5 text-xs select-none',
+                    selectedId === annotation.id
+                      ? 'bg-surface-4 text-text-base'
+                      : 'text-text-dim hover:bg-surface-3 hover:text-text-base',
+                    dragId === annotation.id && 'opacity-50'
+                  )}
                 >
-                  {annotation.hidden ? <EyeOff size={12} /> : <Eye size={12} />}
-                </button>
-                <Icon size={13} className={cn('shrink-0', annotation.hidden && 'opacity-40')} />
-                {isRenaming ? (
-                  <input
-                    autoFocus
-                    defaultValue={annotation.name ?? ''}
-                    placeholder={layerLabel(annotation)}
-                    onBlur={(e) => commitRename(annotation.id, e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitRename(annotation.id, e.currentTarget.value);
-                      if (e.key === 'Escape') setRenamingId(null);
+                  <button
+                    type="button"
+                    aria-label={annotation.hidden ? 'Show layer' : 'Hide layer'}
+                    aria-pressed={annotation.hidden ?? false}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      patchAnnotation(annotation.id, { hidden: !annotation.hidden });
                     }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full min-w-0 rounded-sm border border-border bg-surface px-1 py-0.5 text-xs text-text-base outline-none focus-visible:border-accent"
-                  />
-                ) : (
-                  <span
-                    className={cn(
-                      'min-w-0 flex-1 truncate',
-                      annotation.hidden && 'opacity-40 line-through'
-                    )}
+                    className="shrink-0 cursor-pointer rounded p-0.5 text-text-dim transition-colors hover:text-text-base"
                   >
-                    {layerLabel(annotation)}
-                  </span>
-                )}
-                {!isRenaming && (
-                  <span className="ml-auto flex shrink-0 items-center">
-                    <button
-                      type="button"
-                      aria-label="Layer properties"
-                      aria-expanded={isExpanded}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedId(annotation.id);
-                        setExpandedId(isExpanded ? null : annotation.id);
+                    {annotation.hidden ? <EyeOff size={12} /> : <Eye size={12} />}
+                  </button>
+                  <Icon size={13} className={cn('shrink-0', annotation.hidden && 'opacity-40')} />
+                  {isRenaming ? (
+                    <input
+                      autoFocus
+                      defaultValue={annotation.name ?? ''}
+                      placeholder={layerLabel(annotation)}
+                      onBlur={(e) => commitRename(annotation.id, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitRename(annotation.id, e.currentTarget.value);
+                        if (e.key === 'Escape') setRenamingId(null);
                       }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full min-w-0 rounded-sm border border-border bg-surface px-1 py-0.5 text-xs text-text-base outline-none focus-visible:border-accent"
+                    />
+                  ) : (
+                    <span
                       className={cn(
-                        'cursor-pointer rounded p-0.5 text-text-dim transition-all hover:text-text-base',
-                        isExpanded && 'rotate-180'
+                        'min-w-0 flex-1 truncate',
+                        annotation.hidden && 'opacity-40 line-through'
                       )}
                     >
-                      <ChevronDown size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Delete layer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeAnnotation(annotation.id);
-                      }}
-                      className="cursor-pointer rounded p-0.5 text-text-dim transition-colors hover:text-red-400"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </span>
-                )}
+                      {layerLabel(annotation)}
+                    </span>
+                  )}
+                  {!isRenaming && (
+                    <span className="ml-auto flex shrink-0 items-center">
+                      <button
+                        type="button"
+                        aria-label="Layer properties"
+                        aria-expanded={isExpanded}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedId(annotation.id);
+                          setExpandedId(isExpanded ? null : annotation.id);
+                        }}
+                        className={cn(
+                          'cursor-pointer rounded p-0.5 text-text-dim transition-all hover:text-text-base',
+                          isExpanded && 'rotate-180'
+                        )}
+                      >
+                        <ChevronDown size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Delete layer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeAnnotation(annotation.id);
+                        }}
+                        className="cursor-pointer rounded p-0.5 text-text-dim transition-colors hover:text-red-400"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+                {isExpanded && <LayerProperties annotation={annotation} />}
               </div>
-              {isExpanded && <LayerProperties annotation={annotation} />}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </aside>
   );

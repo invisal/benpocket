@@ -298,11 +298,15 @@ export function EditorToolbar(): JSX.Element {
   const hasBackground = useCaptureEditorStore((s) => s.background !== null);
   const watermark = useCaptureEditorStore((s) => s.watermark);
   const setWatermark = useCaptureEditorStore((s) => s.setWatermark);
-  const penSnap = useCaptureEditorStore((s) => s.penSnap);
-  const setPenSnap = useCaptureEditorStore((s) => s.setPenSnap);
+  const penSnapShapes = useCaptureEditorStore((s) => s.penSnapShapes);
+  const setPenSnapShape = useCaptureEditorStore((s) => s.setPenSnapShape);
+  const highlightSnap = useCaptureEditorStore((s) => s.highlightSnap);
+  const setHighlightSnap = useCaptureEditorStore((s) => s.setHighlightSnap);
   const highlightSquareEnds = useCaptureEditorStore((s) => s.highlightSquareEnds);
   const setHighlightSquareEnds = useCaptureEditorStore((s) => s.setHighlightSquareEnds);
   const unit = useCaptureEditorStore((s) => s.unit);
+
+  const anyPenSnap = penSnapShapes.line || penSnapShapes.rect || penSnapShapes.circle;
 
   return (
     <Tooltip.Provider delay={200} closeDelay={0}>
@@ -321,16 +325,28 @@ export function EditorToolbar(): JSX.Element {
                 </Popover.Trigger>
               </RailTooltip>
               <Popover.Content side="right" align="start" className="w-56">
-                <label className="flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none">
-                  <input
-                    type="checkbox"
-                    checked={penSnap}
-                    onChange={(e) => setPenSnap(e.target.checked)}
-                    className="accent-(--color-accent)"
-                  />
-                  Snap to line / rect / circle
-                </label>
-                {penSnap && (
+                <p className="px-1 pb-1 text-[11px] font-medium text-text-dim">Snap to</p>
+                {(
+                  [
+                    ['line', 'Line'],
+                    ['rect', 'Rectangle'],
+                    ['circle', 'Circle']
+                  ] as const
+                ).map(([kind, labelText]) => (
+                  <label
+                    key={kind}
+                    className="flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={penSnapShapes[kind]}
+                      onChange={(e) => setPenSnapShape(kind, e.target.checked)}
+                      className="accent-(--color-accent)"
+                    />
+                    {labelText}
+                  </label>
+                ))}
+                {anyPenSnap && (
                   <p className="mt-1 px-1 text-[11px] text-text-dim/80">Hold Shift for freehand</p>
                 )}
               </Popover.Content>
@@ -351,24 +367,24 @@ export function EditorToolbar(): JSX.Element {
                 <label className="flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none">
                   <input
                     type="checkbox"
-                    checked={penSnap}
-                    onChange={(e) => setPenSnap(e.target.checked)}
-                    className="accent-(--color-accent)"
-                  />
-                  Snap straight
-                </label>
-                {penSnap && (
-                  <p className="mt-1 px-1 text-[11px] text-text-dim/80">Hold Shift for freehand</p>
-                )}
-                <label className="mt-2 flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none">
-                  <input
-                    type="checkbox"
                     checked={highlightSquareEnds}
                     onChange={(e) => setHighlightSquareEnds(e.target.checked)}
                     className="accent-(--color-accent)"
                   />
                   Square ends (marker tip)
                 </label>
+                <label className="mt-2 flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none">
+                  <input
+                    type="checkbox"
+                    checked={highlightSnap}
+                    onChange={(e) => setHighlightSnap(e.target.checked)}
+                    className="accent-(--color-accent)"
+                  />
+                  Snap straight
+                </label>
+                {highlightSnap && (
+                  <p className="mt-1 px-1 text-[11px] text-text-dim/80">Hold Shift for freehand</p>
+                )}
               </Popover.Content>
             </Popover.Root>
           ) : (

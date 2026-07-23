@@ -85,14 +85,27 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
   const setFontTier = useCaptureEditorStore((s) => s.setFontTier);
   const setBlurTier = useCaptureEditorStore((s) => s.setBlurTier);
   const patchAnnotation = useCaptureEditorStore((s) => s.patchAnnotation);
+  const setSelectedId = useCaptureEditorStore((s) => s.setSelectedId);
   const unit = useCaptureEditorStore((s) => s.unit);
   // Pre-edit text stashed on focus so an emptied field can revert on blur.
   const textBeforeEdit = useRef('');
 
   const isCustomChip = annotation.kind === 'chip' && !CHIP_PRESETS.includes(annotation.text);
 
+  /** Keep stage selection on this layer while editing its properties. */
+  function focusLayer(): void {
+    setSelectedId(annotation.id);
+  }
+
   return (
-    <div className="flex flex-col gap-2 px-2 pt-1 pb-2" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="flex flex-col gap-2 px-2 pt-1 pb-2"
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        focusLayer();
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
       {annotation.kind === 'chip' && (
         <div className="flex items-center gap-1">
           {CHIP_PRESETS.map((preset) => (
@@ -100,7 +113,10 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
               key={preset}
               type="button"
               aria-pressed={annotation.text === preset}
-              onClick={() => patchAnnotation(annotation.id, { text: preset })}
+              onClick={() => {
+                focusLayer();
+                patchAnnotation(annotation.id, { text: preset });
+              }}
               className={cn(tierButtonClass(annotation.text === preset), 'w-auto px-2 text-xs')}
             >
               {preset}
@@ -109,7 +125,10 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
           <button
             type="button"
             aria-pressed={isCustomChip}
-            onClick={() => patchAnnotation(annotation.id, { text: 'Custom' })}
+            onClick={() => {
+              focusLayer();
+              patchAnnotation(annotation.id, { text: 'Custom' });
+            }}
             className={cn(tierButtonClass(isCustomChip), 'w-auto px-2 text-xs')}
           >
             Custom
@@ -123,6 +142,7 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
           aria-label="Text content"
           value={annotation.text}
           onFocus={() => {
+            focusLayer();
             textBeforeEdit.current = annotation.text;
             useCaptureEditorStore.getState().beginGesture();
           }}
@@ -149,7 +169,10 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
               type="button"
               aria-label={`Color ${c}`}
               aria-pressed={annotation.color === c}
-              onClick={() => setColor(c, annotation.id)}
+              onClick={() => {
+                focusLayer();
+                setColor(c, annotation.id);
+              }}
               className={cn(
                 'h-3.5 w-3.5 cursor-pointer rounded-full border border-border-dark transition-transform',
                 annotation.color === c && 'scale-110 ring-2 ring-accent'
@@ -172,7 +195,10 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
               type="button"
               aria-label={`${label} stroke`}
               aria-pressed={Math.round(annotation.strokeWidth / unit) === value}
-              onClick={() => setStrokeTier(value, annotation.id)}
+              onClick={() => {
+                focusLayer();
+                setStrokeTier(value, annotation.id);
+              }}
               className={tierButtonClass(Math.round(annotation.strokeWidth / unit) === value)}
             >
               <span
@@ -192,7 +218,10 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
               type="button"
               aria-label={label}
               aria-pressed={Math.round(annotation.fontSize / unit) === value}
-              onClick={() => setFontTier(value, annotation.id)}
+              onClick={() => {
+                focusLayer();
+                setFontTier(value, annotation.id);
+              }}
               className={cn(
                 tierButtonClass(Math.round(annotation.fontSize / unit) === value),
                 'items-end pb-0.5 font-medium'
@@ -213,7 +242,10 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
               type="button"
               aria-label={label}
               aria-pressed={Math.round(annotation.blurRadius / unit) === value}
-              onClick={() => setBlurTier(value, annotation.id)}
+              onClick={() => {
+                focusLayer();
+                setBlurTier(value, annotation.id);
+              }}
               className={tierButtonClass(Math.round(annotation.blurRadius / unit) === value)}
             >
               <Droplets size={10 + index * 3} />
@@ -262,7 +294,9 @@ export function LayerPanel(): JSX.Element {
         {topFirst.map((annotation) => {
           const Icon = KIND_ICONS[annotation.kind];
           const isRenaming = renamingId === annotation.id;
-          const isExpanded = expandedId === annotation.id;
+          // Only show props for the selected layer — avoids editing one row
+          // while the stage selection (and accent border) points at another.
+          const isExpanded = expandedId === annotation.id && selectedId === annotation.id;
           return (
             <div
               key={annotation.id}

@@ -28,7 +28,6 @@ import { defaultChipPosition } from '../lib/flatten';
 import {
   BACKGROUND_SIZE_PRESETS,
   DEFAULT_BACKGROUND,
-  FONT_TIERS,
   MAX_CORNER_RADIUS_UNITS,
   useCaptureEditorStore
 } from '../store/editor.store';
@@ -43,6 +42,7 @@ import type { EditorTool } from '../types/editor';
 function addChip(): void {
   const s = useCaptureEditorStore.getState();
   const { x, y } = defaultChipPosition(s.imageWidth, s.imageHeight, s.unit, s.crop, s.background);
+  const style = s.toolStyles.chip;
   s.setTool('select');
   s.addAnnotation({
     id: crypto.randomUUID(),
@@ -50,8 +50,8 @@ function addChip(): void {
     x,
     y,
     text: 'Before',
-    color: '#ffffff',
-    fontSize: FONT_TIERS.at(-1)!.value * s.unit
+    color: style.color,
+    fontSize: style.fontTier * s.unit
   });
 }
 

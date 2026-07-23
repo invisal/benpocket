@@ -120,7 +120,7 @@ function TextEditInput({
         if (e.key === 'Escape') finish('cancel', '');
       }}
       onPointerDown={(e) => e.stopPropagation()}
-      className="pointer-events-auto absolute min-w-24 border border-dashed border-accent bg-transparent font-medium outline-none placeholder:text-white/40"
+      className="pointer-events-auto absolute min-w-24 border border-dashed border-accent bg-transparent font-medium outline-none placeholder:text-[rgba(255,255,255,0.4)]"
       style={{
         left: annotation.x * scale,
         top: annotation.y * scale,

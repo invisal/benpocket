@@ -175,7 +175,16 @@ export class StreamingVideoDecoder {
     const scanReader = this.demuxer.read('video', 0, scanEndSec).getReader();
     try {
       while (true) {
-        const { done, value } = await scanReader.read();
+        // Each individual read(), not just the loop as a whole, is guarded --
+        // a container the WASM demuxer can't fully walk (e.g. a WebM missing
+        // Cues, which is exactly when the caller above falls into the
+        // unbounded 24h `scanEndSec` fallback) can stall on a single read()
+        // forever with no error, otherwise.
+        const { done, value } = await this.withTimeout(
+          scanReader.read(),
+          SOURCE_LOAD_TIMEOUT_MS,
+          'Timed out while scanning the source video for its real duration.'
+        );
         if (done || !value) break;
         const endUs = value.timestamp + (value.duration ?? 0);
         if (endUs > maxPacketEndUs) maxPacketEndUs = endUs;
@@ -325,7 +334,14 @@ export class StreamingVideoDecoder {
     const feedPromise = (async () => {
       try {
         while (!this.cancelled) {
-          const { done, value: chunk } = await reader.read();
+          // Same per-read stall guard as loadMetadata's duration scan --
+          // without it, a demuxer read that never resolves hangs the whole
+          // export at 0% with no error instead of failing fast.
+          const { done, value: chunk } = await this.withTimeout(
+            reader.read(),
+            SOURCE_LOAD_TIMEOUT_MS,
+            'Timed out while reading the source video.'
+          );
           if (done || !chunk) break;
 
           while (
@@ -487,6 +503,17 @@ export class StreamingVideoDecoder {
     await feedPromise;
     for (const f of pendingFrames) f.close();
     pendingFrames.length = 0;
+
+    // `feedPromise` never rejects -- it catches its own errors into
+    // `decodeError` (see above) -- and a `frameResolve(null)` fired from
+    // that same catch/finally resolves whatever the main loop above was
+    // awaiting with `null`, identical to a clean end-of-stream. Both loops
+    // can therefore exit via `if (!frame) break` without ever calling
+    // `getNextFrame()` again to hit its own `if (decodeError) throw`
+    // check, silently truncating the export instead of failing it. This is
+    // the one place guaranteed to run after both loops are done, regardless
+    // of which one observed the `null`.
+    if (decodeError) throw decodeError;
 
     if (this.decoder?.state === 'configured') this.decoder.close();
     this.decoder = null;

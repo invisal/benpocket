@@ -99,6 +99,24 @@ export function useExportAction(): UseExportActionResult {
       );
       setStatus('idle');
       setProgress(null);
+
+      // The raw recording (and its parallel webcam file, if any) is no
+      // longer needed once export succeeds -- delete both so they don't
+      // linger on disk forever. Deliberate tradeoff: exporting this same
+      // recording again afterward will fail with the source gone, since
+      // this deletes right away rather than waiting for the user to
+      // navigate away from it. Fire-and-forget -- export itself already
+      // finished successfully; a cleanup failure here shouldn't reopen it.
+      if (lastRecording?.filePath) {
+        window.screenRecorder.recording
+          .deleteFile(lastRecording.filePath)
+          .catch((err) => console.error('[export] failed to delete raw recording file:', err));
+      }
+      if (lastRecording?.webcamFilePath) {
+        window.screenRecorder.recording
+          .deleteFile(lastRecording.webcamFilePath)
+          .catch((err) => console.error('[export] failed to delete raw webcam file:', err));
+      }
     } catch (err) {
       if (isExportCancelled(err)) {
         setStatus('idle');

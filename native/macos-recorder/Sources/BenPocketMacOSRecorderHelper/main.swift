@@ -30,6 +30,16 @@ struct RecordingRequest: Decodable {
 		let windowHandle: UInt32?
 		let windowTitle: String?
 		let bounds: Rectangle?
+		/// Drag-selected sub-rectangle of a "display" source ("Area" mode on
+		/// the Electron side), as a 0-1 fraction of the display's own
+		/// width/height -- fraction rather than raw points/pixels so this
+		/// doesn't care whether the Electron side measured in DIP or bitmap
+		/// pixels (see capture-region.ts's `imageSpace` caveat); this helper
+		/// converts to real points (SCStreamConfiguration.sourceRect) and
+		/// real pixels (output width/height) itself, from its own
+		/// authoritative display data. Display sources only -- a window
+		/// source has no crop concept here.
+		let cropFraction: Rectangle?
 	}
 
 	struct Video: Decodable {
@@ -130,6 +140,14 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 	private var nativeMicrophoneEnabled = false
 	private var outputWidth = 1920
 	private var outputHeight = 1080
+	/// Set only when `request.source.cropFraction` is present -- passed to
+	/// `SCStreamConfiguration.sourceRect` in `makeStreamConfiguration()` to
+	/// crop capture at the ScreenCaptureKit level, so a cropped recording
+	/// still goes through this helper (cursor-hide, native audio) instead
+	/// of falling back to the renderer's canvas-crop-relay path, which has
+	/// no way to hide the cursor at all -- see capture-engine.ts's
+	/// `tryStartNativeRecording`.
+	private var outputSourceRect: CGRect?
 	private let microphoneOutputTypeRawValue = 2
 	private let hostClock = CMClockGetHostTimeClock()
 
@@ -326,12 +344,33 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			// to get real pixel dimensions regardless of the calling
 			// process's resolution-awareness.
 			let mode = CGDisplayCopyDisplayMode(display.displayID)
-			let width = mode.map { $0.pixelWidth } ?? Int(CGDisplayPixelsWide(display.displayID))
-			let height = mode.map { $0.pixelHeight } ?? Int(CGDisplayPixelsHigh(display.displayID))
+			let fullPixelWidth = mode.map { $0.pixelWidth } ?? Int(CGDisplayPixelsWide(display.displayID))
+			let fullPixelHeight = mode.map { $0.pixelHeight } ?? Int(CGDisplayPixelsHigh(display.displayID))
+
+			if let cropFraction = request.source.cropFraction {
+				// SCStreamConfiguration.sourceRect is in points, local to the
+				// display's own origin (not the global multi-monitor space
+				// display.frame.origin sits in) -- display.frame.size is
+				// already the display's own point dimensions.
+				outputSourceRect = CGRect(
+					x: cropFraction.x * display.frame.width,
+					y: cropFraction.y * display.frame.height,
+					width: cropFraction.width * display.frame.width,
+					height: cropFraction.height * display.frame.height
+				)
+				let cropPixelWidth = Int((Double(fullPixelWidth) * cropFraction.width).rounded())
+				let cropPixelHeight = Int((Double(fullPixelHeight) * cropFraction.height).rounded())
+				return CaptureTarget(
+					filter: SCContentFilter(display: display, excludingWindows: []),
+					width: clampCaptureDimension(cropPixelWidth, fallback: request.video.width),
+					height: clampCaptureDimension(cropPixelHeight, fallback: request.video.height)
+				)
+			}
+
 			return CaptureTarget(
 				filter: SCContentFilter(display: display, excludingWindows: []),
-				width: clampCaptureDimension(width, fallback: request.video.width),
-				height: clampCaptureDimension(height, fallback: request.video.height)
+				width: clampCaptureDimension(fullPixelWidth, fallback: request.video.width),
+				height: clampCaptureDimension(fullPixelHeight, fallback: request.video.height)
 			)
 		case "window":
 			let window = try resolveWindow(from: content.windows)
@@ -409,6 +448,9 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		let configuration = SCStreamConfiguration()
 		configuration.width = outputWidth
 		configuration.height = outputHeight
+		if let outputSourceRect {
+			configuration.sourceRect = outputSourceRect
+		}
 		configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(max(1, request.video.fps)))
 		configuration.queueDepth = 6
 		configuration.showsCursor = !request.video.hideCursor

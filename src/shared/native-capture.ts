@@ -25,6 +25,18 @@ export interface NativeRecordingSource {
   windowTitle?: string;
   /** Display sources only -- Electron's own bounds for the picked Display, the primary signal for matching against the platform's own display enumeration. */
   bounds?: { x: number; y: number; width: number; height: number };
+  /**
+   * Drag-selected sub-rectangle of a display source ("Area" mode), as a 0-1
+   * fraction of the display's own width/height -- fraction rather than raw
+   * points/pixels so it doesn't matter whether the renderer measured in DIP
+   * or bitmap-pixel space (see capture-region.ts's `imageSpace` caveat);
+   * each helper converts to its own real points/pixels from its own
+   * authoritative display data. macOS only for now (ScreenCaptureKit's
+   * `sourceRect` makes this a real native crop there) -- gated by
+   * `NativeRecordingSupport.supportsCrop`, see `tryStartNativeRecording` in
+   * capture-engine.ts.
+   */
+  cropFraction?: { x: number; y: number; width: number; height: number };
 }
 
 /** What the renderer sends over IPC -- no output path, since the main process owns choosing/computing where recordings live (same `~/Movies/ScreenRecorder/` convention `SaveRecordingFile` already uses), not the renderer. */
@@ -50,6 +62,8 @@ export interface NativeRecordingOptions extends NativeRecordingRequest {
 export interface NativeRecordingSupport {
   /** Whether a helper binary exists for the current platform/arch -- a cheap file-existence check, not a permission check. */
   supported: boolean;
+  /** Whether this platform's helper can honor `NativeRecordingSource.cropFraction` -- macOS only for now, see that field's doc. */
+  supportsCrop: boolean;
 }
 
 export type NativeRecordingStartResult =

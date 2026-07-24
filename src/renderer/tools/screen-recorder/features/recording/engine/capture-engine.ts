@@ -369,7 +369,10 @@ function cropToRegion(sourceStream: MediaStream, region: CaptureRegionSelection)
  * side instead of by id, for the analogous reason (desktopCapturer's id
  * isn't guaranteed to embed a platform display id).
  */
-function toNativeRecordingSource(source: CaptureSource): NativeRecordingSource {
+function toNativeRecordingSource(
+  source: CaptureSource,
+  cropFraction?: NativeRecordingSource['cropFraction']
+): NativeRecordingSource {
   if (source.type === 'window') {
     const handle = Number(source.id.split(':')[1]);
     return {
@@ -382,7 +385,8 @@ function toNativeRecordingSource(source: CaptureSource): NativeRecordingSource {
   return {
     kind: 'display',
     displayId: source.displayId ? Number(source.displayId) : undefined,
-    bounds: source.displayBounds
+    bounds: source.displayBounds,
+    cropFraction
   };
 }
 
@@ -393,31 +397,58 @@ function toNativeRecordingSource(source: CaptureSource): NativeRecordingSource {
  * cursor at the compositor level and capturing system/mic audio natively.
  * Webcam stays a separate, unchanged sidecar recording either way.
  *
- * Returns `null` (never throws) on any failure -- unsupported platform,
- * missing helper binary, permission denied, helper failed to start -- or
- * when native recording simply isn't applicable (a crop region is set, or
- * a native-OS-picker stream was already opened) -- so `startCapture` always
- * has one clean signal to fall back to the legacy path.
+ * A crop region ("Area" mode) only goes through this path on a platform
+ * whose helper can actually honor it natively (`supportsCrop` -- macOS via
+ * ScreenCaptureKit's `sourceRect`, see NativeRecordingSource.cropFraction)
+ * and only for a 'screen' source, matching what the helper actually
+ * implements. Everything else with a crop region set still falls back to
+ * the legacy canvas-crop-relay path below, same as before this existed.
+ *
+ * Returns `null` (never throws) on any other failure -- unsupported
+ * platform, missing helper binary, permission denied, helper failed to
+ * start, or a native-OS-picker stream was already opened -- so
+ * `startCapture` always has one clean signal to fall back to the legacy
+ * path.
  */
 async function tryStartNativeRecording(request: CaptureRequest): Promise<CaptureHandle | null> {
-  if (request.existingVideoStream || request.cropRegion) return null;
+  if (request.existingVideoStream) return null;
 
   try {
     const support = await window.screenRecorder.nativeRecording.checkSupport();
     if (!support.supported) return null;
+    if (request.cropRegion && (!support.supportsCrop || request.source.type !== 'screen')) {
+      return null;
+    }
 
     const scale = window.devicePixelRatio || 1;
-    const width =
+    const fullWidth =
       request.source.type === 'screen'
         ? Math.round(window.screen.width * scale)
         : Math.round((request.source.displayBounds?.width ?? 1280) * scale);
-    const height =
+    const fullHeight =
       request.source.type === 'screen'
         ? Math.round(window.screen.height * scale)
         : Math.round((request.source.displayBounds?.height ?? 720) * scale);
 
+    const cropRegion = request.cropRegion;
+    const cropFraction = cropRegion
+      ? {
+          x: (cropRegion.rect.x - cropRegion.displayBounds.x) / cropRegion.displayBounds.width,
+          y: (cropRegion.rect.y - cropRegion.displayBounds.y) / cropRegion.displayBounds.height,
+          width: cropRegion.rect.width / cropRegion.displayBounds.width,
+          height: cropRegion.rect.height / cropRegion.displayBounds.height
+        }
+      : undefined;
+
+    // The helper computes its own authoritative crop pixel size from its
+    // own real display data (see main.swift) -- this is just a same-shaped
+    // fallback estimate, matching how the uncropped width/height sent here
+    // were already only ever an estimate too.
+    const width = cropFraction ? Math.round(fullWidth * cropFraction.width) : fullWidth;
+    const height = cropFraction ? Math.round(fullHeight * cropFraction.height) : fullHeight;
+
     const result = await window.screenRecorder.nativeRecording.start({
-      source: toNativeRecordingSource(request.source),
+      source: toNativeRecordingSource(request.source, cropFraction),
       frameRate: 30,
       width,
       height,

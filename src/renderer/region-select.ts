@@ -12,11 +12,25 @@ let backdropObjectUrl: string | null = null;
 // mirroring how picking a Display/Window starts recording right away
 // (see RecorderToolbarApp.tsx's openSourcePicker).
 const confirmLabel = new URLSearchParams(window.location.search).get('confirmLabel');
+if (confirmLabel) document.documentElement.classList.add('confirm-mode');
 const panel = document.getElementById('panel');
 const sizeValue = document.getElementById('size-value');
 const positionValue = document.getElementById('position-value');
 const confirmButton = document.getElementById('confirm-button');
 if (confirmButton && confirmLabel) confirmButton.textContent = confirmLabel;
+
+// Same confirm-mode gate as the panel above -- Screen Capture's region
+// screenshot has no equivalent instruction and keeps its plain crosshair.
+const hint = document.getElementById('hint');
+if (hint && confirmLabel) hint.textContent = 'Drag area you want to record';
+
+function showHint(): void {
+  if (hint && confirmLabel) hint.hidden = false;
+}
+
+function hideHint(): void {
+  if (hint) hint.hidden = true;
+}
 
 function requireCanvas(): HTMLCanvasElement {
   const el = document.getElementById('canvas');
@@ -200,6 +214,7 @@ async function initOverlay(): Promise<void> {
     overlayReady = true;
     document.body.style.pointerEvents = 'auto';
     resizeCanvas();
+    showHint();
     return;
   }
 
@@ -207,10 +222,12 @@ async function initOverlay(): Promise<void> {
   overlayReady = true;
   document.body.style.pointerEvents = 'auto';
   resizeCanvas();
+  showHint();
 }
 
 canvas.addEventListener('pointerdown', (event) => {
   if (!overlayReady) return;
+  hideHint();
   hidePanel();
   dragStartClient = { x: event.clientX, y: event.clientY };
   activeRect = { x: event.clientX, y: event.clientY, width: 0, height: 0 };
@@ -235,6 +252,7 @@ canvas.addEventListener('pointerup', (event) => {
     activeRect = null;
     redraw();
     hidePanel();
+    showHint();
     return;
   }
 

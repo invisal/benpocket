@@ -60,7 +60,8 @@ const MAC_ADAPTER: HelperAdapter = {
         displayId: options.source.displayId ?? null,
         windowHandle: options.source.windowHandle ?? null,
         windowTitle: options.source.windowTitle ?? null,
-        bounds: options.source.bounds ?? null
+        bounds: options.source.bounds ?? null,
+        cropFraction: options.source.cropFraction ?? null
       },
       video: {
         fps: options.frameRate,
@@ -296,8 +297,9 @@ let activeSession: ActiveSession | null = null;
 
 export function checkNativeRecordingSupport(): NativeRecordingSupport {
   const adapter = adapterForPlatform();
-  if (!adapter) return { supported: false };
-  return { supported: findHelperPath(adapter) !== null };
+  if (!adapter) return { supported: false, supportsCrop: false };
+  const supported = findHelperPath(adapter) !== null;
+  return { supported, supportsCrop: supported && process.platform === 'darwin' };
 }
 
 function wireStreamEvents(

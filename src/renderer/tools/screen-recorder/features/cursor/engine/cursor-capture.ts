@@ -16,10 +16,12 @@ export interface CursorCaptureHandle {
  * Starts recording the system cursor's position and real mouse clicks
  * alongside a screen capture. Returns `null` (nothing to start) if the
  * source has no resolved bounds to normalize against -- see
- * `CaptureSource.displayBounds`. That's normally only 'screen' sources, but
- * a 'window' source can have bounds too (currently just the Simulator
- * window, see screen-source-provider.ts), in which case it's tracked the
- * same way.
+ * `CaptureSource.displayBounds`. Always true for 'screen' sources; for a
+ * 'window' source, `useRecordingController.ts` re-resolves fresh bounds via
+ * the window's native handle right before recording starts, so this
+ * normally has something to work with for any window, not just a special
+ * case -- unless that lookup itself fails (window closed, unsupported
+ * platform), in which case tracking is skipped for this recording.
  *
  * `onUpdate` (optional) fires after every sample/click with the running
  * counts, so callers can show a live "N points captured" readout instead of

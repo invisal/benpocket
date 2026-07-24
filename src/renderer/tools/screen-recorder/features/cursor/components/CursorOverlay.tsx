@@ -69,11 +69,14 @@ export function CursorOverlay({
           left: `${point.x * 100}%`,
           top: `${point.y * 100}%`,
           filter: cursor.motionBlur > 0 ? `blur(${cursor.motionBlur * 1.5}px)` : undefined,
-          // Anchored near the arrow glyph's own tip (5,3 of its 24x24 box,
-          // see CursorStyleIcon) rather than the icon box's corner, so the
-          // squash/bounce scales around the actual click point instead of
-          // visibly shifting the icon.
-          transform: clickScale !== 1 ? `scale(${clickScale})` : undefined,
+          // The icon's own tip (5,3 of its 24x24 box, see CursorStyleIcon)
+          // sits at 21%/13% of its box, not at the box's (0,0) corner --
+          // the translate pulls that tip onto `point` (the actual recorded
+          // position) instead of leaving the box's corner there, which was
+          // rendering the arrow visibly offset from the true cursor/click
+          // location. `scale` (applied first, around that same origin) then
+          // handles the click-bounce squash without disturbing the anchor.
+          transform: `translate(-21%, -13%)${clickScale !== 1 ? ` scale(${clickScale})` : ''}`,
           transformOrigin: '21% 13%'
         }}
       >

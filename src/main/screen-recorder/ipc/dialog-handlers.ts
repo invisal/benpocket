@@ -12,6 +12,7 @@ import {
 import { captureViaPortal } from '../capture/portal-screenshot';
 import type { ScreenRect } from '@shared/capture-region';
 import { getLastScreenshotSaveDir, setLastScreenshotSaveDir } from '../store/screen-capture-store';
+import { getLastExportSaveDir, setLastExportSaveDir } from '../store/export-save-store';
 import { hideCaptureWindow, restoreCaptureWindow } from '../windows/window-visibility';
 
 const SAVE_FILTERS: Record<string, FileFilter> = {
@@ -27,14 +28,18 @@ export function registerDialogHandlers(): void {
     IpcChannels.ShowSaveExportDialog,
     async (event, defaultFileName: string, format: ExportFormat): Promise<string | null> => {
       const win = BrowserWindow.fromWebContents(event.sender);
+      const lastSaveDir = getLastExportSaveDir();
+      const defaultDir = lastSaveDir ?? join(app.getPath('videos'), 'ScreenRecorder');
       const options = {
-        defaultPath: join(app.getPath('videos'), 'ScreenRecorder', defaultFileName),
+        defaultPath: join(defaultDir, defaultFileName),
         filters: [{ name: format.toUpperCase(), extensions: [format] }]
       };
       const { canceled, filePath } = win
         ? await dialog.showSaveDialog(win, options)
         : await dialog.showSaveDialog(options);
-      return canceled || !filePath ? null : filePath;
+      if (canceled || !filePath) return null;
+      setLastExportSaveDir(dirname(filePath));
+      return filePath;
     }
   );
 

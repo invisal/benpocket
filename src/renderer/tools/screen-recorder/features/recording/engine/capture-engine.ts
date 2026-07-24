@@ -5,6 +5,7 @@ import type {
   WebcamOptions
 } from '@screen-recorder/types/recording';
 import type { CaptureRegionSelection } from '@shared/capture-region';
+import type { NativeRecordingSource } from '@shared/native-capture';
 
 // Electron's desktop capture constraints (`chromeMediaSource`, `mandatory`)
 // predate the standard Constrainable properties and aren't in lib.dom's
@@ -34,13 +35,17 @@ export interface CaptureRequest {
    * used as-is instead of opening a fresh desktopCapturer/chromeMediaSourceId
    * stream, since a native-picker pick has no id to re-request by. System
    * audio (which normally piggybacks on that same desktop getUserMedia
-   * call) isn't available this way -- this stream is video-only.
+   * call) isn't available this way -- this stream is video-only. Also
+   * always skips the native recording helper below, same reason.
    */
   existingVideoStream?: MediaStream;
   /**
    * Drag-selected sub-rectangle of `source` ("Area" mode, set via the focus
    * toolbar) -- see cropToRegion() for why this needs a canvas relay rather
-   * than a getUserMedia constraint.
+   * than a getUserMedia constraint. The native recording helper has no way
+   * to crop (it writes an already-encoded file directly, no frames ever
+   * pass through the renderer to draw a cropped canvas from), so a crop
+   * region always falls back to the legacy path -- see `startCapture`.
    */
   cropRegion?: CaptureRegionSelection;
   /**
@@ -50,11 +55,39 @@ export interface CaptureRequest {
    * editable after the fact (see `types/recording.ts`'s `WebcamOptions` doc).
    */
   webcam?: WebcamOptions;
+  /**
+   * Hides the native OS cursor at record time via the native recording
+   * helper subprocess -- tied to the app's own "Show Cursor" setting
+   * (`useCursorStore`'s `visible`) at the moment recording starts, so the
+   * native pointer only disappears when the app's own stylized overlay is
+   * actually going to replace it; with the overlay disabled, the ordinary
+   * OS cursor stays baked into the recording same as before this feature
+   * existed. Ignored (native cursor never hidden) whenever native
+   * recording isn't available -- the legacy fallback path has no way to
+   * hide it regardless.
+   */
+  hideNativeCursor: boolean;
 }
 
 export interface StopResult {
-  /** The desktop (+ mixed audio) recording. */
-  blob: Blob;
+  video: {
+    /**
+     * Always present -- for the native path this is a one-time read-back
+     * of the already-finished file (see `existingFilePath`), purely so the
+     * rest of the app (Library/Editor/CutTimeline) can build an
+     * in-session `URL.createObjectURL` preview exactly like the legacy
+     * path, without teaching every video-consuming component a second,
+     * file-path-based loading mechanism.
+     */
+    blob: Blob;
+    /**
+     * Set only by the native recording path -- the helper already wrote
+     * the finished file directly to this path, so `useRecordingController.
+     * ts`'s save step skips re-writing `blob`'s bytes to a new location
+     * entirely and just uses this path as-is.
+     */
+    existingFilePath?: string;
+  };
   /** The parallel webcam recording, if `CaptureRequest.webcam` was enabled. */
   webcamBlob: Blob | null;
   /** `Date.now()` when the webcam `MediaRecorder` actually started -- see `CaptureHandle.startedAt` for why this matters, and `webcamOffsetMs` in useRecordingController.ts for how callers use the gap between the two. */
@@ -62,7 +95,7 @@ export interface StopResult {
 }
 
 export interface CaptureHandle {
-  /** The combined video (+ mixed audio) stream feeding the recorder. */
+  /** The combined video (+ mixed audio) stream feeding the recorder -- an empty, unused `MediaStream` on the native recording path (nothing in this app actually reads `CaptureHandle.stream`; kept only so both paths share one return shape). */
   stream: MediaStream;
   /** `Date.now()` at the exact moment the recorder started -- the true t=0 of the output file's timeline, for anything (cursor tracking) that needs to line up samples against it. */
   startedAt: number;
@@ -89,10 +122,22 @@ function videoBitsPerSecondFor(width: number, height: number): number {
 }
 
 /**
- * Captures the chosen screen/window as a video track, plus (best-effort)
- * system audio as a loopback audio track. System audio via this mechanism
- * only works reliably on Windows/Linux -- see
- * main/capture/system-audio-capture.ts for the macOS caveat.
+ * Fallback path: captures the chosen screen/window as a video track, plus
+ * (best-effort) system audio as a loopback audio track, via the legacy
+ * `chromeMediaSource: 'desktop'` + `chromeMediaSourceId` constraint. System
+ * audio via this mechanism only works reliably on Windows/Linux -- see
+ * AudioSourceToggle.tsx's macOS caveat.
+ *
+ * `startCapture()` below tries the native recording helper first (see
+ * recording-helper.ts, main process) -- that's what actually hides the OS
+ * cursor and captures system/mic audio reliably. This legacy path stays as
+ * the fallback for when native recording isn't available (missing helper
+ * binary, permission denied, helper failed to start) or isn't applicable
+ * (a crop region is set, or a native-OS-picker stream was already opened):
+ * the native OS cursor stays baked into the captured video pixels here, on
+ * top of (and separate from) the app's own stylized cursor overlay drawn
+ * in the editor/export from `cursor-tracker.ts`'s samples -- exactly like
+ * before any of this native-recording work existed.
  */
 async function getDesktopStream(
   source: CaptureSource,
@@ -158,7 +203,8 @@ interface WebcamRecorder {
  * Records the camera to its own file via a second `MediaRecorder`, entirely
  * independent of the desktop recorder started alongside it in `startCapture`
  * -- see `CaptureRequest.webcam`'s doc for why this is a parallel file
- * rather than composited into the same stream.
+ * rather than composited into the same stream. Shared by both the native
+ * and legacy main-recording paths.
  */
 function startWebcamRecorder(stream: MediaStream): WebcamRecorder {
   const recorder = new MediaRecorder(stream, {
@@ -195,6 +241,17 @@ function startWebcamRecorder(stream: MediaStream): WebcamRecorder {
       }
     }
   };
+}
+
+async function startWebcamIfEnabled(webcam?: WebcamOptions): Promise<WebcamRecorder | null> {
+  if (!webcam?.enabled) return null;
+  try {
+    const cameraStream = await getCameraStream(webcam.deviceId);
+    return startWebcamRecorder(cameraStream);
+  } catch (err) {
+    console.error('[capture-engine] failed to open camera, recording without webcam:', err);
+    return null;
+  }
 }
 
 /** Mixes any number of audio tracks down to a single track via Web Audio. */
@@ -302,7 +359,152 @@ function cropToRegion(sourceStream: MediaStream, region: CaptureRegionSelection)
   };
 }
 
+/**
+ * Electron's desktopCapturer window-source id embeds a number its own docs
+ * describe as "the windowID/handle" -- passed through as-is; the native
+ * helper falls back to matching by `source.name` (the window's title) when
+ * the handle doesn't resolve to a real window (confirmed necessary on
+ * macOS during this app's own testing -- see native/macos-recorder's
+ * target resolution). Screen sources are matched by bounds on the helper
+ * side instead of by id, for the analogous reason (desktopCapturer's id
+ * isn't guaranteed to embed a platform display id).
+ */
+function toNativeRecordingSource(
+  source: CaptureSource,
+  cropFraction?: NativeRecordingSource['cropFraction']
+): NativeRecordingSource {
+  if (source.type === 'window') {
+    const handle = Number(source.id.split(':')[1]);
+    return {
+      kind: 'window',
+      windowHandle: Number.isFinite(handle) ? handle : undefined,
+      windowTitle: source.name,
+      bounds: source.displayBounds
+    };
+  }
+  return {
+    kind: 'display',
+    displayId: source.displayId ? Number(source.displayId) : undefined,
+    bounds: source.displayBounds,
+    cropFraction
+  };
+}
+
+/**
+ * Tries the native recording helper subprocess first (see recording-
+ * helper.ts, main process) -- it owns the whole capture+encode+mux
+ * pipeline internally and writes the finished file directly, hiding the OS
+ * cursor at the compositor level and capturing system/mic audio natively.
+ * Webcam stays a separate, unchanged sidecar recording either way.
+ *
+ * A crop region ("Area" mode) only goes through this path on a platform
+ * whose helper can actually honor it natively (`supportsCrop` -- macOS via
+ * ScreenCaptureKit's `sourceRect`, see NativeRecordingSource.cropFraction)
+ * and only for a 'screen' source, matching what the helper actually
+ * implements. Everything else with a crop region set still falls back to
+ * the legacy canvas-crop-relay path below, same as before this existed.
+ *
+ * Returns `null` (never throws) on any other failure -- unsupported
+ * platform, missing helper binary, permission denied, helper failed to
+ * start, or a native-OS-picker stream was already opened -- so
+ * `startCapture` always has one clean signal to fall back to the legacy
+ * path.
+ */
+async function tryStartNativeRecording(request: CaptureRequest): Promise<CaptureHandle | null> {
+  if (request.existingVideoStream) return null;
+
+  try {
+    const support = await window.screenRecorder.nativeRecording.checkSupport();
+    if (!support.supported) return null;
+    if (request.cropRegion && (!support.supportsCrop || request.source.type !== 'screen')) {
+      return null;
+    }
+
+    const scale = window.devicePixelRatio || 1;
+    const fullWidth =
+      request.source.type === 'screen'
+        ? Math.round(window.screen.width * scale)
+        : Math.round((request.source.displayBounds?.width ?? 1280) * scale);
+    const fullHeight =
+      request.source.type === 'screen'
+        ? Math.round(window.screen.height * scale)
+        : Math.round((request.source.displayBounds?.height ?? 720) * scale);
+
+    const cropRegion = request.cropRegion;
+    const cropFraction = cropRegion
+      ? {
+          x: (cropRegion.rect.x - cropRegion.displayBounds.x) / cropRegion.displayBounds.width,
+          y: (cropRegion.rect.y - cropRegion.displayBounds.y) / cropRegion.displayBounds.height,
+          width: cropRegion.rect.width / cropRegion.displayBounds.width,
+          height: cropRegion.rect.height / cropRegion.displayBounds.height
+        }
+      : undefined;
+
+    // The helper computes its own authoritative crop pixel size from its
+    // own real display data (see main.swift) -- this is just a same-shaped
+    // fallback estimate, matching how the uncropped width/height sent here
+    // were already only ever an estimate too.
+    const width = cropFraction ? Math.round(fullWidth * cropFraction.width) : fullWidth;
+    const height = cropFraction ? Math.round(fullHeight * cropFraction.height) : fullHeight;
+
+    const result = await window.screenRecorder.nativeRecording.start({
+      source: toNativeRecordingSource(request.source, cropFraction),
+      frameRate: 30,
+      width,
+      height,
+      hideCursor: request.hideNativeCursor,
+      systemAudioEnabled: request.audio.systemAudioEnabled,
+      microphoneEnabled: request.audio.microphoneEnabled,
+      microphoneDeviceId: request.audio.microphoneDeviceId
+    });
+
+    if (!result.ok) {
+      console.error(
+        '[capture-engine] native recording failed to start, falling back:',
+        result.reason
+      );
+      return null;
+    }
+
+    console.log('[capture-engine] using NATIVE recording path, output:', result.outputPath);
+    const startedAt = Date.now();
+    const webcamRecorder = await startWebcamIfEnabled(request.webcam);
+
+    return {
+      stream: new MediaStream(),
+      startedAt,
+      stop: async (): Promise<StopResult> => {
+        const [stopResult, webcamBlob] = await Promise.all([
+          window.screenRecorder.nativeRecording.stop(),
+          webcamRecorder?.stop() ?? Promise.resolve(null)
+        ]);
+
+        if (!stopResult.ok) {
+          throw new Error(stopResult.reason);
+        }
+
+        const arrayBuffer = await window.screenRecorder.export.readFileBytes(stopResult.outputPath);
+        const blob = new Blob([arrayBuffer], { type: 'video/mp4' });
+
+        return {
+          video: { blob, existingFilePath: stopResult.outputPath },
+          webcamBlob,
+          webcamStartedAt: webcamRecorder?.startedAt ?? null
+        };
+      }
+    };
+  } catch (err) {
+    console.error('[capture-engine] native recording attempt threw, falling back:', err);
+    return null;
+  }
+}
+
 export async function startCapture(request: CaptureRequest): Promise<CaptureHandle> {
+  const nativeHandle = await tryStartNativeRecording(request);
+  if (nativeHandle) return nativeHandle;
+
+  console.log('[capture-engine] using LEGACY capture path (native cursor baked in)');
+
   const desktopStream =
     request.existingVideoStream ??
     (await getDesktopStream(request.source, request.audio.systemAudioEnabled));
@@ -329,14 +531,7 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
   // Opened before the desktop recorder starts (below) so it's ready to record
   // the instant that one does -- minimizes the startedAt gap between the two
   // files that useRecordingController.ts later needs to line them back up.
-  let cameraStream: MediaStream | null = null;
-  if (request.webcam?.enabled) {
-    try {
-      cameraStream = await getCameraStream(request.webcam.deviceId);
-    } catch (err) {
-      console.error('[capture-engine] failed to open camera, recording without webcam:', err);
-    }
-  }
+  const webcamRecorder = await startWebcamIfEnabled(request.webcam);
 
   const finalStream = new MediaStream();
   videoStream.getVideoTracks().forEach((track) => finalStream.addTrack(track));
@@ -372,7 +567,6 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
 
   const startedAt = Date.now();
   recorder.start(250);
-  const webcamRecorder = cameraStream ? startWebcamRecorder(cameraStream) : null;
 
   return {
     stream: finalStream,
@@ -406,7 +600,7 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
         console.error('[capture-engine] failed to patch webm duration, using raw blob:', err);
         blob = rawBlob;
       }
-      return { blob, webcamBlob, webcamStartedAt: webcamRecorder?.startedAt ?? null };
+      return { video: { blob }, webcamBlob, webcamStartedAt: webcamRecorder?.startedAt ?? null };
     }
   };
 }

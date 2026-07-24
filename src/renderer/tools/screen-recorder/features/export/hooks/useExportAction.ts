@@ -9,6 +9,15 @@ import { isExportCancelled } from '../engine/cancel';
 
 export type ExportStatus = 'idle' | 'exporting' | 'error';
 
+/** "Screen-Record-2026-07-23 14.30.05" -- periods (not colons) in the time so it's a valid file name on every OS. */
+function defaultExportFileName(): string {
+  const now = new Date();
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const time = `${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}`;
+  return `Screen-Record-${date} ${time}`;
+}
+
 export interface ExportProgressState {
   percent: number;
   stage: string;
@@ -53,7 +62,7 @@ export function useExportAction(): UseExportActionResult {
     }
 
     const outputPath = await window.screenRecorder.dialog.showSaveExportPath(
-      `export.${store.format}`,
+      `${defaultExportFileName()}.${store.format}`,
       store.format
     );
     if (!outputPath) return;
@@ -90,6 +99,24 @@ export function useExportAction(): UseExportActionResult {
       );
       setStatus('idle');
       setProgress(null);
+
+      // The raw recording (and its parallel webcam file, if any) is no
+      // longer needed once export succeeds -- delete both so they don't
+      // linger on disk forever. Deliberate tradeoff: exporting this same
+      // recording again afterward will fail with the source gone, since
+      // this deletes right away rather than waiting for the user to
+      // navigate away from it. Fire-and-forget -- export itself already
+      // finished successfully; a cleanup failure here shouldn't reopen it.
+      if (lastRecording?.filePath) {
+        window.screenRecorder.recording
+          .deleteFile(lastRecording.filePath)
+          .catch((err) => console.error('[export] failed to delete raw recording file:', err));
+      }
+      if (lastRecording?.webcamFilePath) {
+        window.screenRecorder.recording
+          .deleteFile(lastRecording.webcamFilePath)
+          .catch((err) => console.error('[export] failed to delete raw webcam file:', err));
+      }
     } catch (err) {
       if (isExportCancelled(err)) {
         setStatus('idle');

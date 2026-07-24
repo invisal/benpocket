@@ -221,9 +221,9 @@ export function defaultChipPosition(
 }
 
 /**
- * Fills the canvas with a wallpaper preset's linear gradient, converting the
- * CSS angle convention (0deg = to top, clockwise) that cssGradient() uses for
- * the live preview — mirrors screen-recorder's
+ * Fills the canvas with a wallpaper preset -- either a linear gradient or a
+ * set of soft radial "wave" blobs -- converting the CSS conventions that
+ * cssGradient() uses for the live preview. Mirrors screen-recorder's
  * features/export/engine/rendering/effects/background.ts.
  */
 function fillWallpaper(
@@ -233,6 +233,27 @@ function fillWallpaper(
   wallpaperId: string
 ): void {
   const preset = findWallpaperPreset(wallpaperId);
+
+  if (preset.type === 'wave') {
+    ctx.fillStyle = preset.backgroundColor;
+    ctx.fillRect(0, 0, width, height);
+    for (const blob of preset.blobs) {
+      const cx = blob.xPct / 100;
+      const cy = blob.yPct / 100;
+      const r = blob.radiusPct / 100;
+      ctx.save();
+      ctx.translate(cx * width, cy * height);
+      ctx.scale(width, height);
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      gradient.addColorStop(0, blob.color);
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(-cx, -cy, 1, 1);
+      ctx.restore();
+    }
+    return;
+  }
+
   const angleRad = (preset.angleDeg * Math.PI) / 180;
   const dx = Math.sin(angleRad);
   const dy = -Math.cos(angleRad);

@@ -1,6 +1,5 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Play } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import { useBackgroundStore } from '../../features/background/store/background-store';
 import { backgroundLayerStyle } from '../../features/background/lib/background-css';
@@ -82,7 +81,6 @@ interface PreviewStageProps {
 export function PreviewStage({
   videoRef,
   previewUrl,
-  isPlaying,
   videoError,
   currentTimeMs,
   cropToolActive,
@@ -373,7 +371,15 @@ export function PreviewStage({
     const el = stageRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
-      setStageWidthPx(entries[0]?.contentRect.width ?? 0);
+      // `entries[0].contentRect` is the *content* box -- it excludes the
+      // padding that's set directly on this element (`stageRef` doubles as
+      // the padded canvas, see below), so it undercounts the true stage
+      // width by the padding amount and drifts further from it as padding
+      // increases. `borderBoxSize` (falling back to getBoundingClientRect,
+      // which `handleWebcamDrag` already relies on for the same reason) is
+      // the full box every reference-unit scale here needs to match.
+      const borderBoxWidth = entries[0]?.borderBoxSize?.[0]?.inlineSize;
+      setStageWidthPx(borderBoxWidth ?? el.getBoundingClientRect().width);
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -628,46 +634,37 @@ export function PreviewStage({
             </div>
           )}
 
-          {!isPlaying && !videoError && !cropToolActive && (
-            <button
-              onClick={() => videoRef.current?.play()}
-              className="absolute flex h-16 w-16 items-center justify-center rounded-full bg-surface/70 text-foreground shadow-lg backdrop-blur-sm transition-colors hover:bg-surface-2/80"
-            >
-              <Play size={26} fill="currentColor" />
-            </button>
-          )}
-
-          {webcam.enabled && webcamPreviewUrl && !cropToolActive && (
-            <div
-              onPointerDown={startWebcamDrag}
-              className={cn(
-                'absolute cursor-grab overflow-hidden border border-white/10 bg-black/40 active:cursor-grabbing',
-                webcam.shape === 'circle' && 'rounded-full',
-                webcam.shape === 'rounded-square' && 'rounded-2xl',
-                webcam.shape === 'square' && 'rounded-none'
-              )}
-              style={{
-                left: webcam.position.x,
-                top: webcam.position.y,
-                width: webcam.size,
-                height: webcam.size
-              }}
-            >
-              <video
-                ref={webcamVideoRef}
-                key={webcamPreviewUrl}
-                src={webcamPreviewUrl}
-                muted
-                playsInline
-                className={cn('h-full w-full object-cover', webcam.mirrored && 'scale-x-[-1]')}
-              />
-            </div>
-          )}
-
           {!cropToolActive && (
             <AnnotationOverlay currentTimeMs={zoomTimeMs} stageWidthPx={stageWidthPx} />
           )}
         </div>
+
+        {webcam.enabled && webcamPreviewUrl && !cropToolActive && (
+          <div
+            onPointerDown={startWebcamDrag}
+            className={cn(
+              'absolute cursor-grab overflow-hidden border border-white/10 bg-black/40 active:cursor-grabbing',
+              webcam.shape === 'circle' && 'rounded-full',
+              webcam.shape === 'rounded-square' && 'rounded-2xl',
+              webcam.shape === 'square' && 'rounded-none'
+            )}
+            style={{
+              left: webcam.position.x * previewScale,
+              top: webcam.position.y * previewScale,
+              width: webcam.size * previewScale,
+              height: webcam.size * previewScale
+            }}
+          >
+            <video
+              ref={webcamVideoRef}
+              key={webcamPreviewUrl}
+              src={webcamPreviewUrl}
+              muted
+              playsInline
+              className={cn('h-full w-full object-cover', webcam.mirrored && 'scale-x-[-1]')}
+            />
+          </div>
+        )}
 
         {activeCaption && (
           <p className="absolute inset-x-0 bottom-6 z-10 mx-auto max-w-[80%] rounded-xl bg-black/70 px-5 py-2.5 text-center text-lg font-medium text-white">

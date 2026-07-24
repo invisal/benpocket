@@ -30,7 +30,9 @@ function resolveBackground(project: Project): BackgroundSceneData {
     }
     case 'wallpaper': {
       const preset = findWallpaperPreset(background.value);
-      return { kind: 'linear-gradient', angleDeg: preset.angleDeg, colors: preset.colors };
+      return preset.type === 'wave'
+        ? { kind: 'radial-blobs', backgroundColor: preset.backgroundColor, blobs: preset.blobs }
+        : { kind: 'linear-gradient', angleDeg: preset.angleDeg, colors: preset.colors };
     }
     case 'image':
       return { kind: 'image', path: background.value, blurPx: background.blur };

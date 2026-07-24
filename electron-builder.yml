@@ -11,6 +11,19 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+  # Linux capture addon -- a compiled .node binary can't be dlopen'd from
+  # inside an asar archive, so it needs to stay unpacked regardless of
+  # electron-builder's own implicit native-module detection. macOS/Windows
+  # no longer need an entry here: their native capture is a standalone
+  # helper *executable*, spawned rather than require()'d, packaged below
+  # via extraResources instead.
+  - node_modules/capture-*/**
+extraResources:
+  # The macOS/Windows native recording helper binaries -- see
+  # recording-helper.ts's helperCandidates(), which resolves a packaged
+  # build's helper at `${process.resourcesPath}/native/bin/<platform>-<arch>/`.
+  - from: native/bin
+    to: native/bin
 win:
   executableName: temp-project
 nsis:

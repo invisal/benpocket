@@ -7,7 +7,9 @@
   // xclip: Linux X11 clipboard helper.
   // xcrun/osascript: macOS Xcode CLI tools / AppleScript, used for Simulator detection and window bounds.
   // kubectl: Kubernetes CLI, spawned by the kuberneter tool.
-  "ignoreBinaries": ["xclip", "xcrun", "osascript", "kubectl", "helm"],
+  // swift/cmake: build native/macos-recorder and native/windows-recorder's
+  // standalone recording helper subprocesses (see recording-helper.ts).
+  "ignoreBinaries": ["xclip", "xcrun", "osascript", "kubectl", "helm", "swift", "cmake"],
   // Pulled in via @import 'tailwindcss' in main.css and @tailwindcss/vite plugin
   "ignoreDependencies": ["tailwindcss"],
   // Skip exports that are only referenced within the same file

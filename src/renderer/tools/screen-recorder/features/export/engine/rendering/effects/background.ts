@@ -11,9 +11,9 @@ import type { BackgroundSceneData } from '../types';
 
 /**
  * Fills the full output canvas behind the content -- color/gradient/wallpaper
- * (wallpaper is pre-resolved to a linear-gradient by timeline-evaluator.ts,
- * same as frame-compositor.ts's `drawBackground` treats it) via `Graphics`,
- * or a cover-fit image via `Sprite`. Blur uses PixiJS's real GPU
+ * (wallpaper is pre-resolved to a linear-gradient or a set of radial blobs by
+ * timeline-evaluator.ts, matching the live preview's `cssGradient()`) via
+ * `Graphics`, or a cover-fit image via `Sprite`. Blur uses PixiJS's real GPU
  * `BlurFilter` -- unlike the old node-canvas compositor, no shrink-canvas
  * approximation is needed.
  */
@@ -73,6 +73,27 @@ export class BackgroundEffect {
 
     if (data.kind === 'color') {
       this.graphics.rect(0, 0, width, height).fill(data.color);
+      return;
+    }
+
+    if (data.kind === 'radial-blobs') {
+      this.graphics.rect(0, 0, width, height).fill(data.backgroundColor);
+      for (const blob of data.blobs) {
+        const center = { x: blob.xPct / 100, y: blob.yPct / 100 };
+        const gradient = new FillGradient({
+          type: 'radial',
+          center,
+          innerRadius: 0,
+          outerCenter: center,
+          outerRadius: blob.radiusPct / 100,
+          colorStops: [
+            { offset: 0, color: blob.color },
+            { offset: 1, color: 'rgba(0,0,0,0)' }
+          ],
+          textureSpace: 'local'
+        });
+        this.graphics.rect(0, 0, width, height).fill(gradient);
+      }
       return;
     }
 

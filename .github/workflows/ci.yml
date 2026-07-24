@@ -56,13 +56,37 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install libuiohook build dependencies (Linux)
+      # libx11-dev/libxtst-dev/libxt-dev: uiohook-napi's libuiohook dependency
+      # (no prebuilt binary for Electron's ABI, so it compiles from source).
+      # libxext-dev/libxfixes-dev: native/linux-recorder's own XShm/XFixes
+      # build dependencies (libx11-dev/libxrandr-dev already covers the rest
+      # it needs). See recording-helper.ts.
+      - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxtst-dev libxrandr-dev libxt-dev
+          sudo apt-get install -y libx11-dev libxtst-dev libxrandr-dev libxt-dev libxext-dev libxfixes-dev
 
       - run: npm ci
+
+      # Native recording helper subprocesses (native/macos-recorder,
+      # native/windows-recorder, native/linux-recorder) -- see
+      # recording-helper.ts. Compile-only verification; none of the three
+      # can be functionally exercised on a CI runner (no real display/
+      # permission session), same caveat as the rest of this native-capture
+      # work -- macOS has separately been verified with a real recording
+      # during development, Windows/Linux have not.
+      - name: Build native recording helper (macOS)
+        if: runner.os == 'macOS'
+        run: npm run build:native:macos
+
+      - name: Build native recording helper (Windows)
+        if: runner.os == 'Windows'
+        run: npm run build:native:windows
+
+      - name: Build native recording helper (Linux)
+        if: runner.os == 'Linux'
+        run: npm run build:native:linux
 
       - name: Build
         run: npm run build

@@ -17,19 +17,19 @@ export function supportsNativeSystemPicker(): boolean {
  * Routes getDisplayMedia to ScreenCaptureKit's picker on macOS 15+ (Screen
  * Recorder's "Use System Picker" button). Screen Recorder's main flow uses
  * getUserMedia(chromeMediaSourceId), not getDisplayMedia -- this only covers
- * the opt-in native-picker path. Linux Wayland no longer registers anything
- * here: Screen Capture goes through the xdg-desktop-portal Screenshot D-Bus
- * call (capture/portal-screenshot.ts) instead of getDisplayMedia/PipeWire.
+ * the opt-in native-picker path. (A getDisplayMedia()-based main flow was
+ * tried and reverted -- it's the only capture path Chromium honors a
+ * cursor-hiding constraint on, but it drove CPU/thermal noticeably higher
+ * over a multi-minute recording than this legacy path, which isn't worth
+ * trading for hiding the native pointer.) Linux Wayland no longer registers
+ * anything here: Screen Capture goes through the xdg-desktop-portal
+ * Screenshot D-Bus call (capture/portal-screenshot.ts) instead of
+ * getDisplayMedia/PipeWire.
  */
 export function registerDisplayMediaHandler(): void {
   if (!supportsNativeSystemPicker()) return;
 
-  session.defaultSession.setDisplayMediaRequestHandler(
-    // `useSystemPicker: true` means ScreenCaptureKit's own dialog handles
-    // source selection whenever it's available, so this callback normally
-    // never runs on the macOS 15+ this is gated to. It still has to resolve
-    // the request rather than hang if that ever isn't the case.
-    (_request, callback) => callback({}),
-    { useSystemPicker: true }
-  );
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => callback({}), {
+    useSystemPicker: true
+  });
 }

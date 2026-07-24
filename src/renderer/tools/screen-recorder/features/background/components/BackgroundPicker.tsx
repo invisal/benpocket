@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { useRef } from 'react';
 import { WALLPAPER_PRESETS, cssGradient } from '@shared/wallpaper-presets';
+import { PHOTO_PRESETS } from '../lib/photo-presets';
 import { useBackgroundStore } from '../store/background-store';
 import { Slider } from '../../../components/ui/slider';
 import { Button } from '@renderer/components/ui/Button';
@@ -81,9 +82,6 @@ export function BackgroundPicker(): JSX.Element {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Background
-        </span>
         <div className="flex gap-1 rounded-lg border border-border p-1">
           {TABS.map((tab) => (
             <button
@@ -218,6 +216,22 @@ export function BackgroundPicker(): JSX.Element {
           <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
             Choose image…
           </Button>
+
+          <span className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Photo presets
+          </span>
+          <div className="grid grid-cols-4 gap-2">
+            {PHOTO_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => setValue(preset.src)}
+                title={preset.label}
+                aria-label={preset.label}
+                className={cn(swatchClass(value === preset.src), 'bg-cover bg-center')}
+                style={{ backgroundImage: `url(${preset.src})` }}
+              />
+            ))}
+          </div>
         </div>
       )}
 

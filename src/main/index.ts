@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
+import trayIcon from '../../resources/tray-icon-desktopTemplate.png?asset';
 import * as fs from 'fs';
 import * as path from 'path';
 import { registerHttpHandlers } from './http-client/ipc/http';
@@ -20,6 +21,7 @@ import { registerTrayHandlers, destroyTray } from './screen-recorder/windows/tra
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
+import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
 
@@ -207,7 +209,7 @@ app.whenReady().then(() => {
 
   // Tray icon is created on demand -- see TrayBridge, which registers it
   // only while the Screen Recorder tool tab is open.
-  registerTrayHandlers(icon);
+  registerTrayHandlers(trayIcon);
 
   createWindow();
 
@@ -232,6 +234,10 @@ app.on('before-quit', () => {
   destroyTray();
   destroyRecorderToolbar();
   destroySourcePickerOverlay();
+  // Safety net if the renderer never gets to send a normal stop -- kills
+  // any still-running native recording helper subprocess rather than
+  // leaving it (and, on macOS, the OS-level "recording" indicator) behind.
+  killActiveNativeRecording();
 });
 
 // In this file you can include the rest of your app's specific main process

@@ -20,6 +20,12 @@ import type {
   RecorderToolbarRecordingResult
 } from '@shared/recorder-toolbar';
 import type { SourcePickerOverlayOpenOptions } from '@shared/source-picker-overlay';
+import type {
+  NativeRecordingRequest,
+  NativeRecordingSupport,
+  NativeRecordingStartResult,
+  NativeRecordingStopResult
+} from '@shared/native-capture';
 
 export const screenRecorderApi = {
   recording: {
@@ -34,7 +40,27 @@ export const screenRecorderApi = {
     saveFile: (fileName: string, data: ArrayBuffer): Promise<string> =>
       ipcRenderer.invoke(IpcChannels.SaveRecordingFile, fileName, data),
     deleteFile: (filePath: string): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.DeleteRecordingFile, filePath)
+      ipcRenderer.invoke(IpcChannels.DeleteRecordingFile, filePath),
+    /** Fresh on-screen bounds for a window source (by its desktopCapturer id) right now, or null if it can't be resolved (source isn't a window, window closed, unsupported platform). */
+    refreshWindowBounds: (sourceId: string): Promise<CaptureSource['displayBounds'] | null> =>
+      ipcRenderer.invoke(IpcChannels.RefreshWindowBounds, sourceId)
+  },
+  /**
+   * Native platform recording -- a standalone helper subprocess
+   * (ScreenCaptureKit/Windows.Graphics.Capture) that owns the whole
+   * capture+encode+mux pipeline and writes the finished file directly, no
+   * frame streaming back to the renderer at all. See recording-helper.ts
+   * (main) and capture-engine.ts (renderer consumer).
+   */
+  nativeRecording: {
+    checkSupport: (): Promise<NativeRecordingSupport> =>
+      ipcRenderer.invoke(IpcChannels.NativeRecordingCheckSupport),
+    start: (request: NativeRecordingRequest): Promise<NativeRecordingStartResult> =>
+      ipcRenderer.invoke(IpcChannels.NativeRecordingStart, request),
+    pause: (): Promise<void> => ipcRenderer.invoke(IpcChannels.NativeRecordingPause),
+    resume: (): Promise<void> => ipcRenderer.invoke(IpcChannels.NativeRecordingResume),
+    stop: (): Promise<NativeRecordingStopResult> =>
+      ipcRenderer.invoke(IpcChannels.NativeRecordingStop)
   },
   cursor: {
     startTracking: (
@@ -80,9 +106,12 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.WindowRestore, options),
     setBackgroundThrottling: (allowed: boolean): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.WindowSetBackgroundThrottling, allowed),
-    /** Recorder toolbar only: click-through for its transparent regions -- see window-handlers.ts. */
-    setIgnoreMouseEvents: (ignore: boolean, options?: { forward?: boolean }): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.WindowSetIgnoreMouseEvents, ignore, options),
+    /** Recorder toolbar only: click-through for its transparent regions -- see recorder-toolbar-window.ts. */
+    setIgnoreMouseEvents: (ignore: boolean): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.WindowSetIgnoreMouseEvents, ignore),
+    /** Recorder toolbar only: current on-screen rect of the pill, so the main-process interactive-region poll (recorder-toolbar-window.ts) knows where it is. Pass null while nothing's rendered. */
+    reportInteractiveRegion: (region: ScreenRect | null): void =>
+      ipcRenderer.send(IpcChannels.WindowReportInteractiveRegion, region),
     toggleMaximize: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowToggleMaximize),
     close: (): Promise<void> => ipcRenderer.invoke(IpcChannels.WindowClose),
     isMaximized: (): Promise<boolean> => ipcRenderer.invoke(IpcChannels.WindowIsMaximized),
@@ -104,10 +133,7 @@ export const screenRecorderApi = {
   },
   simulator: {
     /** Name of the currently booted iOS Simulator device, or null if none is booted / Xcode Command Line Tools aren't installed. */
-    getBootedName: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.GetBootedSimulator),
-    /** Fresh AppleScript-resolved bounds of the Simulator window right now, or null if none is booted / its window isn't open. */
-    refreshWindowBounds: (): Promise<CaptureSource['displayBounds'] | null> =>
-      ipcRenderer.invoke(IpcChannels.RefreshSimulatorWindowBounds)
+    getBootedName: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.GetBootedSimulator)
   },
   tray: {
     /** Creates the tray icon, if it doesn't already exist. */
@@ -161,6 +187,9 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.RecorderToolbarOpen, payload),
     /** Called by the toolbar window itself (Esc / close button). */
     cancel: (): void => ipcRenderer.send(IpcChannels.RecorderToolbarCancel),
+    /** Called by the toolbar window's Area picker: bounds of whichever display the toolbar itself currently sits on. */
+    getCurrentDisplayBounds: (): Promise<ScreenRect | null> =>
+      ipcRenderer.invoke(IpcChannels.RecorderToolbarGetCurrentDisplayBounds),
     /** Called by the toolbar window's Start Recording button. */
     requestStart: (payload: RecorderToolbarStartPayload): void =>
       ipcRenderer.send(IpcChannels.RecorderToolbarStart, payload),

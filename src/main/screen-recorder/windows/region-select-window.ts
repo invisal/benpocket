@@ -26,13 +26,16 @@ export function getVirtualDesktopBounds(): ScreenRect {
   return { x, y, width: right - x, height: bottom - y };
 }
 
-function loadRegionSelectPage(win: BrowserWindow): void {
+function loadRegionSelectPage(win: BrowserWindow, confirmLabel?: string): void {
+  const query = confirmLabel ? { confirmLabel } : undefined;
+
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-    void win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/region-select.html`);
+    const search = query ? `?${new URLSearchParams(query).toString()}` : '';
+    void win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/region-select.html${search}`);
     return;
   }
 
-  void win.loadFile(join(__dirname, '../renderer/region-select.html'));
+  void win.loadFile(join(__dirname, '../renderer/region-select.html'), { query });
 }
 
 let regionWindow: BrowserWindow | null = null;
@@ -260,6 +263,6 @@ export function selectCaptureRegion(
       if (!selectionFinished) finishSelection(null);
     });
 
-    loadRegionSelectPage(regionWindow);
+    loadRegionSelectPage(regionWindow, options?.confirmLabel);
   });
 }

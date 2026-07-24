@@ -19,10 +19,170 @@
         width: 100%;
         height: 100%;
       }
+
+      #hint {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        cursor: default;
+      }
+
+      #hint[hidden] {
+        display: none;
+      }
+
+      #hint-message {
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(24, 24, 27, 0.92);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        color: #fff;
+        font-size: 13px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      #esc-hint {
+        padding: 5px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(24, 24, 27, 0.75);
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 11px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      #esc-hint kbd {
+        padding: 1px 5px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font: inherit;
+      }
+
+      #panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        cursor: default;
+      }
+
+      #panel[hidden] {
+        display: none;
+      }
+
+      #panel-card {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(24, 24, 27, 0.92);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .panel-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+      }
+
+      .panel-row .panel-label {
+        width: 52px;
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .panel-row .panel-sep,
+      .panel-row .panel-unit {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .panel-input {
+        width: 46px;
+        padding: 3px 4px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+        font: inherit;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+        outline: none;
+      }
+
+      .panel-input:focus {
+        border-color: #89b4fa;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      #confirm-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: none;
+        border-radius: 999px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #11111b;
+        background: #89b4fa;
+        cursor: pointer;
+      }
+
+      #confirm-button:hover {
+        filter: brightness(1.05);
+      }
+
+      #confirm-button::before {
+        content: '';
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #dc2626;
+      }
     </style>
   </head>
   <body>
     <canvas id="canvas"></canvas>
+    <div id="hint" hidden>
+      <div id="hint-message"></div>
+      <div id="esc-hint"><kbd>Esc</kbd> to cancel</div>
+    </div>
+    <div id="panel" hidden>
+      <div id="panel-card">
+        <div class="panel-row">
+          <span class="panel-label">Size</span>
+          <input class="panel-input" id="width-input" type="text" inputmode="numeric" />
+          <span class="panel-sep">×</span>
+          <input class="panel-input" id="height-input" type="text" inputmode="numeric" />
+          <span class="panel-unit">px</span>
+        </div>
+        <div class="panel-row">
+          <span class="panel-label">Position</span>
+          <input class="panel-input" id="x-input" type="text" inputmode="numeric" />
+          <span class="panel-sep">,</span>
+          <input class="panel-input" id="y-input" type="text" inputmode="numeric" />
+          <span class="panel-unit">px</span>
+        </div>
+      </div>
+      <button id="confirm-button" type="button"></button>
+    </div>
     <script type="module" src="/region-select.ts"></script>
   </body>
 </html>

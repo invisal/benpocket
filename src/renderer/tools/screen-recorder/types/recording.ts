@@ -10,14 +10,19 @@ export interface CaptureSource {
    * Screen/window bounds in OS screen-coordinate space. Lets the main
    * process normalize `screen.getCursorScreenPoint()` samples to 0-1
    * fractions of the captured area during cursor tracking. Always present
-   * for `'screen'` sources; for `'window'` sources it's normally absent (a
-   * window can move/resize during capture, and desktopCapturer doesn't
-   * expose window bounds at all) -- the one exception is the Simulator
-   * app's window, which gets it via AppleScript/System Events (see
-   * window-bounds.ts, screen-source-provider.ts) specifically so iOS
-   * Simulator recordings still get cursor/click tracking. Snapshotted once
-   * at recording start either way, so moving/resizing the window mid-
-   * recording still makes tracking drift for the rest of that recording.
+   * for `'screen'` sources; for `'window'` sources, `desktopCapturer` itself
+   * exposes none at list time -- the one exception is the Simulator app's
+   * window, resolved via AppleScript/System Events (see window-bounds.ts,
+   * screen-source-provider.ts) so its thumbnail in the source picker can
+   * show a live on-screen highlight outline. Every window source (Simulator
+   * included) gets a *fresh* bounds lookup right before recording actually
+   * starts regardless -- see useRecordingController.ts's `start()`, which
+   * resolves it via the window's native handle (getWindowBoundsById, main
+   * process) rather than trusting whatever this field held at list time --
+   * so cursor/click tracking works for any window, not just the Simulator.
+   * That refresh is still just a one-time snapshot, so moving/resizing the
+   * window mid-recording makes tracking drift for the rest of that
+   * recording either way.
    */
   displayBounds?: { x: number; y: number; width: number; height: number };
   /**

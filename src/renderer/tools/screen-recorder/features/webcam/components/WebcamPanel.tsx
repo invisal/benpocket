@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { Circle, Square, SquareUser } from 'lucide-react';
+import { useAppStore } from '../../../app/app-store';
 import { useWebcamStore } from '../store/webcam-store';
 import { Slider } from '../../../components/ui/slider';
 import { Switch } from '../../../components/ui/switch';
@@ -32,15 +33,30 @@ export function WebcamPanel(): JSX.Element {
     setSize,
     setPosition
   } = useWebcamStore();
+  // Nothing to overlay if the camera wasn't on when this recording started
+  // -- see useRecordingController.ts's `stop()`, which only sets this when
+  // `startCapture`'s `webcam` option actually produced a parallel recording.
+  const hasWebcamFootage = useAppStore((s) => Boolean(s.lastRecording?.webcamPreviewUrl));
+  const isEnabled = enabled && hasWebcamFootage;
 
   return (
     <div className="flex flex-col gap-4">
       <label className="flex items-center justify-between">
         <span className="text-xs font-medium">Webcam overlay</span>
-        <Switch checked={enabled} onChange={toggleEnabled} label="Webcam overlay" />
+        <Switch
+          checked={isEnabled}
+          onChange={toggleEnabled}
+          label="Webcam overlay"
+          disabled={!hasWebcamFootage}
+        />
       </label>
+      {!hasWebcamFootage && (
+        <p className="-mt-2 text-[11px] text-muted-foreground/70">
+          Turn on your camera before recording to use a webcam overlay.
+        </p>
+      )}
 
-      <div className={cn('flex flex-col gap-4', !enabled && 'pointer-events-none opacity-40')}>
+      <div className={cn('flex flex-col gap-4', !isEnabled && 'pointer-events-none opacity-40')}>
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Shape

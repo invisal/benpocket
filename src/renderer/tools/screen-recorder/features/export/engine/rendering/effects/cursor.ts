@@ -25,9 +25,12 @@ function drawCursorIconInto(
   clickScale: number
 ): void {
   const s = sizePx / 24;
+  // Anchored so the glyph's tip (TIP, not the path's local (0,0) corner)
+  // lands exactly on (x, y) -- the actual recorded cursor/click position --
+  // rather than offsetting the whole icon down-right by TIP*s.
   const pts = CURSOR_PATH.map(([px, py]) => {
-    const lx = clickScale !== 1 ? TIP[0] + (px - TIP[0]) * clickScale : px;
-    const ly = clickScale !== 1 ? TIP[1] + (py - TIP[1]) * clickScale : py;
+    const lx = (px - TIP[0]) * clickScale;
+    const ly = (py - TIP[1]) * clickScale;
     return [x + lx * s, y + ly * s];
   });
   g.moveTo(pts[0][0], pts[0][1]);

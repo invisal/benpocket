@@ -41,17 +41,8 @@ export function registerWindowHandlers(): void {
     windowFromEvent(event)?.webContents.setBackgroundThrottling(allowed);
   });
 
-  // Lets a transparent, always-on-top window (currently just the recorder
-  // toolbar -- see RecorderToolbarApp.tsx) click through its own empty/
-  // transparent regions to whatever's underneath instead of blocking them,
-  // while still being clickable over its actual visible content via
-  // per-element onMouseEnter/onMouseLeave toggling this. `forward: true`
-  // keeps mouse events (incl. enter/leave) reaching the renderer even while
-  // ignoring, which is what makes that toggling possible in the first place.
-  ipcMain.handle(
-    IpcChannels.WindowSetIgnoreMouseEvents,
-    (event, ignore: boolean, options?: { forward?: boolean }) => {
-      windowFromEvent(event)?.setIgnoreMouseEvents(ignore, options);
-    }
-  );
+  // WindowSetIgnoreMouseEvents / WindowReportInteractiveRegion (recorder
+  // toolbar's click-through) are registered in recorder-toolbar-window.ts
+  // instead of here -- they share module state with that window's
+  // interactive-region poll, see the comment there.
 }

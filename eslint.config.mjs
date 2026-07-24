@@ -7,7 +7,12 @@ import eslintPluginReactRefresh from 'eslint-plugin-react-refresh';
 import eslintPluginPrettier from 'eslint-plugin-prettier';
 
 export default defineConfig(
-  { ignores: ['**/node_modules', '**/dist', '**/out'] },
+  {
+    // native/*/index.js is the standard node-gyp-build CJS loader shim
+    // (same pattern uiohook-napi itself ships), not app TypeScript/ESM
+    // source -- native/*/build is compiled addon output.
+    ignores: ['**/node_modules', '**/dist', '**/out', 'native/*/index.js', 'native/*/build']
+  },
   tseslint.configs.recommended,
   eslintPluginReact.configs.flat.recommended,
   eslintPluginReact.configs.flat['jsx-runtime'],

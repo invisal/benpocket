@@ -74,14 +74,15 @@ const NO_DRAG = '[-webkit-app-region:no-drag]';
 // could go anywhere. Enter-only still covers every real transition -- moving
 // from the dead-space overlay onto the pill/an open popover fires *their*
 // onMouseEnter (enable), and moving back the other way fires the overlay's
-// (disable) -- without ever needing to react to something leaving.
-// `forward: true` is what keeps mouse enter events reaching the renderer at
-// all while ignoring.
+// (disable) -- without ever needing to react to something leaving. Note
+// this can't be what turns ignoring off in the first place while the window
+// is still ignoring -- see the interactive-region poll in
+// recorder-toolbar-window.ts, which handles that instead.
 function enablePointerEvents(): void {
   void window.screenRecorder.window.setIgnoreMouseEvents(false);
 }
 function disablePointerEvents(): void {
-  void window.screenRecorder.window.setIgnoreMouseEvents(true, { forward: true });
+  void window.screenRecorder.window.setIgnoreMouseEvents(true);
 }
 
 /**
@@ -123,6 +124,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const cameraPreviewRef = useRef<HTMLVideoElement>(null);
   const cameraPreviewStreamRef = useRef<MediaStream | null>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     window.screenRecorder.recording
@@ -251,6 +253,42 @@ export function RecorderToolbarApp(): JSX.Element | null {
 
   const focusedSource = sources.find((s) => s.id === sourceId) ?? null;
 
+  // Reports the pill's on-screen rect for the interactive-region poll in
+  // recorder-toolbar-window.ts. Keyed on `mode`/`focusedSource` since either
+  // can swap the pill element for a different one (or none); ResizeObserver
+  // alone wouldn't notice that swap. Also re-measures on an interval, not
+  // just on resize, since a window reposition (see repositionToolbar())
+  // doesn't fire a resize event but does move the rect.
+  useEffect(() => {
+    const el = pillRef.current;
+    if (!el) {
+      window.screenRecorder.window.reportInteractiveRegion(null);
+      return;
+    }
+
+    function report(): void {
+      const node = pillRef.current;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      window.screenRecorder.window.reportInteractiveRegion({
+        x: Math.round(window.screenX + rect.left),
+        y: Math.round(window.screenY + rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      });
+    }
+
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(el);
+    const interval = setInterval(report, 500);
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+      window.screenRecorder.window.reportInteractiveRegion(null);
+    };
+  }, [mode, focusedSource]);
+
   // No on-screen position for either, same as any other 'window' source --
   // matched purely by name against the window list, same heuristic
   // screen-source-provider.ts already uses for the Simulator. There's no
@@ -276,20 +314,54 @@ export function RecorderToolbarApp(): JSX.Element | null {
     setOpenPopover(null);
   }
 
+  // Multi-monitor: the drag can land on any connected display, and
+  // desktopCapturer's source order has nothing to do with display position
+  // (see CaptureSource.isPrimaryDisplay's doc) -- so recording always has
+  // to use the source for the display the selection actually resolved
+  // against, not just "some screen source", or it silently captures the
+  // wrong monitor while the crop rect (correctly) still reads as the one
+  // the user dragged on. Center-point containment rather than exact bounds
+  // equality, matching screen-capture's own findScreenSourceForRegion.
+  function screenSourceForSelection(selection: CaptureRegionSelection): CaptureSource | null {
+    const centerX = selection.rect.x + selection.rect.width / 2;
+    const centerY = selection.rect.y + selection.rect.height / 2;
+    return (
+      sources.find((s) => {
+        if (s.type !== 'screen' || !s.displayBounds) return false;
+        const b = s.displayBounds;
+        return (
+          centerX >= b.x && centerX < b.x + b.width && centerY >= b.y && centerY < b.y + b.height
+        );
+      }) ?? null
+    );
+  }
+
   // Drag-select a sub-rectangle of a display to record instead of the whole
   // thing. Reuses the same fullscreen overlay window Screen Capture's region
   // screenshot flow uses (main/screen-recorder/windows/region-select-window.ts)
   // -- it's generic ScreenRect-in/CaptureRegionSelection-out plumbing with no
   // screenshot-specific coupling. Hides this window first (mainOnly so it
   // doesn't take the whole app down) so the overlay isn't fighting our own
-  // always-on-top pill for the topmost spot.
+  // always-on-top pill for the topmost spot. `confirmLabel` puts the overlay
+  // into confirm mode (Size/Position readout + a button) instead of
+  // completing on mouse-up, so the button click below is the same explicit
+  // "start now" action Display/Window's click-to-record overlay already
+  // has -- see openSourcePicker. Scoped to the toolbar's own current display
+  // (rather than the default whole-virtual-desktop overlay) so dragging the
+  // toolbar to a different monitor before picking Area actually changes
+  // which monitor gets selected from.
   async function pickArea(): Promise<void> {
-    const screenSource = sources.find((s) => s.type === 'screen');
-    if (!screenSource) return;
+    const anyScreenSource = sources.find((s) => s.type === 'screen');
+    if (!anyScreenSource) return;
+    const bounds = await window.screenRecorder.recorderToolbar.getCurrentDisplayBounds();
     await window.screenRecorder.window.hide({ mainOnly: true });
     try {
-      const selection = await window.screenRecorder.screenshot.selectRegion();
+      const selection = await window.screenRecorder.screenshot.selectRegion({
+        confirmLabel: 'Start recording',
+        bounds: bounds ?? undefined
+      });
       if (selection) {
+        const screenSource = screenSourceForSelection(selection) ?? anyScreenSource;
         setSourceId(screenSource.id);
         setCropRegion(selection);
         // Area has its own highlight (driven by cropRegion) -- clear
@@ -297,27 +369,36 @@ export function RecorderToolbarApp(): JSX.Element | null {
         setActiveTab(null);
         setSelectedDevice(null);
         setOpenPopover(null);
+        startRecording(screenSource, selection);
       }
     } finally {
       await window.screenRecorder.window.restore({ focus: true });
     }
   }
 
-  function startRecording(source: CaptureSource): void {
+  // `regionOverride` is for pickArea below: it calls this in the same tick
+  // as setCropRegion(selection), and the `cropRegion` state read here would
+  // still be the *previous* render's value (React state doesn't update
+  // mid-tick) without it.
+  function startRecording(
+    source: CaptureSource,
+    regionOverride?: CaptureRegionSelection | null
+  ): void {
     setMode('starting');
     setError(null);
+    const region = regionOverride !== undefined ? regionOverride : cropRegion;
     // The drag-selected Area rect is the most specific target available;
     // otherwise fall back to the source's own display bounds (only ever
     // resolved for a 'screen' source, or a 'window' source with a known
     // owner -- currently just the Simulator -- see CaptureSource.displayBounds).
     // A generic window with no bounds just leaves this undefined, and the
     // toolbar stays wherever it already is.
-    const targetBounds = cropRegion?.rect ?? source.displayBounds;
+    const targetBounds = region?.rect ?? source.displayBounds;
     window.screenRecorder.recorderToolbar.requestStart({
       sourceId: source.id,
       audio,
       webcam,
-      cropRegion: cropRegion ?? undefined,
+      cropRegion: region ?? undefined,
       targetBounds
     });
   }
@@ -351,6 +432,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
             see the pill's onMouseEnter comment below. */}
         <div className="absolute inset-0" onMouseEnter={disablePointerEvents} />
         <div
+          ref={pillRef}
           onMouseEnter={enablePointerEvents}
           className={cn(
             DRAG,
@@ -382,6 +464,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
       {/* See the recording-mode return above for why this has no onMouseLeave. */}
       <div className="absolute inset-0" onMouseEnter={disablePointerEvents} />
       <div
+        ref={pillRef}
         onMouseEnter={enablePointerEvents}
         className={cn(
           DRAG,

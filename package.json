@@ -21,7 +21,10 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "build:native:macos": "cd native/macos-recorder && swift build -c release && cd ../.. && node scripts/package-native-helper.mjs macos",
+    "build:native:windows": "cmake -S native/windows-recorder -B native/windows-recorder/build && cmake --build native/windows-recorder/build --config Release && node scripts/package-native-helper.mjs windows",
+    "build:native:linux": "cmake -S native/linux-recorder -B native/linux-recorder/build && cmake --build native/linux-recorder/build && node scripts/package-native-helper.mjs linux"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",

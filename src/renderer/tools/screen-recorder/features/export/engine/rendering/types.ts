@@ -16,6 +16,11 @@ export interface InnerRect {
 export type BackgroundSceneData =
   | { kind: 'color'; color: string }
   | { kind: 'linear-gradient'; angleDeg: number; colors: string[] }
+  | {
+      kind: 'radial-blobs';
+      backgroundColor: string;
+      blobs: { xPct: number; yPct: number; radiusPct: number; color: string }[];
+    }
   | { kind: 'image'; path: string; blurPx: number };
 
 export interface ShadowSceneData {

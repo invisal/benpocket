@@ -6,6 +6,7 @@ import { startCursorCapture, type CursorCaptureHandle } from '../../cursor/engin
 import { generateAutoZoomKeyframes } from '../../zoom/engine/auto-zoom-engine';
 import { useZoomStore } from '../../zoom/store/zoom-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
+import { useCursorStore } from '../../cursor/store/cursor-store';
 
 export interface LiveCounts {
   cursorCount: number;
@@ -59,22 +60,25 @@ export function useRecordingController(): RecordingController {
     setError(null);
     setLiveCounts({ cursorCount: 0, clickCount: 0 });
     try {
-      // `selectedSource.displayBounds` for a window source (currently just
-      // the Simulator) was resolved via AppleScript whenever the source list
-      // was last loaded -- possibly well before this click, during which the
-      // window could have moved or resized. Re-resolve it right now, as
-      // close to the actual capture/tracking start as possible, so both the
-      // video's capture-size constraint and the cursor normalization rect
-      // agree with where the window actually is. Not applicable to a
-      // native-picker source -- it has no id for the Simulator check to
-      // even match against.
+      // `selectedSource.displayBounds` for a window source was whatever was
+      // resolved (or not -- see CaptureSource.displayBounds) whenever the
+      // source list was last loaded, possibly well before this click, during
+      // which the window could have moved or resized. Re-resolve it right
+      // now, as close to the actual capture/tracking start as possible, so
+      // both the video's capture-size constraint and the cursor
+      // normalization rect agree with where the window actually is -- for
+      // *any* window, not just a hardcoded special case (see
+      // getWindowBoundsById's doc on the main process side). Not applicable
+      // to a native-picker source -- it has no desktopCapturer id to resolve
+      // a window handle from.
       const source =
         !nativePickerStream && selectedSource.type === 'window'
           ? {
               ...selectedSource,
               displayBounds:
-                (await window.screenRecorder.simulator.refreshWindowBounds().catch(() => null)) ??
-                selectedSource.displayBounds
+                (await window.screenRecorder.recording
+                  .refreshWindowBounds(selectedSource.id)
+                  .catch(() => null)) ?? selectedSource.displayBounds
             }
           : selectedSource;
 
@@ -83,7 +87,12 @@ export function useRecordingController(): RecordingController {
         audio,
         existingVideoStream: nativePickerStream ?? undefined,
         cropRegion: cropRegion ?? undefined,
-        webcam: useWebcamStore.getState()
+        webcam: useWebcamStore.getState(),
+        // Only hide the native OS cursor when the app's own stylized
+        // overlay ("Show Cursor" in the Cursor panel) is actually enabled
+        // to replace it -- otherwise the ordinary OS cursor stays baked
+        // in, same as before native capture existed.
+        hideNativeCursor: useCursorStore.getState().visible
       });
       // Cursor samples are normalized against `displayBounds` (see
       // cursor-capture.ts) -- when a crop region is active, the *recorded*
@@ -137,7 +146,8 @@ export function useRecordingController(): RecordingController {
     if (!capture) return;
     setIsRecording(false);
 
-    const { blob, webcamBlob, webcamStartedAt } = await capture.stop();
+    const { video, webcamBlob, webcamStartedAt } = await capture.stop();
+    const { blob } = video;
     captureRef.current = null;
 
     const { cursorPath, clickPath } = (await cursorCaptureRef.current?.stop()) ?? {
@@ -158,12 +168,18 @@ export function useRecordingController(): RecordingController {
     const timestamp = Date.now();
     const fileName = `recording-${timestamp}.${extension}`;
 
-    let filePath: string | null = null;
-    try {
-      const arrayBuffer = await blob.arrayBuffer();
-      filePath = await window.screenRecorder.recording.saveFile(fileName, arrayBuffer);
-    } catch (err) {
-      console.error('[useRecordingController] failed to save recording to disk:', err);
+    // The native recording path already wrote the file directly to its
+    // final destination (see capture-engine.ts's `tryStartNativeRecording`)
+    // -- re-saving `blob`'s bytes here would just be a wasteful round trip
+    // through memory for what can be a large video file.
+    let filePath: string | null = video.existingFilePath ?? null;
+    if (!filePath) {
+      try {
+        const arrayBuffer = await blob.arrayBuffer();
+        filePath = await window.screenRecorder.recording.saveFile(fileName, arrayBuffer);
+      } catch (err) {
+        console.error('[useRecordingController] failed to save recording to disk:', err);
+      }
     }
 
     let webcamPreviewUrl: string | null = null;

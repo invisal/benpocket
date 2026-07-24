@@ -13,8 +13,8 @@ export interface CursorStylePreset {
 }
 
 export const CURSOR_STYLE_PRESETS: CursorStylePreset[] = [
-  { id: 'emerald', fill: '#22c55e', stroke: '#052e13' },
   { id: 'coal', fill: '#18181b', stroke: '#ffffff' },
+  { id: 'emerald', fill: '#22c55e', stroke: '#052e13' },
   { id: 'slate', fill: '#3f3f46', stroke: '#e4e4e7' },
   { id: 'crimson', fill: '#9f1239', stroke: '#fecdd3' },
   { id: 'ivory', fill: '#fafafa', stroke: '#18181b' },
@@ -27,7 +27,7 @@ export const CURSOR_STYLE_PRESETS: CursorStylePreset[] = [
   { id: 'violet', fill: '#7c3aed', stroke: '#ede9fe' }
 ];
 
-export const DEFAULT_CURSOR_STYLE_ID = 'emerald';
+export const DEFAULT_CURSOR_STYLE_ID = 'coal';
 
 export function resolveCursorStyle(id: string): CursorStylePreset {
   return CURSOR_STYLE_PRESETS.find((preset) => preset.id === id) ?? CURSOR_STYLE_PRESETS[0];

@@ -4,6 +4,7 @@ import {
   DEFAULT_ZOOM_DURATION_MS,
   DEFAULT_ZOOM_HOLD_TRANSITION_MS
 } from '@shared/constants';
+import { clampToNonOverlapping } from '../lib/zoom-overlap';
 
 export interface CursorSample {
   atMs: number;
@@ -32,6 +33,18 @@ const MIN_GAP_MS = DEFAULT_ZOOM_DURATION_MS;
  * window silently outgrow the fixed `MIN_GAP_MS` check, so a later click
  * still inside that extended window could slip past it and spawn a second,
  * overlapping keyframe instead of joining the first.
+ *
+ * Every window (new or extended) is run through the same
+ * `clampToNonOverlapping` manual placement uses, rather than trusting the
+ * clustering math above to keep windows apart on its own -- that math
+ * assumed a fixed relationship between the gap threshold and the default
+ * duration that a chain of merges could quietly violate (extending toward,
+ * or past, the next click's own window), and had no upper bound at all, so
+ * a long burst of clicks a bit over `MIN_GAP_MS` apart could grow one
+ * window past `ZOOM_MAX_DURATION_MS` and into the next keyframe entirely.
+ * Clamping every window against its neighbors as it's built makes
+ * "never overlapping" an actual guarantee instead of an emergent property
+ * of the clustering constants happening to line up.
  */
 export function generateAutoZoomKeyframes(clickSamples: CursorSample[]): ZoomKeyframe[] {
   if (clickSamples.length === 0) return [];
@@ -43,14 +56,22 @@ export function generateAutoZoomKeyframes(clickSamples: CursorSample[]): ZoomKey
   for (const click of sorted) {
     const last = keyframes[keyframes.length - 1];
     if (last && click.atMs - lastClickAtMs < MIN_GAP_MS) {
-      last.durationMs = click.atMs - last.atMs + DEFAULT_ZOOM_DURATION_MS;
+      // Never shrink a window an earlier merge already extended, even if
+      // this particular click's own reach is smaller.
+      const desiredDurationMs = Math.max(
+        last.durationMs,
+        click.atMs - last.atMs + DEFAULT_ZOOM_DURATION_MS
+      );
+      const clamped = clampToNonOverlapping(keyframes, last.id, last.atMs, desiredDurationMs);
+      last.durationMs = clamped.durationMs;
       lastClickAtMs = click.atMs;
       continue;
     }
+    const clamped = clampToNonOverlapping(keyframes, null, click.atMs, DEFAULT_ZOOM_DURATION_MS);
     keyframes.push({
       id: crypto.randomUUID(),
-      atMs: click.atMs,
-      durationMs: DEFAULT_ZOOM_DURATION_MS,
+      atMs: clamped.atMs,
+      durationMs: clamped.durationMs,
       depth: DEFAULT_ZOOM_DEPTH,
       easing: 'ease-in-out',
       position: 'auto-cursor',

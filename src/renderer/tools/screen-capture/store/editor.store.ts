@@ -32,10 +32,16 @@ export const BLUR_TIERS = [
 export const MAX_CORNER_RADIUS_UNITS = 64;
 
 /** Free-draw snap targets the user can enable independently. */
-export type PenSnapShapes = { line: boolean; rect: boolean; circle: boolean };
+export type PenSnapShapes = {
+  line: boolean;
+  arrow: boolean;
+  rect: boolean;
+  circle: boolean;
+};
 
 export const DEFAULT_PEN_SNAP_SHAPES: PenSnapShapes = {
   line: true,
+  arrow: false,
   rect: true,
   circle: true
 };
@@ -369,15 +375,20 @@ function sanitizePrefs(raw: unknown): Partial<PersistedEditorPrefs> {
 
   if (v.penSnapShapes && typeof v.penSnapShapes === 'object') {
     const s = v.penSnapShapes as Record<string, unknown>;
-    out.penSnapShapes = {
+    const shapes: PenSnapShapes = {
       line: typeof s.line === 'boolean' ? s.line : DEFAULT_PEN_SNAP_SHAPES.line,
+      arrow: typeof s.arrow === 'boolean' ? s.arrow : DEFAULT_PEN_SNAP_SHAPES.arrow,
       rect: typeof s.rect === 'boolean' ? s.rect : DEFAULT_PEN_SNAP_SHAPES.rect,
       circle: typeof s.circle === 'boolean' ? s.circle : DEFAULT_PEN_SNAP_SHAPES.circle
     };
+    // Line and arrow share the same straight-stroke match — keep at most one.
+    if (shapes.line && shapes.arrow) shapes.arrow = false;
+    out.penSnapShapes = shapes;
   } else if (typeof v.penSnap === 'boolean') {
     // Migrate legacy master toggle → all shapes on/off.
     out.penSnapShapes = {
       line: v.penSnap,
+      arrow: false,
       rect: v.penSnap,
       circle: v.penSnap
     };
@@ -629,9 +640,13 @@ export const useCaptureEditorStore = create<EditorState>()(
       setWatermark: (watermark) => set({ watermark }),
 
       setPenSnapShape: (kind, enabled) =>
-        set((state) => ({
-          penSnapShapes: { ...state.penSnapShapes, [kind]: enabled }
-        })),
+        set((state) => {
+          const penSnapShapes = { ...state.penSnapShapes, [kind]: enabled };
+          // Line ↔ arrow are mutually exclusive (same straight-stroke geometry).
+          if (enabled && kind === 'line') penSnapShapes.arrow = false;
+          if (enabled && kind === 'arrow') penSnapShapes.line = false;
+          return { penSnapShapes };
+        }),
 
       setHighlightSnap: (highlightSnap) => set({ highlightSnap }),
 

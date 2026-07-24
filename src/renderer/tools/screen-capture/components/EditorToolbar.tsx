@@ -306,7 +306,8 @@ export function EditorToolbar(): JSX.Element {
   const setHighlightSquareEnds = useCaptureEditorStore((s) => s.setHighlightSquareEnds);
   const unit = useCaptureEditorStore((s) => s.unit);
 
-  const anyPenSnap = penSnapShapes.line || penSnapShapes.rect || penSnapShapes.circle;
+  const anyPenSnap =
+    penSnapShapes.line || penSnapShapes.arrow || penSnapShapes.rect || penSnapShapes.circle;
 
   return (
     <Tooltip.Provider delay={200} closeDelay={0}>
@@ -326,9 +327,38 @@ export function EditorToolbar(): JSX.Element {
               </RailTooltip>
               <Popover.Content side="right" align="start" className="w-56">
                 <p className="px-1 pb-1 text-[11px] font-medium text-text-dim">Snap to</p>
+                <div
+                  className="flex flex-col gap-0.5 px-1 py-0.5"
+                  role="radiogroup"
+                  aria-label="Straight snap"
+                >
+                  {(
+                    [
+                      ['line', 'Line'],
+                      ['arrow', 'Arrow']
+                    ] as const
+                  ).map(([kind, labelText]) => (
+                    <label
+                      key={kind}
+                      className="flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none"
+                    >
+                      <input
+                        type="radio"
+                        name="pen-snap-straight"
+                        checked={penSnapShapes[kind]}
+                        onChange={() => setPenSnapShape(kind, true)}
+                        onClick={() => {
+                          // Clicking the already-selected option clears straight snap.
+                          if (penSnapShapes[kind]) setPenSnapShape(kind, false);
+                        }}
+                        className="accent-(--color-accent)"
+                      />
+                      {labelText}
+                    </label>
+                  ))}
+                </div>
                 {(
                   [
-                    ['line', 'Line'],
                     ['rect', 'Rectangle'],
                     ['circle', 'Circle']
                   ] as const

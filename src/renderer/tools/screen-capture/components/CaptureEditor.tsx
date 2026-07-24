@@ -452,7 +452,11 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
           const { penSnapShapes, highlightSnap } = store.getState();
           if (kind === 'pen') {
             const snap =
-              !e.shiftKey && (penSnapShapes.line || penSnapShapes.rect || penSnapShapes.circle);
+              !e.shiftKey &&
+              (penSnapShapes.line ||
+                penSnapShapes.arrow ||
+                penSnapShapes.rect ||
+                penSnapShapes.circle);
             if (snap) {
               const shape = recognizeStroke(points, penSnapShapes);
               if (shape) {

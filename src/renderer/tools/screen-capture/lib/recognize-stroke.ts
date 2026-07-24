@@ -2,6 +2,7 @@ export type Point = { x: number; y: number };
 
 export type RecognizedStroke =
   | { kind: 'line'; x1: number; y1: number; x2: number; y2: number }
+  | { kind: 'arrow'; x1: number; y1: number; x2: number; y2: number }
   | { kind: 'rect'; x: number; y: number; width: number; height: number }
   | { kind: 'circle'; x: number; y: number; width: number; height: number };
 
@@ -130,7 +131,9 @@ function tryCircle(
   };
 }
 
-function tryLine(points: Point[]): RecognizedStroke | null {
+function tryStraightSegment(
+  points: Point[]
+): { x1: number; y1: number; x2: number; y2: number } | null {
   const a = points[0];
   const b = points[points.length - 1];
   const chord = Math.hypot(b.x - a.x, b.y - a.y);
@@ -138,20 +141,22 @@ function tryLine(points: Point[]): RecognizedStroke | null {
   let maxDev = 0;
   for (const p of points) maxDev = Math.max(maxDev, distToSegment(p, a, b));
   if (maxDev > chord * 0.1) return null;
-  return { kind: 'line', x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+  return { x1: a.x, y1: a.y, x2: b.x, y2: b.y };
 }
 
 /**
- * Classify a freehand polyline as a line, axis-aligned rect, or ellipse.
+ * Classify a freehand polyline as a line, arrow, axis-aligned rect, or ellipse.
  * Used by free-draw snap — converts to a shape annotation.
  * Only kinds with `allowed[kind] === true` are considered.
  * Closed shapes are scored; the lower error wins (so squares stay rects,
  * ovals stay circles even when both pass their absolute thresholds).
+ * Straight strokes: arrow wins over line when both are allowed.
  */
 export function recognizeStroke(
   points: Point[],
-  allowed: { line?: boolean; rect?: boolean; circle?: boolean } = {
+  allowed: { line?: boolean; arrow?: boolean; rect?: boolean; circle?: boolean } = {
     line: true,
+    arrow: true,
     rect: true,
     circle: true
   }
@@ -174,7 +179,15 @@ export function recognizeStroke(
     scored.sort((a, b) => a.err - b.err);
     return scored[0].shape;
   }
-  if (allowed.line) return tryLine(points);
+
+  if (allowed.arrow || allowed.line) {
+    const seg = tryStraightSegment(points);
+    if (seg) {
+      // Both allowed → arrow (otherwise enabling arrow while line is on would be a no-op).
+      if (allowed.arrow) return { kind: 'arrow', ...seg };
+      return { kind: 'line', ...seg };
+    }
+  }
   return null;
 }
 
@@ -184,11 +197,11 @@ export function recognizeStroke(
  */
 export function straightenStroke(points: Point[]): [Point, Point] | null {
   if (points.length < 2) return null;
-  const line = tryLine(points);
-  if (!line || line.kind !== 'line') return null;
+  const seg = tryStraightSegment(points);
+  if (!seg) return null;
   return [
-    { x: line.x1, y: line.y1 },
-    { x: line.x2, y: line.y2 }
+    { x: seg.x1, y: seg.y1 },
+    { x: seg.x2, y: seg.y2 }
   ];
 }
 
@@ -234,8 +247,32 @@ function assert(cond: boolean, msg: string): void {
  * Runnable check: `RECOGNIZE_STROKE_CHECK=1 npx tsx src/renderer/tools/screen-capture/lib/recognize-stroke.ts`
  */
 function assertRecognizeStrokeSelfCheck(): void {
-  const line = recognizeStroke(sampleLine(10, 10, 200, 40));
+  const line = recognizeStroke(sampleLine(10, 10, 200, 40), {
+    line: true,
+    arrow: false,
+    rect: false,
+    circle: false
+  });
   assert(line?.kind === 'line', `expected line, got ${JSON.stringify(line)}`);
+
+  const arrow = recognizeStroke(sampleLine(10, 10, 200, 40), {
+    line: false,
+    arrow: true,
+    rect: false,
+    circle: false
+  });
+  assert(arrow?.kind === 'arrow', `expected arrow, got ${JSON.stringify(arrow)}`);
+
+  const bothStraight = recognizeStroke(sampleLine(10, 10, 200, 40), {
+    line: true,
+    arrow: true,
+    rect: false,
+    circle: false
+  });
+  assert(
+    bothStraight?.kind === 'arrow',
+    `expected arrow when both allowed, got ${JSON.stringify(bothStraight)}`
+  );
 
   const rect = recognizeStroke(sampleRect(20, 30, 120, 80));
   assert(rect?.kind === 'rect', `expected rect, got ${JSON.stringify(rect)}`);
@@ -256,10 +293,20 @@ function assertRecognizeStrokeSelfCheck(): void {
   const ellipse = recognizeStroke(ellipsePts);
   assert(ellipse?.kind === 'circle', `expected ellipse→circle, got ${JSON.stringify(ellipse)}`);
 
-  const rectOnly = recognizeStroke(ellipsePts, { line: false, rect: true, circle: false });
+  const rectOnly = recognizeStroke(ellipsePts, {
+    line: false,
+    arrow: false,
+    rect: true,
+    circle: false
+  });
   assert(rectOnly?.kind === 'rect', `expected rect-only allow, got ${JSON.stringify(rectOnly)}`);
 
-  const none = recognizeStroke(ellipsePts, { line: false, rect: false, circle: false });
+  const none = recognizeStroke(ellipsePts, {
+    line: false,
+    arrow: false,
+    rect: false,
+    circle: false
+  });
   assert(none === null, `expected null when nothing allowed, got ${JSON.stringify(none)}`);
 
   const scribble = recognizeStroke([

@@ -187,6 +187,9 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.RecorderToolbarOpen, payload),
     /** Called by the toolbar window itself (Esc / close button). */
     cancel: (): void => ipcRenderer.send(IpcChannels.RecorderToolbarCancel),
+    /** Called by the toolbar window's Area picker: bounds of whichever display the toolbar itself currently sits on. */
+    getCurrentDisplayBounds: (): Promise<ScreenRect | null> =>
+      ipcRenderer.invoke(IpcChannels.RecorderToolbarGetCurrentDisplayBounds),
     /** Called by the toolbar window's Start Recording button. */
     requestStart: (payload: RecorderToolbarStartPayload): void =>
       ipcRenderer.send(IpcChannels.RecorderToolbarStart, payload),

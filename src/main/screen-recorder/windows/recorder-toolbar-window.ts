@@ -6,9 +6,13 @@ import type {
   RecorderToolbarStartPayload,
   RecorderToolbarRecordingResult
 } from '@shared/recorder-toolbar';
-import type { ScreenRect } from '@shared/capture-region';
+import type { CaptureRegionSelection, ScreenRect } from '@shared/capture-region';
 import { preloadScriptPath } from '../lib/preload-path';
 import { minimizeCaptureWindow, restoreCaptureWindow } from './window-visibility';
+import {
+  hideRecordingRegionFrame,
+  showRecordingRegionFrame
+} from './recording-region-frame-window';
 
 const TOOLBAR_WIDTH = 880;
 const TOOLBAR_HEIGHT = 280;
@@ -23,6 +27,11 @@ let toolbarWindow: BrowserWindow | null = null;
 let ownerWindow: BrowserWindow | null = null;
 
 let lastTargetBounds: ScreenRect | null = null;
+// Only set for an actual Area drag-selection, unlike lastTargetBounds above
+// (which is also set for a full-display or Simulator/Emulator recording) --
+// what gates the recording-region frame below, since a border around those
+// wider cases wouldn't tell the user anything they don't already know.
+let lastCropRegion: CaptureRegionSelection | null = null;
 
 const INTERACTIVE_REGION_POLL_MS = 80;
 let interactiveRegion: ScreenRect | null = null;
@@ -188,6 +197,8 @@ function closeRecorderToolbar(): void {
   }
   void restoreCaptureWindow(ownerWindow, { focus: true });
   lastTargetBounds = null;
+  lastCropRegion = null;
+  hideRecordingRegionFrame();
 
   const win = toolbarWindow;
   toolbarWindow = null;
@@ -196,6 +207,19 @@ function closeRecorderToolbar(): void {
 
 export function registerRecorderToolbarHandlers(): void {
   ipcMain.handle(IpcChannels.RecorderToolbarOpen, openRecorderToolbar);
+
+  // Area picker: which display to open the crop overlay on. Bounds default
+  // to the whole virtual desktop (see selectCaptureRegion), which is where
+  // it'd otherwise always resolve against whichever display sorts first out
+  // of screen.getAllDisplays() -- not necessarily the one the user's
+  // actually looking at if they've dragged the toolbar to a different
+  // monitor. Matching against the toolbar's own current bounds instead of
+  // the cursor means it still works before the user has moved the mouse
+  // onto the target monitor at all.
+  ipcMain.handle(IpcChannels.RecorderToolbarGetCurrentDisplayBounds, (): ScreenRect | null => {
+    if (!toolbarWindow || toolbarWindow.isDestroyed()) return null;
+    return screen.getDisplayMatching(toolbarWindow.getBounds()).bounds;
+  });
 
   // Toolbar's own click-through toggling -- see the interactive-region
   // poll above.
@@ -217,6 +241,7 @@ export function registerRecorderToolbarHandlers(): void {
 
   ipcMain.on(IpcChannels.RecorderToolbarStart, (_event, payload: RecorderToolbarStartPayload) => {
     lastTargetBounds = payload.targetBounds ?? null;
+    lastCropRegion = payload.cropRegion ?? null;
     repositionToolbar();
     ownerWindow?.webContents.send(IpcChannels.RecorderToolbarStartRequested, payload);
   });
@@ -225,6 +250,9 @@ export function registerRecorderToolbarHandlers(): void {
     IpcChannels.RecorderToolbarRecordingStarted,
     (_event, result: RecorderToolbarRecordingResult) => {
       toolbarWindow?.webContents.send(IpcChannels.RecorderToolbarRecordingStarted, result);
+      if (result.ok && lastCropRegion && lastTargetBounds) {
+        showRecordingRegionFrame(lastTargetBounds);
+      }
     }
   );
 
@@ -242,6 +270,8 @@ export function destroyRecorderToolbar(): void {
   toolbarWindow = null;
   ownerWindow = null;
   lastTargetBounds = null;
+  lastCropRegion = null;
   stopInteractiveRegionPoll();
+  hideRecordingRegionFrame();
   if (win && !win.isDestroyed()) win.destroy();
 }

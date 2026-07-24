@@ -38,6 +38,13 @@ export interface SelectCaptureRegionOptions {
    * display (pass `bounds`).
    */
   overlayRelative?: boolean;
+  /**
+   * Switches the overlay from "complete on mouse-up" to "show a Size/
+   * Position readout + a confirm button labeled with this string, and wait
+   * for a click" -- see region-select.ts. Undefined keeps the original
+   * instant-complete behavior (Screen Capture's region screenshot).
+   */
+  confirmLabel?: string;
 }
 
 /** Payload from the overlay renderer when the user finishes a drag. */

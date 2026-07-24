@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Recording Region</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+      }
+
+      #frame {
+        position: absolute;
+        inset: 2px;
+        border: 3px solid #89b4fa;
+        border-radius: 10px;
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.45),
+          0 0 16px rgba(137, 180, 250, 0.55);
+      }
+
+      #dot {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #ef4444;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="frame"></div>
+    <div id="dot"></div>
+  </body>
+</html>

@@ -35,6 +35,7 @@ export default defineConfig({
           index: resolve('src/renderer/index.html'),
           regionSelect: resolve('src/renderer/region-select.html'),
           recorderToolbar: resolve('src/renderer/recorder-toolbar.html'),
+          recordingRegionFrame: resolve('src/renderer/recording-region-frame.html'),
           sourcePickerOverlay: resolve('src/renderer/source-picker-overlay.html')
         }
       }

@@ -5,6 +5,19 @@ let overlayReady = false;
 let backdrop: HTMLImageElement | null = null;
 let backdropObjectUrl: string | null = null;
 
+// Screen Recorder's Area picker only (see SelectCaptureRegionOptions.
+// confirmLabel) -- Screen Capture's region screenshot keeps the original
+// complete-on-mouse-up behavior. When set, releasing the drag shows a
+// Size/Position readout and this button instead of completing immediately,
+// mirroring how picking a Display/Window starts recording right away
+// (see RecorderToolbarApp.tsx's openSourcePicker).
+const confirmLabel = new URLSearchParams(window.location.search).get('confirmLabel');
+const panel = document.getElementById('panel');
+const sizeValue = document.getElementById('size-value');
+const positionValue = document.getElementById('position-value');
+const confirmButton = document.getElementById('confirm-button');
+if (confirmButton && confirmLabel) confirmButton.textContent = confirmLabel;
+
 function requireCanvas(): HTMLCanvasElement {
   const el = document.getElementById('canvas');
   if (!(el instanceof HTMLCanvasElement)) {
@@ -36,6 +49,8 @@ function resizeCanvas(): void {
   canvas.width = Math.round(cssWidth * dpr);
   canvas.height = Math.round(cssHeight * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  activeRect = null;
+  hidePanel();
   redraw();
 }
 
@@ -68,13 +83,21 @@ function redraw(active?: ScreenRect): void {
     ctx.clearRect(active.x, active.y, active.width, active.height);
   }
 
-  ctx.strokeStyle = '#38bdf8';
+  // Dashed accent border in confirm mode (Screen Recorder's Area picker) to
+  // read as "still adjustable" alongside the panel/button; Screen Capture's
+  // instant-complete flow keeps its original solid border.
+  ctx.strokeStyle = confirmLabel ? '#89b4fa' : '#38bdf8';
   ctx.lineWidth = 2;
+  ctx.setLineDash(confirmLabel ? [6, 4] : []);
   ctx.strokeRect(active.x + 0.5, active.y + 0.5, active.width - 1, active.height - 1);
+  ctx.setLineDash([]);
 }
 
 let dragStartClient: { x: number; y: number } | null = null;
 let activeRect: ScreenRect | null = null;
+// Set once a drag ends in confirm mode -- what the confirm button's click
+// handler below actually sends on.
+let confirmedRect: ScreenRect | null = null;
 
 function normalizedRect(startX: number, startY: number, endX: number, endY: number): ScreenRect {
   const x = Math.min(startX, endX);
@@ -105,6 +128,49 @@ function complete(payload: RegionSelectCompletePayload): void {
 
 function cancel(): void {
   window.screenRecorder?.regionSelect.cancel();
+}
+
+function finishRect(clientRect: ScreenRect): void {
+  if (backdrop) {
+    const imageRect = clientToImageRect(clientRect);
+    complete({
+      rect: imageRect,
+      imageSpace: true,
+      imageWidth: backdrop.naturalWidth,
+      imageHeight: backdrop.naturalHeight
+    });
+    return;
+  }
+
+  complete(clientRect);
+}
+
+function hidePanel(): void {
+  confirmedRect = null;
+  if (panel) panel.hidden = true;
+}
+
+// Centered on the rect -- inside it if there's room, otherwise tucked just
+// below (or above, if there isn't room below either).
+function showConfirmPanel(rect: ScreenRect): void {
+  if (!panel || !sizeValue || !positionValue) return;
+
+  sizeValue.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)} px`;
+  positionValue.textContent = `${Math.round(rect.x)}, ${Math.round(rect.y)} px`;
+  panel.hidden = false;
+
+  const { width: panelWidth, height: panelHeight } = panel.getBoundingClientRect();
+  const centerX = rect.x + rect.width / 2;
+  const left = Math.min(Math.max(centerX - panelWidth / 2, 8), cssWidth - panelWidth - 8);
+
+  const margin = 12;
+  const fitsInside = rect.height >= panelHeight + margin * 2;
+  const top = fitsInside
+    ? rect.y + rect.height / 2 - panelHeight / 2
+    : Math.min(rect.y + rect.height + margin, cssHeight - panelHeight - 8);
+
+  panel.style.left = `${Math.round(left)}px`;
+  panel.style.top = `${Math.round(Math.max(top, 8))}px`;
 }
 
 async function loadBackdropFromPayload(payload: ArrayBuffer | string): Promise<HTMLImageElement> {
@@ -145,6 +211,7 @@ async function initOverlay(): Promise<void> {
 
 canvas.addEventListener('pointerdown', (event) => {
   if (!overlayReady) return;
+  hidePanel();
   dragStartClient = { x: event.clientX, y: event.clientY };
   activeRect = { x: event.clientX, y: event.clientY, width: 0, height: 0 };
   canvas.setPointerCapture(event.pointerId);
@@ -167,21 +234,21 @@ canvas.addEventListener('pointerup', (event) => {
   if (clientRect.width < 4 || clientRect.height < 4) {
     activeRect = null;
     redraw();
+    hidePanel();
     return;
   }
 
-  if (backdrop) {
-    const imageRect = clientToImageRect(clientRect);
-    complete({
-      rect: imageRect,
-      imageSpace: true,
-      imageWidth: backdrop.naturalWidth,
-      imageHeight: backdrop.naturalHeight
-    });
+  if (confirmLabel) {
+    confirmedRect = clientRect;
+    showConfirmPanel(clientRect);
     return;
   }
 
-  complete(clientRect);
+  finishRect(clientRect);
+});
+
+confirmButton?.addEventListener('click', () => {
+  if (confirmedRect) finishRect(confirmedRect);
 });
 
 window.addEventListener('keydown', (event) => {

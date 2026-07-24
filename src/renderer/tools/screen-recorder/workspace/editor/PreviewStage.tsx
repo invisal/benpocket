@@ -1,6 +1,5 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Play } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import { useBackgroundStore } from '../../features/background/store/background-store';
 import { backgroundLayerStyle } from '../../features/background/lib/background-css';
@@ -82,7 +81,6 @@ interface PreviewStageProps {
 export function PreviewStage({
   videoRef,
   previewUrl,
-  isPlaying,
   videoError,
   currentTimeMs,
   cropToolActive,
@@ -634,15 +632,6 @@ export function PreviewStage({
               <p className="text-sm font-medium text-red-400">Couldn&apos;t play this recording</p>
               <p className="max-w-xs text-xs text-white/50">{videoError}</p>
             </div>
-          )}
-
-          {!isPlaying && !videoError && !cropToolActive && (
-            <button
-              onClick={() => videoRef.current?.play()}
-              className="absolute flex h-16 w-16 items-center justify-center rounded-full bg-surface/70 text-foreground shadow-lg backdrop-blur-sm transition-colors hover:bg-surface-2/80"
-            >
-              <Play size={26} fill="currentColor" />
-            </button>
           )}
 
           {!cropToolActive && (

@@ -1,10 +1,9 @@
 import type { ComponentType, JSX } from 'react';
-import { FolderOpen, Settings as SettingsIcon, Sliders } from 'lucide-react';
+import { FolderOpen, Settings as SettingsIcon } from 'lucide-react';
 import { useAppStore, type ScreenRecorderRoute } from './app/app-store';
 import { cn } from './lib/utils';
 import { EditorPage } from './workspace/editor/EditorPage';
 import { LibraryPage } from './workspace/library/LibraryPage';
-import { PresetsPage } from './workspace/presets/PresetsPage';
 import { SettingsPage } from './workspace/settings/SettingsPage';
 import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 import { CutTimeline } from './features/timeline/components/CutTimeline';
@@ -19,7 +18,6 @@ const NAV_ITEMS: {
   icon: ComponentType<{ size?: number }>;
 }[] = [
   { route: 'library', label: 'Library', icon: FolderOpen },
-  { route: 'presets', label: 'Presets', icon: Sliders },
   { route: 'settings', label: 'Settings', icon: SettingsIcon }
 ];
 
@@ -87,7 +85,6 @@ export function ScreenRecorderApp(): JSX.Element {
             <div className="flex min-h-0 flex-1 overflow-auto">
               {route === 'editor' && <EditorPage />}
               {route === 'library' && <LibraryPage />}
-              {route === 'presets' && <PresetsPage />}
               {route === 'settings' && <SettingsPage />}
             </div>
           </div>

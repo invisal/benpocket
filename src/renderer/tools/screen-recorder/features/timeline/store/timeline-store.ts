@@ -8,7 +8,9 @@ import type {
 import type { ExportSegment } from '@screen-recorder/types/export';
 import type { EditorTool } from '../../../workspace/editor/editorTools';
 import { withHistory } from '../../history/lib/with-history';
-import { getSegmentOutputDurationMs } from '../lib/segment-duration';
+import { beginGesture, endGesture } from '../../history/store/history-store';
+import { useZoomStore } from '../../zoom/store/zoom-store';
+import { getSegmentOutputDurationMs, segmentsOverlapRange } from '../lib/segment-duration';
 
 export const PRIMARY_VIDEO_TRACK_ID = 'video-1';
 const MIN_SEGMENT_MS = 200;
@@ -149,6 +151,17 @@ function replaceTrack(tracks: TimelineTrack[], updated: TimelineTrack): Timeline
   return tracks.map((t) => (t.id === updated.id ? updated : t));
 }
 
+// Must run before the caller's own `set()`, not after -- otherwise the
+// gesture's recorded "before" snapshot is taken mid-cut instead of pre-cut.
+function pruneOrphanedZoomKeyframes(keptSegments: TimelineSegment[]): void {
+  const { keyframes, removeKeyframe } = useZoomStore.getState();
+  for (const kf of keyframes) {
+    if (!segmentsOverlapRange(keptSegments, kf.atMs, kf.atMs + kf.durationMs)) {
+      removeKeyframe(kf.id);
+    }
+  }
+}
+
 export const useTimelineStore = create<TimelineStoreState>(
   withHistory(
     'timeline',
@@ -258,12 +271,11 @@ export const useTimelineStore = create<TimelineStoreState>(
       deleteSegment: (segmentId) => {
         const track = primaryTrack(get().tracks);
         if (track.segments.length <= 1) return;
-        set({
-          tracks: replaceTrack(get().tracks, {
-            ...track,
-            segments: track.segments.filter((s) => s.id !== segmentId)
-          })
-        });
+        const segments = track.segments.filter((s) => s.id !== segmentId);
+        beginGesture();
+        pruneOrphanedZoomKeyframes(segments);
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+        endGesture();
       },
 
       reorderSegments: (fromIndex, toIndex) => {

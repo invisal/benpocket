@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useAppStore } from '../../../app/app-store';
+import { useRecentRecordingsStore } from '../../../app/recent-recordings-store';
+import { formatRecordingName } from '../../../lib/format';
 import { useRecordingStore } from '../store/recording-store';
 import { startCapture, fileExtensionForBlob, type CaptureHandle } from '../engine/capture-engine';
 import { startCursorCapture, type CursorCaptureHandle } from '../../cursor/engine/cursor-capture';
@@ -208,6 +210,14 @@ export function useRecordingController(): RecordingController {
       webcamPreviewUrl,
       webcamFilePath,
       webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0
+    });
+    useRecentRecordingsStore.getState().addRecording({
+      id: String(timestamp),
+      name: formatRecordingName(timestamp),
+      filePath,
+      webcamFilePath,
+      sizeBytes: blob.size,
+      createdAt: timestamp
     });
     setRoute('editor');
     // eslint-disable-next-line react-hooks/exhaustive-deps

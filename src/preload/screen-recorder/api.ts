@@ -41,6 +41,9 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.SaveRecordingFile, fileName, data),
     deleteFile: (filePath: string): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.DeleteRecordingFile, filePath),
+    /** Opens a recording file in the OS's default player -- for Sidebar's "Recent" entries that aren't the live in-session `lastRecording`. */
+    openFile: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.OpenRecordingFile, filePath),
     /** Fresh on-screen bounds for a window source (by its desktopCapturer id) right now, or null if it can't be resolved (source isn't a window, window closed, unsupported platform). */
     refreshWindowBounds: (sourceId: string): Promise<CaptureSource['displayBounds'] | null> =>
       ipcRenderer.invoke(IpcChannels.RefreshWindowBounds, sourceId)

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { CursorPathPoint } from '@screen-recorder/types/project';
 
-export type ScreenRecorderRoute = 'editor' | 'library' | 'presets' | 'settings';
+export type ScreenRecorderRoute = 'editor' | 'library' | 'settings';
 
 interface LastRecording {
   previewUrl: string;

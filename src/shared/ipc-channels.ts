@@ -13,6 +13,7 @@ export const IpcChannels = {
   RecordingStateChanged: 'recording:state-changed',
   SaveRecordingFile: 'recording:save-file',
   DeleteRecordingFile: 'recording:delete-file',
+  OpenRecordingFile: 'recording:open-file',
   StartCursorTracking: 'cursor:start-tracking',
   StopCursorTracking: 'cursor:stop-tracking',
   CursorPositionSample: 'cursor:position-sample',

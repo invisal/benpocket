@@ -194,6 +194,10 @@ export function PreviewStage({
   // start of -- lets the pre-buffer step below reseek it only when the
   // upcoming segment actually changes, not every frame.
   const standbySegmentIdRef = useRef<string | null>(null);
+  // Set while waiting on a standby that wasn't ready yet when playback hit a
+  // cut boundary -- see the tick loop's boundary-crossing branch below.
+  const pendingSwapTargetIdRef = useRef<string | null>(null);
+  const pendingSwapSinceRef = useRef(0);
 
   // EditorPage keys the whole `<PreviewStage>` on `previewUrl`, so a
   // different recording loading remounts this component fresh -- all the
@@ -264,6 +268,49 @@ export function PreviewStage({
               standbySegmentIdRef.current = null;
             }
           }
+        } else if (pendingSwapTargetIdRef.current !== null) {
+          // Already waiting on a standby that wasn't ready when we first hit
+          // this boundary (see the fallback below) -- `active` is frozen on
+          // its last good frame rather than paused-via-`!active.paused`, so
+          // this has to be its own branch: the boundary-detection branch
+          // below requires `!active.paused`, which we just made false.
+          const nextSegment = segs.find((s) => s.id === pendingSwapTargetIdRef.current);
+          if (!nextSegment) {
+            // Target got cut away itself while we were waiting -- resume so
+            // the boundary-detection branch below can re-derive a fresh
+            // target next tick instead of staying stuck paused forever.
+            pendingSwapTargetIdRef.current = null;
+            void active.play();
+          } else {
+            const standby = getStandbyVideo();
+            const standbyReady =
+              standby &&
+              standbySegmentIdRef.current === nextSegment.id &&
+              !standby.seeking &&
+              standby.readyState >= standby.HAVE_CURRENT_DATA;
+            // Cap the wait -- if the standby still isn't ready after a real
+            // decode budget (mid-GOP seeks are typically well under this),
+            // fall back to a direct seek rather than freezing indefinitely.
+            const timedOut = performance.now() - pendingSwapSinceRef.current > 400;
+            if (standbyReady && standby) {
+              active.pause();
+              standby.muted = false;
+              void standby.play();
+              activeSlotRef.current = activeSlotRef.current === 'a' ? 'b' : 'a';
+              setActiveSlot(activeSlotRef.current);
+              active = standby;
+              activeSegmentIdRef.current = nextSegment.id;
+              standbySegmentIdRef.current = null;
+              pendingSwapTargetIdRef.current = null;
+            } else if (timedOut) {
+              active.currentTime = nextSegment.range.startMs / 1000;
+              void active.play();
+              activeSegmentIdRef.current = nextSegment.id;
+              standbySegmentIdRef.current = null;
+              pendingSwapTargetIdRef.current = null;
+            }
+            sourceMs = nextSegment.range.startMs;
+          }
         } else if (!active.paused && !active.seeking && segs.length > 0) {
           // Landed outside every kept segment's range while still playing.
           // Only treat this as "the clip that was playing just ended" (and
@@ -300,16 +347,26 @@ export function PreviewStage({
               activeSlotRef.current = activeSlotRef.current === 'a' ? 'b' : 'a';
               setActiveSlot(activeSlotRef.current);
               active = standby;
+              activeSegmentIdRef.current = nextSegment.id;
+              standbySegmentIdRef.current = null;
             } else {
               // Standby wasn't ready in time (a very short clip, or we
-              // haven't had a chance to pre-seek yet) -- fall back to a
-              // direct seek on the active element, same as the single-video
-              // approach this replaces (may still flicker, but only in this
-              // rare case).
-              active.currentTime = nextSegment.range.startMs / 1000;
+              // haven't had a chance to pre-seek yet) -- freeze on the
+              // current frame and wait a few ticks rather than seeking the
+              // *visible* element directly, which is what actually produced
+              // the stutter (a seek forces the browser to decode forward
+              // from the nearest keyframe before anything shows again).
+              pendingSwapTargetIdRef.current = nextSegment.id;
+              pendingSwapSinceRef.current = performance.now();
+              active.pause();
+              if (standby && standbySegmentIdRef.current !== nextSegment.id) {
+                standby.muted = true;
+                standby.pause();
+                standby.currentTime = nextSegment.range.startMs / 1000;
+                standby.playbackRate = nextSegment.speed;
+                standbySegmentIdRef.current = nextSegment.id;
+              }
             }
-            activeSegmentIdRef.current = nextSegment.id;
-            standbySegmentIdRef.current = null;
             sourceMs = nextSegment.range.startMs;
           } else {
             // Nothing left to ripple to -- past the end of the last kept

@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron';
+import { app, ipcMain, shell } from 'electron';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
@@ -133,6 +133,15 @@ export function registerRecordingHandlers(): void {
       }
     }
   );
+
+  // Opens a recording that's no longer backed by an in-memory blob (e.g. a
+  // sidebar "Recent" entry from a previous session) in the OS's default
+  // player, since there's no persisted-project reload path yet -- see
+  // ScreenRecorderSidebar.tsx.
+  ipcMain.handle(IpcChannels.OpenRecordingFile, async (_event, filePath: string): Promise<void> => {
+    const err = await shell.openPath(filePath);
+    if (err) throw new Error(err);
+  });
 
   // TODO: pause/resume handlers once the capture pipeline exists
 }

@@ -1,20 +1,7 @@
 import type { JSX } from 'react';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useAppStore } from '../../app/app-store';
-
-function formatBytes(bytes: number): string {
-  const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
-}
-
-function formatTimeAgo(timestampMs: number): string {
-  const seconds = Math.max(0, Math.round((Date.now() - timestampMs) / 1000));
-  if (seconds < 60) return 'just now';
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  return `${hours}h ago`;
-}
+import { formatBytes, formatTimeAgo } from '../../lib/format';
 
 // TODO: back this with a real recordings index (main/store persists project
 // metadata + thumbnails to disk) instead of only ever showing the single

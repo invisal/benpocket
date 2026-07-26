@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
 import { useRecordingStore } from '../store/recording-store';
+import { Switch } from '../../../components/ui/switch';
+import { SettingsRow } from '../../../components/ui/settings-row';
 
 // Best-effort platform sniff purely for the UI caveat below -- system audio
 // loopback via getUserMedia({ audio: { mandatory: { chromeMediaSource:
@@ -15,31 +17,28 @@ export function AudioSourceToggle(): JSX.Element {
   const setAudio = useRecordingStore((state) => state.setAudio);
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
+    <>
+      <SettingsRow title="Microphone" description="Record audio from your microphone.">
+        <Switch
           checked={audio.microphoneEnabled}
-          onChange={(e) => setAudio({ microphoneEnabled: e.target.checked })}
-          className="h-3.5 w-3.5 accent-accent"
+          onChange={(checked) => setAudio({ microphoneEnabled: checked })}
+          label="Microphone"
         />
-        Microphone
-      </label>
-      <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
+      </SettingsRow>
+      <SettingsRow
+        title="System audio"
+        description={
+          audio.systemAudioEnabled && isLikelyMac
+            ? 'Unreliable on macOS without a virtual audio driver -- this may record silence.'
+            : 'Record audio playing on your computer.'
+        }
+      >
+        <Switch
           checked={audio.systemAudioEnabled}
-          onChange={(e) => setAudio({ systemAudioEnabled: e.target.checked })}
-          className="h-3.5 w-3.5 accent-accent"
+          onChange={(checked) => setAudio({ systemAudioEnabled: checked })}
+          label="System audio"
         />
-        System audio
-      </label>
-      {audio.systemAudioEnabled && isLikelyMac && (
-        <p className="text-[11px] text-muted-foreground">
-          System audio capture is unreliable on macOS without a virtual audio driver -- this may
-          record silence.
-        </p>
-      )}
-    </div>
+      </SettingsRow>
+    </>
   );
 }

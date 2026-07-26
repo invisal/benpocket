@@ -44,6 +44,7 @@ import { Roles } from './roles/Roles';
 import { ClusterRoleBindings } from './clusterrolebindings/ClusterRoleBindings';
 import { RoleBindings } from './rolebindings/RoleBindings';
 import { PortForwarding } from './portforwarding/PortForwarding';
+import { KuberneterSettings } from './settings/KuberneterSettings';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -97,6 +98,11 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     isLoading,
     errorMsg
   } = useWorkspaceResources(resource);
+
+  // Settings page works without a cluster connection
+  if (resource === 'settings') {
+    return <KuberneterSettings />;
+  }
 
   // If there's no connected cluster
   if (!kuberneterSelectedCluster) {

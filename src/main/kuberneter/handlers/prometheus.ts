@@ -3,16 +3,55 @@ import * as net from 'net';
 import { spawn } from 'child_process';
 import type { ChildProcess } from 'child_process';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 interface DiscoveredPromService {
   namespace: string;
   name: string;
   port: number;
 }
 
-// In-memory cache for discovered Prometheus endpoint per context
+export interface PrometheusQueryConfig {
+  kubeconfigPath?: string;
+  contextName?: string;
+  provider?: string;
+  filterEmptyContainers?: boolean;
+  useHttps?: boolean;
+  pathPrefix?: string;
+}
+
+// ─── Provider lookup table ────────────────────────────────────────────────────
+
+const PROVIDER_PRESETS: Record<string, DiscoveredPromService> = {
+  lens: { namespace: 'lens-metrics', name: 'prometheus', port: 80 },
+  'prometheus-operator': { namespace: 'monitoring', name: 'prometheus-k8s', port: 9090 },
+  helm: { namespace: 'monitoring', name: 'prometheus-server', port: 80 },
+  'helm-14': {
+    namespace: 'monitoring',
+    name: 'prometheus-stack-kube-prom-prometheus',
+    port: 9090
+  },
+  stacklight: { namespace: 'stacklight', name: 'prometheus', port: 9090 }
+};
+
+// Scan order for auto-detect
+const AUTO_DETECT_PRIORITY: DiscoveredPromService[] = [
+  PROVIDER_PRESETS['lens'],
+  PROVIDER_PRESETS['prometheus-operator'],
+  PROVIDER_PRESETS['helm-14'],
+  PROVIDER_PRESETS['helm'],
+  PROVIDER_PRESETS['stacklight'],
+  { namespace: 'prometheus', name: 'prometheus', port: 9090 },
+  { namespace: 'kube-system', name: 'prometheus', port: 9090 }
+];
+
+// ─── Cache ────────────────────────────────────────────────────────────────────
+
+/** Auto-detected Prometheus endpoint per cluster context */
 const discoveredPromCache = new Map<string, DiscoveredPromService>();
 
-/** Find a free TCP port on localhost */
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = net.createServer();
@@ -28,7 +67,6 @@ function getFreePort(): Promise<number> {
   });
 }
 
-/** Wait for kubectl port-forward to print "Forwarding from" — signals it is ready */
 function waitForPortForward(child: ChildProcess, timeoutMs = 8000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -44,7 +82,6 @@ function waitForPortForward(child: ChildProcess, timeoutMs = 8000): Promise<void
     };
 
     child.stdout?.on('data', onData);
-
     child.on('exit', (code) => {
       clearTimeout(timer);
       reject(new Error(`port-forward exited early with code ${code}`));
@@ -52,32 +89,40 @@ function waitForPortForward(child: ChildProcess, timeoutMs = 8000): Promise<void
   });
 }
 
-/** Lens-style Auto-Discovery for Prometheus service across all cluster namespaces */
-async function discoverPrometheusService(
-  kubeconfigPath?: string,
-  contextName?: string
+function buildKubectlArgs(kubeconfigPath?: string, contextName?: string): string[] {
+  const args: string[] = [];
+  if (kubeconfigPath) args.push('--kubeconfig', kubeconfigPath);
+  if (contextName) args.push('--context', contextName);
+  return args;
+}
+
+/** Resolve which Prometheus service to use based on provider setting */
+async function resolvePrometheusService(
+  kubeconfigPath: string | undefined,
+  contextName: string | undefined,
+  provider = 'auto'
 ): Promise<DiscoveredPromService> {
-  const cacheKey = `${kubeconfigPath || 'default'}:${contextName || 'default'}`;
-  if (discoveredPromCache.has(cacheKey)) {
-    return discoveredPromCache.get(cacheKey)!;
+  // Named provider — go directly without scanning
+  if (provider !== 'auto' && PROVIDER_PRESETS[provider]) {
+    return PROVIDER_PRESETS[provider];
   }
 
-  const defaults: DiscoveredPromService[] = [
-    { namespace: 'lens-metrics', name: 'prometheus', port: 80 },
-    { namespace: 'monitoring', name: 'prometheus-k8s', port: 9090 },
-    { namespace: 'monitoring', name: 'prometheus-stack-kube-prom-prometheus', port: 9090 },
-    { namespace: 'monitoring', name: 'prometheus-server', port: 80 },
-    { namespace: 'prometheus', name: 'prometheus', port: 9090 },
-    { namespace: 'kube-system', name: 'prometheus', port: 9090 }
-  ];
+  // Auto-detect: check cache first
+  const cacheKey = `${kubeconfigPath ?? 'default'}:${contextName ?? 'default'}`;
+  const cached = discoveredPromCache.get(cacheKey);
+  if (cached) return cached;
 
   return new Promise((resolve) => {
-    const args: string[] = [];
-    if (kubeconfigPath) args.push('--kubeconfig', kubeconfigPath);
-    if (contextName) args.push('--context', contextName);
-    args.push('get', 'svc', '-A', '-o', 'json');
-
+    const args = [
+      ...buildKubectlArgs(kubeconfigPath, contextName),
+      'get',
+      'svc',
+      '-A',
+      '-o',
+      'json'
+    ];
     const proc = spawn('kubectl', args, { shell: true });
+
     let stdout = '';
     proc.stdout?.on('data', (chunk) => {
       stdout += chunk.toString();
@@ -92,25 +137,25 @@ async function discoverPrometheusService(
             spec?: { ports?: Array<{ port?: number }> };
           }>;
 
-          // 1. Check priority matches
-          for (const def of defaults) {
+          // 1. Priority list match
+          for (const def of AUTO_DETECT_PRIORITY) {
             const match = items.find(
               (item) =>
                 item.metadata?.namespace === def.namespace && item.metadata?.name === def.name
             );
             if (match) {
-              const targetPort = match.spec?.ports?.[0]?.port || def.port;
+              const targetPort = match.spec?.ports?.[0]?.port ?? def.port;
               const result = { namespace: def.namespace, name: def.name, port: targetPort };
               discoveredPromCache.set(cacheKey, result);
               return resolve(result);
             }
           }
 
-          // 2. Search for any service matching prometheus in name or labels
+          // 2. Fuzzy match on name / labels
           for (const item of items) {
-            const name = item.metadata?.name || '';
-            const ns = item.metadata?.namespace || 'default';
-            const labels = item.metadata?.labels || {};
+            const name = item.metadata?.name ?? '';
+            const ns = item.metadata?.namespace ?? 'default';
+            const labels = item.metadata?.labels ?? {};
             const isProm =
               name.includes('prometheus') ||
               labels['app'] === 'prometheus' ||
@@ -118,189 +163,167 @@ async function discoverPrometheusService(
               labels['app.kubernetes.io/instance']?.includes('prometheus');
 
             if (isProm) {
-              const targetPort = item.spec?.ports?.[0]?.port || 9090;
-              const result = { namespace: ns, name: name, port: targetPort };
+              const targetPort = item.spec?.ports?.[0]?.port ?? 9090;
+              const result = { namespace: ns, name, port: targetPort };
               discoveredPromCache.set(cacheKey, result);
               return resolve(result);
             }
           }
         } catch {
-          // Ignore JSON parse error
+          // JSON parse error — fall through to default
         }
       }
 
-      // Default fallback if scan doesn't find any service
-      const fallback = defaults[2];
-      resolve(fallback);
+      // Last resort fallback
+      resolve(AUTO_DETECT_PRIORITY[0]);
     });
 
-    proc.on('error', () => {
-      resolve(defaults[2]);
-    });
+    proc.on('error', () => resolve(AUTO_DETECT_PRIORITY[0]));
   });
 }
 
-/** Query Prometheus HTTP API with a PromQL instant query. */
+/** Open a kubectl port-forward and return { localPort, proc } */
+async function openPortForward(
+  svc: DiscoveredPromService,
+  kubeconfigPath?: string,
+  contextName?: string
+): Promise<{ localPort: number; proc: ChildProcess }> {
+  const localPort = await getFreePort();
+  const args = [
+    ...buildKubectlArgs(kubeconfigPath, contextName),
+    'port-forward',
+    `svc/${svc.name}`,
+    `${localPort}:${svc.port}`,
+    '-n',
+    svc.namespace
+  ];
+  const proc = spawn('kubectl', args, { shell: true });
+  await waitForPortForward(proc);
+  return { localPort, proc };
+}
+
+/** Build base URL for Prometheus HTTP API */
+function buildPromBaseUrl(localPort: number, useHttps: boolean, pathPrefix: string): string {
+  const scheme = useHttps ? 'https' : 'http';
+  const prefix = pathPrefix.startsWith('/') ? pathPrefix : pathPrefix ? `/${pathPrefix}` : '';
+  return `${scheme}://127.0.0.1:${localPort}${prefix}`;
+}
+
+/** Container filter fragment for PromQL */
+function containerFilter(filterEmpty: boolean): string {
+  return filterEmpty ? ',container!="",container!="POD"' : '';
+}
+
+/** Prometheus instant query */
 async function queryPromQL(
-  localPort: number,
+  baseUrl: string,
   promql: string
 ): Promise<{ metric: Record<string, string>; value: [number, string] }[]> {
-  const encoded = encodeURIComponent(promql);
-  const url = `http://127.0.0.1:${localPort}/api/v1/query?query=${encoded}`;
+  const url = `${baseUrl}/api/v1/query?query=${encodeURIComponent(promql)}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  if (!res.ok) {
-    throw new Error(`Prometheus HTTP ${res.status}: ${res.statusText}`);
-  }
+  if (!res.ok) throw new Error(`Prometheus HTTP ${res.status}: ${res.statusText}`);
   const json = (await res.json()) as {
     status: string;
-    data: {
-      resultType: string;
-      result: { metric: Record<string, string>; value: [number, string] }[];
-    };
+    data: { result: { metric: Record<string, string>; value: [number, string] }[] };
   };
-  if (json.status !== 'success') {
-    throw new Error(`Prometheus returned status: ${json.status}`);
-  }
+  if (json.status !== 'success') throw new Error(`Prometheus returned status: ${json.status}`);
   return json.data.result;
 }
 
-/** Query Prometheus HTTP API with a PromQL range query. */
+/** Prometheus range query */
 async function queryPromQLRange(
-  localPort: number,
+  baseUrl: string,
   promql: string,
   startUnix: number,
   endUnix: number,
   stepSeconds: number
 ): Promise<Array<[number, string]>> {
-  const encoded = encodeURIComponent(promql);
-  const url = `http://127.0.0.1:${localPort}/api/v1/query_range?query=${encoded}&start=${startUnix}&end=${endUnix}&step=${stepSeconds}`;
+  const url =
+    `${baseUrl}/api/v1/query_range` +
+    `?query=${encodeURIComponent(promql)}` +
+    `&start=${startUnix}&end=${endUnix}&step=${stepSeconds}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  if (!res.ok) {
-    return [];
-  }
+  if (!res.ok) return [];
   const json = (await res.json()) as {
     status: string;
-    data: {
-      result: Array<{
-        metric: Record<string, string>;
-        values: Array<[number, string]>;
-      }>;
-    };
+    data: { result: Array<{ metric: Record<string, string>; values: Array<[number, string]> }> };
   };
-  if (json.status !== 'success' || !json.data.result || json.data.result.length === 0) {
-    return [];
-  }
+  if (json.status !== 'success' || !json.data.result?.length) return [];
   return json.data.result[0].values;
 }
 
+// ─── IPC Handlers ─────────────────────────────────────────────────────────────
+
 export function registerPrometheusHandler(): void {
-  // 1. Query instantaneous pod metrics
-  ipcMain.handle(
-    'kuberneter:query-prometheus',
-    async (
-      _,
-      kubeconfigPath: string | undefined,
-      contextName: string | undefined,
-      prometheusNamespace?: string,
-      prometheusService?: string,
-      prometheusPort?: number
-    ) => {
-      let portForwardProc: ChildProcess | null = null;
-      try {
-        const resolvedKubeconfig = kubeconfigPath || undefined;
+  // 1. Instantaneous pod metrics (used in pod list table)
+  ipcMain.handle('kuberneter:query-prometheus', async (_, config: PrometheusQueryConfig) => {
+    const {
+      kubeconfigPath,
+      contextName,
+      provider = 'auto',
+      filterEmptyContainers = true,
+      useHttps = false,
+      pathPrefix = ''
+    } = config;
 
-        // Auto-discover Prometheus service if not explicitly provided
-        let targetNs = prometheusNamespace;
-        let targetSvc = prometheusService;
-        let targetPortNum = prometheusPort;
+    let portForwardProc: ChildProcess | null = null;
+    try {
+      const svc = await resolvePrometheusService(kubeconfigPath, contextName, provider);
+      const { localPort, proc } = await openPortForward(svc, kubeconfigPath, contextName);
+      portForwardProc = proc;
 
-        if (!targetNs || !targetSvc || !targetPortNum) {
-          const discovered = await discoverPrometheusService(resolvedKubeconfig, contextName);
-          targetNs = targetNs || discovered.namespace;
-          targetSvc = targetSvc || discovered.name;
-          targetPortNum = targetPortNum || discovered.port;
-        }
+      const baseUrl = buildPromBaseUrl(localPort, useHttps, pathPrefix);
+      const cf = containerFilter(filterEmptyContainers);
+      const cpuQuery = `sum(rate(container_cpu_usage_seconds_total{container!=""${cf}}[5m])) by (pod, namespace)`;
+      const memQuery = `sum(container_memory_working_set_bytes{container!=""${cf}}) by (pod, namespace)`;
 
-        const localPort = await getFreePort();
+      const [cpuResults, memResults] = await Promise.all([
+        queryPromQL(baseUrl, cpuQuery),
+        queryPromQL(baseUrl, memQuery)
+      ]);
 
-        const pfArgs: string[] = [];
-        if (resolvedKubeconfig) pfArgs.push('--kubeconfig', resolvedKubeconfig);
-        if (contextName) pfArgs.push('--context', contextName);
-        pfArgs.push(
-          'port-forward',
-          `svc/${targetSvc}`,
-          `${localPort}:${targetPortNum}`,
-          '-n',
-          targetNs
-        );
-
-        portForwardProc = spawn('kubectl', pfArgs, { shell: true });
-        await waitForPortForward(portForwardProc);
-
-        const cpuQuery =
-          'sum(rate(container_cpu_usage_seconds_total{container!="",container!="POD"}[5m])) by (pod, namespace)';
-        const memQuery =
-          'sum(container_memory_working_set_bytes{container!="",container!="POD"}) by (pod, namespace)';
-
-        const [cpuResults, memResults] = await Promise.all([
-          queryPromQL(localPort, cpuQuery),
-          queryPromQL(localPort, memQuery)
-        ]);
-
-        const cpuMap = new Map<string, string>();
-        for (const r of cpuResults) {
-          const key = `${r.metric.namespace}/${r.metric.pod}`;
-          const cores = parseFloat(r.value[1]);
-          cpuMap.set(key, isNaN(cores) ? '0' : cores.toFixed(4));
-        }
-
-        const memMap = new Map<string, string>();
-        for (const r of memResults) {
-          const key = `${r.metric.namespace}/${r.metric.pod}`;
-          const bytes = parseFloat(r.value[1]);
-          if (!isNaN(bytes)) {
-            const mib = bytes / (1024 * 1024);
-            memMap.set(key, `${mib.toFixed(3)}Mi`);
-          }
-        }
-
-        const keys = new Set([...cpuMap.keys(), ...memMap.keys()]);
-        const items = Array.from(keys).map((key) => {
-          const [ns, ...nameParts] = key.split('/');
-          return {
-            namespace: ns,
-            name: nameParts.join('/'),
-            cpu: cpuMap.get(key) ?? '0',
-            memory: memMap.get(key) ?? '0Mi'
-          };
-        });
-
-        return { items };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message, items: [] };
-      } finally {
-        if (portForwardProc && !portForwardProc.killed) {
-          portForwardProc.kill('SIGTERM');
-        }
+      const cpuMap = new Map<string, string>();
+      for (const r of cpuResults) {
+        const key = `${r.metric.namespace}/${r.metric.pod}`;
+        const cores = parseFloat(r.value[1]);
+        cpuMap.set(key, isNaN(cores) ? '0' : cores.toFixed(4));
       }
-    }
-  );
 
-  // 2. Query range time-series metrics (CPU, Memory, Network, Filesystem) for Pod & Containers
+      const memMap = new Map<string, string>();
+      for (const r of memResults) {
+        const key = `${r.metric.namespace}/${r.metric.pod}`;
+        const bytes = parseFloat(r.value[1]);
+        if (!isNaN(bytes)) memMap.set(key, `${(bytes / (1024 * 1024)).toFixed(3)}Mi`);
+      }
+
+      const keys = new Set([...cpuMap.keys(), ...memMap.keys()]);
+      const items = Array.from(keys).map((key) => {
+        const [ns, ...nameParts] = key.split('/');
+        return {
+          namespace: ns,
+          name: nameParts.join('/'),
+          cpu: cpuMap.get(key) ?? '0',
+          memory: memMap.get(key) ?? '0Mi'
+        };
+      });
+
+      return { items, source: `${svc.namespace} / ${svc.name}:${svc.port}` };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err), items: [] };
+    } finally {
+      if (portForwardProc && !portForwardProc.killed) portForwardProc.kill('SIGTERM');
+    }
+  });
+
+  // 2. Time-series range metrics for pod detail charts
   ipcMain.handle(
     'kuberneter:query-pod-metrics-range',
     async (
       _,
-      params: {
-        kubeconfigPath?: string;
-        contextName?: string;
+      params: PrometheusQueryConfig & {
         namespace: string;
         podName: string;
         timeRange?: '1h' | '6h' | '24h';
-        prometheusNamespace?: string;
-        prometheusService?: string;
-        prometheusPort?: number;
       }
     ) => {
       const {
@@ -309,59 +332,40 @@ export function registerPrometheusHandler(): void {
         namespace,
         podName,
         timeRange = '1h',
-        prometheusNamespace,
-        prometheusService,
-        prometheusPort
+        provider = 'auto',
+        filterEmptyContainers = true,
+        useHttps = false,
+        pathPrefix = ''
       } = params;
 
       let portForwardProc: ChildProcess | null = null;
       try {
-        // Auto-discover Prometheus service if not explicitly provided
-        let targetNs = prometheusNamespace;
-        let targetSvc = prometheusService;
-        let targetPortNum = prometheusPort;
+        const svc = await resolvePrometheusService(kubeconfigPath, contextName, provider);
+        const { localPort, proc } = await openPortForward(svc, kubeconfigPath, contextName);
+        portForwardProc = proc;
 
-        if (!targetNs || !targetSvc || !targetPortNum) {
-          const discovered = await discoverPrometheusService(kubeconfigPath, contextName);
-          targetNs = targetNs || discovered.namespace;
-          targetSvc = targetSvc || discovered.name;
-          targetPortNum = targetPortNum || discovered.port;
-        }
-
-        const localPort = await getFreePort();
-        const pfArgs: string[] = [];
-        if (kubeconfigPath) pfArgs.push('--kubeconfig', kubeconfigPath);
-        if (contextName) pfArgs.push('--context', contextName);
-        pfArgs.push(
-          'port-forward',
-          `svc/${targetSvc}`,
-          `${localPort}:${targetPortNum}`,
-          '-n',
-          targetNs
-        );
-
-        portForwardProc = spawn('kubectl', pfArgs, { shell: true });
-        await waitForPortForward(portForwardProc);
+        const baseUrl = buildPromBaseUrl(localPort, useHttps, pathPrefix);
 
         const endUnix = Math.floor(Date.now() / 1000);
         const spanSec = timeRange === '24h' ? 86400 : timeRange === '6h' ? 21600 : 3600;
         const startUnix = endUnix - spanSec;
         const stepSec = Math.max(15, Math.floor(spanSec / 10));
 
-        // PromQL Queries
-        const cpuUsageQuery = `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}",pod="${podName}",container!="",container!="POD"}[5m]))`;
-        const cpuReqQuery = `sum(kube_pod_container_resource_requests{namespace="${namespace}",pod="${podName}",resource="cpu"})`;
-        const cpuLimQuery = `sum(kube_pod_container_resource_limits{namespace="${namespace}",pod="${podName}",resource="cpu"})`;
+        const cf = containerFilter(filterEmptyContainers);
+        const sel = `namespace="${namespace}",pod="${podName}"`;
 
-        const memUsageQuery = `sum(container_memory_working_set_bytes{namespace="${namespace}",pod="${podName}",container!="",container!="POD"})`;
-        const memReqQuery = `sum(kube_pod_container_resource_requests{namespace="${namespace}",pod="${podName}",resource="memory"})`;
-        const memLimQuery = `sum(kube_pod_container_resource_limits{namespace="${namespace}",pod="${podName}",resource="memory"})`;
-
-        const netRxQuery = `sum(rate(container_network_receive_bytes_total{namespace="${namespace}",pod="${podName}"}[5m]))`;
-        const netTxQuery = `sum(rate(container_network_transmit_bytes_total{namespace="${namespace}",pod="${podName}"}[5m]))`;
-
-        const fsUsageQuery = `sum(container_fs_usage_bytes{namespace="${namespace}",pod="${podName}",container!="",container!="POD"})`;
-        const fsLimitQuery = `sum(container_fs_limit_hash{namespace="${namespace}",pod="${podName}"} or container_fs_limit_bytes{namespace="${namespace}",pod="${podName}"})`;
+        const queries = {
+          cpuUsage: `sum(rate(container_cpu_usage_seconds_total{${sel},container!=""${cf}}[5m]))`,
+          cpuReq: `sum(kube_pod_container_resource_requests{${sel},resource="cpu"})`,
+          cpuLim: `sum(kube_pod_container_resource_limits{${sel},resource="cpu"})`,
+          memUsage: `sum(container_memory_working_set_bytes{${sel},container!=""${cf}})`,
+          memReq: `sum(kube_pod_container_resource_requests{${sel},resource="memory"})`,
+          memLim: `sum(kube_pod_container_resource_limits{${sel},resource="memory"})`,
+          netRx: `sum(rate(container_network_receive_bytes_total{${sel}}[5m]))`,
+          netTx: `sum(rate(container_network_transmit_bytes_total{${sel}}[5m]))`,
+          fsUsage: `sum(container_fs_usage_bytes{${sel},container!=""${cf}})`,
+          fsLimit: `sum(container_fs_limit_hash{${sel}} or container_fs_limit_bytes{${sel}})`
+        };
 
         const [
           rawCpuUsage,
@@ -374,18 +378,11 @@ export function registerPrometheusHandler(): void {
           rawNetTx,
           rawFsUsage,
           rawFsLimit
-        ] = await Promise.all([
-          queryPromQLRange(localPort, cpuUsageQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, cpuReqQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, cpuLimQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, memUsageQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, memReqQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, memLimQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, netRxQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, netTxQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, fsUsageQuery, startUnix, endUnix, stepSec),
-          queryPromQLRange(localPort, fsLimitQuery, startUnix, endUnix, stepSec)
-        ]);
+        ] = await Promise.all(
+          Object.values(queries).map((q) =>
+            queryPromQLRange(baseUrl, q, startUnix, endUnix, stepSec)
+          )
+        );
 
         if (!rawCpuUsage.length && !rawMemUsage.length) {
           return {
@@ -400,34 +397,30 @@ export function registerPrometheusHandler(): void {
 
         const timeLabels = rawCpuUsage.map(([ts]) => {
           const d = new Date(ts * 1000);
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          const hours = String(d.getHours()).padStart(2, '0');
-          const mins = String(d.getMinutes()).padStart(2, '0');
-          return timeRange === '24h' ? `${month}/${day} ${hours}:${mins}` : `${hours}:${mins}`;
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          const hh = String(d.getHours()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          return timeRange === '24h' ? `${mm}/${dd} ${hh}:${min}` : `${hh}:${min}`;
         });
 
-        const cpuUsage = rawCpuUsage.map(([, val]) => parseFloat(val) || 0);
-        const cpuReq = rawCpuReq.map(([, val]) => parseFloat(val) || 0);
-        const cpuLim = rawCpuLim.map(([, val]) => parseFloat(val) || 0);
-
-        const memUsage = rawMemUsage.map(([, val]) => (parseFloat(val) || 0) / (1024 * 1024));
-        const memReq = rawMemReq.map(([, val]) => (parseFloat(val) || 0) / (1024 * 1024));
-        const memLim = rawMemLim.map(([, val]) => (parseFloat(val) || 0) / (1024 * 1024));
-
-        const netRx = rawNetRx.map(([, val]) => (parseFloat(val) || 0) / 1024);
-        const netTx = rawNetTx.map(([, val]) => (parseFloat(val) || 0) / 1024);
-
-        const fsUsage = rawFsUsage.map(([, val]) => (parseFloat(val) || 0) / (1024 * 1024));
-        const fsLimit = rawFsLimit.map(([, val]) => (parseFloat(val) || 0) / (1024 * 1024));
+        const toNum = (raw: Array<[number, string]>) => raw.map(([, v]) => parseFloat(v) || 0);
+        const toMiB = (raw: Array<[number, string]>) =>
+          raw.map(([, v]) => (parseFloat(v) || 0) / (1024 * 1024));
+        const toKBs = (raw: Array<[number, string]>) =>
+          raw.map(([, v]) => (parseFloat(v) || 0) / 1024);
 
         return {
-          source: `${targetNs} / ${targetSvc}:${targetPortNum}`,
+          source: `${svc.namespace} / ${svc.name}:${svc.port}`,
           timeLabels,
-          cpu: { usage: cpuUsage, requests: cpuReq, limits: cpuLim },
-          memory: { usage: memUsage, requests: memReq, limits: memLim },
-          network: { rx: netRx, tx: netTx },
-          filesystem: { usage: fsUsage, limit: fsLimit }
+          cpu: { usage: toNum(rawCpuUsage), requests: toNum(rawCpuReq), limits: toNum(rawCpuLim) },
+          memory: {
+            usage: toMiB(rawMemUsage),
+            requests: toMiB(rawMemReq),
+            limits: toMiB(rawMemLim)
+          },
+          network: { rx: toKBs(rawNetRx), tx: toKBs(rawNetTx) },
+          filesystem: { usage: toMiB(rawFsUsage), limit: toMiB(rawFsLimit) }
         };
       } catch (err) {
         return {
@@ -439,10 +432,54 @@ export function registerPrometheusHandler(): void {
           filesystem: { usage: [], limit: [] }
         };
       } finally {
-        if (portForwardProc && !portForwardProc.killed) {
-          portForwardProc.kill('SIGTERM');
-        }
+        if (portForwardProc && !portForwardProc.killed) portForwardProc.kill('SIGTERM');
       }
+    }
+  );
+
+  // 3. Test Prometheus connectivity
+  ipcMain.handle('kuberneter:test-prometheus', async (_, config: PrometheusQueryConfig) => {
+    const {
+      kubeconfigPath,
+      contextName,
+      provider = 'auto',
+      useHttps = false,
+      pathPrefix = ''
+    } = config;
+
+    let portForwardProc: ChildProcess | null = null;
+    const startMs = Date.now();
+    try {
+      const svc = await resolvePrometheusService(kubeconfigPath, contextName, provider);
+      const { localPort, proc } = await openPortForward(svc, kubeconfigPath, contextName);
+      portForwardProc = proc;
+
+      const baseUrl = buildPromBaseUrl(localPort, useHttps, pathPrefix);
+      await queryPromQL(baseUrl, '1+1');
+
+      return {
+        ok: true,
+        latencyMs: Date.now() - startMs,
+        source: `${svc.namespace} / ${svc.name}:${svc.port}`
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        latencyMs: Date.now() - startMs,
+        error: err instanceof Error ? err.message : String(err)
+      };
+    } finally {
+      if (portForwardProc && !portForwardProc.killed) portForwardProc.kill('SIGTERM');
+    }
+  });
+
+  // 4. Clear auto-detect cache for a cluster
+  ipcMain.handle(
+    'kuberneter:clear-prometheus-cache',
+    (_, kubeconfigPath?: string, contextName?: string) => {
+      const cacheKey = `${kubeconfigPath ?? 'default'}:${contextName ?? 'default'}`;
+      discoveredPromCache.delete(cacheKey);
+      return { ok: true };
     }
   );
 }

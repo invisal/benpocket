@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { MetricCategory, MetricsSource, PrometheusProvider } from '../lib/metricsProviders';
 
 export interface RecentConnection {
   contextName: string;
@@ -15,6 +16,24 @@ export interface DrawerState {
   payload: unknown;
 }
 
+export interface MetricsConfig {
+  source: MetricsSource;
+  provider: PrometheusProvider;
+  filterEmptyContainers: boolean;
+  useHttps: boolean;
+  pathPrefix: string;
+  hiddenMetrics: MetricCategory[];
+}
+
+export const DEFAULT_METRICS_CONFIG: MetricsConfig = {
+  source: 'auto',
+  provider: 'auto',
+  filterEmptyContainers: true,
+  useHttps: false,
+  pathPrefix: '',
+  hiddenMetrics: []
+};
+
 interface KuberneterState {
   kuberneterInstanceCluster: Record<string, string>;
   kuberneterInstanceServer: Record<string, string>;
@@ -22,6 +41,8 @@ interface KuberneterState {
   kuberneterInstanceResource: Record<string, string>;
   kuberneterInstanceConfigPath: Record<string, string>;
   kuberneterInstanceRefreshInterval: Record<string, string>;
+  /** Per-cluster metrics configuration. Key is contextName. */
+  kuberneterMetricsConfig: Record<string, MetricsConfig>;
 
   kuberneterKubeconfigs: string[];
   kuberneterRecentConnections: RecentConnection[];
@@ -33,6 +54,7 @@ interface KuberneterState {
   setKuberneterInstanceResource: (instanceId: string, resource: string) => void;
   setKuberneterInstanceConfigPath: (instanceId: string, path: string) => void;
   setKuberneterInstanceRefreshInterval: (instanceId: string, interval: string) => void;
+  setKuberneterMetricsConfig: (contextName: string, config: Partial<MetricsConfig>) => void;
 
   setKuberneterTabDrawerState: (tabId: string, state: Partial<DrawerState>) => void;
 
@@ -55,6 +77,7 @@ export const useKuberneterStore = create<KuberneterState>()(
       kuberneterInstanceResource: {},
       kuberneterInstanceConfigPath: {},
       kuberneterInstanceRefreshInterval: {},
+      kuberneterMetricsConfig: {},
       kuberneterKubeconfigs: [],
       kuberneterTabDrawers: {},
 
@@ -111,6 +134,18 @@ export const useKuberneterStore = create<KuberneterState>()(
           kuberneterInstanceRefreshInterval: {
             ...state.kuberneterInstanceRefreshInterval,
             [instanceId]: interval
+          }
+        })),
+
+      setKuberneterMetricsConfig: (contextName, patch) =>
+        set((state) => ({
+          kuberneterMetricsConfig: {
+            ...state.kuberneterMetricsConfig,
+            [contextName]: {
+              ...DEFAULT_METRICS_CONFIG,
+              ...state.kuberneterMetricsConfig[contextName],
+              ...patch
+            }
           }
         })),
 
@@ -179,6 +214,7 @@ export const useKuberneterStore = create<KuberneterState>()(
         kuberneterInstanceResource: state.kuberneterInstanceResource,
         kuberneterInstanceConfigPath: state.kuberneterInstanceConfigPath,
         kuberneterInstanceRefreshInterval: state.kuberneterInstanceRefreshInterval,
+        kuberneterMetricsConfig: state.kuberneterMetricsConfig,
         kuberneterRecentConnections: state.kuberneterRecentConnections
       })
     }

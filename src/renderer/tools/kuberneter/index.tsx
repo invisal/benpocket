@@ -4,11 +4,29 @@ import { Workspace } from '@renderer/components/layout/Workspace';
 import { useLayoutStore } from '../../src/store/layout.store';
 import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useKuberneterStore } from './store/kuberneter.store';
 import { KuberneterHomeView } from './components/workspace/kubernetes-home';
 
-export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: string }>) {
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false
+    }
+  }
+});
+
+export function KuberneterMain(props: ToolComponentProps<{ instanceId: string }>) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <KuberneterMainContent {...props} />
+    </QueryClientProvider>
+  );
+}
+
+function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: string }>) {
   const { instanceId } = payload;
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [isSidebarOpen] = useState(true);
@@ -65,7 +83,7 @@ export function KuberneterMain({ payload }: ToolComponentProps<{ instanceId: str
           {/* Resize Handle */}
           <div
             onMouseDown={handleMouseDown}
-            className="absolute top-0 right-0 w-[3px] h-full cursor-col-resize hover:bg-accent/30 active:bg-accent transition-colors z-40"
+            className="absolute top-0 right-0 w-0.75 h-full cursor-col-resize hover:bg-accent/30 active:bg-accent transition-colors z-40"
           />
         </div>
       )}

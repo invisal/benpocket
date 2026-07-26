@@ -16,6 +16,15 @@ export interface GetResourcesResponse {
   error?: string;
 }
 
+export interface PrometheusQueryConfig {
+  kubeconfigPath?: string;
+  contextName?: string;
+  provider?: string;
+  filterEmptyContainers?: boolean;
+  useHttps?: boolean;
+  pathPrefix?: string;
+}
+
 export interface KuberneterApi {
   listContexts: (kubeconfigPath?: string) => Promise<ListContextsResponse>;
   selectKubeconfigFile: () => Promise<string | null>;
@@ -41,16 +50,18 @@ export interface KuberneterApi {
     items?: { namespace: string; name: string; cpu: string; memory: string }[];
     error?: string;
   }>;
-  queryPrometheus: (
-    kubeconfigPath: string | undefined,
-    contextName: string | undefined,
-    prometheusNamespace?: string,
-    prometheusService?: string,
-    prometheusPort?: number
-  ) => Promise<{
+  queryPrometheus: (config: PrometheusQueryConfig) => Promise<{
     items?: { namespace: string; name: string; cpu: string; memory: string }[];
+    source?: string;
     error?: string;
   }>;
+  testPrometheus: (config: PrometheusQueryConfig) => Promise<{
+    ok: boolean;
+    latencyMs: number;
+    source?: string;
+    error?: string;
+  }>;
+  clearPrometheusCache: (kubeconfigPath?: string, contextName?: string) => Promise<{ ok: boolean }>;
   helmSearchCharts: (kubeconfigPath?: string) => Promise<HelmChartItem[] | { error: string }>;
   helmGetChartVersions: (
     chartName: string,
@@ -92,13 +103,13 @@ export interface KuberneterApi {
     targetPort: number;
   }) => Promise<{ success?: boolean; error?: string }>;
   stopPortForward: (id: string) => Promise<{ success?: boolean; error?: string }>;
-  queryPodMetricsRange: (params: {
-    kubeconfigPath?: string;
-    contextName?: string;
-    namespace: string;
-    podName: string;
-    timeRange?: '1h' | '6h' | '24h';
-  }) => Promise<{
+  queryPodMetricsRange: (
+    params: PrometheusQueryConfig & {
+      namespace: string;
+      podName: string;
+      timeRange?: '1h' | '6h' | '24h';
+    }
+  ) => Promise<{
     source?: string;
     timeLabels: string[];
     cpu: { usage: number[]; requests: number[]; limits: number[] };
@@ -168,21 +179,10 @@ export const kuberneterApi: KuberneterApi = {
     ipcRenderer.invoke('kuberneter:get-top-nodes', kubeconfigPath, contextName),
   getTopPods: (kubeconfigPath, contextName, namespace) =>
     ipcRenderer.invoke('kuberneter:get-top-pods', kubeconfigPath, contextName, namespace),
-  queryPrometheus: (
-    kubeconfigPath,
-    contextName,
-    prometheusNamespace,
-    prometheusService,
-    prometheusPort
-  ) =>
-    ipcRenderer.invoke(
-      'kuberneter:query-prometheus',
-      kubeconfigPath,
-      contextName,
-      prometheusNamespace,
-      prometheusService,
-      prometheusPort
-    ),
+  queryPrometheus: (config) => ipcRenderer.invoke('kuberneter:query-prometheus', config),
+  testPrometheus: (config) => ipcRenderer.invoke('kuberneter:test-prometheus', config),
+  clearPrometheusCache: (kubeconfigPath, contextName) =>
+    ipcRenderer.invoke('kuberneter:clear-prometheus-cache', kubeconfigPath, contextName),
   helmSearchCharts: (kubeconfigPath) =>
     ipcRenderer.invoke('kuberneter:helm-search-charts', kubeconfigPath),
   helmGetChartVersions: (chartName, kubeconfigPath) =>

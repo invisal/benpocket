@@ -266,7 +266,8 @@ export const KuberneterSidebar: React.FC = () => {
         { id: 'clusterrolebindings', label: 'Cluster Role Bindings' },
         { id: 'bindings', label: 'Role Bindings' }
       ]
-    }
+    },
+    { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
   if (!cluster) {

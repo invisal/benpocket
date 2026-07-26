@@ -3,14 +3,24 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import type {
   Environment,
+  ExportEnvironmentPayload,
+  ExportEnvironmentResult,
   ImportEnvironmentResult,
   ResolveEnvironmentImportPayload
 } from '../../../preload/http-client/types';
 import { readEnvironments, writeEnvironments } from './environments';
-import { importPostmanEnvironment, isPostmanEnvironmentFile } from '../httpClientFormat';
+import {
+  exportEnvironmentToPostman,
+  importPostmanEnvironment,
+  isPostmanEnvironmentFile
+} from '../httpClientFormat';
 
 function sameEnvironmentName(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'environment';
 }
 
 /** "login" -> "login (copy)" -> "login (copy 2)" -> ..., skipping whatever name is already taken. */
@@ -26,6 +36,30 @@ function generateCopyName(baseName: string, existingNames: string[]): string {
 }
 
 export function registerEnvironmentTransferHandlers(): void {
+  ipcMain.handle(
+    'environments:exportToFile',
+    async (event, payload: ExportEnvironmentPayload): Promise<ExportEnvironmentResult> => {
+      const environments = await readEnvironments();
+      const environment = environments.find((e) => e.id === payload.environmentId);
+      if (!environment) return { ok: false, error: 'Environment not found.' };
+
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const saveOptions = {
+        title: 'Export Environment',
+        defaultPath: `${sanitizeFilename(environment.name)}.postman_environment.json`,
+        filters: [{ name: 'Postman Environment', extensions: ['json'] }]
+      };
+      const result = win
+        ? await dialog.showSaveDialog(win, saveOptions)
+        : await dialog.showSaveDialog(saveOptions);
+      if (result.canceled || !result.filePath) return { ok: true, canceled: true };
+
+      const postmanFile = exportEnvironmentToPostman(environment);
+      await fs.promises.writeFile(result.filePath, JSON.stringify(postmanFile, null, 2), 'utf-8');
+      return { ok: true, filePath: result.filePath };
+    }
+  );
+
   ipcMain.handle(
     'environments:importFromFile',
     async (event, workspaceId: string): Promise<ImportEnvironmentResult> => {

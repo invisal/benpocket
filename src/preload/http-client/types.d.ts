@@ -207,6 +207,17 @@ export interface Environment {
   variables: KeyValuePair[];
 }
 
+export interface ExportEnvironmentPayload {
+  environmentId: string;
+}
+
+export interface ExportEnvironmentResult {
+  ok: boolean;
+  canceled?: boolean;
+  filePath?: string;
+  error?: string;
+}
+
 /** A parsed Postman Environment export, not yet written to disk - held in the renderer while the user resolves a name conflict. */
 export interface ImportedEnvironmentDraft {
   name: string;

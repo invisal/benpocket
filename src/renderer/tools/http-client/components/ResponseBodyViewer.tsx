@@ -1,12 +1,13 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { Select } from '@renderer/components/ui/Select';
-import { Check, Copy, Eye, FileText } from 'lucide-react';
+import { Check, Copy, Eye, FileText, Table } from 'lucide-react';
 import { getPrettyText, getTokens } from '../lib/formatters/index';
 import { RESPONSE_FORMATS, detectFormat, isImageContentType } from '../lib/responseFormat';
 import type { ResponseFormat } from '../lib/responseFormat';
 import { HexView } from './HexView';
 import { ResponsePreview } from './ResponsePreview';
+import { ResponseTable } from './ResponseTable';
 
 const COPY_FEEDBACK_MS = 1500;
 const BASE64_LINE_LENGTH = 76;
@@ -39,12 +40,13 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
   // Callers key this component by bodyBase64, so a new response remounts it and these
   // initial values are re-derived instead of keeping the previous response's picks.
   const [format, setFormat] = useState<ResponseFormat>(detected);
-  const [viewMode, setViewMode] = useState<'formatted' | 'preview'>(
+  const [viewMode, setViewMode] = useState<'formatted' | 'preview' | 'table'>(
     isImageContentType(contentType) ? 'preview' : 'formatted'
   );
   const [copied, setCopied] = useState(false);
 
   const previewEnabled = format === 'html' || isImageContentType(contentType);
+  const tableEnabled = format === 'json' || format === 'yaml';
 
   const prettyText = useMemo(() => getPrettyText(format, text), [format, text]);
   const tokens = useMemo(() => getTokens(format, prettyText), [format, prettyText]);
@@ -78,7 +80,7 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
             </Select.Content>
           </Select.Root>
 
-          {previewEnabled && (
+          {(previewEnabled || tableEnabled) && (
             <div className="flex items-center bg-surface-3 border border-border-dark rounded overflow-hidden text-[10px] font-semibold">
               <button
                 onClick={() => setViewMode('formatted')}
@@ -91,17 +93,32 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
                 <FileText size={10} />
                 Pretty
               </button>
-              <button
-                onClick={() => setViewMode('preview')}
-                className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors ${
-                  viewMode === 'preview'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-zinc-400 hover:text-foreground'
-                }`}
-              >
-                <Eye size={10} />
-                Preview
-              </button>
+              {previewEnabled && (
+                <button
+                  onClick={() => setViewMode('preview')}
+                  className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors ${
+                    viewMode === 'preview'
+                      ? 'bg-accent/20 text-accent'
+                      : 'text-zinc-400 hover:text-foreground'
+                  }`}
+                >
+                  <Eye size={10} />
+                  Preview
+                </button>
+              )}
+              {tableEnabled && (
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors ${
+                    viewMode === 'table'
+                      ? 'bg-accent/20 text-accent'
+                      : 'text-zinc-400 hover:text-foreground'
+                  }`}
+                >
+                  <Table size={10} />
+                  Table
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -124,6 +141,8 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
             bodyBase64={bodyBase64}
             contentType={contentType}
           />
+        ) : viewMode === 'table' && (format === 'json' || format === 'yaml') ? (
+          <ResponseTable format={format} text={text} />
         ) : format === 'hex' ? (
           <HexView bytes={bytes} />
         ) : format === 'base64' ? (

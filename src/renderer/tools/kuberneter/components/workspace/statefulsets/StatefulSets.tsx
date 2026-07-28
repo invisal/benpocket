@@ -6,16 +6,16 @@ import { StatefulSetsTable } from './StatefulSetsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useStatefulSets } from '../../../hooks/useStatefulSets';
 
 interface StatefulSetsProps {
-  statefulSetsData: StatefulSetData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const StatefulSets: React.FC<StatefulSetsProps> = ({
-  statefulSetsData,
-  kuberneterSelectedNamespace
-}) => {
+export const StatefulSets: React.FC<StatefulSetsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: statefulSetsData, isLoading, errorMsg } = useStatefulSets(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -124,29 +124,31 @@ export const StatefulSets: React.FC<StatefulSetsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <StatefulSetsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <StatefulSetsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <StatefulSetsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectStatefulSet={handleSelectStatefulSet}
+          selectedStatefulSetId={selectedStatefulSetId}
         />
-      }
-    >
-      <StatefulSetsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectStatefulSet={handleSelectStatefulSet}
-        selectedStatefulSetId={selectedStatefulSetId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

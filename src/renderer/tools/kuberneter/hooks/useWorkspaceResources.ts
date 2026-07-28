@@ -1,9 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useConfigMaps } from './useConfigMaps';
-import { useSecrets } from './useSecrets';
-import { useResourceQuotas } from './useResourceQuotas';
-import { useLimitRanges } from './useLimitRanges';
 import { useHpas } from './useHpas';
 import { usePdbs } from './usePdbs';
 import { usePriorityClasses } from './usePriorityClasses';
@@ -38,10 +34,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const configmaps = useConfigMaps(resource === 'configmaps');
-  const secrets = useSecrets(resource === 'secrets');
-  const resourcequotas = useResourceQuotas(resource === 'resourcequotas');
-  const limitranges = useLimitRanges(resource === 'limitranges');
   const hpas = useHpas(resource === 'hpas');
   const pdbs = usePdbs(resource === 'pdbs');
   const priorityclasses = usePriorityClasses(resource === 'priorityclasses');
@@ -68,11 +60,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'configmaps') activeQuery = configmaps;
-  else if (resource === 'secrets') activeQuery = secrets;
-  else if (resource === 'resourcequotas') activeQuery = resourcequotas;
-  else if (resource === 'limitranges') activeQuery = limitranges;
-  else if (resource === 'hpas') activeQuery = hpas;
+  if (resource === 'hpas') activeQuery = hpas;
   else if (resource === 'pdbs') activeQuery = pdbs;
   else if (resource === 'priorityclasses') activeQuery = priorityclasses;
   else if (resource === 'runtimeclasses') activeQuery = runtimeclasses;
@@ -100,10 +88,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    configMapsData: configmaps.data,
-    secretsData: secrets.data,
-    resourceQuotasData: resourcequotas.data,
-    limitRangesData: limitranges.data,
     hpasData: hpas.data,
     pdbsData: pdbs.data,
     priorityClassesData: priorityclasses.data,

@@ -59,10 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    configMapsData,
-    secretsData,
-    resourceQuotasData,
-    limitRangesData,
     hpasData,
     pdbsData,
     priorityClassesData,
@@ -228,31 +224,19 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           )}
 
           {resource === 'configmaps' && (
-            <ConfigMaps
-              configMapsData={configMapsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <ConfigMaps kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'secrets' && (
-            <Secrets
-              secretsData={secretsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <Secrets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'resourcequotas' && (
-            <ResourceQuotas
-              resourceQuotasData={resourceQuotasData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <ResourceQuotas kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'limitranges' && (
-            <LimitRanges
-              limitRangesData={limitRangesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <LimitRanges kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'hpas' && (

@@ -6,16 +6,16 @@ import { LimitRangesTable } from './LimitRangesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useLimitRanges } from '../../../hooks/useLimitRanges';
 
 interface LimitRangesProps {
-  limitRangesData: LimitRangeData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const LimitRanges: React.FC<LimitRangesProps> = ({
-  limitRangesData,
-  kuberneterSelectedNamespace
-}) => {
+export const LimitRanges: React.FC<LimitRangesProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: limitRangesData, isLoading, errorMsg } = useLimitRanges(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -143,29 +143,31 @@ export const LimitRanges: React.FC<LimitRangesProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <LimitRangesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <LimitRangesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <LimitRangesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectLimitRange={handleSelectLimitRange}
+          selectedLimitRangeId={selectedLimitRangeId}
         />
-      }
-    >
-      <LimitRangesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectLimitRange={handleSelectLimitRange}
-        selectedLimitRangeId={selectedLimitRangeId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

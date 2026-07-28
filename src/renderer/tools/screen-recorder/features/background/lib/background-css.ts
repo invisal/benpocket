@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { BackgroundSettings } from '@screen-recorder/types/project';
-import { cssGradient, findWallpaperPreset } from '@shared/wallpaper-presets';
+import { findWallpaperPreset } from '@shared/wallpaper-presets';
+import { wallpaperCssLayerStyle } from './wave-wallpaper';
+import { findWallpaperImagePreset } from './wallpaper-images';
 
 /** Renderer-side equivalent of main/export/frame-compositor.ts's drawBackground, for the live preview. */
 export function backgroundLayerStyle(background: BackgroundSettings): CSSProperties {
@@ -12,8 +14,17 @@ export function backgroundLayerStyle(background: BackgroundSettings): CSSPropert
         background.value.split('|');
       return { background: `linear-gradient(${angleDeg}deg, ${color1}, ${color2})` };
     }
-    case 'wallpaper':
-      return { background: cssGradient(findWallpaperPreset(background.value)) };
+    case 'wallpaper': {
+      const imagePreset = findWallpaperImagePreset(background.value);
+      if (imagePreset) {
+        return {
+          backgroundImage: `url(${imagePreset.src})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        };
+      }
+      return wallpaperCssLayerStyle(findWallpaperPreset(background.value));
+    }
     case 'image':
       return background.value
         ? {

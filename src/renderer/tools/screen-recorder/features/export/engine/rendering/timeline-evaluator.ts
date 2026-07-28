@@ -1,6 +1,8 @@
 import type { Project } from '@screen-recorder/types/project';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
+import { enrichWallpaperPreset } from '../../../background/lib/wave-wallpaper';
+import { findWallpaperImagePreset } from '../../../background/lib/wallpaper-images';
 import { sampleCursorPath, resolveClickBounceScale } from '@shared/cursor-path';
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
@@ -29,7 +31,9 @@ function resolveBackground(project: Project): BackgroundSceneData {
       return { kind: 'linear-gradient', angleDeg: Number(angleDeg), colors: [color1, color2] };
     }
     case 'wallpaper': {
-      const preset = findWallpaperPreset(background.value);
+      const imagePreset = findWallpaperImagePreset(background.value);
+      if (imagePreset) return { kind: 'image', path: imagePreset.src, blurPx: 0 };
+      const preset = enrichWallpaperPreset(findWallpaperPreset(background.value));
       return preset.type === 'wave'
         ? { kind: 'radial-blobs', backgroundColor: preset.backgroundColor, blobs: preset.blobs }
         : { kind: 'linear-gradient', angleDeg: preset.angleDeg, colors: preset.colors };

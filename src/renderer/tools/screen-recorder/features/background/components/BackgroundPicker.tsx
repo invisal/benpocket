@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { useRef } from 'react';
-import { WALLPAPER_PRESETS, cssGradient } from '@shared/wallpaper-presets';
 import { PHOTO_PRESETS } from '../lib/photo-presets';
+import { WALLPAPER_IMAGE_PRESETS } from '../lib/wallpaper-images';
 import { useBackgroundStore } from '../store/background-store';
 import { Slider } from '../../../components/ui/slider';
 import { Button } from '@renderer/components/ui/Button';
@@ -106,14 +106,14 @@ export function BackgroundPicker(): JSX.Element {
             Wallpaper
           </span>
           <div className="grid grid-cols-4 gap-2">
-            {WALLPAPER_PRESETS.map((preset) => (
+            {WALLPAPER_IMAGE_PRESETS.map((preset) => (
               <button
                 key={preset.id}
                 onClick={() => setValue(preset.id)}
                 title={preset.label}
                 aria-label={preset.label}
-                className={swatchClass(value === preset.id)}
-                style={{ background: cssGradient(preset) }}
+                className={cn(swatchClass(value === preset.id), 'bg-cover bg-center')}
+                style={{ backgroundImage: `url(${preset.src})` }}
               />
             ))}
           </div>

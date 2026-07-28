@@ -333,6 +333,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 params: client.http.state.params,
                 bodyType: client.http.state.bodyType,
                 body: client.http.state.body,
+                auth: client.http.state.auth,
                 updatedAt: Date.now()
               }
             : {
@@ -410,6 +411,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
               params={client.protocol === 'HTTP' ? client.http.state.params : undefined}
               bodyType={client.protocol === 'HTTP' ? client.http.state.bodyType : undefined}
               body={client.protocol === 'HTTP' ? client.http.state.body : undefined}
+              auth={client.protocol === 'HTTP' ? client.http.state.auth : undefined}
               binding={client.binding}
               defaultCollectionId={seed?.defaultCollectionId}
               defaultFolderId={seed?.defaultFolderId}
@@ -458,6 +460,11 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
               onRemoveHeader={(id) => {
                 pinIfPreview();
                 client.http.removeHeaderRow(id);
+              }}
+              auth={client.http.state.auth}
+              onAuthChange={(auth) => {
+                pinIfPreview();
+                client.http.setAuth(auth);
               }}
               bodyType={client.http.state.bodyType}
               onBodyTypeChange={(bodyType) => {

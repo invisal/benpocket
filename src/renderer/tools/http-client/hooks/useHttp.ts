@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type {
+  HttpAuth,
   HttpBodyType,
   HttpMethod,
   HttpResponsePayload
@@ -8,6 +9,7 @@ import { getActiveEnvironmentVariables } from '../store/environments.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
 import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
 import { resolveJsonVariables, resolveRows, resolveVariables } from '../lib/variables';
+import { DEFAULT_HTTP_AUTH, resolveAuth } from '../lib/auth';
 import { readTabSeed } from '../lib/readTabSeed';
 
 export interface HttpState {
@@ -15,6 +17,7 @@ export interface HttpState {
   url: string;
   headers: KeyValueRow[];
   params: KeyValueRow[];
+  auth: HttpAuth;
   bodyType: HttpBodyType;
   body: string;
   isLoading: boolean;
@@ -70,6 +73,7 @@ function createDefaultHttpState(tabId: string): HttpState {
     url: seed?.url ?? '',
     headers: withTrailingRow(seed?.headers ?? []),
     params: withTrailingRow(seed?.params ?? []),
+    auth: seed?.auth ?? DEFAULT_HTTP_AUTH,
     bodyType: seed?.bodyType ?? 'none',
     body: seed?.body ?? '',
     isLoading: false,
@@ -84,6 +88,7 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
     url: s.url,
     headers: s.headers,
     params: s.params,
+    auth: s.auth,
     bodyType: s.bodyType,
     body: s.body
   }),
@@ -94,6 +99,7 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
       url: r.url ?? '',
       headers: withTrailingRow(r.headers ?? []),
       params: withTrailingRow(r.params ?? []),
+      auth: r.auth ?? DEFAULT_HTTP_AUTH,
       bodyType: r.bodyType ?? 'none',
       body: r.body ?? '',
       isLoading: false,
@@ -112,6 +118,7 @@ export interface UseHttpResult {
   removeHeaderRow: (id: string) => void;
   updateParamRow: (id: string, patch: Partial<KeyValueRow>) => void;
   removeParamRow: (id: string) => void;
+  setAuth: (auth: HttpAuth) => void;
   send: () => void;
 }
 
@@ -179,6 +186,11 @@ export function useHttp(tabId: string): UseHttpResult {
     [setState]
   );
 
+  const setAuth = useCallback(
+    (auth: HttpAuth) => setState((prev) => ({ ...prev, auth })),
+    [setState]
+  );
+
   const send = useCallback(() => {
     const current = httpStore.getSnapshot(tabId);
     const url = current.url.trim();
@@ -195,6 +207,7 @@ export function useHttp(tabId: string): UseHttpResult {
         url: resolvedUrl,
         headers: resolveRows(current.headers, variables),
         params: resolveRows(current.params, variables),
+        auth: resolveAuth(current.auth, variables),
         bodyType: current.bodyType,
         body:
           current.bodyType === 'json'
@@ -235,6 +248,7 @@ export function useHttp(tabId: string): UseHttpResult {
     removeHeaderRow,
     updateParamRow,
     removeParamRow,
+    setAuth,
     send
   };
 }

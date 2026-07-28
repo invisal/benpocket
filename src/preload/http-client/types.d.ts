@@ -16,6 +16,15 @@ export interface KeyValuePair {
   enabled: boolean;
 }
 
+export type HttpAuthType = 'noauth' | 'bearer' | 'basic' | 'apikey';
+
+export interface HttpAuth {
+  type: HttpAuthType;
+  bearer?: { token: string };
+  basic?: { username: string; password: string };
+  apikey?: { key: string; value: string; in: 'header' | 'query' };
+}
+
 export interface HttpRequestPayload {
   method: HttpMethod;
   url: string;
@@ -23,6 +32,8 @@ export interface HttpRequestPayload {
   params: KeyValuePair[];
   bodyType: HttpBodyType;
   body: string;
+  /** Optional so requests sent before this field existed still type-check; treat missing as 'noauth'. */
+  auth?: HttpAuth;
   timeoutMs?: number;
 }
 
@@ -92,6 +103,8 @@ export interface SavedRequest {
   bodyType: HttpBodyType;
   /** HTTP-only; empty for 'WEBSOCKET' requests. */
   body: string;
+  /** HTTP-only; optional so requests saved before this field existed still load - treat missing as 'noauth'. */
+  auth?: HttpAuth;
   updatedAt: number;
 }
 

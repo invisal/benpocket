@@ -2,15 +2,17 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
+import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { getAutoHeaders } from '../lib/autoHeaders';
+import { authTypeLabel } from '../lib/auth';
 import { KeyValueEditor } from './KeyValueEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
+import { AuthEditor } from './AuthEditor';
 
-type RequestTabValue = 'params' | 'headers' | 'body';
+type RequestTabValue = 'params' | 'headers' | 'auth' | 'body';
 
 const BODY_TYPES: { value: HttpBodyType; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -28,6 +30,8 @@ interface RequestEditorPanelProps {
   headers: KeyValueRow[];
   onUpdateHeader: (id: string, patch: Partial<KeyValueRow>) => void;
   onRemoveHeader: (id: string) => void;
+  auth: HttpAuth;
+  onAuthChange: (auth: HttpAuth) => void;
   bodyType: HttpBodyType;
   onBodyTypeChange: (type: HttpBodyType) => void;
   body: string;
@@ -43,6 +47,8 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   headers,
   onUpdateHeader,
   onRemoveHeader,
+  auth,
+  onAuthChange,
   bodyType,
   onBodyTypeChange,
   body,
@@ -55,8 +61,8 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   const activeParamCount = params.filter((p) => p.enabled && p.key.trim()).length;
   const activeHeaderCount = headers.filter((h) => h.enabled && h.key.trim()).length;
   const autoHeaders = useMemo(
-    () => getAutoHeaders(method, url, bodyType, body, headers, variables),
-    [method, url, bodyType, body, headers, variables]
+    () => getAutoHeaders(method, url, bodyType, body, headers, variables, auth),
+    [method, url, bodyType, body, headers, variables, auth]
   );
 
   return (
@@ -85,6 +91,16 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           }`}
         >
           Headers{activeHeaderCount > 0 ? ` (${activeHeaderCount})` : ''}
+        </Tabs.Tab>
+        <Tabs.Tab
+          value="auth"
+          className={`py-1 border-b -mb-px cursor-pointer transition-colors ${
+            activeTab === 'auth'
+              ? 'border-accent text-accent font-semibold'
+              : 'border-transparent text-zinc-555 hover:text-zinc-350'
+          }`}
+        >
+          Authorization{auth.type !== 'noauth' ? ` (${authTypeLabel(auth.type)})` : ''}
         </Tabs.Tab>
         <Tabs.Tab
           value="body"
@@ -154,6 +170,10 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             )}
           </div>
         )}
+      </Tabs.Panel>
+
+      <Tabs.Panel value="auth" className="max-h-40 overflow-auto pr-1">
+        <AuthEditor auth={auth} onChange={onAuthChange} />
       </Tabs.Panel>
 
       <Tabs.Panel value="body" className="flex flex-col gap-2">

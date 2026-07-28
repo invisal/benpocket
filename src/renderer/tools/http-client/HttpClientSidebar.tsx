@@ -204,6 +204,7 @@ export const HttpClientSidebar: React.FC = () => {
             params: request.params,
             bodyType: request.bodyType,
             body: request.body,
+            auth: request.auth,
             savedCollectionId: collection.id,
             savedRequestId: request.id
           };

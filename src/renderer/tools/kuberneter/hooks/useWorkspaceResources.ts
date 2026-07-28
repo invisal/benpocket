@@ -1,7 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useHpas } from './useHpas';
-import { usePdbs } from './usePdbs';
 import { usePriorityClasses } from './usePriorityClasses';
 import { useRuntimeClasses } from './useRuntimeClasses';
 import { useLeases } from './useLeases';
@@ -34,8 +32,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const hpas = useHpas(resource === 'hpas');
-  const pdbs = usePdbs(resource === 'pdbs');
   const priorityclasses = usePriorityClasses(resource === 'priorityclasses');
   const runtimeclasses = useRuntimeClasses(resource === 'runtimeclasses');
   const leases = useLeases(resource === 'leases');
@@ -60,9 +56,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'hpas') activeQuery = hpas;
-  else if (resource === 'pdbs') activeQuery = pdbs;
-  else if (resource === 'priorityclasses') activeQuery = priorityclasses;
+  if (resource === 'priorityclasses') activeQuery = priorityclasses;
   else if (resource === 'runtimeclasses') activeQuery = runtimeclasses;
   else if (resource === 'leases') activeQuery = leases;
   else if (resource === 'mutatingwebhooks') activeQuery = mutatingwebhooks;
@@ -88,8 +82,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    hpasData: hpas.data,
-    pdbsData: pdbs.data,
     priorityClassesData: priorityclasses.data,
     runtimeClassesData: runtimeclasses.data,
     leasesData: leases.data,

@@ -59,8 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    hpasData,
-    pdbsData,
     priorityClassesData,
     runtimeClassesData,
     leasesData,
@@ -240,17 +238,11 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           )}
 
           {resource === 'hpas' && (
-            <HorizontalPodAutoscalers
-              hpasData={hpasData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <HorizontalPodAutoscalers kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'pdbs' && (
-            <PodDisruptionBudgets
-              pdbsData={pdbsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <PodDisruptionBudgets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'priorityclasses' && (

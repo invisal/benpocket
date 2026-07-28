@@ -6,16 +6,16 @@ import { EndpointsTable } from './EndpointsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useEndpoints } from '../../../hooks/useEndpoints';
 
 interface EndpointsProps {
-  endpointsData: EndpointData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Endpoints: React.FC<EndpointsProps> = ({
-  endpointsData = [],
-  kuberneterSelectedNamespace
-}) => {
+export const Endpoints: React.FC<EndpointsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: endpointsData, isLoading, errorMsg } = useEndpoints(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -127,30 +127,32 @@ export const Endpoints: React.FC<EndpointsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <EndpointsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <EndpointsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <EndpointsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectEndpoint={handleSelectEndpoint}
+          onNamespaceClick={handleNamespaceClick}
+          selectedEndpointId={selectedEndpointId}
         />
-      }
-    >
-      <EndpointsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectEndpoint={handleSelectEndpoint}
-        onNamespaceClick={handleNamespaceClick}
-        selectedEndpointId={selectedEndpointId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

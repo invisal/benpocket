@@ -12,6 +12,8 @@ import type {
   Environment,
   ExportCollectionPayload,
   ExportCollectionResult,
+  ExportEnvironmentPayload,
+  ExportEnvironmentResult,
   HttpRequestPayload,
   HttpResponsePayload,
   ImportCollectionResult,
@@ -67,6 +69,7 @@ export interface PostmanBridge {
     rename: (payload: RenameEnvironmentPayload) => Promise<WsAckResult>;
     remove: (payload: DeleteEnvironmentPayload) => Promise<WsAckResult>;
     saveVariables: (payload: SaveEnvironmentVariablesPayload) => Promise<WsAckResult>;
+    exportToFile: (payload: ExportEnvironmentPayload) => Promise<ExportEnvironmentResult>;
     importFromFile: (workspaceId: string) => Promise<ImportEnvironmentResult>;
     resolveImportConflict: (
       payload: ResolveEnvironmentImportPayload
@@ -147,6 +150,8 @@ export const postmanApi: PostmanBridge = {
       ipcRenderer.invoke('environments:delete', payload),
     saveVariables: (payload: SaveEnvironmentVariablesPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('environments:saveVariables', payload),
+    exportToFile: (payload: ExportEnvironmentPayload): Promise<ExportEnvironmentResult> =>
+      ipcRenderer.invoke('environments:exportToFile', payload),
     importFromFile: (workspaceId: string): Promise<ImportEnvironmentResult> =>
       ipcRenderer.invoke('environments:importFromFile', workspaceId),
     resolveImportConflict: (

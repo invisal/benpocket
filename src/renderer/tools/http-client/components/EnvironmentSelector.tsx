@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
-import { ChevronDown, Globe, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { ChevronDown, Download, Globe, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import type { ImportedEnvironmentDraft, KeyValuePair } from '../../../../preload/http-client/types';
 import { useEnvironmentsStore } from '../store/environments.store';
 import { KeyValueEditor } from './KeyValueEditor';
@@ -22,6 +22,7 @@ export const EnvironmentSelector: React.FC = () => {
     renameEnvironment,
     deleteEnvironment,
     saveVariables,
+    exportEnvironment,
     importEnvironment,
     resolveEnvironmentImportConflict
   } = useEnvironmentsStore();
@@ -114,6 +115,16 @@ export const EnvironmentSelector: React.FC = () => {
     if (!activeEnvironment) return;
     try {
       await deleteEnvironment(activeEnvironment.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    }
+  };
+
+  const handleExport = async (): Promise<void> => {
+    if (!activeEnvironment) return;
+    try {
+      const result = await exportEnvironment(activeEnvironment.id);
+      if (!result.ok) setError(result.error ?? 'Export failed.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     }
@@ -239,6 +250,13 @@ export const EnvironmentSelector: React.FC = () => {
                     </span>
                   )}
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={handleExport}
+                      title="Export environment (.postman_environment.json)"
+                      className="p-0.5 text-zinc-555 hover:text-foreground cursor-pointer"
+                    >
+                      <Download size={11} />
+                    </button>
                     <button
                       onClick={() => {
                         setRenameDraft(activeEnvironment.name);

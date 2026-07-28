@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type {
   Environment,
   EnvironmentImportConflictChoice,
+  ExportEnvironmentResult,
   ImportedEnvironmentDraft,
   ImportEnvironmentResult,
   KeyValuePair,
@@ -25,6 +26,8 @@ interface EnvironmentsState {
   deleteEnvironment: (environmentId: string) => Promise<void>;
   saveVariables: (environmentId: string, variables: KeyValuePair[]) => Promise<void>;
   setActiveEnvironmentId: (environmentId: string | null) => void;
+  /** Opens a save dialog and writes the environment out as a Postman Environment (.postman_environment.json) file. */
+  exportEnvironment: (environmentId: string) => Promise<ExportEnvironmentResult>;
   /** Opens a file picker for a Postman Environment (.postman_environment.json) export. Resolves with a `conflict` when an environment of the same name already exists - the caller should ask the user to Replace/Copy and call `resolveEnvironmentImportConflict`. */
   importEnvironment: () => Promise<ImportEnvironmentResult>;
   resolveEnvironmentImportConflict: (
@@ -87,6 +90,8 @@ export const useEnvironmentsStore = create<EnvironmentsState>()(
       },
 
       setActiveEnvironmentId: (environmentId) => set({ activeEnvironmentId: environmentId }),
+
+      exportEnvironment: (environmentId) => window.api.environments.exportToFile({ environmentId }),
 
       importEnvironment: async () => {
         const workspaceId = useWorkspacesStore.getState().activeWorkspaceId;

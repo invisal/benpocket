@@ -6,12 +6,12 @@ import { RolesTable } from './RolesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useRoles } from '../../../hooks/useRoles';
 
-interface RolesProps {
-  rolesData: RoleData[];
-}
+export const Roles: React.FC = () => {
+  const { data: rolesData, isLoading, errorMsg } = useRoles(true);
 
-export const Roles: React.FC<RolesProps> = ({ rolesData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -172,32 +172,34 @@ export const Roles: React.FC<RolesProps> = ({ rolesData }) => {
   );
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <RolesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          namespaces={namespaces}
-          namespace={namespace}
-          onNamespaceChange={handleNamespaceChange}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <RolesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            namespaces={namespaces}
+            namespace={namespace}
+            onNamespaceChange={handleNamespaceChange}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <RolesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectRole={handleSelectRole}
+          selectedRoleId={selectedRoleId}
         />
-      }
-    >
-      <RolesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectRole={handleSelectRole}
-        selectedRoleId={selectedRoleId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

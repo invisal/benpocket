@@ -6,12 +6,12 @@ import { EventsTable } from './EventsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useEvents } from '../../../hooks/useEvents';
 
-interface EventsProps {
-  eventsData: EventData[];
-}
+export const Events: React.FC = () => {
+  const { data: eventsData, isLoading, errorMsg } = useEvents(true);
 
-export const Events: React.FC<EventsProps> = ({ eventsData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -168,32 +168,34 @@ export const Events: React.FC<EventsProps> = ({ eventsData }) => {
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <EventsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          namespaces={namespaces}
-          selectedNamespace={selectedNamespace}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
-          onNamespaceChange={handleNamespaceChange}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <EventsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            namespaces={namespaces}
+            selectedNamespace={selectedNamespace}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+            onNamespaceChange={handleNamespaceChange}
+          />
+        }
+      >
+        <EventsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectEvent={handleSelectEvent}
+          selectedEventId={selectedEventId}
         />
-      }
-    >
-      <EventsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectEvent={handleSelectEvent}
-        selectedEventId={selectedEventId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

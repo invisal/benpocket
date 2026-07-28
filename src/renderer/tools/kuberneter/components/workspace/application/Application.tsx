@@ -4,18 +4,18 @@ import { type ApplicationData } from '../../../types/ApplicationData';
 import { ApplicationsToolbar } from './ApplicationsToolbar';
 import { ApplicationsTable } from './ApplicationsTable';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { useApplications } from '../../../hooks/useApplications';
 
 interface ApplicationProps {
-  applicationsData: ApplicationData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Application: React.FC<ApplicationProps> = ({
-  applicationsData,
-  kuberneterSelectedNamespace
-}) => {
+export const Application: React.FC<ApplicationProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: applicationsData, isLoading, errorMsg } = useApplications(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -101,27 +101,29 @@ export const Application: React.FC<ApplicationProps> = ({
   }, []);
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <ApplicationsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <ApplicationsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+          />
+        }
+      >
+        <ApplicationsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectApplication={handleSelectApplication}
+          selectedApplicationId={selectedApplicationId}
         />
-      }
-    >
-      <ApplicationsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectApplication={handleSelectApplication}
-        selectedApplicationId={selectedApplicationId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

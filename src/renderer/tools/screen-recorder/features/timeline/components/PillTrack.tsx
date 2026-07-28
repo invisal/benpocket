@@ -28,6 +28,9 @@ export interface PillTrackProps<T extends { id: string }> {
   onResizeStart: (item: T, newStartMs: number) => void;
   onResizeEnd: (item: T, newEndMs: number) => void;
   onDelete?: (item: T) => void;
+  /** Whether an item is toggled off -- dims the pill and, via `onToggleDisabled`'s own handler, skips whatever the item actually does (e.g. `resolveZoom` ignoring a disabled zoom keyframe) without deleting it. */
+  isDisabled?: (item: T) => boolean;
+  onToggleDisabled?: (item: T) => void;
 }
 
 /**
@@ -68,7 +71,9 @@ export function PillTrack<T extends { id: string }>({
   onMove,
   onResizeStart,
   onResizeEnd,
-  onDelete
+  onDelete,
+  isDisabled,
+  onToggleDisabled
 }: PillTrackProps<T>): JSX.Element | null {
   const totalOutputMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,7 +116,8 @@ export function PillTrack<T extends { id: string }>({
                     className={cn(
                       'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 active:cursor-grabbing',
                       colorClassName,
-                      isSelected?.(item) && 'ring-2 ring-purple-200'
+                      isSelected?.(item) && 'ring-2 ring-purple-200',
+                      isDisabled?.(item) && 'opacity-40'
                     )}
                     style={{
                       left: `${position.leftPercent}%`,
@@ -151,9 +157,16 @@ export function PillTrack<T extends { id: string }>({
                   </div>
                 }
               />
-              {onDelete && (
+              {(onToggleDisabled || onDelete) && (
                 <ContextMenu.Content>
-                  <ContextMenu.Item onClick={() => onDelete(item)}>Delete</ContextMenu.Item>
+                  {onToggleDisabled && (
+                    <ContextMenu.Item onClick={() => onToggleDisabled(item)}>
+                      {isDisabled?.(item) ? 'Enable' : 'Disable'}
+                    </ContextMenu.Item>
+                  )}
+                  {onDelete && (
+                    <ContextMenu.Item onClick={() => onDelete(item)}>Delete</ContextMenu.Item>
+                  )}
                 </ContextMenu.Content>
               )}
             </ContextMenu.Root>

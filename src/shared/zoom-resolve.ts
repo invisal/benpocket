@@ -54,7 +54,9 @@ export function resolveZoom(
   cursorPath: CursorPathPoint[] = []
 ): ResolvedZoom {
   const identity: ResolvedZoom = { depth: 1, focal: { x: 0.5, y: 0.5 }, shift: { x: 0, y: 0 } };
-  const active = keyframes.find((k) => atMs >= k.atMs && atMs <= k.atMs + k.durationMs);
+  const active = keyframes.find(
+    (k) => k.enabled && atMs >= k.atMs && atMs <= k.atMs + k.durationMs
+  );
   if (!active) return identity;
 
   // Per-keyframe: how long the ease-in/ease-out either side of the hold

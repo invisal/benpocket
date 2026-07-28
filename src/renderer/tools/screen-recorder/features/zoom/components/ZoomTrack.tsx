@@ -159,6 +159,8 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
           });
         }}
         onDelete={(kf) => removeKeyframe(kf.id)}
+        isDisabled={(kf) => !kf.enabled}
+        onToggleDisabled={(kf) => updateKeyframe(kf.id, { enabled: !kf.enabled })}
       />
 
       {ghostPercent && (

@@ -80,7 +80,8 @@ export const useZoomStore = create<ZoomStoreState>(
                 depth: DEFAULT_ZOOM_DEPTH,
                 easing: 'ease-in-out',
                 position: 'auto-cursor',
-                holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS
+                holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS,
+                enabled: true
               }
             ]
           };

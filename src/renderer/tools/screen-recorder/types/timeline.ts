@@ -70,4 +70,6 @@ export interface ZoomKeyframe {
   position: { x: number; y: number } | 'auto-cursor';
   /** Fixed ease-in/ease-out time either side of the hold -- see zoom-resolve.ts's resolveZoom. */
   holdTransitionMs: number;
+  /** Off but not deleted -- `resolveZoom` skips it entirely, in both the editor preview and export. */
+  enabled: boolean;
 }

@@ -59,8 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    applicationsData,
-    nodesData,
     endpointSlicesData,
     endpointsData,
     ingressesData,
@@ -253,10 +251,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'validatingwebhooks' && <ValidatingWebhooks />}
 
           {resource === 'apps' && (
-            <Application
-              applicationsData={applicationsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <Application kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'helm-charts' && <HelmCharts />}
@@ -280,7 +275,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
 
           {resource === 'bindings' && <RoleBindings roleBindingsData={roleBindingsData} />}
 
-          {resource === 'nodes' && <Nodes nodesData={nodesData} />}
+          {resource === 'nodes' && <Nodes />}
 
           {resource === 'portforwarding' && <PortForwarding />}
         </>

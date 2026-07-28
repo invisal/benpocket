@@ -1,7 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useApplications } from './useApplications';
-import { useNodes } from './useNodes';
 import { useEndpointSlices } from './useEndpointSlices';
 import { useEndpoints } from './useEndpoints';
 import { useIngresses } from './useIngresses';
@@ -27,8 +25,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const apps = useApplications(resource === 'apps');
-  const nodes = useNodes(resource === 'nodes');
   const endpointslices = useEndpointSlices(resource === 'endpointslices');
   const endpoints = useEndpoints(resource === 'endpoints');
   const ingresses = useIngresses(resource === 'ingresses');
@@ -46,9 +42,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'apps') activeQuery = apps;
-  else if (resource === 'nodes') activeQuery = nodes;
-  else if (resource === 'endpointslices') activeQuery = endpointslices;
+  if (resource === 'endpointslices') activeQuery = endpointslices;
   else if (resource === 'endpoints') activeQuery = endpoints;
   else if (resource === 'ingresses') activeQuery = ingresses;
   else if (resource === 'ingressclasses') activeQuery = ingressclasses;
@@ -67,8 +61,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    applicationsData: apps.data,
-    nodesData: nodes.data,
     endpointSlicesData: endpointslices.data,
     endpointsData: endpoints.data,
     ingressesData: ingresses.data,

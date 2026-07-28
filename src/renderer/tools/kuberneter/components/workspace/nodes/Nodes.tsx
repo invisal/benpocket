@@ -4,14 +4,14 @@ import { type NodeData } from '../../../types/NodeData';
 import { NodesToolbar } from './NodesToolbar';
 import { NodesTable } from './NodesTable';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { useNodes } from '../../../hooks/useNodes';
 
-interface NodesProps {
-  nodesData: NodeData[];
-}
+export const Nodes: React.FC = () => {
+  const { data: nodesData, isLoading, errorMsg } = useNodes(true);
 
-export const Nodes: React.FC<NodesProps> = ({ nodesData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -123,28 +123,30 @@ export const Nodes: React.FC<NodesProps> = ({ nodesData }) => {
   }, [filteredData]);
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <NodesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleExportCSV}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <NodesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleExportCSV}
+          />
+        }
+      >
+        <NodesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectNode={handleSelectNode}
+          selectedNodeId={selectedNodeId}
         />
-      }
-    >
-      <NodesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectNode={handleSelectNode}
-        selectedNodeId={selectedNodeId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

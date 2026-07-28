@@ -1,6 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { usePods } from './usePods';
 import { useDeployments } from './useDeployments';
 import { useDaemonSets } from './useDaemonSets';
 import { useStatefulSets } from './useStatefulSets';
@@ -46,7 +45,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const pods = usePods(resource === 'pods');
   const deployments = useDeployments(resource === 'deployments');
   const daemonsets = useDaemonSets(resource === 'daemonsets');
   const statefulsets = useStatefulSets(resource === 'statefulsets');
@@ -84,8 +82,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'pods') activeQuery = pods;
-  else if (resource === 'deployments') activeQuery = deployments;
+  if (resource === 'deployments') activeQuery = deployments;
   else if (resource === 'daemonsets') activeQuery = daemonsets;
   else if (resource === 'statefulsets') activeQuery = statefulsets;
   else if (resource === 'replicasets') activeQuery = replicasets;
@@ -124,7 +121,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    podsData: pods.data,
     deploysData: deployments.data,
     daemonSetsData: daemonsets.data,
     statefulSetsData: statefulsets.data,

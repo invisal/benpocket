@@ -59,7 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    podsData,
     deploysData,
     daemonSetsData,
     statefulSetsData,
@@ -155,7 +154,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'workloads-overview' && <WorkloadOverview />}
 
           {resource === 'pods' && (
-            <Pods podsData={podsData} kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+            <Pods kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'deployments' && (

@@ -6,13 +6,16 @@ import { PodsTable } from './PodsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { usePods } from '../../../hooks/usePods';
 
 interface PodsProps {
-  podsData: PodData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Pods: React.FC<PodsProps> = ({ podsData, kuberneterSelectedNamespace }) => {
+export const Pods: React.FC<PodsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: podsData, isLoading, errorMsg } = usePods(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -148,29 +151,31 @@ export const Pods: React.FC<PodsProps> = ({ podsData, kuberneterSelectedNamespac
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <PodsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <PodsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <PodsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectPod={handleSelectPod}
+          selectedPodId={selectedPodId}
         />
-      }
-    >
-      <PodsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectPod={handleSelectPod}
-        selectedPodId={selectedPodId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Clapperboard, Gauge, Scissors } from 'lucide-react';
-import type { TimelineSegment } from '@screen-recorder/types/timeline';
+import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore } from '../store/timeline-store';
@@ -16,7 +16,6 @@ import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
 import { AnnotationTrack } from '../../annotations/components/AnnotationTrack';
 import { BlurMaskTrack } from '../../blur-mask/components/BlurMaskTrack';
-import { SpeedTrack } from './SpeedTrack';
 import { Playhead } from './Playhead';
 import { SegmentWaveform } from './SegmentWaveform';
 import { cn } from '../../../lib/utils';
@@ -156,6 +155,7 @@ export function CutTimeline(): JSX.Element {
   const setIsHoverScrubbing = useTimelineStore((s) => s.setIsHoverScrubbing);
   const splitAt = useTimelineStore((s) => s.splitAt);
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
+  const setSegmentSpeed = useTimelineStore((s) => s.setSegmentSpeed);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);
   const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   // Gates the ruler's hover-scrub below -- only toggles on play/pause (not a
@@ -759,6 +759,27 @@ export function CutTimeline(): JSX.Element {
                         }
                       />
                       <ContextMenu.Content>
+                        <ContextMenu.SubmenuRoot>
+                          <ContextMenu.SubmenuTrigger>
+                            <Gauge size={13} className="shrink-0" />
+                            Set speed
+                          </ContextMenu.SubmenuTrigger>
+                          <ContextMenu.Content>
+                            <ContextMenu.RadioGroup
+                              value={segment.speed}
+                              onValueChange={(value) =>
+                                setSegmentSpeed(segment.id, value as typeof segment.speed)
+                              }
+                            >
+                              {CLIP_SPEED_OPTIONS.map((speed) => (
+                                <ContextMenu.RadioItem key={speed} value={speed}>
+                                  {speed}x
+                                </ContextMenu.RadioItem>
+                              ))}
+                            </ContextMenu.RadioGroup>
+                          </ContextMenu.Content>
+                        </ContextMenu.SubmenuRoot>
+                        <ContextMenu.Separator />
                         <ContextMenu.Item
                           onClick={() => deleteSegment(segment.id)}
                           disabled={segments.length <= 1}
@@ -805,7 +826,6 @@ export function CutTimeline(): JSX.Element {
             <CaptionTrack />
             <AnnotationTrack />
             <BlurMaskTrack />
-            <SpeedTrack />
             <CropTrack />
 
             <Playhead

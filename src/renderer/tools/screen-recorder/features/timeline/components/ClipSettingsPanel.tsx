@@ -1,10 +1,8 @@
 import type { JSX } from 'react';
-import type { ClipSpeed, TimelineSegment } from '@screen-recorder/types/timeline';
+import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
 import { useTimelineStore } from '../store/timeline-store';
 import { getSegmentOutputDurationMs } from '../lib/segment-duration';
 import { cn } from '../../../lib/utils';
-
-const SPEED_OPTIONS: ClipSpeed[] = [0.5, 1, 1.25, 1.5, 2];
 
 function formatTime(ms: number): string {
   const totalSeconds = ms / 1000;
@@ -105,7 +103,7 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
           Speed
         </span>
         <div className="grid grid-cols-5 gap-1">
-          {SPEED_OPTIONS.map((speed) => (
+          {CLIP_SPEED_OPTIONS.map((speed) => (
             <button
               key={speed}
               onClick={() => setSegmentSpeed(segment.id, speed)}

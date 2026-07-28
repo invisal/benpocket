@@ -4,6 +4,7 @@ export interface TimeRange {
 }
 
 export type ClipSpeed = 0.5 | 1 | 1.25 | 1.5 | 2;
+export const CLIP_SPEED_OPTIONS: ClipSpeed[] = [0.5, 1, 1.25, 1.5, 2];
 
 /**
  * Normalized (0-1) crop rect relative to the *source recording's* native

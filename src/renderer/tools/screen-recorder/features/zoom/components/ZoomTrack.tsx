@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { Mouse, Target, ZoomIn } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
-import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
+import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { sampleCursorPath, type CursorPathPoint } from '@shared/cursor-path';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useAppStore } from '../../../app/app-store';
@@ -13,10 +13,6 @@ import {
   sourceRangeToOutputPercent
 } from '../../timeline/lib/segment-duration';
 import { useZoomStore, findKeyframeContaining } from '../store/zoom-store';
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 /** The first real recorded mousedown within a keyframe's own window, if any. */
 function firstClickInWindow(
@@ -179,19 +175,25 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
           setActiveTool('zoom');
           setSelectedKeyframeId(kf.id);
         }}
-        onMove={(kf, atMs) => updateKeyframe(kf.id, { atMs })}
+        onMove={(kf, atMs) => updateKeyframe(kf.id, { atMs }, sourceDurationMs)}
         onResizeStart={(kf, newAtMs) => {
           const endMs = kf.atMs + kf.durationMs;
           const clampedAtMs = Math.min(newAtMs, endMs - ZOOM_MIN_DURATION_MS);
-          updateKeyframe(kf.id, {
-            atMs: clampedAtMs,
-            durationMs: clamp(endMs - clampedAtMs, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS)
-          });
+          updateKeyframe(
+            kf.id,
+            {
+              atMs: clampedAtMs,
+              durationMs: Math.max(endMs - clampedAtMs, ZOOM_MIN_DURATION_MS)
+            },
+            sourceDurationMs
+          );
         }}
         onResizeEnd={(kf, newEndMs) => {
-          updateKeyframe(kf.id, {
-            durationMs: clamp(newEndMs - kf.atMs, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS)
-          });
+          updateKeyframe(
+            kf.id,
+            { durationMs: Math.max(newEndMs - kf.atMs, ZOOM_MIN_DURATION_MS) },
+            sourceDurationMs
+          );
         }}
         onDelete={(kf) => removeKeyframe(kf.id)}
         isDisabled={(kf) => !kf.enabled}

@@ -2,8 +2,9 @@ import type { JSX, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import { Crosshair, Plus, Trash2 } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
-import { ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
+import { ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { useZoomStore } from '../store/zoom-store';
+import { useTimelineStore } from '../../timeline/store/timeline-store';
 import { Slider } from '../../../components/ui/slider';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
@@ -95,6 +96,7 @@ function KeyframeDetailPanel({
   kf,
   armedKeyframeId,
   sourceResolution,
+  sourceDurationMs,
   armPositioning,
   disarmPositioning,
   removeKeyframe,
@@ -103,10 +105,16 @@ function KeyframeDetailPanel({
   kf: ZoomKeyframe;
   armedKeyframeId: string | null;
   sourceResolution: { width: number; height: number } | null;
+  /** The recording's own length -- a keyframe's duration can run right up to this (or the next keyframe, whichever's closer), not some arbitrary fixed cap. */
+  sourceDurationMs: number;
   armPositioning: (id: string) => void;
   disarmPositioning: () => void;
   removeKeyframe: (id: string) => void;
-  updateKeyframe: (id: string, patch: Partial<Omit<ZoomKeyframe, 'id'>>) => void;
+  updateKeyframe: (
+    id: string,
+    patch: Partial<Omit<ZoomKeyframe, 'id'>>,
+    sourceDurationMs?: number
+  ) => void;
 }): JSX.Element {
   const fixedPosition = kf.position === 'auto-cursor' ? null : kf.position;
   const pixelX =
@@ -214,9 +222,9 @@ function KeyframeDetailPanel({
           <Slider
             value={kf.durationMs}
             min={ZOOM_MIN_DURATION_MS}
-            max={ZOOM_MAX_DURATION_MS}
+            max={Math.max(ZOOM_MIN_DURATION_MS, sourceDurationMs - kf.atMs)}
             step={50}
-            onChange={(durationMs) => updateKeyframe(kf.id, { durationMs })}
+            onChange={(durationMs) => updateKeyframe(kf.id, { durationMs }, sourceDurationMs)}
           />
         </SliderField>
 
@@ -280,6 +288,7 @@ export function ZoomKeyframeEditor({
     disarmPositioning,
     setSelectedKeyframeId
   } = useZoomStore();
+  const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   const sorted = [...keyframes].sort((a, b) => a.atMs - b.atMs);
   const selected = sorted.find((k) => k.id === selectedKeyframeId) ?? null;
 
@@ -325,7 +334,7 @@ export function ZoomKeyframeEditor({
       <Button
         variant="secondary"
         onClick={() => {
-          const id = addKeyframe(currentTimeMs);
+          const id = addKeyframe(currentTimeMs, sourceDurationMs);
           armPositioning(id);
           setSelectedKeyframeId(id);
         }}
@@ -356,6 +365,7 @@ export function ZoomKeyframeEditor({
             kf={selected}
             armedKeyframeId={armedKeyframeId}
             sourceResolution={sourceResolution}
+            sourceDurationMs={sourceDurationMs}
             armPositioning={armPositioning}
             disarmPositioning={disarmPositioning}
             removeKeyframe={removeKeyframe}

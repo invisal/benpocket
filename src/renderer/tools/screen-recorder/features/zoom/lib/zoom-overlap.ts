@@ -1,5 +1,5 @@
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
-import { ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
+import { ZOOM_MIN_DURATION_MS } from '@shared/constants';
 
 /**
  * Clamps a candidate `[atMs, atMs + durationMs)` window so it never
@@ -22,12 +22,23 @@ import { ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
  * another keyframe's range, it snaps forward to just past that keyframe's
  * end (simple, deterministic "push after" resolution rather than trying to
  * guess drag direction).
+ *
+ * There's deliberately no fixed *maximum* duration -- a zoom keyframe can
+ * run as long as the actual footage allows, not an arbitrary cap. The only
+ * ceilings are real ones: the next keyframe's own start, or (when there is
+ * no next keyframe) `sourceDurationMs`, the recording's actual length --
+ * defaults to `Infinity` for callers that don't have that figure handy and
+ * don't need it (auto-generated keyframes always start at a few seconds,
+ * far under any real recording's length; only a later manual resize can
+ * grow one long enough for this to matter, and every resize path does pass
+ * the real value -- see ZoomTrack.tsx/ZoomKeyframeEditor.tsx).
  */
 export function clampToNonOverlapping(
   keyframes: ZoomKeyframe[],
   excludeId: string | null,
   desiredAtMs: number,
-  desiredDurationMs: number
+  desiredDurationMs: number,
+  sourceDurationMs = Infinity
 ): { atMs: number; durationMs: number } {
   const others = keyframes.filter((k) => k.id !== excludeId).sort((a, b) => a.atMs - b.atMs);
 
@@ -37,20 +48,16 @@ export function clampToNonOverlapping(
   const next = others[nextIdx] ?? null;
 
   const lowerBound = prev ? prev.atMs + prev.durationMs : 0;
-  const upperBound = next ? next.atMs : Infinity;
+  const upperBound = next ? next.atMs : sourceDurationMs;
 
   const atMs = Math.max(lowerBound, Math.min(desiredAtMs, upperBound));
   const maxGapMs = Math.max(0, upperBound - atMs);
-  // Normal [MIN, MAX] bounds first, then a further cap to whatever the gap
-  // actually allows -- that second cap can only ever shrink further, and
-  // only bites in the rare case where neighbors are packed tighter than
-  // ZOOM_MIN_DURATION_MS apart (no valid non-overlapping slot exists at
-  // the usual minimum, so "never overlap" wins over "always >= minimum").
-  const durationMs = Math.min(
-    Math.max(desiredDurationMs, ZOOM_MIN_DURATION_MS),
-    ZOOM_MAX_DURATION_MS,
-    maxGapMs
-  );
+  // A floor first, then a cap to whatever room is actually available --
+  // that cap only ever shrinks further, and only bites when neighbors (or
+  // the recording's own end) leave less room than ZOOM_MIN_DURATION_MS (no
+  // valid non-overlapping slot exists at the usual minimum, so "never
+  // overlap"/"never run past the footage" wins over "always >= minimum").
+  const durationMs = Math.min(Math.max(desiredDurationMs, ZOOM_MIN_DURATION_MS), maxGapMs);
 
   return { atMs, durationMs };
 }

@@ -25,6 +25,20 @@ export interface PrometheusQueryConfig {
   pathPrefix?: string;
 }
 
+export interface WatchOptions {
+  kubeconfigPath?: string;
+  contextName?: string;
+  resource: string;
+  namespace?: string;
+}
+
+export interface WatchEvent {
+  id: string;
+  resource: string;
+  type: 'ADDED' | 'MODIFIED' | 'DELETED';
+  object?: unknown;
+}
+
 export interface KuberneterApi {
   listContexts: (kubeconfigPath?: string) => Promise<ListContextsResponse>;
   selectKubeconfigFile: () => Promise<string | null>;
@@ -35,6 +49,9 @@ export interface KuberneterApi {
     resource: string,
     namespace?: string
   ) => Promise<GetResourcesResponse>;
+  startWatch: (id: string, options: WatchOptions) => Promise<{ success?: boolean; error?: string }>;
+  stopWatch: (id: string) => Promise<{ success?: boolean; error?: string }>;
+  onWatchEvent: (callback: (event: WatchEvent) => void) => () => void;
   getTopNodes: (
     kubeconfigPath: string | undefined,
     contextName: string | undefined
@@ -175,6 +192,15 @@ export const kuberneterApi: KuberneterApi = {
       resource,
       namespace
     ),
+  startWatch: (id, options) => ipcRenderer.invoke('kuberneter:start-watch', id, options),
+  stopWatch: (id) => ipcRenderer.invoke('kuberneter:stop-watch', id),
+  onWatchEvent: (callback) => {
+    const subscription = (_: unknown, event: WatchEvent) => callback(event);
+    ipcRenderer.on('kuberneter:watch-event', subscription);
+    return () => {
+      ipcRenderer.removeListener('kuberneter:watch-event', subscription);
+    };
+  },
   getTopNodes: (kubeconfigPath, contextName) =>
     ipcRenderer.invoke('kuberneter:get-top-nodes', kubeconfigPath, contextName),
   getTopPods: (kubeconfigPath, contextName, namespace) =>

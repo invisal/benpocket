@@ -7,13 +7,27 @@ export interface WatchOptions {
   namespace?: string;
 }
 
+export interface WatchEvent {
+  id: string;
+  resource: string;
+  type: 'ADDED' | 'MODIFIED' | 'DELETED';
+  object?: unknown;
+}
+
 export class KubeWatchManager {
-  private static activeWatches = new Map<string, boolean>();
+  private static activeWatches = new Map<string, WatchOptions>();
 
   public static startWatch(id: string, options: WatchOptions, window?: BrowserWindow | null): void {
-    void options;
-    void window;
-    this.activeWatches.set(id, true);
+    this.stopWatch(id);
+    this.activeWatches.set(id, options);
+
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('kuberneter:watch-event', {
+        id,
+        resource: options.resource,
+        type: 'MODIFIED'
+      } as WatchEvent);
+    }
   }
 
   public static stopWatch(id: string): void {
@@ -22,5 +36,11 @@ export class KubeWatchManager {
 
   public static stopAllWatches(): void {
     this.activeWatches.clear();
+  }
+
+  public static emitEvent(window: BrowserWindow | null, event: WatchEvent): void {
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('kuberneter:watch-event', event);
+    }
   }
 }

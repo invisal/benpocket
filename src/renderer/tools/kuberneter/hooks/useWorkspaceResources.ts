@@ -1,6 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useDaemonSets } from './useDaemonSets';
 import { useStatefulSets } from './useStatefulSets';
 import { useReplicaSets } from './useReplicaSets';
 import { useJobs } from './useJobs';
@@ -44,7 +43,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const daemonsets = useDaemonSets(resource === 'daemonsets');
   const statefulsets = useStatefulSets(resource === 'statefulsets');
   const replicasets = useReplicaSets(resource === 'replicasets');
   const jobs = useJobs(resource === 'jobs');
@@ -80,8 +78,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'daemonsets') activeQuery = daemonsets;
-  else if (resource === 'statefulsets') activeQuery = statefulsets;
+  if (resource === 'statefulsets') activeQuery = statefulsets;
   else if (resource === 'replicasets') activeQuery = replicasets;
   else if (resource === 'jobs') activeQuery = jobs;
   else if (resource === 'cronjobs') activeQuery = cronjobs;
@@ -118,7 +115,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    daemonSetsData: daemonsets.data,
     statefulSetsData: statefulsets.data,
     replicaSetsData: replicasets.data,
     jobsData: jobs.data,

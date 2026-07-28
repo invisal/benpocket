@@ -1,10 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useEndpointSlices } from './useEndpointSlices';
-import { useEndpoints } from './useEndpoints';
-import { useIngresses } from './useIngresses';
-import { useIngressClasses } from './useIngressClasses';
-import { useNetworkPolicies } from './useNetworkPolicies';
 import { usePersistentVolumeClaims } from './usePersistentVolumeClaims';
 import { usePersistentVolumes } from './usePersistentVolumes';
 import { useStorageClasses } from './useStorageClasses';
@@ -25,11 +20,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const endpointslices = useEndpointSlices(resource === 'endpointslices');
-  const endpoints = useEndpoints(resource === 'endpoints');
-  const ingresses = useIngresses(resource === 'ingresses');
-  const ingressclasses = useIngressClasses(resource === 'ingressclasses');
-  const networkpolicies = useNetworkPolicies(resource === 'networkpolicies');
   const pvcs = usePersistentVolumeClaims(resource === 'pvcs');
   const pvs = usePersistentVolumes(resource === 'pvs');
   const storageclasses = useStorageClasses(resource === 'storageclasses');
@@ -42,12 +32,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'endpointslices') activeQuery = endpointslices;
-  else if (resource === 'endpoints') activeQuery = endpoints;
-  else if (resource === 'ingresses') activeQuery = ingresses;
-  else if (resource === 'ingressclasses') activeQuery = ingressclasses;
-  else if (resource === 'networkpolicies') activeQuery = networkpolicies;
-  else if (resource === 'pvcs') activeQuery = pvcs;
+  if (resource === 'pvcs') activeQuery = pvcs;
   else if (resource === 'pvs') activeQuery = pvs;
   else if (resource === 'storageclasses') activeQuery = storageclasses;
   else if (resource === 'namespaces') activeQuery = namespaces;
@@ -61,11 +46,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    endpointSlicesData: endpointslices.data,
-    endpointsData: endpoints.data,
-    ingressesData: ingresses.data,
-    ingressClassesData: ingressclasses.data,
-    networkPoliciesData: networkpolicies.data,
     pvcsData: pvcs.data,
     pvsData: pvs.data,
     storageClassesData: storageclasses.data,

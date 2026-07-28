@@ -59,11 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    endpointSlicesData,
-    endpointsData,
-    ingressesData,
-    ingressClassesData,
-    networkPoliciesData,
     pvcsData,
     pvsData,
     storageClassesData,
@@ -183,35 +178,21 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'events' && <Events eventsData={eventsData} />}
 
           {resource === 'endpointslices' && (
-            <EndpointSlices
-              endpointSlicesData={endpointSlicesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <EndpointSlices kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'endpoints' && (
-            <Endpoints
-              endpointsData={endpointsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <Endpoints kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'ingresses' && (
-            <Ingresses
-              ingressesData={ingressesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <Ingresses kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
-          {resource === 'ingressclasses' && (
-            <IngressClasses ingressClassesData={ingressClassesData} />
-          )}
+          {resource === 'ingressclasses' && <IngressClasses />}
 
           {resource === 'networkpolicies' && (
-            <NetworkPolicies
-              networkPoliciesData={networkPoliciesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <NetworkPolicies kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'configmaps' && (

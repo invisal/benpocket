@@ -1,6 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useServices } from './useServices';
 import { useConfigMaps } from './useConfigMaps';
 import { useSecrets } from './useSecrets';
 import { useResourceQuotas } from './useResourceQuotas';
@@ -39,7 +38,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const services = useServices(resource === 'services');
   const configmaps = useConfigMaps(resource === 'configmaps');
   const secrets = useSecrets(resource === 'secrets');
   const resourcequotas = useResourceQuotas(resource === 'resourcequotas');
@@ -70,8 +68,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'services') activeQuery = services;
-  else if (resource === 'configmaps') activeQuery = configmaps;
+  if (resource === 'configmaps') activeQuery = configmaps;
   else if (resource === 'secrets') activeQuery = secrets;
   else if (resource === 'resourcequotas') activeQuery = resourcequotas;
   else if (resource === 'limitranges') activeQuery = limitranges;
@@ -103,7 +100,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    servicesData: services.data,
     configMapsData: configmaps.data,
     secretsData: secrets.data,
     resourceQuotasData: resourcequotas.data,

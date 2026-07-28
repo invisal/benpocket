@@ -16,6 +16,24 @@ export function getSegmentOutputDurationMs(
 type Seg = Pick<TimelineSegment, 'range' | 'speed'>;
 
 /**
+ * Whether `segments[index]` still touches, contiguously in source-ms, the
+ * immediate neighbor(s) `splitAt` created it alongside -- what "Reset trim"
+ * merges back together. Both sides of a cut carry `split: true`, but a
+ * segment can be adjacent to an unrelated (not from the same cut) segment
+ * too, so `split` alone isn't enough -- the contiguity check is what
+ * confirms it's really the other half of the same cut.
+ */
+export function hasMergeableCutBoundary(segments: TimelineSegment[], index: number): boolean {
+  const segment = segments[index];
+  if (!segment.split) return false;
+  const prev = segments[index - 1];
+  const next = segments[index + 1];
+  const mergesWithPrev = !!prev?.split && prev.range.endMs === segment.range.startMs;
+  const mergesWithNext = !!next?.split && segment.range.endMs === next.range.startMs;
+  return mergesWithPrev || mergesWithNext;
+}
+
+/**
  * Maps a source-ms position (e.g. the playing `<video>`'s `currentTime`)
  * to its position on the ripple/output timeline `CutTimeline` draws, or
  * `null` if it falls inside a cut-out gap (no kept segment covers it).

@@ -6,7 +6,11 @@ import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore } from '../store/timeline-store';
 import { useWaveformStore } from '../store/waveform-store';
-import { getSegmentOutputDurationMs, outputMsToSourceMs } from '../lib/segment-duration';
+import {
+  getSegmentOutputDurationMs,
+  hasMergeableCutBoundary,
+  outputMsToSourceMs
+} from '../lib/segment-duration';
 import { CLIP_ROW_HEIGHT_PX } from '../lib/assign-lanes';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
@@ -155,6 +159,7 @@ export function CutTimeline(): JSX.Element {
   const setIsHoverScrubbing = useTimelineStore((s) => s.setIsHoverScrubbing);
   const splitAt = useTimelineStore((s) => s.splitAt);
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
+  const resetSegmentTrim = useTimelineStore((s) => s.resetSegmentTrim);
   const setSegmentSpeed = useTimelineStore((s) => s.setSegmentSpeed);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);
   const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
@@ -780,6 +785,12 @@ export function CutTimeline(): JSX.Element {
                           </ContextMenu.Content>
                         </ContextMenu.SubmenuRoot>
                         <ContextMenu.Separator />
+                        <ContextMenu.Item
+                          onClick={() => resetSegmentTrim(segment.id)}
+                          disabled={!segment.trimmed && !hasMergeableCutBoundary(segments, index)}
+                        >
+                          Reset trim
+                        </ContextMenu.Item>
                         <ContextMenu.Item
                           onClick={() => deleteSegment(segment.id)}
                           disabled={segments.length <= 1}

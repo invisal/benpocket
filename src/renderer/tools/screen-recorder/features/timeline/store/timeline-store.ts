@@ -126,12 +126,8 @@ interface TimelineStoreState {
   deleteSegment: (segmentId: string) => void;
   reorderSegments: (fromIndex: number, toIndex: number) => void;
   resizeSegmentEdge: (segmentId: string, edge: 'start' | 'end', newSourceMs: number) => void;
-  /**
-   * Clears the `trimmed` display flag TrimTrack reads -- doesn't restore the
-   * segment's original range (that's not stored anywhere), just dismisses
-   * the "this clip was trimmed" pill.
-   */
-  setSegmentTrimmed: (segmentId: string, trimmed: boolean) => void;
+  /** Restores a segment's range back to `originalRange` and clears `trimmed`. */
+  resetSegmentTrim: (segmentId: string) => void;
   /** Crop is per-clip: each segment can be framed differently. */
   setSegmentCrop: (segmentId: string, crop: CropRect | null) => void;
   /** Speed is per-clip: each segment can play back at a different rate. */
@@ -214,6 +210,7 @@ export const useTimelineStore = create<TimelineStoreState>(
           id: crypto.randomUUID(),
           trackId: PRIMARY_VIDEO_TRACK_ID,
           range: { startMs: 0, endMs: durationMs },
+          originalRange: { startMs: 0, endMs: durationMs },
           speed: 1,
           sourceOffsetMs: 0,
           crop: null,
@@ -252,12 +249,14 @@ export const useTimelineStore = create<TimelineStoreState>(
               {
                 ...segment,
                 range: { startMs: segment.range.startMs, endMs: splitSourceMs },
+                originalRange: { startMs: segment.range.startMs, endMs: splitSourceMs },
                 split: true
               },
               {
                 ...segment,
                 id: crypto.randomUUID(),
                 range: { startMs: splitSourceMs, endMs: segment.range.endMs },
+                originalRange: { startMs: splitSourceMs, endMs: segment.range.endMs },
                 split: true
               }
             );
@@ -319,12 +318,47 @@ export const useTimelineStore = create<TimelineStoreState>(
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
       },
 
-      setSegmentTrimmed: (segmentId, trimmed) => {
+      resetSegmentTrim: (segmentId) => {
         const track = primaryTrack(get().tracks);
-        const segments = track.segments.map((segment) =>
-          segment.id === segmentId ? { ...segment, trimmed } : segment
+        const segments = track.segments;
+        const index = segments.findIndex((s) => s.id === segmentId);
+        if (index === -1) return;
+
+        const segment = segments[index];
+        const prev = segments[index - 1];
+        const next = segments[index + 1];
+        const mergesWithPrev =
+          segment.split && !!prev?.split && prev.range.endMs === segment.range.startMs;
+        const mergesWithNext =
+          segment.split && !!next?.split && segment.range.endMs === next.range.startMs;
+
+        // A cut's two halves are each other's only real "trim" to undo --
+        // merge whichever neighbor(s) still share that cut boundary back
+        // into one un-cut segment, rather than restoring `range` in place
+        // (there's nothing to restore to: a split segment's own range *is*
+        // its originalRange, see `splitAt`).
+        if (mergesWithPrev || mergesWithNext) {
+          const start = mergesWithPrev ? index - 1 : index;
+          const end = mergesWithNext ? index + 1 : index;
+          const first = segments[start];
+          const last = segments[end];
+          const merged: TimelineSegment = {
+            ...first,
+            range: { startMs: first.range.startMs, endMs: last.range.endMs },
+            originalRange: { startMs: first.range.startMs, endMs: last.range.endMs },
+            trimmed: false,
+            split: false
+          };
+          const nextSegments = [...segments.slice(0, start), merged, ...segments.slice(end + 1)];
+          set({ tracks: replaceTrack(get().tracks, { ...track, segments: nextSegments }) });
+          return;
+        }
+
+        if (!segment.trimmed) return;
+        const nextSegments = segments.map((s) =>
+          s.id === segmentId ? { ...s, range: s.originalRange, trimmed: false } : s
         );
-        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments: nextSegments }) });
       },
 
       setSegmentCrop: (segmentId, crop) => {

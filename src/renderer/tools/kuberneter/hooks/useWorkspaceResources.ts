@@ -1,6 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useReplicaSets } from './useReplicaSets';
 import { useJobs } from './useJobs';
 import { useCronJobs } from './useCronJobs';
 import { useServices } from './useServices';
@@ -42,7 +41,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const replicasets = useReplicaSets(resource === 'replicasets');
   const jobs = useJobs(resource === 'jobs');
   const cronjobs = useCronJobs(resource === 'cronjobs');
   const services = useServices(resource === 'services');
@@ -76,8 +74,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'replicasets') activeQuery = replicasets;
-  else if (resource === 'jobs') activeQuery = jobs;
+  if (resource === 'jobs') activeQuery = jobs;
   else if (resource === 'cronjobs') activeQuery = cronjobs;
   else if (resource === 'services') activeQuery = services;
   else if (resource === 'configmaps') activeQuery = configmaps;
@@ -112,7 +109,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    replicaSetsData: replicasets.data,
     jobsData: jobs.data,
     cronJobsData: cronjobs.data,
     servicesData: services.data,

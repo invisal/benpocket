@@ -1,5 +1,6 @@
 import { KubeClientService } from './KubeClientService';
 import { KubeCliService } from './KubeCliService';
+import { getKubeApiConfig } from '../k8s-cli';
 
 export class KubeEngineRouter {
   /**
@@ -13,12 +14,16 @@ export class KubeEngineRouter {
     namespace?: string
   ): Promise<{ items?: unknown[]; error?: string }> {
     try {
-      // 1. Attempt Direct Kube API fetch
+      // 1. Extract API Server endpoint and credentials from kubeconfig
+      const apiConfig = await getKubeApiConfig(kubeconfigPath, contextName);
+
+      // 2. Attempt Direct Kube API fetch
       const directResult = await KubeClientService.getResourcesDirect(
         kubeconfigPath,
         contextName,
         resource,
-        namespace
+        namespace,
+        apiConfig
       );
 
       if (directResult && !directResult.error) {
@@ -28,7 +33,7 @@ export class KubeEngineRouter {
       // Direct API failed or unavailable, fallback to CLI
     }
 
-    // 2. Fallback to KubeCliService (kubectl CLI)
+    // 3. Fallback to KubeCliService (kubectl CLI)
     return KubeCliService.getResources(kubeconfigPath, contextName, resource, namespace);
   }
 }

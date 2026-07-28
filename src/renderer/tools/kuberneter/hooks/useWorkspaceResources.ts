@@ -1,6 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useCronJobs } from './useCronJobs';
 import { useServices } from './useServices';
 import { useConfigMaps } from './useConfigMaps';
 import { useSecrets } from './useSecrets';
@@ -40,7 +39,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const cronjobs = useCronJobs(resource === 'cronjobs');
   const services = useServices(resource === 'services');
   const configmaps = useConfigMaps(resource === 'configmaps');
   const secrets = useSecrets(resource === 'secrets');
@@ -72,8 +70,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'cronjobs') activeQuery = cronjobs;
-  else if (resource === 'services') activeQuery = services;
+  if (resource === 'services') activeQuery = services;
   else if (resource === 'configmaps') activeQuery = configmaps;
   else if (resource === 'secrets') activeQuery = secrets;
   else if (resource === 'resourcequotas') activeQuery = resourcequotas;
@@ -106,7 +103,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    cronJobsData: cronjobs.data,
     servicesData: services.data,
     configMapsData: configmaps.data,
     secretsData: secrets.data,

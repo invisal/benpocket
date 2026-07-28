@@ -59,7 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    cronJobsData,
     servicesData,
     configMapsData,
     secretsData,
@@ -173,10 +172,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           )}
 
           {resource === 'cronjobs' && (
-            <CronJobs
-              cronJobsData={cronJobsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <CronJobs kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
           {resource === 'services' && (

@@ -304,6 +304,25 @@ export function importPostmanEnvironment(file: PostmanEnvironmentFile): {
   };
 }
 
+/** Our internal Environment -> standalone `*.postman_environment.json`, round-tripping with {@link importPostmanEnvironment}. */
+export function exportEnvironmentToPostman(environment: {
+  id: string;
+  name: string;
+  variables: KeyValuePair[];
+}): PostmanEnvironmentFile {
+  return {
+    id: environment.id,
+    name: environment.name,
+    values: environment.variables.map((v) => ({
+      key: v.key,
+      value: v.value,
+      type: 'default',
+      enabled: v.enabled
+    })),
+    _postman_variable_scope: 'environment'
+  };
+}
+
 export type PostmanSchemaVersion = '2.0.0' | '2.1.0' | 'unknown';
 
 /** Best-effort detection of the collection's schema version from `info.schema`. */

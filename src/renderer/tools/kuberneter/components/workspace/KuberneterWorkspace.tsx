@@ -59,8 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    priorityClassesData,
-    runtimeClassesData,
     leasesData,
     mutatingWebhooksData,
     validatingWebhooksData,
@@ -245,13 +243,9 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
             <PodDisruptionBudgets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
-          {resource === 'priorityclasses' && (
-            <PriorityClasses priorityClassesData={priorityClassesData} />
-          )}
+          {resource === 'priorityclasses' && <PriorityClasses />}
 
-          {resource === 'runtimeclasses' && (
-            <RuntimeClasses runtimeClassesData={runtimeClassesData} />
-          )}
+          {resource === 'runtimeclasses' && <RuntimeClasses />}
 
           {resource === 'leases' && (
             <Leases

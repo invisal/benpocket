@@ -1,7 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { usePriorityClasses } from './usePriorityClasses';
-import { useRuntimeClasses } from './useRuntimeClasses';
 import { useLeases } from './useLeases';
 import { useMutatingWebhooks } from './useMutatingWebhooks';
 import { useValidatingWebhooks } from './useValidatingWebhooks';
@@ -32,8 +30,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const priorityclasses = usePriorityClasses(resource === 'priorityclasses');
-  const runtimeclasses = useRuntimeClasses(resource === 'runtimeclasses');
   const leases = useLeases(resource === 'leases');
   const mutatingwebhooks = useMutatingWebhooks(resource === 'mutatingwebhooks');
   const validatingwebhooks = useValidatingWebhooks(resource === 'validatingwebhooks');
@@ -56,9 +52,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'priorityclasses') activeQuery = priorityclasses;
-  else if (resource === 'runtimeclasses') activeQuery = runtimeclasses;
-  else if (resource === 'leases') activeQuery = leases;
+  if (resource === 'leases') activeQuery = leases;
   else if (resource === 'mutatingwebhooks') activeQuery = mutatingwebhooks;
   else if (resource === 'validatingwebhooks') activeQuery = validatingwebhooks;
   else if (resource === 'apps') activeQuery = apps;
@@ -82,8 +76,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    priorityClassesData: priorityclasses.data,
-    runtimeClassesData: runtimeclasses.data,
     leasesData: leases.data,
     mutatingWebhooksData: mutatingwebhooks.data,
     validatingWebhooksData: validatingwebhooks.data,

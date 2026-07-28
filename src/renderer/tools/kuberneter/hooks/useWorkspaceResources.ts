@@ -1,8 +1,5 @@
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
-import { useLeases } from './useLeases';
-import { useMutatingWebhooks } from './useMutatingWebhooks';
-import { useValidatingWebhooks } from './useValidatingWebhooks';
 import { useApplications } from './useApplications';
 import { useNodes } from './useNodes';
 import { useEndpointSlices } from './useEndpointSlices';
@@ -30,9 +27,6 @@ export function useWorkspaceResources(resource: string) {
     (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
   );
 
-  const leases = useLeases(resource === 'leases');
-  const mutatingwebhooks = useMutatingWebhooks(resource === 'mutatingwebhooks');
-  const validatingwebhooks = useValidatingWebhooks(resource === 'validatingwebhooks');
   const apps = useApplications(resource === 'apps');
   const nodes = useNodes(resource === 'nodes');
   const endpointslices = useEndpointSlices(resource === 'endpointslices');
@@ -52,10 +46,7 @@ export function useWorkspaceResources(resource: string) {
   const rolebindings = useRoleBindings(resource === 'bindings');
 
   let activeQuery: { data: unknown[]; isLoading: boolean; errorMsg: string | null } | null = null;
-  if (resource === 'leases') activeQuery = leases;
-  else if (resource === 'mutatingwebhooks') activeQuery = mutatingwebhooks;
-  else if (resource === 'validatingwebhooks') activeQuery = validatingwebhooks;
-  else if (resource === 'apps') activeQuery = apps;
+  if (resource === 'apps') activeQuery = apps;
   else if (resource === 'nodes') activeQuery = nodes;
   else if (resource === 'endpointslices') activeQuery = endpointslices;
   else if (resource === 'endpoints') activeQuery = endpoints;
@@ -76,9 +67,6 @@ export function useWorkspaceResources(resource: string) {
   return {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    leasesData: leases.data,
-    mutatingWebhooksData: mutatingwebhooks.data,
-    validatingWebhooksData: validatingwebhooks.data,
     applicationsData: apps.data,
     nodesData: nodes.data,
     endpointSlicesData: endpointslices.data,

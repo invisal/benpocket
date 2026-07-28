@@ -59,9 +59,6 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const {
     kuberneterSelectedCluster,
     kuberneterSelectedNamespace,
-    leasesData,
-    mutatingWebhooksData,
-    validatingWebhooksData,
     applicationsData,
     nodesData,
     endpointSlicesData,
@@ -248,19 +245,12 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           {resource === 'runtimeclasses' && <RuntimeClasses />}
 
           {resource === 'leases' && (
-            <Leases
-              leasesData={leasesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
+            <Leases kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
           )}
 
-          {resource === 'mutatingwebhooks' && (
-            <MutatingWebhooks mutatingWebhooksData={mutatingWebhooksData} />
-          )}
+          {resource === 'mutatingwebhooks' && <MutatingWebhooks />}
 
-          {resource === 'validatingwebhooks' && (
-            <ValidatingWebhooks validatingWebhooksData={validatingWebhooksData} />
-          )}
+          {resource === 'validatingwebhooks' && <ValidatingWebhooks />}
 
           {resource === 'apps' && (
             <Application

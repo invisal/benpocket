@@ -1,6 +1,7 @@
 import type { VideoCodec } from 'mediabunny';
 import type { ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import { smoothCursorPath } from '@shared/cursor-path';
+import { computeAutoZoomFocalPath } from '@shared/zoom-resolve';
 import { evaluateSceneAtMs } from './rendering/timeline-evaluator';
 import { PixiSceneRenderer } from './rendering/pixi-scene-renderer';
 import { resolveCropRect, centerSquareCrop } from './rendering/crop';
@@ -146,6 +147,14 @@ async function runOnce(
       options.project.cursorPath,
       options.project.cursor.smoothing
     );
+    // One deadzone-camera-simulated path per 'auto-cursor' keyframe -- see
+    // computeAutoZoomFocalPath's doc for why this can't just reuse
+    // smoothedCursorPath above.
+    const autoZoomFocalPaths = new Map(
+      options.project.zoomKeyframes
+        .filter((kf) => kf.position === 'auto-cursor')
+        .map((kf) => [kf.id, computeAutoZoomFocalPath(options.project.cursorPath, kf)])
+    );
 
     renderer = await PixiSceneRenderer.create(
       canvas,
@@ -234,7 +243,8 @@ async function runOnce(
             options.resolution.width,
             options.resolution.height,
             sourceAspect,
-            smoothedCursorPath
+            smoothedCursorPath,
+            autoZoomFocalPaths
           );
 
           let webcamFrame: VideoFrame | null = null;

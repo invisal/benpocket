@@ -189,11 +189,20 @@ function resolveCaption(project: Project, atMs: number): { text: string } | null
 
 /**
  * Pure "what should be on screen at `atMs`" evaluation -- no PixiJS, no I/O.
- * `smoothedCursorPath` is precomputed once per export (smoothing doesn't
- * depend on `atMs`) and passed in rather than recomputed every frame.
- * `sourceAspect` is the recording's (post-crop) aspect ratio -- the caller
- * (export-orchestrator.ts) already derives this once from ffprobe + the
- * first kept segment's crop, same as today's export-manager.ts did.
+ * `smoothedCursorPath`/`autoZoomFocalPaths` are precomputed once per export
+ * (neither depends on `atMs`) and passed in rather than recomputed every
+ * frame -- deliberately two *different* things over the same raw path, not
+ * one shared one: `smoothedCursorPath` (the user's own `CursorSettings.
+ * smoothing`) draws the cursor icon, while `autoZoomFocalPaths` (one
+ * deadzone-camera-simulated path per 'auto-cursor' keyframe, see
+ * computeAutoZoomFocalPath in zoom-resolve.ts) drives the zoom camera's
+ * focal point -- panning the whole zoomed viewport needs to hold still for
+ * small movements and only pan once the cursor nears the edge of what's
+ * visible, or auto-zoom visibly snaps/re-centers on every movement instead
+ * of gliding the way Screen Studio's camera does. `sourceAspect` is the
+ * recording's (post-crop) aspect ratio -- the caller (export-
+ * orchestrator.ts) already derives this once from ffprobe + the first kept
+ * segment's crop, same as today's export-manager.ts did.
  */
 export function evaluateSceneAtMs(
   project: Project,
@@ -201,7 +210,8 @@ export function evaluateSceneAtMs(
   outputWidth: number,
   outputHeight: number,
   sourceAspect: number,
-  smoothedCursorPath: CursorPathPoint[]
+  smoothedCursorPath: CursorPathPoint[],
+  autoZoomFocalPaths: Map<string, CursorPathPoint[]>
 ): SceneDescription {
   const innerRect = computeInnerRect(
     outputWidth,
@@ -212,7 +222,7 @@ export function evaluateSceneAtMs(
   const referenceScale = outputWidth / REFERENCE_CANVAS_WIDTH;
   const cornerRadiusPx = project.background.cornerRadius * referenceScale;
 
-  const zoom = resolveZoom(atMs, project.zoomKeyframes, smoothedCursorPath);
+  const zoom = resolveZoom(atMs, project.zoomKeyframes, autoZoomFocalPaths);
   const shadow = resolveShadow(project.background.shadow, referenceScale);
   if (shadow) shadow.radiusPx = cornerRadiusPx;
 

@@ -2,6 +2,92 @@ import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import type { CursorPathPoint } from './cursor-path';
 import { sampleCursorPath } from './cursor-path';
 
+/** Simulation step (ms) for the camera spring below -- same reasoning as cursor-path.ts's own SPRING_STEP_MS. */
+const CAMERA_STEP_MS = 8;
+/** Close to critically damped (1 = critically damped) -- once the camera
+ * actually starts moving, it should ease to a stop at the new hold point
+ * without the cursor icon's own small deliberate overshoot; overshooting a
+ * whole zoomed viewport's pan would read as a mistake, not "alive". */
+const CAMERA_DAMPING_RATIO = 0.92;
+/** Spring stiffness (1/s^2) for the camera catching up once triggered --
+ * fixed, not user-tunable (unlike cursor-icon smoothing); a best-effort
+ * starting point pending real playback feedback, see this function's own
+ * doc. */
+const CAMERA_STIFFNESS = 55;
+/**
+ * Fraction of the zoomed viewport's own visible half-width/half-height the
+ * cursor can wander within before the camera reacts at all -- e.g. 0.55
+ * means the camera holds still until the cursor is more than 55% of the
+ * way from center to the edge of what's currently visible.
+ */
+const CAMERA_DEADZONE_FRACTION = 0.55;
+
+/**
+ * Simulates the auto-zoom camera's focal point across one keyframe's own
+ * window: holds perfectly still while the recorded cursor stays within a
+ * deadzone of the current hold point (scaled to how much the keyframe's
+ * own `depth` actually leaves visible -- deeper zoom means a smaller
+ * deadzone in absolute screen-fraction terms), and only eases toward the
+ * cursor once it drifts far enough to approach the edge of the visible,
+ * zoomed-in area. This is what stops auto-zoom from re-centering on every
+ * small movement or every click -- the camera only pans when the cursor
+ * would otherwise go out of (or near the edge of) view, then holds again
+ * once it's caught up, rather than continuously tracking raw cursor
+ * position for the keyframe's whole duration.
+ *
+ * A best-effort tuning (`CAMERA_STIFFNESS`/`CAMERA_DAMPING_RATIO`/
+ * `CAMERA_DEADZONE_FRACTION` above) -- there's no way to A/B this against
+ * real playback feel from here, so treat the constants as a starting point
+ * to adjust from real feedback, not a finished result.
+ *
+ * Returns one path per keyframe (not one shared global path) since the
+ * deadzone size depends on that keyframe's own zoom depth -- see every
+ * caller's own `autoZoomFocalPaths` map, keyed by keyframe id.
+ */
+export function computeAutoZoomFocalPath(
+  cursorPath: CursorPathPoint[],
+  keyframe: ZoomKeyframe
+): CursorPathPoint[] {
+  const startMs = keyframe.atMs;
+  const endMs = keyframe.atMs + keyframe.durationMs;
+  if (cursorPath.length === 0) return [];
+
+  const deadzoneHalfWidth = (0.5 * CAMERA_DEADZONE_FRACTION) / keyframe.depth;
+  const deadzoneHalfHeight = (0.5 * CAMERA_DEADZONE_FRACTION) / keyframe.depth;
+  const damping = CAMERA_DAMPING_RATIO * 2 * Math.sqrt(CAMERA_STIFFNESS);
+  const stepSec = CAMERA_STEP_MS / 1000;
+
+  const initial = sampleCursorPath(cursorPath, startMs) ?? { x: 0.5, y: 0.5 };
+  let x = initial.x;
+  let y = initial.y;
+  let vx = 0;
+  let vy = 0;
+
+  const result: CursorPathPoint[] = [{ atMs: startMs, x, y }];
+  for (let atMs = startMs + CAMERA_STEP_MS; atMs <= endMs; atMs += CAMERA_STEP_MS) {
+    const cursor = sampleCursorPath(cursorPath, atMs) ?? { x, y };
+    const dx = cursor.x - x;
+    const dy = cursor.y - y;
+    // Target the camera's *own current position* (i.e. don't move) unless
+    // the cursor has drifted outside the deadzone on that axis -- the
+    // spring only ever engages once actually needed, rather than
+    // continuously chasing every small movement or every new click.
+    const targetX = Math.abs(dx) > deadzoneHalfWidth ? cursor.x : x;
+    const targetY = Math.abs(dy) > deadzoneHalfHeight ? cursor.y : y;
+
+    // Semi-implicit (symplectic) Euler -- see cursor-path.ts's own spring
+    // for why this integration order is what keeps it stable at this step size.
+    const ax = CAMERA_STIFFNESS * (targetX - x) - damping * vx;
+    const ay = CAMERA_STIFFNESS * (targetY - y) - damping * vy;
+    vx += ax * stepSec;
+    vy += ay * stepSec;
+    x += vx * stepSec;
+    y += vy * stepSec;
+    result.push({ atMs, x, y });
+  }
+  return result;
+}
+
 /**
  * Resolves the current zoom depth/focal point at `atMs`, shared between the
  * live editor preview (PreviewStage.tsx, CSS transform) and the export
@@ -39,19 +125,27 @@ export interface ResolvedZoom {
 }
 
 /**
- * `'auto-cursor'` keyframes track the *real* recorded cursor path (sampled
- * at `atMs`, same smoothing already applied by the caller) rather than a
- * fixed point -- this is what makes auto-zoom actually follow the mouse
- * while zoomed in, instead of zooming into a single frozen spot. Falls back
- * to a fixed center point if there's no cursor data (e.g. a 'window'
- * capture, which never gets a cursor path -- see cursor-tracker.ts).
- * Manually placed keyframes (`position: {x, y}`, set by clicking the
- * preview while positioning is armed) always use that exact fixed point.
+ * `'auto-cursor'` keyframes track the *real* recorded cursor path via a
+ * per-keyframe deadzone-camera simulation (see `computeAutoZoomFocalPath`)
+ * rather than a fixed point -- this is what makes auto-zoom actually
+ * follow the mouse while zoomed in, instead of zooming into a single
+ * frozen spot, while still holding still for small movements instead of
+ * continuously re-centering. Falls back to a fixed center point if there's
+ * no cursor data (e.g. a 'window' capture, which never gets a cursor path
+ * -- see cursor-tracker.ts). Manually placed keyframes (`position: {x, y}`,
+ * set by clicking the preview while positioning is armed, or via the
+ * "Fix to First Click" context menu item) always use that exact fixed
+ * point.
+ *
+ * `autoZoomFocalPaths` must hold one precomputed `computeAutoZoomFocalPath`
+ * result per `'auto-cursor'` keyframe, keyed by that keyframe's own id --
+ * every caller computes this once (smoothing/simulation doesn't depend on
+ * `atMs`), not per frame. Manually-positioned keyframes need no entry.
  */
 export function resolveZoom(
   atMs: number,
   keyframes: ZoomKeyframe[],
-  cursorPath: CursorPathPoint[] = []
+  autoZoomFocalPaths: Map<string, CursorPathPoint[]> = new Map()
 ): ResolvedZoom {
   const identity: ResolvedZoom = { depth: 1, focal: { x: 0.5, y: 0.5 }, shift: { x: 0, y: 0 } };
   const active = keyframes.find(
@@ -77,7 +171,7 @@ export function resolveZoom(
   const depth = 1 + (active.depth - 1) * envelope;
   const focal =
     active.position === 'auto-cursor'
-      ? (sampleCursorPath(cursorPath, atMs) ?? { x: 0.5, y: 0.5 })
+      ? (sampleCursorPath(autoZoomFocalPaths.get(active.id) ?? [], atMs) ?? { x: 0.5, y: 0.5 })
       : active.position;
   // Grows from 0 (rest) to envelope * distance-to-center at the zoom's peak,
   // so the focal point smoothly migrates to center as depth increases and

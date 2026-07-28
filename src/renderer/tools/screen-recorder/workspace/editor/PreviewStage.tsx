@@ -19,8 +19,7 @@ import { AnnotationOverlay } from '../../features/annotations/components/Annotat
 import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOverlay';
 import { beginGesture, endGesture } from '../../features/history/store/history-store';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
-import { resolveZoom } from '@shared/zoom-resolve';
-import { smoothCursorPath } from '@shared/cursor-path';
+import { resolveZoom, computeAutoZoomFocalPath } from '@shared/zoom-resolve';
 import { mediaErrorMessage } from '../../lib/media';
 import { cn } from '../../lib/utils';
 
@@ -102,18 +101,26 @@ export function PreviewStage({
   const updateKeyframe = useZoomStore((s) => s.updateKeyframe);
   const disarmPositioning = useZoomStore((s) => s.disarmPositioning);
   const cursor = useCursorStore();
-  const cursorSmoothing = useCursorStore((s) => s.smoothing);
   const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
   const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
   const webcamPreviewUrl = useAppStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
   const webcamOffsetMs = useAppStore((s) => s.lastRecording?.webcamOffsetMs ?? 0);
   const webcamVideoRef = useRef<HTMLVideoElement>(null);
-  // Same smoothing pass the export compositor applies (see
-  // FrameCompositor.create), so 'auto-cursor' zoom keyframes and the export
-  // follow the identical (smoothed) trajectory.
-  const smoothedCursorPath = useMemo(
-    () => smoothCursorPath(rawCursorPath, cursorSmoothing),
-    [rawCursorPath, cursorSmoothing]
+  // One deadzone-camera-simulated path per 'auto-cursor' keyframe (deadzone
+  // size depends on that keyframe's own zoom depth, so this can't be one
+  // shared path -- see computeAutoZoomFocalPath's doc) -- NOT the user's
+  // cursor-icon `smoothing` setting (CursorOverlay applies that separately,
+  // to the icon only). Same computation the export compositor applies (see
+  // export-orchestrator.ts), so 'auto-cursor' zoom keyframes and the export
+  // follow the identical trajectory.
+  const autoZoomFocalPaths = useMemo(
+    () =>
+      new Map(
+        zoomKeyframes
+          .filter((kf) => kf.position === 'auto-cursor')
+          .map((kf) => [kf.id, computeAutoZoomFocalPath(rawCursorPath, kf)])
+      ),
+    [rawCursorPath, zoomKeyframes]
   );
 
   // Both `<video>` elements always hold the raw, uncut source, so playback
@@ -459,8 +466,8 @@ export function PreviewStage({
     focal: zoomFocal,
     shift: zoomShift
   } = useMemo(
-    () => resolveZoom(zoomTimeMs, zoomKeyframes, smoothedCursorPath),
-    [zoomTimeMs, zoomKeyframes, smoothedCursorPath]
+    () => resolveZoom(zoomTimeMs, zoomKeyframes, autoZoomFocalPaths),
+    [zoomTimeMs, zoomKeyframes, autoZoomFocalPaths]
   );
   // Where the focal point actually ends up on screen right now (it migrates
   // toward center as the zoom deepens, see zoom-resolve.ts) -- for the marker.

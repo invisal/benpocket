@@ -33,6 +33,16 @@ export interface PillTrackProps<T extends { id: string }> {
   isDisabled?: (item: T) => boolean;
   onToggleDisabled?: (item: T) => void;
   onDuplicate?: (item: T) => void;
+  /**
+   * Extra context-menu items specific to one track's own item type (e.g.
+   * ZoomTrack's "Follow Cursor" toggle, which only means anything for a
+   * `ZoomKeyframe` -- Caption/Annotation/BlurMask, which share this same
+   * component, have nothing analogous). Rendered inside the same
+   * `ContextMenu.Content` this component already owns, after Duplicate and
+   * before Delete -- return `ContextMenu.Item`(s) directly, same as this
+   * file's own built-in ones.
+   */
+  renderExtraMenuItems?: (item: T) => ReactNode;
 }
 
 /**
@@ -76,7 +86,8 @@ export function PillTrack<T extends { id: string }>({
   onDelete,
   isDisabled,
   onToggleDisabled,
-  onDuplicate
+  onDuplicate,
+  renderExtraMenuItems
 }: PillTrackProps<T>): JSX.Element | null {
   const totalOutputMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,7 +171,7 @@ export function PillTrack<T extends { id: string }>({
                   </div>
                 }
               />
-              {(onToggleDisabled || onDuplicate || onDelete) && (
+              {(onToggleDisabled || onDuplicate || renderExtraMenuItems || onDelete) && (
                 <ContextMenu.Content>
                   {onToggleDisabled && (
                     <ContextMenu.Item onClick={() => onToggleDisabled(item)}>
@@ -182,6 +193,7 @@ export function PillTrack<T extends { id: string }>({
                       </span>
                     </ContextMenu.Item>
                   )}
+                  {renderExtraMenuItems?.(item)}
                   {onDelete && (
                     <ContextMenu.Item onClick={() => onDelete(item)}>
                       <span className="flex items-center gap-2">

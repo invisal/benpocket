@@ -45,10 +45,12 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
+  const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   const keyframes = useZoomStore((s) => s.keyframes);
   const updateKeyframe = useZoomStore((s) => s.updateKeyframe);
+  const duplicateKeyframe = useZoomStore((s) => s.duplicateKeyframe);
   const removeKeyframe = useZoomStore((s) => s.removeKeyframe);
   const selectedKeyframeId = useZoomStore((s) => s.selectedKeyframeId);
   const setSelectedKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
@@ -161,6 +163,13 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
         onDelete={(kf) => removeKeyframe(kf.id)}
         isDisabled={(kf) => !kf.enabled}
         onToggleDisabled={(kf) => updateKeyframe(kf.id, { enabled: !kf.enabled })}
+        onDuplicate={(kf) => {
+          const newId = duplicateKeyframe(kf.id, sourceDurationMs);
+          if (!newId) return;
+          requestSeek(kf.atMs + kf.durationMs);
+          setActiveTool('zoom');
+          setSelectedKeyframeId(newId);
+        }}
       />
 
       {ghostPercent && (

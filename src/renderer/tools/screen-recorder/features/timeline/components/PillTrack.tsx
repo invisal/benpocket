@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 import { useRef } from 'react';
+import { Copy, Eye, EyeOff, Trash2 } from 'lucide-react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { getSegmentOutputDurationMs, sourceRangeToOutputPercent } from '../lib/segment-duration';
@@ -31,6 +32,7 @@ export interface PillTrackProps<T extends { id: string }> {
   /** Whether an item is toggled off -- dims the pill and, via `onToggleDisabled`'s own handler, skips whatever the item actually does (e.g. `resolveZoom` ignoring a disabled zoom keyframe) without deleting it. */
   isDisabled?: (item: T) => boolean;
   onToggleDisabled?: (item: T) => void;
+  onDuplicate?: (item: T) => void;
 }
 
 /**
@@ -73,7 +75,8 @@ export function PillTrack<T extends { id: string }>({
   onResizeEnd,
   onDelete,
   isDisabled,
-  onToggleDisabled
+  onToggleDisabled,
+  onDuplicate
 }: PillTrackProps<T>): JSX.Element | null {
   const totalOutputMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -157,15 +160,35 @@ export function PillTrack<T extends { id: string }>({
                   </div>
                 }
               />
-              {(onToggleDisabled || onDelete) && (
+              {(onToggleDisabled || onDuplicate || onDelete) && (
                 <ContextMenu.Content>
                   {onToggleDisabled && (
                     <ContextMenu.Item onClick={() => onToggleDisabled(item)}>
-                      {isDisabled?.(item) ? 'Enable' : 'Disable'}
+                      <span className="flex items-center gap-2">
+                        {isDisabled?.(item) ? (
+                          <Eye size={14} className="text-text-dim" />
+                        ) : (
+                          <EyeOff size={14} className="text-text-dim" />
+                        )}
+                        {isDisabled?.(item) ? 'Enable' : 'Disable'}
+                      </span>
+                    </ContextMenu.Item>
+                  )}
+                  {onDuplicate && (
+                    <ContextMenu.Item onClick={() => onDuplicate(item)}>
+                      <span className="flex items-center gap-2">
+                        <Copy size={14} className="text-text-dim" />
+                        Duplicate
+                      </span>
                     </ContextMenu.Item>
                   )}
                   {onDelete && (
-                    <ContextMenu.Item onClick={() => onDelete(item)}>Delete</ContextMenu.Item>
+                    <ContextMenu.Item onClick={() => onDelete(item)}>
+                      <span className="flex items-center gap-2">
+                        <Trash2 size={14} className="text-text-dim" />
+                        Delete
+                      </span>
+                    </ContextMenu.Item>
                   )}
                 </ContextMenu.Content>
               )}

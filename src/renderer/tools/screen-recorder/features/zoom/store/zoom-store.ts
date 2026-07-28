@@ -3,7 +3,8 @@ import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import {
   DEFAULT_ZOOM_DEPTH,
   DEFAULT_ZOOM_DURATION_MS,
-  DEFAULT_ZOOM_HOLD_TRANSITION_MS
+  DEFAULT_ZOOM_HOLD_TRANSITION_MS,
+  ZOOM_MIN_DURATION_MS
 } from '@shared/constants';
 import { withHistory } from '../../history/lib/with-history';
 import { clampToNonOverlapping } from '../lib/zoom-overlap';
@@ -43,6 +44,14 @@ interface ZoomStoreState {
   setMode: (mode: 'auto' | 'manual') => void;
   /** Returns the new keyframe's id, so callers can immediately arm positioning for it. */
   addKeyframe: (atMs: number) => string;
+  /**
+   * Copies `id`'s keyframe to right after it ends, clamped against
+   * neighboring keyframes and against `maxAtMs` -- the recording's own
+   * length, since a keyframe past the actual footage makes no sense
+   * regardless of what's currently cut. Returns `null` (no-op) if there's
+   * no room left to fit even the minimum duration.
+   */
+  duplicateKeyframe: (id: string, maxAtMs: number) => string | null;
   removeKeyframe: (id: string) => void;
   updateKeyframe: (id: string, patch: Partial<Omit<ZoomKeyframe, 'id'>>) => void;
   armPositioning: (id: string) => void;
@@ -87,6 +96,31 @@ export const useZoomStore = create<ZoomStoreState>(
           };
         });
         return id;
+      },
+      duplicateKeyframe: (id, maxAtMs) => {
+        let newId: string | null = null;
+        set((state) => {
+          const source = state.keyframes.find((k) => k.id === id);
+          if (!source) return state;
+          const desiredAtMs = source.atMs + source.durationMs;
+          if (desiredAtMs >= maxAtMs) return state;
+          const clamped = clampToNonOverlapping(
+            state.keyframes,
+            null,
+            desiredAtMs,
+            source.durationMs
+          );
+          const durationMs = Math.min(clamped.durationMs, maxAtMs - clamped.atMs);
+          if (durationMs < ZOOM_MIN_DURATION_MS) return state;
+          newId = crypto.randomUUID();
+          return {
+            keyframes: [
+              ...state.keyframes,
+              { ...source, id: newId, atMs: clamped.atMs, durationMs }
+            ]
+          };
+        });
+        return newId;
       },
       removeKeyframe: (id) =>
         set((state) => ({

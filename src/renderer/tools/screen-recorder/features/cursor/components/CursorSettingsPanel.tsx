@@ -51,13 +51,15 @@ export function CursorSettingsPanel(): JSX.Element {
     smoothing,
     motionBlur,
     clickBounce,
+    clickRippleEnabled,
     setVisible,
     setClipToCanvas,
     setStyle,
     setSize,
     setSmoothing,
     setMotionBlur,
-    setClickBounce
+    setClickBounce,
+    setClickRippleEnabled
   } = useCursorStore();
 
   return (
@@ -71,6 +73,15 @@ export function CursorSettingsPanel(): JSX.Element {
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">Clip to Canvas</span>
           <Switch checked={clipToCanvas} onChange={setClipToCanvas} label="Clip cursor to canvas" />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">Click Ripple</span>
+          <Switch
+            checked={clickRippleEnabled}
+            onChange={setClickRippleEnabled}
+            label="Show expanding ripple on click"
+          />
         </div>
       </div>
 

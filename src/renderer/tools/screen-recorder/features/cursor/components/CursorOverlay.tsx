@@ -6,7 +6,8 @@ import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import {
   smoothCursorPath,
   sampleCursorPath,
-  resolveClickBounceScale
+  resolveClickBounceScale,
+  resolveClickRipple
 } from '../engine/cursor-smoothing-engine';
 import { CursorStyleIcon } from './CursorStyleIcon';
 
@@ -57,12 +58,33 @@ export function CursorOverlay({
   const scale = stageWidthPx / REFERENCE_CANVAS_WIDTH;
   const sizePx = cursor.size * CURSOR_SIZE_UNIT_PX * scale;
   const clickScale = resolveClickBounceScale(clickPath, currentTimeMs, cursor.clickBounce);
+  const ripple = cursor.clickRippleEnabled
+    ? resolveClickRipple(clickPath, currentTimeMs, cursor.clickBounce)
+    : null;
+  // Grows from ~1x to ~4x the icon's own size -- big enough to read clearly
+  // next to a small cursor glyph without ever dwarfing the actual content.
+  const rippleDiameterPx = ripple ? sizePx * (1 + ripple.progress * 3) : 0;
 
   return (
     <div
       className="pointer-events-none absolute inset-0 z-10"
       style={{ overflow: cursor.clipToCanvas ? 'hidden' : 'visible' }}
     >
+      {ripple && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${ripple.pos.x * 100}%`,
+            top: `${ripple.pos.y * 100}%`,
+            width: rippleDiameterPx,
+            height: rippleDiameterPx,
+            transform: 'translate(-50%, -50%)',
+            borderRadius: '9999px',
+            border: `${Math.max(1.5, sizePx * 0.08)}px solid ${preset.fill}`,
+            opacity: ripple.alpha
+          }}
+        />
+      )}
       <div
         style={{
           position: 'absolute',

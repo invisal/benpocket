@@ -3,7 +3,7 @@ import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
 import { enrichWallpaperPreset } from '../../../background/lib/wave-wallpaper';
 import { findWallpaperImagePreset } from '../../../background/lib/wallpaper-images';
-import { sampleCursorPath, resolveClickBounceScale } from '@shared/cursor-path';
+import { sampleCursorPath, resolveClickBounceScale, resolveClickRipple } from '@shared/cursor-path';
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
 import { resolveZoom } from '@shared/zoom-resolve';
@@ -86,6 +86,10 @@ function resolveCursor(
     }
   }
 
+  const ripple = cursor.clickRippleEnabled
+    ? resolveClickRipple(clickPath, atMs, cursor.clickBounce)
+    : null;
+
   return {
     posPx: toPx(point),
     sizePx,
@@ -93,7 +97,16 @@ function resolveCursor(
     stroke: preset.stroke,
     clickScale: resolveClickBounceScale(clickPath, atMs, cursor.clickBounce),
     clipToCanvas: cursor.clipToCanvas,
-    ghosts
+    ghosts,
+    // Grows from ~1x to ~4x the icon's own size -- same formula as
+    // CursorOverlay.tsx's live-preview ripple, so the export matches.
+    ripple: ripple
+      ? {
+          posPx: toPx(ripple.pos),
+          radiusPx: (sizePx * (1 + ripple.progress * 3)) / 2,
+          alpha: ripple.alpha
+        }
+      : null
   };
 }
 

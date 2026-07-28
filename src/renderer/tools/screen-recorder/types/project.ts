@@ -37,6 +37,8 @@ export interface CursorSettings {
   motionBlur: number;
   /** 0-5 intensity of the squash/bounce animation played on click -- see `Project.clickPath` for the click data this reads. */
   clickBounce: number;
+  /** Whether the expanding click-ripple ring (resolveClickRipple, cursor-path.ts) draws at all -- independent of `clickBounce`'s own icon squash/pop, which stays on regardless. Off by default. */
+  clickRippleEnabled: boolean;
 }
 
 export interface CaptionSettings {

@@ -113,28 +113,21 @@ export function sampleCursorPath(
   return { x: prev.x + (next.x - prev.x) * t, y: prev.y + (next.y - prev.y) * t };
 }
 
-/** How long the click-bounce squash/settle animation lasts, in ms. */
-const CLICK_BOUNCE_DURATION_MS = 260;
+/** How long the click-bounce squash/pop icon animation lasts, in ms. */
+const CLICK_BOUNCE_DURATION_MS = 320;
+/** How long the expanding click ripple lasts, in ms -- longer than the icon
+ * bounce so it reads as its own deliberate "a click happened here" signal,
+ * not just part of the icon's motion. */
+const CLICK_RIPPLE_DURATION_MS = 500;
 
 /**
- * Cursor scale multiplier for the click-bounce effect at a given timeline
- * position -- a quick squash-and-settle (damped oscillation) starting at the
- * most recent real mousedown, so the cursor visibly "presses" on click, the
- * way Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.
- * clickBounce`); returns 1 (no effect) when there's no click within the
- * animation window or `intensity` is 0.
- *
  * `clickPath` is sorted and typically sparse (occasional clicks, not a
  * continuous sample stream like `cursorPath`), so this binary-searches for
- * the most recent click rather than walking the whole array.
+ * the most recent click at/before `atMs` rather than walking the whole
+ * array. Shared by `resolveClickBounceScale` and `resolveClickRipple` --
+ * both animations key off the exact same "most recent click" moment.
  */
-export function resolveClickBounceScale(
-  clickPath: CursorPathPoint[],
-  atMs: number,
-  intensity: number
-): number {
-  if (intensity <= 0 || clickPath.length === 0) return 1;
-
+function mostRecentClick(clickPath: CursorPathPoint[], atMs: number): CursorPathPoint | null {
   let lo = 0;
   let hi = clickPath.length;
   while (lo < hi) {
@@ -142,15 +135,78 @@ export function resolveClickBounceScale(
     if (clickPath[mid].atMs <= atMs) lo = mid + 1;
     else hi = mid;
   }
-  const click = clickPath[lo - 1];
+  return clickPath[lo - 1] ?? null;
+}
+
+/**
+ * Cursor scale multiplier for the click-bounce effect at a given timeline
+ * position -- a quick squash-and-pop (damped oscillation) starting at the
+ * most recent real mousedown, so the cursor visibly "presses" on click, the
+ * way Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.
+ * clickBounce`); returns 1 (no effect) when there's no click within the
+ * animation window or `intensity` is 0.
+ *
+ * Amplitude scales up to +-0.5 at max intensity (previously +-0.18) --
+ * the original range read as a barely-perceptible wobble, not something a
+ * viewer could reliably notice as "a click just happened" the way this is
+ * meant to communicate. Pair with `resolveClickRipple` below for a second,
+ * unambiguous signal independent of the icon's own size.
+ */
+export function resolveClickBounceScale(
+  clickPath: CursorPathPoint[],
+  atMs: number,
+  intensity: number
+): number {
+  if (intensity <= 0 || clickPath.length === 0) return 1;
+  const click = mostRecentClick(clickPath, atMs);
   if (!click) return 1;
 
   const elapsed = atMs - click.atMs;
   if (elapsed < 0 || elapsed > CLICK_BOUNCE_DURATION_MS) return 1;
 
-  // A damped cosine: squashes immediately on click (p=0), then a couple of
-  // decaying overshoots settling back to 1 by the end of the window.
+  // A damped cosine: squashes hard immediately on click (p=0), pops back
+  // past 1 on release, then a couple of quickly-decaying overshoots
+  // settling back to 1 by the end of the window.
   const p = elapsed / CLICK_BOUNCE_DURATION_MS;
-  const amplitude = (Math.min(intensity, 5) / 5) * 0.18;
-  return 1 - amplitude * Math.exp(-p * 6) * Math.cos(p * Math.PI * 3);
+  const amplitude = (Math.min(intensity, 5) / 5) * 0.5;
+  return 1 - amplitude * Math.exp(-p * 5) * Math.cos(p * Math.PI * 3);
+}
+
+export interface ClickRipple {
+  /** Where the click actually happened (0-1, same normalized space as CursorPathPoint) -- the ring stays anchored here, not wherever the cursor has moved to since, so it stays an honest "a click happened *here*" marker even mid-pan. */
+  pos: { x: number; y: number };
+  /** 0 (just clicked) - 1 (fully expanded) -- multiply by whatever max ring radius the caller wants. */
+  progress: number;
+  /** 0 (invisible) - 1 (fully opaque at max intensity) -- already fades to 0 as `progress` approaches 1. */
+  alpha: number;
+}
+
+/**
+ * Expanding, fading ring centered on the most recent click -- an
+ * unambiguous "a click happened here" signal independent of the cursor
+ * icon's own squash/pop (`resolveClickBounceScale`), which alone was easy
+ * to miss since it's just a size change on an already-small icon. Same
+ * `intensity`/return-null convention as that function; callers turn
+ * `progress` into an actual pixel radius (scaled against the cursor's own
+ * size) and draw a stroked circle at `alpha` opacity.
+ */
+export function resolveClickRipple(
+  clickPath: CursorPathPoint[],
+  atMs: number,
+  intensity: number
+): ClickRipple | null {
+  if (intensity <= 0 || clickPath.length === 0) return null;
+  const click = mostRecentClick(clickPath, atMs);
+  if (!click) return null;
+
+  const elapsed = atMs - click.atMs;
+  if (elapsed < 0 || elapsed > CLICK_RIPPLE_DURATION_MS) return null;
+
+  const linear = elapsed / CLICK_RIPPLE_DURATION_MS;
+  // Expands fast at first and slows near the end (ease-out) rather than a
+  // constant rate, closer to a real ripple/shockwave; fades in lockstep so
+  // it's never a hard-edged ring popping in or out.
+  const progress = 1 - (1 - linear) ** 2;
+  const alpha = (1 - linear) * (Math.min(intensity, 5) / 5);
+  return { pos: { x: click.x, y: click.y }, progress, alpha };
 }

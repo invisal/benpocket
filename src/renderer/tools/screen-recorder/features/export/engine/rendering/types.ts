@@ -44,6 +44,13 @@ export interface CursorGhostSceneData {
   alpha: number;
 }
 
+export interface CursorRippleSceneData {
+  posPx: { x: number; y: number };
+  /** Already resolved to an actual pixel radius -- see resolveCursor's own doc for the size formula. */
+  radiusPx: number;
+  alpha: number;
+}
+
 export interface CursorSceneData {
   posPx: { x: number; y: number };
   sizePx: number;
@@ -52,6 +59,8 @@ export interface CursorSceneData {
   clickScale: number;
   clipToCanvas: boolean;
   ghosts: CursorGhostSceneData[];
+  /** Expanding click-ripple ring, or null when there's no click within its animation window -- see resolveClickRipple in cursor-path.ts. */
+  ripple: CursorRippleSceneData | null;
 }
 
 export interface WebcamSceneData {

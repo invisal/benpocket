@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type ReplicaSetData } from '../types/ReplicaSetData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -31,5 +32,5 @@ export function useReplicaSets(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ReplicaSetData>('replicasets', transform, enabled);
+  return useKubeQuery<ReplicaSetData>(K8S_RESOURCE_KEYS.REPLICA_SETS, transform, enabled);
 }

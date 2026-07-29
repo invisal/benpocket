@@ -6,16 +6,18 @@ import { PersistentVolumeClaimsTable } from './PersistentVolumeClaimsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { usePersistentVolumeClaims } from '../../../hooks/usePersistentVolumeClaims';
 
 interface PersistentVolumeClaimsProps {
-  pvcsData: PersistentVolumeClaimData[];
   kuberneterSelectedNamespace: string;
 }
 
 export const PersistentVolumeClaims: React.FC<PersistentVolumeClaimsProps> = ({
-  pvcsData,
   kuberneterSelectedNamespace
 }) => {
+  const { data: pvcsData, isLoading, errorMsg } = usePersistentVolumeClaims(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -135,29 +137,31 @@ export const PersistentVolumeClaims: React.FC<PersistentVolumeClaimsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <PersistentVolumeClaimsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <PersistentVolumeClaimsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <PersistentVolumeClaimsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectPvc={handleSelectPvc}
+          selectedPvcId={selectedPvcId}
         />
-      }
-    >
-      <PersistentVolumeClaimsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectPvc={handleSelectPvc}
-        selectedPvcId={selectedPvcId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

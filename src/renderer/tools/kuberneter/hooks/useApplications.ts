@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type ApplicationData } from '../types/ApplicationData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAgeLong } from '../utils/formatAgeLong';
@@ -68,5 +69,9 @@ export function useApplications(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ApplicationData>('deployments,statefulsets,daemonsets', transform, enabled);
+  return useKubeQuery<ApplicationData>(
+    `${K8S_RESOURCE_KEYS.DEPLOYMENTS},${K8S_RESOURCE_KEYS.STATEFUL_SETS},${K8S_RESOURCE_KEYS.DAEMON_SETS}`,
+    transform,
+    enabled
+  );
 }

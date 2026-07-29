@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type RoleBindingData, type Subject, type RoleRef } from '../types/RoleBindingData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -35,5 +36,5 @@ export function useRoleBindings(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<RoleBindingData>('rolebindings', transform, enabled);
+  return useKubeQuery<RoleBindingData>(K8S_RESOURCE_KEYS.ROLE_BINDINGS, transform, enabled);
 }

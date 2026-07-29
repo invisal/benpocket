@@ -4,6 +4,7 @@ export { registerTopNodesHandler } from './handlers/top-nodes';
 export { registerTopPodsHandler } from './handlers/top-pods';
 export { registerPrometheusHandler } from './handlers/prometheus';
 export { registerPortForwardHandler } from './handlers/port-forward';
+export { registerWatchHandler } from './handlers/watch';
 
 import { registerKubeconfigHandlers } from './handlers/kubeconfig';
 import { registerResourcesHandler } from './handlers/resources';
@@ -11,6 +12,7 @@ import { registerTopNodesHandler } from './handlers/top-nodes';
 import { registerTopPodsHandler } from './handlers/top-pods';
 import { registerPrometheusHandler } from './handlers/prometheus';
 import { registerPortForwardHandler } from './handlers/port-forward';
+import { registerWatchHandler } from './handlers/watch';
 
 export function registerK8sHandlers(): void {
   registerKubeconfigHandlers();
@@ -19,4 +21,5 @@ export function registerK8sHandlers(): void {
   registerTopPodsHandler();
   registerPrometheusHandler();
   registerPortForwardHandler();
+  registerWatchHandler();
 }

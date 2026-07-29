@@ -6,16 +6,18 @@ import { HorizontalPodAutoscalersTable } from './HorizontalPodAutoscalersTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useHpas } from '../../../hooks/useHpas';
 
 interface HorizontalPodAutoscalersProps {
-  hpasData: HorizontalPodAutoscalerData[];
   kuberneterSelectedNamespace: string;
 }
 
 export const HorizontalPodAutoscalers: React.FC<HorizontalPodAutoscalersProps> = ({
-  hpasData,
   kuberneterSelectedNamespace
 }) => {
+  const { data: hpasData, isLoading, errorMsg } = useHpas(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -152,29 +154,31 @@ export const HorizontalPodAutoscalers: React.FC<HorizontalPodAutoscalersProps> =
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <HorizontalPodAutoscalersToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <HorizontalPodAutoscalersToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <HorizontalPodAutoscalersTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectHpa={handleSelectHpa}
+          selectedHpaId={selectedHpaId}
         />
-      }
-    >
-      <HorizontalPodAutoscalersTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectHpa={handleSelectHpa}
-        selectedHpaId={selectedHpaId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

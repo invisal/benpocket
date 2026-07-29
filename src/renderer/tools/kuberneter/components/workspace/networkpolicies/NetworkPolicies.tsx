@@ -6,16 +6,18 @@ import { NetworkPoliciesTable } from './NetworkPoliciesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useNetworkPolicies } from '../../../hooks/useNetworkPolicies';
 
 interface NetworkPoliciesProps {
-  networkPoliciesData: NetworkPolicyData[];
   kuberneterSelectedNamespace: string;
 }
 
 export const NetworkPolicies: React.FC<NetworkPoliciesProps> = ({
-  networkPoliciesData = [],
   kuberneterSelectedNamespace
 }) => {
+  const { data: networkPoliciesData, isLoading, errorMsg } = useNetworkPolicies(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -132,30 +134,32 @@ export const NetworkPolicies: React.FC<NetworkPoliciesProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <NetworkPoliciesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <NetworkPoliciesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <NetworkPoliciesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectPolicy={handleSelectPolicy}
+          onNamespaceClick={handleNamespaceClick}
+          selectedPolicyId={selectedPolicyId}
         />
-      }
-    >
-      <NetworkPoliciesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectPolicy={handleSelectPolicy}
-        onNamespaceClick={handleNamespaceClick}
-        selectedPolicyId={selectedPolicyId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

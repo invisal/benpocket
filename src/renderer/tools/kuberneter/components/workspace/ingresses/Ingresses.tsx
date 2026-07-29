@@ -6,16 +6,16 @@ import { IngressesTable } from './IngressesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useIngresses } from '../../../hooks/useIngresses';
 
 interface IngressesProps {
-  ingressesData: IngressData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Ingresses: React.FC<IngressesProps> = ({
-  ingressesData = [],
-  kuberneterSelectedNamespace
-}) => {
+export const Ingresses: React.FC<IngressesProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: ingressesData, isLoading, errorMsg } = useIngresses(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -133,30 +133,32 @@ export const Ingresses: React.FC<IngressesProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <IngressesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <IngressesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <IngressesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectIngress={handleSelectIngress}
+          onNamespaceClick={handleNamespaceClick}
+          selectedIngressId={selectedIngressId}
         />
-      }
-    >
-      <IngressesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectIngress={handleSelectIngress}
-        onNamespaceClick={handleNamespaceClick}
-        selectedIngressId={selectedIngressId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

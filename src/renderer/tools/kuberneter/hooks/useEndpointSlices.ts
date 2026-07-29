@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import {
   type EndpointSliceData,
   type EndpointSliceEndpoint,
@@ -138,5 +139,5 @@ export function useEndpointSlices(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<EndpointSliceData>('endpointslices', transform, enabled);
+  return useKubeQuery<EndpointSliceData>(K8S_RESOURCE_KEYS.ENDPOINT_SLICES, transform, enabled);
 }

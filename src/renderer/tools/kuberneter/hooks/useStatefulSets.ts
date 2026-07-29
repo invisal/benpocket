@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type StatefulSetData } from '../types/StatefulSetData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -29,5 +30,5 @@ export function useStatefulSets(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<StatefulSetData>('statefulsets', transform, enabled);
+  return useKubeQuery<StatefulSetData>(K8S_RESOURCE_KEYS.STATEFUL_SETS, transform, enabled);
 }

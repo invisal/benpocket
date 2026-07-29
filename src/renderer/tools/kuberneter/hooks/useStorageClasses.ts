@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type StorageClassData } from '../types/StorageClassData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -73,7 +74,7 @@ export function useStorageClasses(enabled: boolean) {
         const pvsRes = await window.kuberneter.getResources(
           configPath,
           cluster,
-          'persistentvolumes'
+          K8S_RESOURCE_KEYS.PERSISTENT_VOLUMES
         );
         return pvsRes?.items || [];
       } catch (e) {
@@ -84,5 +85,10 @@ export function useStorageClasses(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<StorageClassData>('storageclasses', transform, enabled, fetchExtraData);
+  return useKubeQuery<StorageClassData>(
+    K8S_RESOURCE_KEYS.STORAGE_CLASSES,
+    transform,
+    enabled,
+    fetchExtraData
+  );
 }

@@ -6,12 +6,12 @@ import { MutatingWebhooksTable } from './MutatingWebhooksTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useMutatingWebhooks } from '../../../hooks/useMutatingWebhooks';
 
-interface MutatingWebhooksProps {
-  mutatingWebhooksData: MutatingWebhookConfigurationData[];
-}
+export const MutatingWebhooks: React.FC = () => {
+  const { data: mutatingWebhooksData, isLoading, errorMsg } = useMutatingWebhooks(true);
 
-export const MutatingWebhooks: React.FC<MutatingWebhooksProps> = ({ mutatingWebhooksData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -108,29 +108,31 @@ export const MutatingWebhooks: React.FC<MutatingWebhooksProps> = ({ mutatingWebh
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <MutatingWebhooksToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <MutatingWebhooksToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <MutatingWebhooksTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectWebhook={handleSelectWebhook}
+          selectedWebhookId={selectedWebhookId}
         />
-      }
-    >
-      <MutatingWebhooksTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectWebhook={handleSelectWebhook}
-        selectedWebhookId={selectedWebhookId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

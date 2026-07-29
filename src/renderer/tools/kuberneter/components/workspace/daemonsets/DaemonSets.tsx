@@ -6,16 +6,16 @@ import { DaemonSetsTable } from './DaemonSetsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useDaemonSets } from '../../../hooks/useDaemonSets';
 
 interface DaemonSetsProps {
-  daemonSetsData: DaemonSetData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const DaemonSets: React.FC<DaemonSetsProps> = ({
-  daemonSetsData,
-  kuberneterSelectedNamespace
-}) => {
+export const DaemonSets: React.FC<DaemonSetsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: daemonSetsData, isLoading, errorMsg } = useDaemonSets(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -139,29 +139,31 @@ export const DaemonSets: React.FC<DaemonSetsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <DaemonSetsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <DaemonSetsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <DaemonSetsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectDaemonSet={handleSelectDaemonSet}
+          selectedDaemonSetId={selectedDaemonSetId}
         />
-      }
-    >
-      <DaemonSetsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectDaemonSet={handleSelectDaemonSet}
-        selectedDaemonSetId={selectedDaemonSetId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

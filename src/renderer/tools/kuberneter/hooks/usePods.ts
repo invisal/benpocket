@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
+import { useInstantMetrics, formatInstantCpu, formatInstantMemory } from './useMetrics';
 import { type PodData } from '../types/PodData';
 import { type PodResource, type ContainerStatus } from '../types/PodResource';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
-import { parseK8sCapacity, formatCapacity } from '../utils/formatCapacity';
 
 export function usePods(enabled: boolean) {
+  const metricsQuery = useInstantMetrics(enabled);
+
   const transform = useMemo(
-    () => (items: K8sResource[], extraData: unknown) => {
-      const topPodsItems =
-        (extraData as { namespace: string; name: string; cpu: string; memory: string }[]) || [];
+    () => (items: K8sResource[]) => {
+      const metricItems = metricsQuery.data ?? [];
+
       return items.map((item) => {
         const podItem = item as unknown as PodResource;
         const name = podItem.metadata?.name || '';
@@ -23,25 +26,10 @@ export function usePods(enabled: boolean) {
           0
         );
 
-        const podMetric = topPodsItems.find((p) => p.name === name && p.namespace === ns);
+        const podMetric = metricItems.find((p) => p.name === name && p.namespace === ns);
 
-        let cpuDisplay = 'N/A';
-        if (podMetric && podMetric.cpu) {
-          const rawCpu = podMetric.cpu.trim();
-          if (rawCpu.endsWith('m')) {
-            const millicores = parseInt(rawCpu.slice(0, -1), 10);
-            cpuDisplay = (millicores / 1000).toFixed(3);
-          } else {
-            const cores = parseFloat(rawCpu);
-            cpuDisplay = isNaN(cores) ? 'N/A' : cores.toFixed(3);
-          }
-        }
-
-        let memDisplay = 'N/A';
-        if (podMetric && podMetric.memory) {
-          const rawMem = podMetric.memory.trim();
-          memDisplay = formatCapacity(parseK8sCapacity(rawMem));
-        }
+        const cpu = podMetric?.cpu ? formatInstantCpu(podMetric.cpu) : 'N/A';
+        const memory = podMetric?.memory ? formatInstantMemory(podMetric.memory) : 'N/A';
 
         const containers = containerStatuses.map((c: ContainerStatus) => ({
           name: c.name,
@@ -53,8 +41,8 @@ export function usePods(enabled: boolean) {
 
         const node = podItem.spec?.nodeName || '';
         const qos = podItem.status?.qosClass || '';
-
         const phase = podItem.status?.phase || 'Unknown';
+
         let hasWarning = phase !== 'Running' && phase !== 'Succeeded';
         if (!hasWarning) {
           const allStatuses = [...initContainerStatuses, ...containerStatuses];
@@ -72,9 +60,7 @@ export function usePods(enabled: boolean) {
               ];
               return waiting.reason && badReasons.includes(waiting.reason);
             }
-            if (terminated) {
-              return terminated.exitCode !== 0;
-            }
+            if (terminated) return terminated.exitCode !== 0;
             return false;
           });
         }
@@ -87,8 +73,8 @@ export function usePods(enabled: boolean) {
           restarts,
           age: formatAge(item.metadata?.creationTimestamp || ''),
           rawAge: new Date(item.metadata?.creationTimestamp || Date.now()).getTime().toString(),
-          cpu: cpuDisplay,
-          memory: memDisplay,
+          cpu,
+          memory,
           containers,
           controlledBy,
           node,
@@ -98,36 +84,8 @@ export function usePods(enabled: boolean) {
         };
       });
     },
-    []
+    [metricsQuery.data]
   );
 
-  const fetchExtraData = useMemo(
-    () => async (configPath: string | undefined, cluster: string, ns: string) => {
-      // 1. Try Prometheus (matches Lens — real working-set memory, CPU rate)
-      try {
-        const promRes = await window.kuberneter.queryPrometheus(configPath, cluster);
-        if (promRes?.items && promRes.items.length > 0) {
-          return promRes.items;
-        }
-      } catch (e) {
-        console.warn('Prometheus query failed, falling back to kubectl top', e);
-      }
-
-      // 2. Fall back to kubectl top (requires metrics-server)
-      try {
-        const topPodsRes = await window.kuberneter.getTopPods(configPath, cluster, ns);
-        if (topPodsRes?.items && topPodsRes.items.length > 0) {
-          return topPodsRes.items;
-        }
-      } catch (e) {
-        console.warn('Failed to fetch top pods', e);
-      }
-
-      // 3. No metrics available — UI will show N/A
-      return [];
-    },
-    []
-  );
-
-  return useKubeQuery<PodData>('pods', transform, enabled, fetchExtraData);
+  return useKubeQuery<PodData>(K8S_RESOURCE_KEYS.PODS, transform, enabled);
 }

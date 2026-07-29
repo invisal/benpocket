@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type RoleData, type RoleRule } from '../types/RoleData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -33,5 +34,5 @@ export function useRoles(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<RoleData>('roles', transform, enabled);
+  return useKubeQuery<RoleData>(K8S_RESOURCE_KEYS.ROLES, transform, enabled);
 }

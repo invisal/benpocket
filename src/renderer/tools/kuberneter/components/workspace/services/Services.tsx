@@ -6,16 +6,16 @@ import { ServicesTable } from './ServicesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useServices } from '../../../hooks/useServices';
 
 interface ServicesProps {
-  servicesData: ServiceData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Services: React.FC<ServicesProps> = ({
-  servicesData,
-  kuberneterSelectedNamespace
-}) => {
+export const Services: React.FC<ServicesProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: servicesData, isLoading, errorMsg } = useServices(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -147,29 +147,31 @@ export const Services: React.FC<ServicesProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <ServicesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <ServicesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <ServicesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectService={handleSelectService}
+          selectedServiceId={selectedServiceId}
         />
-      }
-    >
-      <ServicesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectService={handleSelectService}
-        selectedServiceId={selectedServiceId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

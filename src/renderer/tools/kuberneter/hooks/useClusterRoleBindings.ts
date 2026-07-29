@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import {
   type ClusterRoleBindingData,
   type Subject,
@@ -37,5 +38,9 @@ export function useClusterRoleBindings(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ClusterRoleBindingData>('clusterrolebindings', transform, enabled);
+  return useKubeQuery<ClusterRoleBindingData>(
+    K8S_RESOURCE_KEYS.CLUSTER_ROLE_BINDINGS,
+    transform,
+    enabled
+  );
 }

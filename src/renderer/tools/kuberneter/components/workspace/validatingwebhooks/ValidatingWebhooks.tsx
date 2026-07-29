@@ -6,14 +6,12 @@ import { ValidatingWebhooksTable } from './ValidatingWebhooksTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useValidatingWebhooks } from '../../../hooks/useValidatingWebhooks';
 
-interface ValidatingWebhooksProps {
-  validatingWebhooksData: ValidatingWebhookConfigurationData[];
-}
+export const ValidatingWebhooks: React.FC = () => {
+  const { data: validatingWebhooksData, isLoading, errorMsg } = useValidatingWebhooks(true);
 
-export const ValidatingWebhooks: React.FC<ValidatingWebhooksProps> = ({
-  validatingWebhooksData
-}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -110,29 +108,31 @@ export const ValidatingWebhooks: React.FC<ValidatingWebhooksProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <ValidatingWebhooksToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <ValidatingWebhooksToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <ValidatingWebhooksTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectWebhook={handleSelectWebhook}
+          selectedWebhookId={selectedWebhookId}
         />
-      }
-    >
-      <ValidatingWebhooksTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectWebhook={handleSelectWebhook}
-        selectedWebhookId={selectedWebhookId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

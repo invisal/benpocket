@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type PriorityClassData } from '../types/PriorityClassData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -38,5 +39,5 @@ export function usePriorityClasses(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<PriorityClassData>('priorityclasses', transform, enabled);
+  return useKubeQuery<PriorityClassData>(K8S_RESOURCE_KEYS.PRIORITY_CLASSES, transform, enabled);
 }

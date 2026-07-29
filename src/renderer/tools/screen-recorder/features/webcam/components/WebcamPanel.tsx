@@ -50,12 +50,6 @@ export function WebcamPanel(): JSX.Element {
           disabled={!hasWebcamFootage}
         />
       </label>
-      {!hasWebcamFootage && (
-        <p className="-mt-2 text-[11px] text-muted-foreground/70">
-          Turn on your camera before recording to use a webcam overlay.
-        </p>
-      )}
-
       <div className={cn('flex flex-col gap-4', !isEnabled && 'pointer-events-none opacity-40')}>
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -127,9 +121,6 @@ export function WebcamPanel(): JSX.Element {
             />
           </label>
         </div>
-        <p className="text-[11px] text-muted-foreground/70">
-          Or drag the PiP directly on the preview above.
-        </p>
       </div>
     </div>
   );

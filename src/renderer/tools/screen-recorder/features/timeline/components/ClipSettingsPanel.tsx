@@ -1,15 +1,7 @@
 import type { JSX } from 'react';
 import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
 import { useTimelineStore } from '../store/timeline-store';
-import { getSegmentOutputDurationMs } from '../lib/segment-duration';
 import { cn } from '../../../lib/utils';
-
-function formatTime(ms: number): string {
-  const totalSeconds = ms / 1000;
-  const m = Math.floor(totalSeconds / 60);
-  const s = (totalSeconds % 60).toFixed(1);
-  return `${m}:${s.padStart(4, '0')}`;
-}
 
 /** A number input that only commits on blur/Enter, so mid-typing states don't get clamped away as you type. */
 function TimeField({
@@ -65,8 +57,6 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
     );
   }
 
-  const outputDurationMs = getSegmentOutputDurationMs(segment);
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -89,13 +79,6 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
             onCommit={(ms) => resizeSegmentEdge(segment.id, 'end', ms)}
           />
         </div>
-        <p className="text-[11px] text-muted-foreground/70">
-          Plays for {formatTime(outputDurationMs)} at {segment.speed}x
-          {segment.speed !== 1
-            ? ` (source is ${formatTime(segment.range.endMs - segment.range.startMs)})`
-            : ''}
-          {segment.split ? ' -- locked, this clip is a cut result' : ''}
-        </p>
       </div>
 
       <div className="flex flex-col gap-2">

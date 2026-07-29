@@ -243,11 +243,6 @@ export function BackgroundPicker(): JSX.Element {
           <span className="text-xs text-muted-foreground">{blur}px</span>
         </div>
         <Slider value={blur} min={0} max={20} step={1} onChange={setBlur} />
-        {kind !== 'image' && (
-          <p className="text-[11px] text-muted-foreground/70">
-            Only affects Image backgrounds -- gradients have nothing to blur.
-          </p>
-        )}
       </div>
 
       <div className="flex flex-col gap-2">

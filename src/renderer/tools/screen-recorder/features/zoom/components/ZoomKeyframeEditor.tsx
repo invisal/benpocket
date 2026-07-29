@@ -25,12 +25,10 @@ export const MAX_HOLD_TRANSITION_MS = 2000;
 function SliderField({
   label,
   valueLabel,
-  description,
   children
 }: {
   label: string;
   valueLabel: string;
-  description?: string;
   children: ReactNode;
 }): JSX.Element {
   return (
@@ -42,9 +40,6 @@ function SliderField({
         <span className="text-[11px] text-muted-foreground">{valueLabel}</span>
       </div>
       {children}
-      {description && (
-        <p className="text-[10px] leading-snug text-muted-foreground/70">{description}</p>
-      )}
     </div>
   );
 }
@@ -193,18 +188,11 @@ function KeyframeDetailPanel({
               Follow cursor
             </button>
           </div>
-          <p className="text-[10px] leading-snug text-muted-foreground/70">
-            Exact point the zoom centers on, instead of following the recorded cursor.
-          </p>
         </div>
       )}
 
       <div className="flex flex-col gap-3">
-        <SliderField
-          label="Zoom level"
-          valueLabel={`${kf.depth.toFixed(1)}×`}
-          description="How far the view scales in at full zoom."
-        >
+        <SliderField label="Zoom level" valueLabel={`${kf.depth.toFixed(1)}×`}>
           <Slider
             value={kf.depth}
             min={1}
@@ -214,11 +202,7 @@ function KeyframeDetailPanel({
           />
         </SliderField>
 
-        <SliderField
-          label="Duration"
-          valueLabel={`${(kf.durationMs / 1000).toFixed(1)}s`}
-          description="Total time this keyframe is active, in and out included."
-        >
+        <SliderField label="Duration" valueLabel={`${(kf.durationMs / 1000).toFixed(1)}s`}>
           <Slider
             value={kf.durationMs}
             min={ZOOM_MIN_DURATION_MS}
@@ -231,7 +215,6 @@ function KeyframeDetailPanel({
         <SliderField
           label="Hold transition"
           valueLabel={`${(kf.holdTransitionMs / 1000).toFixed(2)}s`}
-          description="Time easing in and out; the rest holds at full zoom."
         >
           <Slider
             value={kf.holdTransitionMs}
@@ -263,9 +246,6 @@ function KeyframeDetailPanel({
             </button>
           ))}
         </div>
-        <p className="text-[10px] leading-snug text-muted-foreground/70">
-          Curve the zoom follows in and out.
-        </p>
       </div>
     </div>
   );
@@ -324,11 +304,6 @@ export function ZoomKeyframeEditor({
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground/70">
-          {mode === 'auto'
-            ? 'Zoom windows trigger on real clicks recorded during capture, and follow the recorded cursor path for the duration of each zoom.'
-            : 'Add keyframes manually at the point you’re currently previewing.'}
-        </p>
       </div>
 
       <Button

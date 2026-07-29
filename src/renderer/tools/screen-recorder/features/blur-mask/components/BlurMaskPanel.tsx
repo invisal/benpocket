@@ -62,9 +62,6 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
           <Square size={14} /> Mask
         </Button>
       </div>
-      <p className="text-[11px] leading-snug text-muted-foreground/70">
-        Adds at {formatTime(currentTimeMs)} -- drag directly on the preview to reposition or resize.
-      </p>
 
       {sorted.length === 0 && (
         <p className="text-xs text-muted-foreground">No blur/mask regions yet.</p>

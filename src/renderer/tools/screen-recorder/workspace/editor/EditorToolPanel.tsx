@@ -26,7 +26,7 @@ export function EditorToolPanel({
   const label = EDITOR_TOOLS.find((t) => t.id === tool)?.label ?? '';
 
   return (
-    <aside className="flex w-70 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-surface p-4">
+    <aside className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto border-l border-line p-4">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </h2>

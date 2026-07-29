@@ -40,6 +40,16 @@ interface AppStoreState {
   /** Library's "Remove" action -- just the in-memory/route-level state; the caller is responsible for deleting the underlying file and revoking `previewUrl` first (see LibraryPage.tsx). */
   clearLastRecording: () => void;
   projectName: string;
+  setProjectName: (projectName: string) => void;
+  /** Left "Assets" sidebar's own drag-resized width, px -- see ResizablePanel in ScreenRecorderApp.tsx. */
+  sidebarWidth: number;
+  setSidebarWidth: (sidebarWidth: number) => void;
+  /** EditorToolPanel's own drag-resized width, px -- see ResizablePanel in EditorPage.tsx. */
+  toolPanelWidth: number;
+  setToolPanelWidth: (toolPanelWidth: number) => void;
+  /** CutTimeline's own drag-resized height, px -- see ResizablePanel in CutTimeline.tsx. */
+  timelinePanelHeight: number;
+  setTimelinePanelHeight: (timelinePanelHeight: number) => void;
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
@@ -52,5 +62,12 @@ export const useAppStore = create<AppStoreState>((set) => ({
   lastRecording: null,
   setLastRecording: (lastRecording) => set({ lastRecording }),
   clearLastRecording: () => set({ lastRecording: null }),
-  projectName: 'Untitled Recording'
+  projectName: 'Untitled Recording',
+  setProjectName: (projectName) => set({ projectName }),
+  sidebarWidth: 288,
+  setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
+  toolPanelWidth: 280,
+  setToolPanelWidth: (toolPanelWidth) => set({ toolPanelWidth }),
+  timelinePanelHeight: 180,
+  setTimelinePanelHeight: (timelinePanelHeight) => set({ timelinePanelHeight })
 }));

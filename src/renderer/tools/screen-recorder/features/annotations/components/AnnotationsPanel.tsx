@@ -116,9 +116,6 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
           onChange={handleImageFile}
         />
       </div>
-      <p className="text-[11px] leading-snug text-muted-foreground/70">
-        Adds at {formatTime(currentTimeMs)} -- drag directly on the preview to reposition.
-      </p>
 
       {sorted.length === 0 && <p className="text-xs text-muted-foreground">No annotations yet.</p>}
 

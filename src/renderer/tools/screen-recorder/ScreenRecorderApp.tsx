@@ -1,6 +1,6 @@
-import type { ComponentType, JSX } from 'react';
-import { FolderOpen, Settings as SettingsIcon } from 'lucide-react';
-import { useAppStore, type ScreenRecorderRoute } from './app/app-store';
+import type { JSX } from 'react';
+import { MessageSquare } from 'lucide-react';
+import { useAppStore } from './app/app-store';
 import { cn } from './lib/utils';
 import { EditorPage } from './workspace/editor/EditorPage';
 import { LibraryPage } from './workspace/library/LibraryPage';
@@ -10,79 +10,61 @@ import { CutTimeline } from './features/timeline/components/CutTimeline';
 import { RecordingControllerProvider } from './features/recording/context/RecordingControllerContext';
 import { RecorderToolbarBridge } from './features/recording/components/RecorderToolbarBridge';
 import { ExportPopoverButton } from './features/export/components/ExportPopoverButton';
-import { useExportStore } from './features/export/store/export-store';
+import { LaunchRecorderButton } from './features/recording/components/LaunchRecorderButton';
+import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
-const NAV_ITEMS: {
-  route: ScreenRecorderRoute;
-  label: string;
-  icon: ComponentType<{ size?: number }>;
-}[] = [
-  { route: 'library', label: 'Library', icon: FolderOpen },
-  { route: 'settings', label: 'Settings', icon: SettingsIcon }
-];
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 420;
 
 export function ScreenRecorderApp(): JSX.Element {
   const route = useAppStore((state) => state.route);
-  const setRoute = useAppStore((state) => state.setRoute);
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const isExporting = useExportStore((state) => state.isExporting);
-
-  function handleNavClick(itemRoute: ScreenRecorderRoute): void {
-    if (isExporting) return;
-    setRoute(itemRoute);
-  }
+  const sidebarWidth = useAppStore((state) => state.sidebarWidth);
+  const setSidebarWidth = useAppStore((state) => state.setSidebarWidth);
 
   return (
     <RecordingControllerProvider>
       <RecorderToolbarBridge />
-      <div className="flex flex-1 flex-col min-h-0 bg-surface text-foreground">
-        <nav className="flex shrink-0 items-center gap-1 border-b border-line px-4 py-2">
-          {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon }) => (
+      <div className="flex flex-1 flex-col min-h-0 bg-surface-sunken text-foreground">
+        <nav className="flex shrink-0 items-center gap-3 bg-surface px-4 py-2">
+          <div className="flex shrink-0 items-center gap-2">
+            <LaunchRecorderButton />
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            {/* Decorative only -- there's no feedback flow wired up yet. */}
             <button
-              key={itemRoute}
-              onClick={() => handleNavClick(itemRoute)}
-              disabled={isExporting}
-              title={isExporting ? 'Export in progress' : undefined}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-30',
-                route === itemRoute
-                  ? 'bg-accent/10 text-accent'
-                  : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
-              )}
+              title="Send feedback"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-2 hover:text-foreground"
             >
-              <Icon size={13} />
-              {label}
+              <span className="flex items-center gap-1.5">
+                <MessageSquare size={13} />
+                Send feedback
+              </span>
             </button>
-          ))}
-          <button
-            onClick={() => lastRecording && handleNavClick('editor')}
-            disabled={!lastRecording || isExporting}
-            title={
-              isExporting
-                ? 'Export in progress'
-                : lastRecording
-                  ? undefined
-                  : 'Record something first'
-            }
-            className={cn(
-              'ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-30',
-              route === 'editor'
-                ? 'bg-accent/10 text-accent'
-                : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
-            )}
-          >
-            Editor
-          </button>
-          <ExportPopoverButton disabled={route !== 'editor'} />
+            <ExportPopoverButton disabled={route !== 'editor'} />
+          </div>
         </nav>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1">
-            <div className="w-64 shrink-0 overflow-y-auto border-r border-line bg-surface p-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+          <div className="flex min-h-0 flex-1 gap-2">
+            <ResizablePanel
+              edge="right"
+              size={sidebarWidth}
+              onResize={setSidebarWidth}
+              min={SIDEBAR_MIN_WIDTH}
+              max={SIDEBAR_MAX_WIDTH}
+              className="flex overflow-y-auto rounded-lg border border-line bg-surface"
+              handleClassName="z-40"
+            >
               <ScreenRecorderSidebar />
-            </div>
+            </ResizablePanel>
 
-            <div className="flex min-h-0 flex-1 overflow-auto">
+            <div
+              className={cn(
+                'flex min-h-0 flex-1 overflow-auto rounded-lg',
+                route === 'editor' ? 'bg-surface-sunken' : 'border border-line bg-surface'
+              )}
+            >
               {route === 'editor' && <EditorPage />}
               {route === 'library' && <LibraryPage />}
               {route === 'settings' && <SettingsPage />}

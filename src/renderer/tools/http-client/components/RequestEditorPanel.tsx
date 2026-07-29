@@ -4,9 +4,12 @@ import { Tabs } from '@base-ui/react/tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
+import type { SavedBinding } from '../types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
+import { useCollectionsStore } from '../store/collections.store';
 import { getAutoHeaders } from '../lib/autoHeaders';
 import { authTypeLabel } from '../lib/auth';
+import { resolveInheritedAuth } from '../lib/authInheritance';
 import { KeyValueEditor } from './KeyValueEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
@@ -32,6 +35,8 @@ interface RequestEditorPanelProps {
   onRemoveHeader: (id: string) => void;
   auth: HttpAuth;
   onAuthChange: (auth: HttpAuth) => void;
+  /** Which saved request this tab is bound to, if any - resolves 'inherit' auth against its folder/collection. */
+  binding?: SavedBinding | null;
   bodyType: HttpBodyType;
   onBodyTypeChange: (type: HttpBodyType) => void;
   body: string;
@@ -49,6 +54,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   onRemoveHeader,
   auth,
   onAuthChange,
+  binding,
   bodyType,
   onBodyTypeChange,
   body,
@@ -57,12 +63,17 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   const [activeTab, setActiveTab] = useState<RequestTabValue>('params');
   const [showAutoHeaders, setShowAutoHeaders] = useState(false);
   const variables = useActiveEnvironmentVariables();
+  const collections = useCollectionsStore((s) => s.collections);
 
   const activeParamCount = params.filter((p) => p.enabled && p.key.trim()).length;
   const activeHeaderCount = headers.filter((h) => h.enabled && h.key.trim()).length;
+  const effectiveAuth = useMemo(() => {
+    const collection = binding ? collections.find((c) => c.id === binding.collectionId) : undefined;
+    return resolveInheritedAuth(auth, collection, binding?.requestId);
+  }, [auth, binding, collections]);
   const autoHeaders = useMemo(
-    () => getAutoHeaders(method, url, bodyType, body, headers, variables, auth),
-    [method, url, bodyType, body, headers, variables, auth]
+    () => getAutoHeaders(method, url, bodyType, body, headers, variables, effectiveAuth),
+    [method, url, bodyType, body, headers, variables, effectiveAuth]
   );
 
   return (

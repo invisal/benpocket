@@ -6,6 +6,7 @@ import trayIcon from '../../resources/tray-icon-desktopTemplate.png?asset';
 import * as fs from 'fs';
 import * as path from 'path';
 import { registerHttpHandlers } from './http-client/ipc/http';
+import { registerOAuth2Handlers } from './http-client/ipc/oauth2';
 import {
   registerWebSocketHandlers,
   closeAllWebSocketConnections
@@ -189,6 +190,7 @@ app.whenReady().then(() => {
   // main process to avoid renderer CORS restrictions and keep sockets alive
   // across renderer tab switches / reloads.
   registerHttpHandlers();
+  registerOAuth2Handlers();
   registerWebSocketHandlers();
   registerCollectionHandlers();
   registerCollectionTransferHandlers();

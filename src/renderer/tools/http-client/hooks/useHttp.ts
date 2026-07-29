@@ -6,11 +6,15 @@ import type {
   HttpResponsePayload
 } from '../../../../preload/http-client/types';
 import { getActiveEnvironmentVariables } from '../store/environments.store';
+import { useCollectionsStore } from '../store/collections.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
 import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
 import { resolveJsonVariables, resolveRows, resolveVariables } from '../lib/variables';
 import { DEFAULT_HTTP_AUTH, resolveAuth } from '../lib/auth';
+import { resolveInheritedAuth } from '../lib/authInheritance';
+import { getOrFetchOAuth2Token } from '../lib/oauth2TokenCache';
 import { readTabSeed } from '../lib/readTabSeed';
+import { bindingStore } from '../lib/bindingStore';
 
 export interface HttpState {
   method: HttpMethod;
@@ -198,27 +202,40 @@ export function useHttp(tabId: string): UseHttpResult {
 
     setState((prev) => ({ ...prev, isLoading: true }));
 
-    const variables = getActiveEnvironmentVariables();
-    const resolvedUrl = resolveVariables(url, variables);
+    void (async () => {
+      try {
+        const variables = getActiveEnvironmentVariables();
+        const resolvedUrl = resolveVariables(url, variables);
 
-    window.api.http
-      .send({
-        method: current.method,
-        url: resolvedUrl,
-        headers: resolveRows(current.headers, variables),
-        params: resolveRows(current.params, variables),
-        auth: resolveAuth(current.auth, variables),
-        bodyType: current.bodyType,
-        body:
-          current.bodyType === 'json'
-            ? resolveJsonVariables(current.body, variables)
-            : resolveVariables(current.body, variables),
-        timeoutMs: 30000
-      })
-      .then((response) => {
+        const binding = bindingStore.getSnapshot(tabId);
+        const collection = binding
+          ? useCollectionsStore.getState().collections.find((c) => c.id === binding.collectionId)
+          : undefined;
+        const inherited = resolveInheritedAuth(current.auth, collection, binding?.requestId);
+        const resolved = resolveAuth(inherited, variables);
+        const auth: HttpAuth =
+          resolved.type === 'oauth2' && resolved.oauth2
+            ? {
+                type: 'bearer',
+                bearer: { token: (await getOrFetchOAuth2Token(resolved.oauth2)).accessToken }
+              }
+            : resolved;
+
+        const response = await window.api.http.send({
+          method: current.method,
+          url: resolvedUrl,
+          headers: resolveRows(current.headers, variables),
+          params: resolveRows(current.params, variables),
+          auth,
+          bodyType: current.bodyType,
+          body:
+            current.bodyType === 'json'
+              ? resolveJsonVariables(current.body, variables)
+              : resolveVariables(current.body, variables),
+          timeoutMs: 30000
+        });
         httpStore.setSnapshot(tabId, (prev) => ({ ...prev, isLoading: false, response }));
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error while sending request.';
         httpStore.setSnapshot(tabId, (prev) => ({
           ...prev,
@@ -235,7 +252,8 @@ export function useHttp(tabId: string): UseHttpResult {
             error: message
           }
         }));
-      });
+      }
+    })();
   }, [setState, tabId]);
 
   return {

@@ -466,6 +466,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 pinIfPreview();
                 client.http.setAuth(auth);
               }}
+              binding={client.binding}
               bodyType={client.http.state.bodyType}
               onBodyTypeChange={(bodyType) => {
                 pinIfPreview();

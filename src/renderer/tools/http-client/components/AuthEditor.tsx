@@ -3,6 +3,7 @@ import type { HttpAuth, HttpAuthType } from '../../../../preload/http-client/typ
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { AUTH_TYPE_OPTIONS, authTypeLabel } from '../lib/auth';
 import { VariableSuggestInput } from './VariableSuggestInput';
+import { OAuth2AuthFields } from './OAuth2AuthFields';
 import { Select } from '@renderer/components/ui/Select';
 
 const APIKEY_LOCATION_LABELS: Record<'header' | 'query', string> = {
@@ -42,6 +43,13 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
           </Select.Content>
         </Select.Root>
       </label>
+
+      {auth.type === 'inherit' && (
+        <p className="text-[11px] text-zinc-600 italic">
+          Uses the auth configured on the parent folder/collection, or no auth if none of them have
+          one set.
+        </p>
+      )}
 
       {auth.type === 'noauth' && (
         <p className="text-[11px] text-zinc-600 italic">
@@ -149,6 +157,14 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
             </Select.Root>
           </label>
         </>
+      )}
+
+      {auth.type === 'oauth2' && (
+        <OAuth2AuthFields
+          oauth2={auth.oauth2}
+          onChange={(oauth2) => onChange({ ...auth, oauth2 })}
+          variables={variables}
+        />
       )}
     </div>
   );

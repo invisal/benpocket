@@ -46,9 +46,6 @@ export const K8S_RESOURCE_KEYS = {
   HORIZONTAL_POD_AUTOSCALERS: 'horizontalpodautoscalers'
 } as const;
 
-export type K8sResourceKey =
-  (typeof K8S_RESOURCE_KEYS)[keyof typeof K8S_RESOURCE_KEYS] | (string & {});
-
 export const K8S_RESOURCE_MAP: Record<string, K8sResourceDefinition> = {
   pods: {
     key: K8S_RESOURCE_KEYS.PODS,

@@ -46,7 +46,3 @@ export const METRICS_SOURCE_OPTIONS: { value: MetricsSource; label: string }[] =
 ];
 
 export const ALL_METRIC_CATEGORIES: MetricCategory[] = ['cpu', 'memory', 'network', 'filesystem'];
-
-export function getProviderDef(provider: PrometheusProvider): PrometheusProviderDef | undefined {
-  return PROMETHEUS_PROVIDERS.find((p) => p.id === provider);
-}

@@ -1,21 +1,12 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlignEndVertical,
-  AlignStartVertical,
-  BarChart3,
-  Bookmark,
   Clapperboard,
-  Copy,
   Gauge,
-  Layers,
-  Link2,
-  Magnet,
   Minus,
   Plus,
   Redo2,
   Scissors,
-  Snowflake,
   Trash2,
   Undo2,
   ZoomIn
@@ -561,16 +552,6 @@ export function CutTimeline(): JSX.Element {
 
             <div className="mx-1 h-4 w-px bg-line" />
 
-            {/* Decorative only -- no align/link/duplicate/freeze/bookmark/chart actions exist yet. */}
-            {[AlignStartVertical, AlignEndVertical, Link2, Copy, Snowflake].map((Icon, i) => (
-              <button
-                key={i}
-                title="Not available yet"
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2"
-              >
-                <Icon size={13} />
-              </button>
-            ))}
             <button
               onClick={() => selectedSegmentId && deleteSegment(selectedSegmentId)}
               disabled={!selectedSegmentId}
@@ -579,39 +560,13 @@ export function CutTimeline(): JSX.Element {
             >
               <Trash2 size={13} />
             </button>
-            {[Bookmark, BarChart3].map((Icon, i) => (
-              <button
-                key={i}
-                title="Not available yet"
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2"
-              >
-                <Icon size={13} />
-              </button>
-            ))}
 
             <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
             </span>
           </div>
 
-          {/* Decorative only -- this app has one timeline, not switchable scenes. */}
-          <div className="flex flex-1 items-center justify-center">
-            <button
-              title="Not available yet"
-              className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-2"
-            >
-              <Layers size={12} /> Main scene
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Decorative only -- there's no snap-to-grid toggle yet. */}
-            <button
-              title="Not available yet"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2"
-            >
-              <Magnet size={13} />
-            </button>
+          <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setTimelineZoom(Math.max(MIN_TIMELINE_ZOOM, zoom - 0.5))}
               title="Zoom out timeline"

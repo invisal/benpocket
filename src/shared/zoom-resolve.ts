@@ -21,6 +21,22 @@ const CAMERA_STIFFNESS = 55;
  * way from center to the edge of what's currently visible.
  */
 const CAMERA_DEADZONE_FRACTION = 0.55;
+/**
+ * Hard ceiling on how many steps a single keyframe's simulation will ever
+ * run, regardless of its `durationMs` -- 200,000 * CAMERA_STEP_MS covers
+ * ~26 minutes at full native resolution, comfortably past any real keyframe
+ * window. Without this, a keyframe long enough (now possible now that zoom
+ * keyframes aren't capped at a fixed 10s -- see ZOOM_MIN_DURATION_MS's own
+ * doc) turns this into a synchronous loop that runs for as long as the
+ * keyframe itself, pushing one sample into an ever-growing array per step;
+ * a pathological/corrupted `durationMs` (e.g. `Infinity`) made this loop
+ * genuinely never terminate, blocking export before a single frame decodes
+ * (confirmed: it OOM-crashes the process rather than merely running long).
+ * Past this ceiling the step is widened so the total sample count stays
+ * fixed -- coarser resolution for an extreme-length window instead of
+ * unbounded time/memory.
+ */
+const MAX_CAMERA_SAMPLES = 200_000;
 
 /**
  * Simulates the auto-zoom camera's focal point across one keyframe's own
@@ -49,13 +65,21 @@ export function computeAutoZoomFocalPath(
   keyframe: ZoomKeyframe
 ): CursorPathPoint[] {
   const startMs = keyframe.atMs;
-  const endMs = keyframe.atMs + keyframe.durationMs;
-  if (cursorPath.length === 0) return [];
+  // Guards against a non-finite/negative durationMs (e.g. a corrupted
+  // Infinity/NaN slipping in from somewhere upstream) turning this into an
+  // infinite loop -- see MAX_CAMERA_SAMPLES's own doc for why this matters.
+  const durationMs = Number.isFinite(keyframe.durationMs) ? Math.max(0, keyframe.durationMs) : 0;
+  const endMs = startMs + durationMs;
+  if (cursorPath.length === 0 || durationMs === 0) return [];
 
   const deadzoneHalfWidth = (0.5 * CAMERA_DEADZONE_FRACTION) / keyframe.depth;
   const deadzoneHalfHeight = (0.5 * CAMERA_DEADZONE_FRACTION) / keyframe.depth;
   const damping = CAMERA_DAMPING_RATIO * 2 * Math.sqrt(CAMERA_STIFFNESS);
-  const stepSec = CAMERA_STEP_MS / 1000;
+  // Widens the step past MAX_CAMERA_SAMPLES so total iterations/samples stay
+  // bounded no matter how long the window is -- unchanged (CAMERA_STEP_MS)
+  // for every realistic keyframe length.
+  const stepMs = Math.max(CAMERA_STEP_MS, durationMs / MAX_CAMERA_SAMPLES);
+  const stepSec = stepMs / 1000;
 
   const initial = sampleCursorPath(cursorPath, startMs) ?? { x: 0.5, y: 0.5 };
   let x = initial.x;
@@ -64,7 +88,7 @@ export function computeAutoZoomFocalPath(
   let vy = 0;
 
   const result: CursorPathPoint[] = [{ atMs: startMs, x, y }];
-  for (let atMs = startMs + CAMERA_STEP_MS; atMs <= endMs; atMs += CAMERA_STEP_MS) {
+  for (let atMs = startMs + stepMs; atMs <= endMs; atMs += stepMs) {
     const cursor = sampleCursorPath(cursorPath, atMs) ?? { x, y };
     const dx = cursor.x - x;
     const dy = cursor.y - y;

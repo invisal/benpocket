@@ -9,6 +9,7 @@ import { generateAutoZoomKeyframes } from '../../zoom/engine/auto-zoom-engine';
 import { useZoomStore } from '../../zoom/store/zoom-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useCursorStore } from '../../cursor/store/cursor-store';
+import { parseWindowSourceId } from '@shared/window-source-id';
 
 export interface LiveCounts {
   cursorCount: number;
@@ -112,6 +113,13 @@ export function useRecordingController(): RecordingController {
             }
           }
         : source;
+      // Keeps tracking following the window if it's dragged/resized mid-
+      // recording (see window-bounds-poller.ts) -- only meaningful for a
+      // plain window source, since a crop region already pins tracking to
+      // its own fixed screen-space rect above, and a native-picker source
+      // has no desktopCapturer window handle to poll.
+      const followWindowId =
+        !cropRegion && source.type === 'window' ? parseWindowSourceId(source.id) : null;
       // Uses the recorder's *actual* startedAt (not a pre-call guess) so
       // cursor samples line up exactly with the video's own t=0. Skipped
       // entirely (not just discarded afterward) when the "Auto Zoom"
@@ -123,7 +131,8 @@ export function useRecordingController(): RecordingController {
         ? await startCursorCapture(
             cursorTrackingSource,
             captureRef.current.startedAt,
-            setLiveCounts
+            setLiveCounts,
+            followWindowId
           )
         : null;
       if (!cursorCaptureRef.current) setLiveCounts(null);

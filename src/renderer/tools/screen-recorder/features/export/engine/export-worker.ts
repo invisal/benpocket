@@ -83,23 +83,23 @@ worker.onmessage = async (event: MessageEvent<ExportWorkerInMessage>) => {
       ? new File([msg.webcamBytes], msg.webcamFileName ?? 'webcam')
       : null;
     const request = { options: msg.options, sourceFile, webcamFile };
-    const canvas = new OffscreenCanvas(msg.options.resolution.width, msg.options.resolution.height);
 
     const onProgress = (progress: ExportProgress) => post({ type: 'progress', progress });
 
     if (msg.options.format === 'gif') {
+      // exportGif has no hardware/software retry loop -- one canvas for its
+      // one render pass is fine (see exportVideoOnly's own doc for why a
+      // *retried* attempt can't safely reuse one).
+      const canvas = new OffscreenCanvas(
+        msg.options.resolution.width,
+        msg.options.resolution.height
+      );
       const blob = await exportGif(request, canvas, onProgress, msg.wasmUrl, controller.signal);
       post({ type: 'gif-result', blob });
       return;
     }
 
-    const result = await exportVideoOnly(
-      request,
-      canvas,
-      onProgress,
-      msg.wasmUrl,
-      controller.signal
-    );
+    const result = await exportVideoOnly(request, onProgress, msg.wasmUrl, controller.signal);
     post({
       type: 'video-result',
       muxerCodec: result.muxerCodec,

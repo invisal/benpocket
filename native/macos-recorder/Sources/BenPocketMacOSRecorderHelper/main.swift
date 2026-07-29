@@ -701,24 +701,58 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 }
 
 // A one-shot query, distinct from the RecordingRequest/recording-session
-// protocol above: no ScreenCaptureKit session, no permission dependency
-// beyond what Quartz Window Services itself needs (window geometry is
-// available without Screen Recording access -- only window *content*/name
-// is redacted without it, and by the time this app asks for a window's
-// bounds, recording permission is already required elsewhere anyway).
-// Exists so `useRecordingController.ts` can normalize cursor-tracking
-// samples against a real on-screen rect for *any* selected window, not
-// just the one app (Simulator) this helper used to special-case via
-// AppleScript/System Events on the Electron side.
-private func queryWindowBounds(windowId: CGWindowID) -> CGRect? {
+// protocol above: no long-lived capture session, just resolving the same
+// SCShareableContent window list `resolveWindow()` above uses for the real
+// recording target. Exists so `useRecordingController.ts` can normalize
+// cursor-tracking samples against a real on-screen rect for *any* selected
+// window, not just the one app (Simulator) this helper used to
+// special-case via AppleScript/System Events on the Electron side.
+//
+// Deliberately reads `SCWindow.frame` here, not the older Quartz Window
+// Services `CGWindowListCopyWindowInfo`/`kCGWindowBounds` this used
+// originally -- the two APIs are not guaranteed to agree on a window's
+// exact bounds (e.g. whether the native title bar is included), and any
+// disagreement here would silently offset every cursor/click sample from
+// what ScreenCaptureKit is actually capturing as pixels (confirmed as the
+// cause of visibly wrong click positions when recording the iOS Simulator,
+// where the mismatch is obvious against the device screen). Reading the
+// exact same `SCWindow` object family the recording itself resolves
+// through guarantees these can never disagree.
+@available(macOS 13.0, *)
+private func queryWindowBounds(windowId: CGWindowID) async -> CGRect? {
 	guard
-		let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, windowId) as? [[String: Any]],
-		let windowInfo = info.first,
-		let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any]
+		let content = try? await SCShareableContent.excludingDesktopWindows(
+			true,
+			onScreenWindowsOnly: false
+		)
 	else {
 		return nil
 	}
-	return CGRect(dictionaryRepresentation: boundsDict as CFDictionary)
+	return content.windows.first(where: { $0.windowID == windowId })?.frame
+}
+
+// Quartz Window Services (not ScreenCaptureKit) lookup -- used exclusively
+// by window-bounds-poller.ts's *repeated* live-follow query while a
+// recording is actively streaming. queryWindowBounds() above intentionally
+// uses SCShareableContent instead for the one-shot pre-recording refresh
+// (see its own doc comment on exact-bounds agreement), but calling that
+// repeatedly from a second process turned out to fight with the real
+// recording's own live SCStream -- another process enumerating shareable
+// content concurrently caused it to fail with SCStreamErrorDomain -3805
+// ("application connection being interrupted"). CGWindowListCopyWindowInfo
+// talks to the older, unrelated WindowServer window-list API, not the
+// ScreenCaptureKit daemon, so it can't disturb an in-progress stream.
+private func queryWindowBoundsQuartz(windowId: CGWindowID) -> CGRect? {
+	guard
+		let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, windowId)
+			as? [[String: Any]],
+		let windowInfo = info.first,
+		let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+		let bounds = CGRect(dictionaryRepresentation: boundsDict as CFDictionary)
+	else {
+		return nil
+	}
+	return bounds
 }
 
 @main
@@ -732,10 +766,19 @@ struct BenPocketMacOSRecorderHelper {
 			let argData = Data(CommandLine.arguments[1].utf8)
 
 			if let rawJson = try? JSONSerialization.jsonObject(with: argData) as? [String: Any],
-				let mode = rawJson["mode"] as? String, mode == "window-bounds"
+				let mode = rawJson["mode"] as? String,
+				mode == "window-bounds" || mode == "window-bounds-live"
 			{
 				let windowId = (rawJson["windowId"] as? NSNumber)?.uint32Value ?? 0
-				if let bounds = queryWindowBounds(windowId: CGWindowID(windowId)) {
+				let bounds: CGRect? =
+					if mode == "window-bounds-live" {
+						queryWindowBoundsQuartz(windowId: CGWindowID(windowId))
+					} else if #available(macOS 13.0, *) {
+						await queryWindowBounds(windowId: CGWindowID(windowId))
+					} else {
+						nil
+					}
+				if let bounds {
 					emit([
 						"event": "window-bounds",
 						"found": true,

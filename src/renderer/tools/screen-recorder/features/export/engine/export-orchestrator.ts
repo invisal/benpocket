@@ -79,7 +79,6 @@ export function isSourceCopyEligible(
  */
 export async function exportVideoOnly(
   request: VideoExportRequest,
-  canvas: OffscreenCanvas,
   onProgress: (progress: ExportProgress) => void,
   wasmUrl: string,
   signal?: AbortSignal
@@ -90,6 +89,18 @@ export async function exportVideoOnly(
   const { muxerCodec } = resolveCodecCandidate(options.format, options.codec);
   for (const hardwareAcceleration of getEncoderPreferences(muxerCodec)) {
     try {
+      // A fresh OffscreenCanvas per attempt, not one shared across retries --
+      // PixiSceneRenderer.create() (via autoDetectRenderer) acquires a
+      // WebGL/WebGPU rendering context on whatever canvas it's given, and a
+      // canvas can only ever hand out one context for its lifetime (the
+      // platform has no supported way to release/reacquire one). The first
+      // attempt already creates a real renderer (and so a real context)
+      // *before* createVideoEncoder's hardware-support check even runs, so a
+      // failed first attempt still leaves the canvas's context claimed;
+      // reusing it for the retry silently hung forever (no error, no
+      // timeout) instead of failing fast -- confirmed as the cause of
+      // "hangs at 0%" after a 'prefer-hardware attempt failed' warning.
+      const canvas = new OffscreenCanvas(options.resolution.width, options.resolution.height);
       return await runOnce(
         options,
         sourceFile,

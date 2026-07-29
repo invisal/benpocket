@@ -66,10 +66,18 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.NativeRecordingStop)
   },
   cursor: {
+    /**
+     * `followWindowId` (a window's native handle, see parseWindowSourceId)
+     * opts into live bounds-following for the duration of the recording --
+     * pass null for a screen source, a native-picker source, or a window
+     * source with a fixed crop region already overriding `bounds`.
+     */
     startTracking: (
       bounds: { x: number; y: number; width: number; height: number },
-      startedAt: number
-    ): Promise<void> => ipcRenderer.invoke(IpcChannels.StartCursorTracking, bounds, startedAt),
+      startedAt: number,
+      followWindowId: number | null
+    ): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.StartCursorTracking, bounds, startedAt, followWindowId),
     stopTracking: (): Promise<void> => ipcRenderer.invoke(IpcChannels.StopCursorTracking),
     onSample: (callback: (sample: CursorPathPoint) => void): (() => void) => {
       const listener = (_event: unknown, sample: CursorPathPoint): void => callback(sample);

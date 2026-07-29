@@ -13,7 +13,9 @@ import { listCaptureSources } from '../capture/screen-source-provider';
 import { recordingController } from '../capture/recording-controller';
 import { cursorTracker, type CursorTrackerBounds } from '../capture/cursor-tracker';
 import { clickTracker } from '../capture/click-tracker';
+import { windowBoundsPoller } from '../capture/window-bounds-poller';
 import { supportsNativeSystemPicker } from '../security/display-media-handler';
+import { parseWindowSourceId } from '@shared/window-source-id';
 import {
   checkNativeRecordingSupport,
   startNativeRecording,
@@ -28,14 +30,6 @@ import {
 function resolveRecordingOutputPath(extension: string): string {
   const dir = join(app.getPath('videos'), 'ScreenRecorder');
   return join(dir, `recording-${Date.now()}.${extension}`);
-}
-
-/** Electron's desktopCapturer embeds a window's native handle as `window:<handle>:0` -- the same id capture-engine.ts's toNativeRecordingSource() parses for the native recording helper's own target resolution. */
-function parseWindowHandle(sourceId: string): number | null {
-  const match = /^window:(\d+):/.exec(sourceId);
-  if (!match) return null;
-  const handle = Number(match[1]);
-  return Number.isFinite(handle) ? handle : null;
 }
 
 export function registerRecordingHandlers(): void {
@@ -65,17 +59,25 @@ export function registerRecordingHandlers(): void {
     stopNativeRecording()
   );
 
+  // `followWindowId` is only passed for a 'window' source with no crop
+  // region active (see useRecordingController.ts) -- when present, a poller
+  // keeps re-querying that window's live bounds and rebasing the trackers
+  // onto it, so dragging/resizing the recorded window mid-recording doesn't
+  // leave cursor/click samples normalized against its stale start-of-
+  // recording rect (see window-bounds-poller.ts).
   ipcMain.handle(
     IpcChannels.StartCursorTracking,
-    (event, bounds: CursorTrackerBounds, startedAt: number) => {
+    (event, bounds: CursorTrackerBounds, startedAt: number, followWindowId: number | null) => {
       cursorTracker.start(event.sender, bounds, startedAt);
       clickTracker.start(event.sender, bounds, startedAt);
+      if (followWindowId !== null) windowBoundsPoller.start(followWindowId);
     }
   );
 
   ipcMain.handle(IpcChannels.StopCursorTracking, () => {
     cursorTracker.stop();
     clickTracker.stop();
+    windowBoundsPoller.stop();
   });
 
   // Re-resolves a window source's on-screen bounds right before recording
@@ -88,7 +90,7 @@ export function registerRecordingHandlers(): void {
   ipcMain.handle(
     IpcChannels.RefreshWindowBounds,
     (_event, sourceId: string): Promise<WindowBoundsResult | null> => {
-      const windowId = parseWindowHandle(sourceId);
+      const windowId = parseWindowSourceId(sourceId);
       if (windowId === null) return Promise.resolve(null);
       return getWindowBoundsById(windowId);
     }

@@ -1,11 +1,15 @@
+import { useEffect, useRef, useState } from 'react';
 import { ArrowDownUp, Clapperboard, Film, FolderOpen, Settings, Upload } from 'lucide-react';
+import type { ProjectSummary } from '@screen-recorder/types/project';
 import { useAppStore, type ScreenRecorderRoute } from '../app/app-store';
-import { useRecentRecordingsStore, type RecentRecording } from '../app/recent-recordings-store';
 import { useExportStore } from '../features/export/store/export-store';
-import { formatBytes, formatTimeAgo } from '../lib/format';
+import { useOpenProject } from '../features/project/hooks/useOpenProject';
+import { formatTimeAgo } from '../lib/format';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { cn } from '../lib/utils';
+
+const MAX_RECENT_PROJECTS = 5;
 
 const NAV_ITEMS: {
   route: ScreenRecorderRoute;
@@ -23,23 +27,46 @@ export const ScreenRecorderSidebar: React.FC = () => {
   const route = useAppStore((state) => state.route);
   const setRoute = useAppStore((state) => state.setRoute);
   const lastRecording = useAppStore((state) => state.lastRecording);
-  const recentRecordings = useRecentRecordingsStore((state) => state.recordings);
-  const removeRecentRecording = useRecentRecordingsStore((state) => state.removeRecording);
+  const currentProjectId = useAppStore((state) => state.currentProjectId);
+  const projectsVersion = useAppStore((state) => state.projectsVersion);
   const isExporting = useExportStore((state) => state.isExporting);
 
-  // Recordings from this same session still have their capture in memory
-  // (`lastRecording`), so those open straight into the editor; anything
-  // else -- a previous session's entry -- has no blob to reload, so it
-  // opens in the OS's default player instead. See recording-handlers.ts.
-  function handleOpenRecent(recording: RecentRecording): void {
-    if (!recording.filePath) return;
-    if (recording.filePath === lastRecording?.filePath) {
-      setRoute('editor');
-      return;
-    }
-    void window.screenRecorder.recording.openFile(recording.filePath).catch((err) => {
-      console.error('[sidebar] failed to open recent recording:', err);
+  const [recentProjects, setRecentProjects] = useState<ProjectSummary[]>([]);
+  const { loadingProjectId, openProject } = useOpenProject();
+  const hasAutoSelectedRef = useRef(false);
+
+  // Recent-projects list is separate from `lastRecording`'s persisted
+  // metadata index -- it re-fetches on `projectsVersion` since, unlike
+  // LibraryPage, this sidebar stays mounted across route changes and would
+  // otherwise never notice a project saved during the current session.
+  //
+  // On the very first fetch (app launch), also resume the most recently
+  // edited project automatically -- guarded by the ref so a save later in
+  // the session (which bumps `projectsVersion` and re-runs this effect)
+  // never does it again, and by `currentProjectId` so it doesn't clobber a
+  // project the user already has open by the time this resolves.
+  useEffect(() => {
+    let cancelled = false;
+    void window.screenRecorder.project.list().then((list) => {
+      if (cancelled) return;
+      const recent = list.slice(0, MAX_RECENT_PROJECTS);
+      setRecentProjects(recent);
+
+      if (!hasAutoSelectedRef.current) {
+        hasAutoSelectedRef.current = true;
+        const [mostRecent] = recent;
+        if (mostRecent && !currentProjectId) void openProject(mostRecent);
+      }
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectsVersion, currentProjectId, openProject]);
+
+  async function handleDeleteProject(project: ProjectSummary): Promise<void> {
+    if (!window.confirm(`Delete "${project.name}"? This can't be undone.`)) return;
+    const ok = await window.screenRecorder.project.remove(project.id);
+    if (ok) setRecentProjects((prev) => prev.filter((p) => p.id !== project.id));
   }
 
   return (
@@ -81,8 +108,8 @@ export const ScreenRecorderSidebar: React.FC = () => {
         </nav>
       </Tooltip.Provider>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-2.5">
-        <div className="flex items-center justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 ">
+        <div className="flex items-center justify-between border-b border-line pb-1 p-2.5">
           <span className="text-xs font-medium text-foreground">Assets</span>
           <div className="flex items-center gap-0.5 text-muted-foreground">
             <button
@@ -100,43 +127,54 @@ export const ScreenRecorderSidebar: React.FC = () => {
           </div>
         </div>
 
-        {recentRecordings.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Your last 5 recordings will show up here.</p>
+        {recentProjects.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Your last 5 saved projects will show up here.
+          </p>
         ) : (
-          <div className="flex flex-col gap-1.5">
-            {recentRecordings.map((recording) => (
-              <ContextMenu.Root key={recording.id}>
-                <ContextMenu.Trigger
-                  render={
-                    <button
-                      onClick={() => handleOpenRecent(recording)}
-                      className={cn(
-                        'flex flex-col items-start gap-1 rounded-lg p-1.5 text-left transition-colors hover:bg-surface-2'
-                      )}
-                    >
-                      <span className="flex aspect-video w-full items-center justify-center rounded-md bg-surface-3">
-                        <Film size={18} className="text-muted-foreground" />
-                      </span>
-                      <span className="min-w-0 w-full">
-                        <span className="block truncate text-xs">{recording.name}</span>
-                        <span className="block truncate text-[10px] text-muted-foreground">
-                          {formatTimeAgo(recording.createdAt)} · {formatBytes(recording.sizeBytes)}
+          <div className="flex flex-col gap-1 px-2.5">
+            {recentProjects.map((project) => {
+              const isActive = project.id === currentProjectId;
+              return (
+                <ContextMenu.Root key={project.id}>
+                  <ContextMenu.Trigger
+                    render={
+                      <button
+                        onClick={() => void openProject(project)}
+                        disabled={loadingProjectId !== null}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg border p-1.5 text-left transition-colors disabled:opacity-50',
+                          isActive
+                            ? 'border-accent bg-accent/10'
+                            : 'border-transparent hover:bg-surface-2'
+                        )}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-3">
+                          <Film size={14} className="text-muted-foreground" />
                         </span>
-                      </span>
-                    </button>
-                  }
-                />
-                <ContextMenu.Content>
-                  <ContextMenu.Item onClick={() => handleOpenRecent(recording)}>
-                    Open
-                  </ContextMenu.Item>
-                  <ContextMenu.Separator />
-                  <ContextMenu.Item onClick={() => removeRecentRecording(recording.id)}>
-                    Remove from Recent
-                  </ContextMenu.Item>
-                </ContextMenu.Content>
-              </ContextMenu.Root>
-            ))}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs">{project.name}</span>
+                          <span className="block truncate text-[10px] text-muted-foreground">
+                            {loadingProjectId === project.id
+                              ? 'Loading…'
+                              : formatTimeAgo(project.createdAt)}
+                          </span>
+                        </span>
+                      </button>
+                    }
+                  />
+                  <ContextMenu.Content>
+                    <ContextMenu.Item onClick={() => void openProject(project)}>
+                      Open
+                    </ContextMenu.Item>
+                    <ContextMenu.Separator />
+                    <ContextMenu.Item onClick={() => void handleDeleteProject(project)}>
+                      Delete
+                    </ContextMenu.Item>
+                  </ContextMenu.Content>
+                </ContextMenu.Root>
+              );
+            })}
           </div>
         )}
       </div>

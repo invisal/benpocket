@@ -1,84 +1,83 @@
 import type { JSX } from 'react';
+import { useEffect, useState } from 'react';
+import type { ProjectSummary } from '@screen-recorder/types/project';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useAppStore } from '../../app/app-store';
-import { formatBytes, formatTimeAgo } from '../../lib/format';
+import { useOpenProject } from '../../features/project/hooks/useOpenProject';
+import { ProjectVideoThumbnail } from '../../features/project/components/ProjectVideoThumbnail';
+import { formatTimeAgo } from '../../lib/format';
 
-// TODO: back this with a real recordings index (main/store persists project
-// metadata + thumbnails to disk) instead of only ever showing the single
-// most recent in-memory recording.
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export function LibraryPage(): JSX.Element {
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const setRoute = useAppStore((state) => state.setRoute);
-  const clearLastRecording = useAppStore((state) => state.clearLastRecording);
+  const projectsVersion = useAppStore((state) => state.projectsVersion);
 
-  // Best-effort disk cleanup, then always clears the library entry --
-  // there's no persisted recordings index yet (see the TODO above) to
-  // re-surface an orphaned file through later anyway, so leaving a stale
-  // card around just because the delete IPC failed would help no one.
-  // `filePath` is null if the original save itself already failed, in
-  // which case there's nothing on disk to remove at all.
-  async function handleRemove(recording: NonNullable<typeof lastRecording>): Promise<void> {
-    if (!window.confirm('Remove this recording? This deletes the saved file and can’t be undone.'))
-      return;
-    if (recording.filePath) {
-      try {
-        await window.screenRecorder.recording.deleteFile(recording.filePath);
-      } catch (err) {
-        console.error('[library] failed to delete recording file:', err);
-      }
-    }
-    if (recording.webcamFilePath) {
-      try {
-        await window.screenRecorder.recording.deleteFile(recording.webcamFilePath);
-      } catch (err) {
-        console.error('[library] failed to delete webcam recording file:', err);
-      }
-    }
-    URL.revokeObjectURL(recording.previewUrl);
-    if (recording.webcamPreviewUrl) URL.revokeObjectURL(recording.webcamPreviewUrl);
-    clearLastRecording();
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const { loadingProjectId, error: loadError, openProject } = useOpenProject();
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.screenRecorder.project.list().then((list) => {
+      if (!cancelled) setProjects(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectsVersion]);
+
+  async function handleDeleteProject(summary: ProjectSummary): Promise<void> {
+    if (!window.confirm(`Delete "${summary.name}"? This can't be undone.`)) return;
+    const ok = await window.screenRecorder.project.remove(summary.id);
+    if (ok) setProjects((prev) => prev.filter((p) => p.id !== summary.id));
   }
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-8">
       <h1 className="text-xl font-semibold">Library</h1>
 
-      {!lastRecording ? (
+      {loadError && <p className="text-xs text-danger">{loadError}</p>}
+
+      {projects.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No recordings yet. Head to Record to make your first one.
+          No saved projects yet. Record something and save it to see it here.
         </p>
       ) : (
-        <ContextMenu.Root>
-          <ContextMenu.Trigger
-            render={
-              <button
-                onClick={() => setRoute('editor')}
-                className="w-64 rounded-xl border border-line bg-surface p-2 text-left transition-colors hover:bg-surface-2 hover:border-accent/60"
-              >
-                <video
-                  src={lastRecording.previewUrl}
-                  preload="metadata"
-                  muted
-                  className="aspect-video w-full rounded-lg bg-black object-cover"
-                  onError={(e) =>
-                    console.error('[library] thumbnail failed to load:', e.currentTarget.error)
-                  }
-                />
-                <p className="mt-2 truncate text-sm">Screen Recording</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatBytes(lastRecording.sizeBytes)} · {formatTimeAgo(lastRecording.createdAt)}
-                </p>
-              </button>
-            }
-          />
-          <ContextMenu.Content>
-            <ContextMenu.Item onClick={() => setRoute('editor')}>Open</ContextMenu.Item>
-            <ContextMenu.Separator />
-            <ContextMenu.Item onClick={() => void handleRemove(lastRecording)}>
-              Remove
-            </ContextMenu.Item>
-          </ContextMenu.Content>
-        </ContextMenu.Root>
+        <div className="flex flex-wrap gap-3">
+          {projects.map((project) => (
+            <ContextMenu.Root key={project.id}>
+              <ContextMenu.Trigger
+                render={
+                  <button
+                    onClick={() => void openProject(project)}
+                    disabled={loadingProjectId !== null}
+                    className="w-64 rounded-xl border border-line bg-surface p-2 text-left transition-colors hover:bg-surface-2 hover:border-accent/60 disabled:opacity-50"
+                  >
+                    <ProjectVideoThumbnail sourceVideoPath={project.sourceVideoPath} />
+                    <p className="mt-2 truncate text-sm">{project.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDuration(project.durationMs)} · {formatTimeAgo(project.updatedAt)}
+                    </p>
+                    {loadingProjectId === project.id && (
+                      <p className="mt-1 text-xs text-accent">Loading…</p>
+                    )}
+                  </button>
+                }
+              />
+              <ContextMenu.Content>
+                <ContextMenu.Item onClick={() => void openProject(project)}>Open</ContextMenu.Item>
+                <ContextMenu.Separator />
+                <ContextMenu.Item onClick={() => void handleDeleteProject(project)}>
+                  Delete
+                </ContextMenu.Item>
+              </ContextMenu.Content>
+            </ContextMenu.Root>
+          ))}
+        </div>
       )}
     </div>
   );

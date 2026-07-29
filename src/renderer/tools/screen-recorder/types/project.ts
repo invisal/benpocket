@@ -122,3 +122,13 @@ export interface Project {
   blurMasks: BlurMaskRegion[];
   motionBlur: boolean;
 }
+
+/** Lightweight listing entry for `project:list` -- just enough to render a picker, without reading every project's full tracks/annotations/paths off disk. */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  durationMs: number;
+  sourceVideoPath: string;
+}

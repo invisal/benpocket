@@ -41,6 +41,12 @@ interface AppStoreState {
   clearLastRecording: () => void;
   projectName: string;
   setProjectName: (projectName: string) => void;
+  /** Set once a project's first successful save assigns it an id -- reused on subsequent saves so "Save project" overwrites the same file instead of piling up duplicates. */
+  currentProjectId: string | null;
+  setCurrentProjectId: (currentProjectId: string) => void;
+  /** Bumped on every successful `project:save` so long-lived components (the sidebar's recent-projects list, which doesn't remount on route change like LibraryPage does) know to re-fetch `project:list`. */
+  projectsVersion: number;
+  bumpProjectsVersion: () => void;
   /** Left "Assets" sidebar's own drag-resized width, px -- see ResizablePanel in ScreenRecorderApp.tsx. */
   sidebarWidth: number;
   setSidebarWidth: (sidebarWidth: number) => void;
@@ -64,6 +70,10 @@ export const useAppStore = create<AppStoreState>((set) => ({
   clearLastRecording: () => set({ lastRecording: null }),
   projectName: 'Untitled Recording',
   setProjectName: (projectName) => set({ projectName }),
+  currentProjectId: null,
+  setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
+  projectsVersion: 0,
+  bumpProjectsVersion: () => set((state) => ({ projectsVersion: state.projectsVersion + 1 })),
   sidebarWidth: 288,
   setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
   toolPanelWidth: 280,

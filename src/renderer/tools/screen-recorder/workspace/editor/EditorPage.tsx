@@ -84,9 +84,17 @@ export function EditorPage(): JSX.Element {
   // user already made on the current recording. Undo/redo history is scoped
   // to this same session boundary -- otherwise Undo could reach back past
   // the fresh recording into whatever the previous one's edits looked like.
+  // A loaded project is a different kind of "different recording": it
+  // already restored real `tracks` (see applyProjectSnapshot), so
+  // `skipNextAutoInit` skips the single-full-duration-segment reset that
+  // would otherwise clobber those restored cuts right after load.
   useEffect(() => {
     if (lastRecording && duration > 0) {
-      initializeFromDuration(duration * 1000);
+      if (useTimelineStore.getState().skipNextAutoInit) {
+        useTimelineStore.setState({ skipNextAutoInit: false });
+      } else {
+        initializeFromDuration(duration * 1000);
+      }
       resetHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -25,7 +25,7 @@ export function LaunchRecorderButton() {
       ) : (
         <Circle size={12} className="text-danger" fill="currentColor" />
       )}
-      <span>New Screen Recording</span>
+      <span>Return to Recorder</span>
     </Button>
   );
 }

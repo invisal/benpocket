@@ -20,6 +20,8 @@ export const IpcChannels = {
   CursorClickSample: 'cursor:click-sample',
   OpenProject: 'project:open',
   SaveProject: 'project:save',
+  ListProjects: 'project:list',
+  DeleteProject: 'project:delete',
   ExportReadFileBytes: 'export:read-file-bytes',
   ExportWriteFileBytes: 'export:write-file-bytes',
   ShowSaveExportDialog: 'dialog:show-save-export',

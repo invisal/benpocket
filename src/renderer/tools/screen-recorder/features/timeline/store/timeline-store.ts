@@ -99,6 +99,14 @@ interface TimelineStoreState {
    * position from the video's own `timeupdate`.
    */
   seekRequestMs: number | null;
+  /**
+   * One-shot flag set by project-load hydration (see
+   * features/project/lib/apply-project-snapshot.ts) so EditorPage's "a
+   * different recording loaded" effect skips clobbering the just-restored
+   * `tracks` with a fresh single full-duration segment. Cleared as soon as
+   * that effect consumes it.
+   */
+  skipNextAutoInit: boolean;
   setPlayhead: (ms: number) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setIsHoverScrubbing: (isHoverScrubbing: boolean) => void;
@@ -179,6 +187,7 @@ export const useTimelineStore = create<TimelineStoreState>(
       isCutToolActive: false,
       isZoomToolActive: false,
       seekRequestMs: null,
+      skipNextAutoInit: false,
       setPlayhead: (playheadMs) => set({ playheadMs }),
       setIsPlaying: (isPlaying) => set({ isPlaying }),
       setIsHoverScrubbing: (isHoverScrubbing) => set({ isHoverScrubbing }),

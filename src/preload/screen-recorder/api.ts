@@ -5,7 +5,7 @@ import type {
   RecordingRequest,
   RecordingSession
 } from '@screen-recorder/types/recording';
-import type { Project, CursorPathPoint } from '@screen-recorder/types/project';
+import type { Project, ProjectSummary, CursorPathPoint } from '@screen-recorder/types/project';
 import type { ExportFormat } from '@screen-recorder/types/export';
 import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
 import type {
@@ -94,7 +94,10 @@ export const screenRecorderApi = {
     open: (projectId: string): Promise<Project | null> =>
       ipcRenderer.invoke(IpcChannels.OpenProject, projectId),
     save: (project: Project): Promise<boolean> =>
-      ipcRenderer.invoke(IpcChannels.SaveProject, project)
+      ipcRenderer.invoke(IpcChannels.SaveProject, project),
+    list: (): Promise<ProjectSummary[]> => ipcRenderer.invoke(IpcChannels.ListProjects),
+    remove: (projectId: string): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.DeleteProject, projectId)
   },
   export: {
     /** Reads a local file's raw bytes for the in-renderer WebCodecs export pipeline (feeding the WASM demuxer) -- unbounded, unlike file-explorer's preview-scoped binary read. */

@@ -31,9 +31,7 @@ function SliderRow({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Icon size={13} className="text-muted-foreground" />
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">{label}</span>
         </div>
         <span className="text-xs text-muted-foreground">{displayValue}</span>
       </div>
@@ -63,8 +61,8 @@ export function CursorSettingsPanel(): JSX.Element {
   } = useCursorStore();
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">Show Cursor</span>
           <Switch checked={visible} onChange={setVisible} label="Show cursor" />
@@ -85,12 +83,10 @@ export function CursorSettingsPanel(): JSX.Element {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-line pt-5">
+      <div className="flex flex-col gap-2 border-t border-line pt-3">
         <div className="flex items-center gap-1.5">
           <Palette size={13} className="text-muted-foreground" />
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Cursor Style
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Cursor Style</span>
         </div>
         <div className="grid grid-cols-6 gap-2">
           {CURSOR_STYLE_PRESETS.map((preset) => (
@@ -111,7 +107,7 @@ export function CursorSettingsPanel(): JSX.Element {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 border-t border-line pt-5">
+      <div className="flex flex-col gap-3 border-t border-line pt-3">
         <SliderRow
           icon={Maximize2}
           label="Size"

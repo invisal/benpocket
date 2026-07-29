@@ -80,7 +80,7 @@ export function BackgroundPicker(): JSX.Element {
   const gradient = kind === 'gradient' ? parseGradientValue(value) : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 rounded-lg border border-border p-1">
           {TABS.map((tab) => (
@@ -102,9 +102,7 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'wallpaper' && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Wallpaper
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Wallpaper</span>
           <div className="grid grid-cols-4 gap-2">
             {WALLPAPER_IMAGE_PRESETS.map((preset) => (
               <button
@@ -122,9 +120,7 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'gradient' && gradient && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Gradient
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Gradient</span>
           <div className="grid grid-cols-5 gap-2">
             {GRADIENT_PRESETS.map((preset, i) => {
               const presetValue = `${preset.angleDeg}|${preset.colors[0]}|${preset.colors[1]}`;
@@ -174,9 +170,7 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'color' && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Color
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Color</span>
           <div className="grid grid-cols-8 gap-2">
             {COLOR_SWATCHES.map((color) => (
               <button
@@ -198,9 +192,7 @@ export function BackgroundPicker(): JSX.Element {
 
       {kind === 'image' && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Image
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Image</span>
           {value && (
             <div className="aspect-video overflow-hidden rounded-lg border border-line">
               <img src={value} alt="Background" className="h-full w-full object-cover" />
@@ -217,9 +209,7 @@ export function BackgroundPicker(): JSX.Element {
             Choose image…
           </Button>
 
-          <span className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Photo presets
-          </span>
+          <span className="mt-1 text-xs font-medium text-muted-foreground">Photo presets</span>
           <div className="grid grid-cols-4 gap-2">
             {PHOTO_PRESETS.map((preset) => (
               <button
@@ -237,9 +227,7 @@ export function BackgroundPicker(): JSX.Element {
 
       <div className="flex flex-col gap-2 border-t border-line pt-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Background blur
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Background blur</span>
           <span className="text-xs text-muted-foreground">{blur}px</span>
         </div>
         <Slider value={blur} min={0} max={20} step={1} onChange={setBlur} />
@@ -247,9 +235,7 @@ export function BackgroundPicker(): JSX.Element {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Padding
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Padding</span>
           <span className="text-xs text-muted-foreground">{padding}%</span>
         </div>
         <Slider value={padding} min={0} max={30} step={1} onChange={setPadding} />
@@ -257,9 +243,7 @@ export function BackgroundPicker(): JSX.Element {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Corner radius
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Corner radius</span>
           <span className="text-xs text-muted-foreground">{cornerRadius}px</span>
         </div>
         <Slider value={cornerRadius} min={0} max={40} step={1} onChange={setCornerRadius} />
@@ -267,9 +251,7 @@ export function BackgroundPicker(): JSX.Element {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Drop shadow
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Drop shadow</span>
           <span className="text-xs text-muted-foreground">{shadow}</span>
         </div>
         <Slider value={shadow} min={0} max={100} step={1} onChange={setShadow} />

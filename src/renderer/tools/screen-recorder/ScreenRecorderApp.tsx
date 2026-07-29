@@ -24,7 +24,7 @@ export function ScreenRecorderApp(): JSX.Element {
   return (
     <RecordingControllerProvider>
       <RecorderToolbarBridge />
-      <div className="flex flex-1 flex-col min-h-0 bg-surface-sunken text-foreground">
+      <div className="screen-recorder-app flex flex-1 flex-col min-h-0 bg-surface-sunken text-foreground">
         <nav className="flex shrink-0 items-center gap-3 bg-surface px-4 py-2">
           <div className="flex shrink-0 items-center gap-2">
             <LaunchRecorderButton />

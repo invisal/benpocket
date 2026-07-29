@@ -34,9 +34,7 @@ function SliderField({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
+        <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
         <span className="text-[11px] text-muted-foreground">{valueLabel}</span>
       </div>
       {children}
@@ -53,30 +51,35 @@ interface ZoomKeyframeEditorProps {
 
 /** A number input that only commits on blur/Enter, so mid-typing states (e.g. an empty field) don't get clamped away as you type. */
 function CoordinateInput({
+  prefix,
   value,
   max,
   onCommit
 }: {
+  prefix: string;
   value: number;
   max: number;
   onCommit: (value: number) => void;
 }): JSX.Element {
   return (
-    <input
-      type="number"
-      min={0}
-      max={max}
-      defaultValue={value}
-      key={value}
-      onBlur={(e) => {
-        const next = Number(e.target.value);
-        if (Number.isFinite(next)) onCommit(Math.min(max, Math.max(0, Math.round(next))));
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-      }}
-      className="w-full rounded-md border border-line bg-transparent px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-accent"
-    />
+    <span className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 focus-within:ring-1 focus-within:ring-accent">
+      <span className="text-[11px] text-muted-foreground">{prefix}</span>
+      <input
+        type="number"
+        min={0}
+        max={max}
+        defaultValue={value}
+        key={value}
+        onBlur={(e) => {
+          const next = Number(e.target.value);
+          if (Number.isFinite(next)) onCommit(Math.min(max, Math.max(0, Math.round(next))));
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        className="w-full min-w-0 bg-transparent text-[11px] text-foreground outline-none"
+      />
+    </span>
   );
 }
 
@@ -120,7 +123,7 @@ function KeyframeDetailPanel({
       : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="font-mono text-xs text-muted-foreground">{formatTime(kf.atMs)}</span>
         <div className="flex items-center gap-1">
@@ -153,6 +156,7 @@ function KeyframeDetailPanel({
           <div className="flex items-center gap-2">
             <div className="grid flex-1 grid-cols-2 gap-1.5">
               <CoordinateInput
+                prefix="X"
                 value={pixelX ?? Math.round(fixedPosition.x * 100)}
                 max={sourceResolution ? sourceResolution.width : 100}
                 onCommit={(next) =>
@@ -165,6 +169,7 @@ function KeyframeDetailPanel({
                 }
               />
               <CoordinateInput
+                prefix="Y"
                 value={pixelY ?? Math.round(fixedPosition.y * 100)}
                 max={sourceResolution ? sourceResolution.height : 100}
                 onCommit={(next) =>
@@ -191,7 +196,7 @@ function KeyframeDetailPanel({
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <SliderField label="Zoom level" valueLabel={`${kf.depth.toFixed(1)}×`}>
           <Slider
             value={kf.depth}
@@ -227,9 +232,7 @@ function KeyframeDetailPanel({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Easing
-        </span>
+        <span className="text-[10px] font-medium text-muted-foreground">Easing</span>
         <div className="flex gap-1">
           {EASINGS.map((easing) => (
             <button
@@ -283,11 +286,9 @@ export function ZoomKeyframeEditor({
   }, [selectedKeyframeId]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Zoom mode
-        </span>
+        <span className="text-xs font-medium text-muted-foreground">Zoom mode</span>
         <div className="grid grid-cols-2 gap-2">
           {(['auto', 'manual'] as const).map((option) => (
             <button

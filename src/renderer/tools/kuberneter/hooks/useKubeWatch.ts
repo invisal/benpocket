@@ -31,22 +31,32 @@ export function useKubeWatch(queryResource: string, enabled: boolean) {
       namespace: kuberneterSelectedNamespace
     });
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     const unsubscribe = window.kuberneter.onWatchEvent((event) => {
       if (event.id === watchId || event.resource === queryResource) {
-        queryClient.invalidateQueries({
-          queryKey: [
-            'kuberneter',
-            'resource',
-            activeConfigPath,
-            kuberneterSelectedCluster,
-            queryResource,
-            kuberneterSelectedNamespace
-          ]
-        });
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(() => {
+          queryClient.invalidateQueries({
+            queryKey: [
+              'kuberneter',
+              'resource',
+              activeConfigPath,
+              kuberneterSelectedCluster,
+              queryResource,
+              kuberneterSelectedNamespace
+            ]
+          });
+        }, 300);
       }
     });
 
     return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
       unsubscribe();
       window.kuberneter.stopWatch(watchId);
     };

@@ -2,6 +2,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
 import { type K8sResource } from '../types/K8sResource';
+import { useKubeWatch } from './useKubeWatch';
 
 export function useKubeQuery<T>(
   queryResource: string,
@@ -23,14 +24,25 @@ export function useKubeQuery<T>(
     (s) => s.kuberneterInstanceRefreshInterval[activeInstanceId] || '60s'
   );
 
+  const isWatchActive = enabled && !!kuberneterSelectedCluster;
+
+  // Subscribe to real-time watch push events for active workspace resource queries
+  useKubeWatch(queryResource, isWatchActive);
+
   const intervalMap: Record<string, number> = {
     '5s': 5000,
     '10s': 10000,
     '30s': 30000,
     '60s': 60000
   };
-  const refetchInterval =
-    refreshInterval === 'off' ? false : (intervalMap[refreshInterval] ?? 60000);
+
+  // Suppress periodic polling when real-time watch push is actively running;
+  // fall back to configured refreshInterval if watch is inactive
+  const refetchInterval = isWatchActive
+    ? false
+    : refreshInterval === 'off'
+      ? false
+      : (intervalMap[refreshInterval] ?? 60000);
 
   const query = useQuery<T[]>({
     queryKey: [

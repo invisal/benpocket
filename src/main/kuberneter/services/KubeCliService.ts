@@ -1,4 +1,5 @@
 import { runKubectl } from '../k8s-cli';
+import { isClusterScopedResource } from '../constants/k8sResources';
 
 export class KubeCliService {
   /**
@@ -20,15 +21,7 @@ export class KubeCliService {
 
       args.push('get', resource);
 
-      const isClusterScoped = [
-        'nodes',
-        'namespaces',
-        'clusterroles',
-        'clusterrolebindings',
-        'storageclasses',
-        'persistentvolumes',
-        'pvs'
-      ].includes(resource.toLowerCase());
+      const isClusterScoped = isClusterScopedResource(resource);
 
       if (!isClusterScoped) {
         if (namespace && namespace !== 'All Namespaces') {

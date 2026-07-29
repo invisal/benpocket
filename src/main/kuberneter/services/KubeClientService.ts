@@ -1,5 +1,6 @@
 import https from 'https';
 import { URL } from 'url';
+import { buildKubeApiPath } from '../constants/k8sResources';
 
 export interface KubeApiConfig {
   server?: string;
@@ -10,80 +11,12 @@ export interface KubeApiConfig {
   insecureSkipTlsVerify?: boolean;
 }
 
-const RESOURCE_PATH_MAP: Record<
-  string,
-  { group: string; version: string; isClusterScoped?: boolean }
-> = {
-  pods: { group: 'api', version: 'v1' },
-  services: { group: 'api', version: 'v1' },
-  configmaps: { group: 'api', version: 'v1' },
-  secrets: { group: 'api', version: 'v1' },
-  namespaces: { group: 'api', version: 'v1', isClusterScoped: true },
-  nodes: { group: 'api', version: 'v1', isClusterScoped: true },
-  events: { group: 'api', version: 'v1' },
-  endpoints: { group: 'api', version: 'v1' },
-  persistentvolumeclaims: { group: 'api', version: 'v1' },
-  pvcs: { group: 'api', version: 'v1' },
-  persistentvolumes: { group: 'api', version: 'v1', isClusterScoped: true },
-  pvs: { group: 'api', version: 'v1', isClusterScoped: true },
-  resourcequotas: { group: 'api', version: 'v1' },
-  limitranges: { group: 'api', version: 'v1' },
-  serviceaccounts: { group: 'api', version: 'v1' },
-  deployments: { group: 'apis/apps', version: 'v1' },
-  statefulsets: { group: 'apis/apps', version: 'v1' },
-  daemonsets: { group: 'apis/apps', version: 'v1' },
-  replicasets: { group: 'apis/apps', version: 'v1' },
-  jobs: { group: 'apis/batch', version: 'v1' },
-  cronjobs: { group: 'apis/batch', version: 'v1' },
-  ingresses: { group: 'apis/networking.k8s.io', version: 'v1' },
-  ingressclasses: { group: 'apis/networking.k8s.io', version: 'v1', isClusterScoped: true },
-  networkpolicies: { group: 'apis/networking.k8s.io', version: 'v1' },
-  endpointslices: { group: 'apis/discovery.k8s.io', version: 'v1' },
-  storageclasses: { group: 'apis/storage.k8s.io', version: 'v1', isClusterScoped: true },
-  roles: { group: 'apis/rbac.authorization.k8s.io', version: 'v1' },
-  rolebindings: { group: 'apis/rbac.authorization.k8s.io', version: 'v1' },
-  bindings: { group: 'apis/rbac.authorization.k8s.io', version: 'v1' },
-  clusterroles: { group: 'apis/rbac.authorization.k8s.io', version: 'v1', isClusterScoped: true },
-  clusterrolebindings: {
-    group: 'apis/rbac.authorization.k8s.io',
-    version: 'v1',
-    isClusterScoped: true
-  },
-  poddisruptionbudgets: { group: 'apis/policy', version: 'v1' },
-  pdbs: { group: 'apis/policy', version: 'v1' },
-  priorityclasses: { group: 'apis/scheduling.k8s.io', version: 'v1', isClusterScoped: true },
-  runtimeclasses: { group: 'apis/node.k8s.io', version: 'v1', isClusterScoped: true },
-  leases: { group: 'apis/coordination.k8s.io', version: 'v1' },
-  mutatingwebhookconfigurations: {
-    group: 'apis/admissionregistration.k8s.io',
-    version: 'v1',
-    isClusterScoped: true
-  },
-  validatingwebhookconfigurations: {
-    group: 'apis/admissionregistration.k8s.io',
-    version: 'v1',
-    isClusterScoped: true
-  }
-};
-
 export class KubeClientService {
   /**
    * Helper to construct API URL path for a resource and namespace
    */
   public static buildResourcePath(resource: string, namespace?: string): string {
-    const key = resource.toLowerCase();
-    const info = RESOURCE_PATH_MAP[key] || { group: 'api', version: 'v1' };
-    const prefix = info.group === 'api' ? '/api/v1' : `/${info.group}/${info.version}`;
-
-    if (info.isClusterScoped) {
-      return `${prefix}/${key}`;
-    }
-
-    if (namespace && namespace !== 'All Namespaces') {
-      return `${prefix}/namespaces/${namespace}/${key}`;
-    }
-
-    return `${prefix}/${key}`;
+    return buildKubeApiPath(resource, namespace);
   }
 
   /**

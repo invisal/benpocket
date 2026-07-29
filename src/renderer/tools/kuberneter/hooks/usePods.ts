@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { useInstantMetrics, formatInstantCpu, formatInstantMemory } from './useMetrics';
 import { type PodData } from '../types/PodData';
 import { type PodResource, type ContainerStatus } from '../types/PodResource';
@@ -86,5 +87,5 @@ export function usePods(enabled: boolean) {
     [metricsQuery.data]
   );
 
-  return useKubeQuery<PodData>('pods', transform, enabled);
+  return useKubeQuery<PodData>(K8S_RESOURCE_KEYS.PODS, transform, enabled);
 }

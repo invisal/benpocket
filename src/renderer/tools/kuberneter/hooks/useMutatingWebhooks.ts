@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import {
   type MutatingWebhookConfigurationData,
   type WebhookItem
@@ -128,7 +129,7 @@ export function useMutatingWebhooks(enabled: boolean) {
   );
 
   return useKubeQuery<MutatingWebhookConfigurationData>(
-    'mutatingwebhookconfigurations',
+    K8S_RESOURCE_KEYS.MUTATING_WEBHOOK_CONFIGURATIONS,
     transform,
     enabled
   );

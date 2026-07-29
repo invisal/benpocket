@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process';
+import { isClusterScopedResource } from '../constants/k8sResources';
 
 export interface WatchOptions {
   kubeconfigPath?: string;
@@ -31,15 +32,7 @@ export class KubeCliWatchService {
 
     args.push('get', options.resource);
 
-    const isClusterScoped = [
-      'nodes',
-      'namespaces',
-      'clusterroles',
-      'clusterrolebindings',
-      'storageclasses',
-      'persistentvolumes',
-      'pvs'
-    ].includes(options.resource.toLowerCase());
+    const isClusterScoped = isClusterScopedResource(options.resource);
 
     if (!isClusterScoped) {
       if (options.namespace && options.namespace !== 'All Namespaces') {

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import {
   type PersistentVolumeData,
   type PersistentVolumeProvider,
@@ -104,5 +105,9 @@ export function usePersistentVolumes(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<PersistentVolumeData>('persistentvolumes', transform, enabled);
+  return useKubeQuery<PersistentVolumeData>(
+    K8S_RESOURCE_KEYS.PERSISTENT_VOLUMES,
+    transform,
+    enabled
+  );
 }

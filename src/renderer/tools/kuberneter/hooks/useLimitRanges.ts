@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type LimitRangeData, type LimitRangeItem } from '../types/LimitRangeData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -70,5 +71,5 @@ export function useLimitRanges(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<LimitRangeData>('limitranges', transform, enabled);
+  return useKubeQuery<LimitRangeData>(K8S_RESOURCE_KEYS.LIMIT_RANGES, transform, enabled);
 }

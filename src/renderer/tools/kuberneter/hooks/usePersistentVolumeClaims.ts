@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type PersistentVolumeClaimData } from '../types/PersistentVolumeClaimData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -84,7 +85,12 @@ export function usePersistentVolumeClaims(enabled: boolean) {
   const fetchExtraData = useMemo(
     () => async (configPath: string | undefined, cluster: string, ns: string) => {
       try {
-        const podsRes = await window.kuberneter.getResources(configPath, cluster, 'pods', ns);
+        const podsRes = await window.kuberneter.getResources(
+          configPath,
+          cluster,
+          K8S_RESOURCE_KEYS.PODS,
+          ns
+        );
         return podsRes?.items || [];
       } catch (e) {
         console.warn('Failed to fetch PVC extra data (pods)', e);
@@ -95,7 +101,7 @@ export function usePersistentVolumeClaims(enabled: boolean) {
   );
 
   return useKubeQuery<PersistentVolumeClaimData>(
-    'persistentvolumeclaims',
+    K8S_RESOURCE_KEYS.PERSISTENT_VOLUME_CLAIMS,
     transform,
     enabled,
     fetchExtraData

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type RuntimeClassData } from '../types/RuntimeClassData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -46,5 +47,5 @@ export function useRuntimeClasses(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<RuntimeClassData>('runtimeclasses', transform, enabled);
+  return useKubeQuery<RuntimeClassData>(K8S_RESOURCE_KEYS.RUNTIME_CLASSES, transform, enabled);
 }

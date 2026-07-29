@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type LeaseData } from '../types/LeaseData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -42,5 +43,5 @@ export function useLeases(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<LeaseData>('leases', transform, enabled);
+  return useKubeQuery<LeaseData>(K8S_RESOURCE_KEYS.LEASES, transform, enabled);
 }

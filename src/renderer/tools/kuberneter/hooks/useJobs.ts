@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type JobData } from '../types/JobData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -40,5 +41,5 @@ export function useJobs(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<JobData>('jobs', transform, enabled);
+  return useKubeQuery<JobData>(K8S_RESOURCE_KEYS.JOBS, transform, enabled);
 }

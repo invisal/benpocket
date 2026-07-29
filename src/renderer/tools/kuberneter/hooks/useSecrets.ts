@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type SecretData } from '../types/SecretData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -26,5 +27,5 @@ export function useSecrets(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<SecretData>('secrets', transform, enabled);
+  return useKubeQuery<SecretData>(K8S_RESOURCE_KEYS.SECRETS, transform, enabled);
 }

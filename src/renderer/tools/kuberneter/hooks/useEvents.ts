@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type EventData } from '../types/EventData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -65,5 +66,5 @@ export function useEvents(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<EventData>('events', transform, enabled);
+  return useKubeQuery<EventData>(K8S_RESOURCE_KEYS.EVENTS, transform, enabled);
 }

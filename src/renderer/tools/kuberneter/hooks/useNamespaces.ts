@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type NamespaceData } from '../types/NamespaceData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -39,5 +40,5 @@ export function useNamespaces(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<NamespaceData>('namespaces', transform, enabled);
+  return useKubeQuery<NamespaceData>(K8S_RESOURCE_KEYS.NAMESPACES, transform, enabled);
 }

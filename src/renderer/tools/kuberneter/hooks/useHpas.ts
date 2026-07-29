@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import {
   type HorizontalPodAutoscalerData,
   type HpaMetric
@@ -144,5 +145,9 @@ export function useHpas(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<HorizontalPodAutoscalerData>('horizontalpodautoscalers', transform, enabled);
+  return useKubeQuery<HorizontalPodAutoscalerData>(
+    K8S_RESOURCE_KEYS.HORIZONTAL_POD_AUTOSCALERS,
+    transform,
+    enabled
+  );
 }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type ClusterRoleData, type ClusterRoleRule } from '../types/ClusterRoleData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -31,5 +32,5 @@ export function useClusterRoles(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ClusterRoleData>('clusterroles', transform, enabled);
+  return useKubeQuery<ClusterRoleData>(K8S_RESOURCE_KEYS.CLUSTER_ROLES, transform, enabled);
 }

@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDownUp, Clapperboard, Film, FolderOpen, Settings, Upload } from 'lucide-react';
+import {
+  ArrowDownUp,
+  Clapperboard,
+  Film,
+  FolderOpen,
+  Loader2,
+  Settings,
+  Upload
+} from 'lucide-react';
 import type { ProjectSummary } from '@screen-recorder/types/project';
 import { useAppStore, type ScreenRecorderRoute } from '../app/app-store';
+import { useToastStore } from '../app/toast-store';
 import { useExportStore } from '../features/export/store/export-store';
 import { useOpenProject } from '../features/project/hooks/useOpenProject';
+import { importVideoFile } from '../features/project/lib/import-video';
 import { formatTimeAgo } from '../lib/format';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
@@ -30,8 +40,10 @@ export const ScreenRecorderSidebar: React.FC = () => {
   const currentProjectId = useAppStore((state) => state.currentProjectId);
   const projectsVersion = useAppStore((state) => state.projectsVersion);
   const isExporting = useExportStore((state) => state.isExporting);
+  const showToast = useToastStore((state) => state.showToast);
 
   const [recentProjects, setRecentProjects] = useState<ProjectSummary[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
   const { loadingProjectId, openProject } = useOpenProject();
   const hasAutoSelectedRef = useRef(false);
 
@@ -67,6 +79,18 @@ export const ScreenRecorderSidebar: React.FC = () => {
     if (!window.confirm(`Delete "${project.name}"? This can't be undone.`)) return;
     const ok = await window.screenRecorder.project.remove(project.id);
     if (ok) setRecentProjects((prev) => prev.filter((p) => p.id !== project.id));
+  }
+
+  async function handleImport(): Promise<void> {
+    setIsImporting(true);
+    try {
+      await importVideoFile();
+    } catch (err) {
+      console.error('[sidebar] failed to import video:', err);
+      showToast('Failed to import video', 'error');
+    } finally {
+      setIsImporting(false);
+    }
   }
 
   return (
@@ -119,10 +143,13 @@ export const ScreenRecorderSidebar: React.FC = () => {
               <ArrowDownUp size={12} />
             </button>
             <button
-              title="Not available yet"
-              className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-medium hover:bg-surface-2"
+              onClick={() => void handleImport()}
+              disabled={isImporting}
+              title="Import a video file"
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-medium hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-50"
             >
-              <Upload size={12} /> Import
+              {isImporting ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              Import
             </button>
           </div>
         </div>

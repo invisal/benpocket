@@ -143,7 +143,9 @@ export const screenRecorderApi = {
   },
   dialog: {
     showSaveExportPath: (defaultFileName: string, format: ExportFormat): Promise<string | null> =>
-      ipcRenderer.invoke(IpcChannels.ShowSaveExportDialog, defaultFileName, format)
+      ipcRenderer.invoke(IpcChannels.ShowSaveExportDialog, defaultFileName, format),
+    /** Native "openFile" picker restricted to video extensions -- Sidebar's "Import" button. */
+    showOpenVideo: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.ShowOpenVideoDialog)
   },
   simulator: {
     /** Name of the currently booted iOS Simulator device, or null if none is booted / Xcode Command Line Tools aren't installed. */

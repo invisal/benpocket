@@ -25,6 +25,7 @@ export const IpcChannels = {
   ExportReadFileBytes: 'export:read-file-bytes',
   ExportWriteFileBytes: 'export:write-file-bytes',
   ShowSaveExportDialog: 'dialog:show-save-export',
+  ShowOpenVideoDialog: 'dialog:show-open-video',
   SaveScreenshot: 'screenshot:save',
   CopyScreenshot: 'screenshot:copy',
   CaptureScreenshot: 'screenshot:capture',

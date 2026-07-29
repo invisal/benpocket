@@ -142,7 +142,7 @@ export function EditorPage(): JSX.Element {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 gap-2">
+    <div className="flex min-h-0 flex-1 gap-1.5">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
         <PreviewStage
           // Remounts the whole stage (and both internal <video> elements,

@@ -26,11 +26,19 @@ export interface CursorCaptureHandle {
  * `onUpdate` (optional) fires after every sample/click with the running
  * counts, so callers can show a live "N points captured" readout instead of
  * only finding out after `stop()` whether tracking actually worked.
+ *
+ * `followWindowId` (optional): a window's native handle to keep re-resolving
+ * live bounds for over the course of the recording -- see
+ * useRecordingController.ts, which only passes this for a plain 'window'
+ * source (no crop region overriding `source.displayBounds` with a fixed
+ * rect). Without it, dragging the recorded window mid-recording leaves
+ * tracking normalized against wherever it was when recording started.
  */
 export async function startCursorCapture(
   source: CaptureSource,
   startedAt: number,
-  onUpdate?: (counts: { cursorCount: number; clickCount: number }) => void
+  onUpdate?: (counts: { cursorCount: number; clickCount: number }) => void,
+  followWindowId?: number | null
 ): Promise<CursorCaptureHandle | null> {
   if (!source.displayBounds) {
     console.warn(
@@ -50,7 +58,11 @@ export async function startCursorCapture(
     onUpdate?.({ cursorCount: cursorPath.length, clickCount: clickPath.length });
   });
 
-  await window.screenRecorder.cursor.startTracking(source.displayBounds, startedAt);
+  await window.screenRecorder.cursor.startTracking(
+    source.displayBounds,
+    startedAt,
+    followWindowId ?? null
+  );
 
   return {
     stop: async () => {

@@ -24,6 +24,11 @@ import { app, session } from 'electron';
 // scheme and blocks the worker outright (silently hangs the export rather
 // than erroring, since the failure surfaces as a rejected internal promise
 // inside the library, not a catchable exception here).
+// connect-src also needs 'data:' because PixiJS's texture loader
+// (features/export/engine/rendering/effects/background.ts's Assets.load,
+// used for image/wallpaper backgrounds) probes AVIF support by `fetch()`ing
+// a tiny embedded `data:image/avif;base64,...` URL the first time it loads
+// an image -- that fetch is checked against connect-src, not img-src.
 export function applyContentSecurityPolicy(): void {
   const isDev = !app.isPackaged;
 
@@ -33,7 +38,7 @@ export function applyContentSecurityPolicy(): void {
         "img-src 'self' data: blob: http: https:",
         "media-src 'self' blob:",
         "worker-src 'self' blob: data:",
-        "connect-src 'self' blob: ws: wss: http://localhost:* https://localhost:*"
+        "connect-src 'self' blob: data: ws: wss: http://localhost:* https://localhost:*"
       ].join('; ')
     : [
         "default-src 'self'",
@@ -42,7 +47,7 @@ export function applyContentSecurityPolicy(): void {
         "img-src 'self' data: blob: http: https:",
         "media-src 'self' blob:",
         "worker-src 'self' blob: data:",
-        "connect-src 'self' blob:"
+        "connect-src 'self' blob: data:"
       ].join('; ');
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

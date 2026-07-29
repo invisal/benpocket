@@ -45,7 +45,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
   const selected = sorted.find((r) => r.id === selectedRegionId) ?? null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2">
         <Button
           variant="secondary"
@@ -62,9 +62,6 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
           <Square size={14} /> Mask
         </Button>
       </div>
-      <p className="text-[11px] leading-snug text-muted-foreground/70">
-        Adds at {formatTime(currentTimeMs)} -- drag directly on the preview to reposition or resize.
-      </p>
 
       {sorted.length === 0 && (
         <p className="text-xs text-muted-foreground">No blur/mask regions yet.</p>
@@ -99,7 +96,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
       {selected && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               {regionLabel(selected)}
             </span>
             <button
@@ -111,9 +108,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Shape
-            </span>
+            <span className="text-[10px] font-medium text-muted-foreground">Shape</span>
             <div className="grid grid-cols-2 gap-1.5">
               {SHAPES.map((shape) => (
                 <button
@@ -135,9 +130,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
           {selected.kind === 'blur' && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Intensity
-                </span>
+                <span className="text-[10px] font-medium text-muted-foreground">Intensity</span>
                 <span className="text-[11px] text-muted-foreground">{selected.intensity}</span>
               </div>
               <Slider
@@ -152,9 +145,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
 
           {selected.kind === 'mask' && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Color
-              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">Color</span>
               <div className="grid grid-cols-6 gap-1.5">
                 {MASK_COLOR_SWATCHES.map((color) => (
                   <button
@@ -183,9 +174,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Duration
-              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">Duration</span>
               <span className="text-[11px] text-muted-foreground">
                 {(selected.durationMs / 1000).toFixed(1)}s
               </span>

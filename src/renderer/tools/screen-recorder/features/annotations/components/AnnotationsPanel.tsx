@@ -85,7 +85,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2">
         <Button
           variant="secondary"
@@ -116,9 +116,6 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
           onChange={handleImageFile}
         />
       </div>
-      <p className="text-[11px] leading-snug text-muted-foreground/70">
-        Adds at {formatTime(currentTimeMs)} -- drag directly on the preview to reposition.
-      </p>
 
       {sorted.length === 0 && <p className="text-xs text-muted-foreground">No annotations yet.</p>}
 
@@ -151,7 +148,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
       {selected && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               {annotationLabel(selected)}
             </span>
             <button
@@ -165,9 +162,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
           {selected.kind === 'text' && (
             <>
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Text
-                </span>
+                <span className="text-[10px] font-medium text-muted-foreground">Text</span>
                 <textarea
                   value={selected.text}
                   onChange={(e) => updateAnnotation(selected.id, { text: e.target.value })}
@@ -176,7 +171,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
                 />
               </label>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="text-[10px] font-medium text-muted-foreground">
                   Entrance animation
                 </span>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -202,9 +197,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
           {selected.kind === 'arrow' && (
             <>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Color
-                </span>
+                <span className="text-[10px] font-medium text-muted-foreground">Color</span>
                 <div className="grid grid-cols-8 gap-1.5">
                   {ARROW_COLOR_SWATCHES.map((color) => (
                     <button
@@ -231,9 +224,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Line style
-                </span>
+                <span className="text-[10px] font-medium text-muted-foreground">Line style</span>
                 <div className="grid grid-cols-2 gap-1.5">
                   {ARROW_STYLES.map((style) => (
                     <button
@@ -254,9 +245,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
 
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Thickness
-                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Thickness</span>
                   <span className="text-[11px] text-muted-foreground">{selected.thickness}px</span>
                 </div>
                 <Slider
@@ -287,18 +276,14 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Starts at
-              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">Starts at</span>
               <span className="text-[11px] text-muted-foreground">{formatTime(selected.atMs)}</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Duration
-              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">Duration</span>
               <span className="text-[11px] text-muted-foreground">
                 {(selected.durationMs / 1000).toFixed(1)}s
               </span>

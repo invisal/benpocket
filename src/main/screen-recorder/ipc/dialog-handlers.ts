@@ -43,6 +43,19 @@ export function registerDialogHandlers(): void {
     }
   );
 
+  ipcMain.handle(IpcChannels.ShowOpenVideoDialog, async (event): Promise<string | null> => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const options: Electron.OpenDialogOptions = {
+      properties: ['openFile'],
+      filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'webm', 'mkv', 'm4v'] }]
+    };
+    const { canceled, filePaths } = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options);
+    if (canceled || filePaths.length === 0) return null;
+    return filePaths[0];
+  });
+
   ipcMain.handle(IpcChannels.CopyScreenshot, async (event, data: ArrayBuffer): Promise<void> => {
     // Screen Capture tool only.
     await copyScreenshotToClipboard(event.sender, data);

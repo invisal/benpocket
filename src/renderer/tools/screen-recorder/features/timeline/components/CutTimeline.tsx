@@ -1,12 +1,28 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Clapperboard, Gauge, Scissors } from 'lucide-react';
-import type { TimelineSegment } from '@screen-recorder/types/timeline';
+import {
+  Clapperboard,
+  Gauge,
+  Minus,
+  Plus,
+  Redo2,
+  Scissors,
+  Trash2,
+  Undo2,
+  ZoomIn
+} from 'lucide-react';
+import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
+import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { useAppStore } from '../../../app/app-store';
-import { useTimelineStore } from '../store/timeline-store';
+import { useHistoryStore } from '../../history/store/history-store';
+import { useTimelineStore, MIN_TIMELINE_ZOOM, MAX_TIMELINE_ZOOM } from '../store/timeline-store';
 import { useWaveformStore } from '../store/waveform-store';
-import { getSegmentOutputDurationMs, outputMsToSourceMs } from '../lib/segment-duration';
+import {
+  getSegmentOutputDurationMs,
+  hasMergeableCutBoundary,
+  outputMsToSourceMs
+} from '../lib/segment-duration';
 import { CLIP_ROW_HEIGHT_PX } from '../lib/assign-lanes';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
@@ -16,7 +32,6 @@ import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
 import { AnnotationTrack } from '../../annotations/components/AnnotationTrack';
 import { BlurMaskTrack } from '../../blur-mask/components/BlurMaskTrack';
-import { SpeedTrack } from './SpeedTrack';
 import { Playhead } from './Playhead';
 import { SegmentWaveform } from './SegmentWaveform';
 import { cn } from '../../../lib/utils';
@@ -56,7 +71,6 @@ function pickMajorTickIntervalMs(totalDurationMs: number): number {
 
 // Sized to comfortably fit the ruler+clip row plus the Zoom/Caption/Speed/Crop
 // pill tracks beneath it without squishing (each track is a fixed h-9, `shrink-0`).
-const DEFAULT_PANEL_HEIGHT_PX = 180;
 const MIN_PANEL_HEIGHT_PX = 150;
 const MAX_PANEL_HEIGHT_PX = 300;
 
@@ -91,11 +105,6 @@ function gapBeforeSegmentMs(segments: TimelineSegment[], index: number): number 
   const segment = segments[index];
   const previous = segments[index - 1];
   return previous ? segment.range.startMs - previous.range.endMs : segment.range.startMs;
-}
-
-interface PanelResize {
-  startClientY: number;
-  startHeightPx: number;
 }
 
 /**
@@ -151,11 +160,14 @@ export function CutTimeline(): JSX.Element {
   const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
   const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
   const zoom = useTimelineStore((s) => s.timelineZoom);
+  const setTimelineZoom = useTimelineStore((s) => s.setTimelineZoom);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
   const previewSeek = useTimelineStore((s) => s.previewSeek);
   const setIsHoverScrubbing = useTimelineStore((s) => s.setIsHoverScrubbing);
   const splitAt = useTimelineStore((s) => s.splitAt);
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
+  const resetSegmentTrim = useTimelineStore((s) => s.resetSegmentTrim);
+  const setSegmentSpeed = useTimelineStore((s) => s.setSegmentSpeed);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);
   const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   // Gates the ruler's hover-scrub below -- only toggles on play/pause (not a
@@ -166,10 +178,16 @@ export function CutTimeline(): JSX.Element {
   // the cursor instead of seeking/selecting, and the hover marker below
   // renders as a live cut-preview pin instead of the plain gray scrub line.
   const isCutToolActive = useTimelineStore((s) => s.isCutToolActive);
+  const setCutToolActive = useTimelineStore((s) => s.setCutToolActive);
   // Armed from the ZoomIn button -- same idea, but a click adds a zoom
   // keyframe at the cursor instead of splitting; ZoomTrack (rendered below)
   // gets the hovered position as a prop and draws its own ghost preview.
   const isZoomToolActive = useTimelineStore((s) => s.isZoomToolActive);
+  const setZoomToolActive = useTimelineStore((s) => s.setZoomToolActive);
+  const canUndo = useHistoryStore((s) => s.past.length > 0);
+  const canRedo = useHistoryStore((s) => s.future.length > 0);
+  const undo = useHistoryStore((s) => s.undo);
+  const redo = useHistoryStore((s) => s.redo);
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
   const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
@@ -180,6 +198,8 @@ export function CutTimeline(): JSX.Element {
   const isPointerToolActive = isCutToolActive || isZoomToolActive;
 
   const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
+  const panelHeightPx = useAppStore((s) => s.timelinePanelHeight);
+  const setPanelHeightPx = useAppStore((s) => s.setTimelinePanelHeight);
   const waveformPeaks = useWaveformStore((s) => s.peaks);
   const loadWaveformForUrl = useWaveformStore((s) => s.loadForUrl);
   // Decoded once per recording (cached in the store, keyed by URL) rather
@@ -242,11 +262,6 @@ export function CutTimeline(): JSX.Element {
     }
   }, [isPlaying, setIsHoverScrubbing]);
   const effectiveHoverFraction = isPlaying ? null : hoverFraction;
-
-  // Panel height is self-managed (not lifted to EditorPage) so the timeline
-  // is an independently resizable strip spanning the full editor width.
-  const [panelHeightPx, setPanelHeightPx] = useState(DEFAULT_PANEL_HEIGHT_PX);
-  const panelResizeRef = useRef<PanelResize | null>(null);
 
   const totalDurationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const clampedTotal = totalDurationMs > 0 ? totalDurationMs : 1;
@@ -454,31 +469,6 @@ export function CutTimeline(): JSX.Element {
     );
   }
 
-  const handlePanelResizeMove = useCallback((event: PointerEvent) => {
-    const drag = panelResizeRef.current;
-    if (!drag) return;
-    // The panel is pinned to the bottom of the editor, so dragging the top
-    // edge upward (clientY decreasing) should grow it.
-    const deltaPx = drag.startClientY - event.clientY;
-    const next = Math.min(
-      MAX_PANEL_HEIGHT_PX,
-      Math.max(MIN_PANEL_HEIGHT_PX, drag.startHeightPx + deltaPx)
-    );
-    setPanelHeightPx(next);
-  }, []);
-
-  const stopPanelResize = useCallback(() => {
-    panelResizeRef.current = null;
-    window.removeEventListener('pointermove', handlePanelResizeMove);
-  }, [handlePanelResizeMove]);
-
-  function startPanelResize(event: React.PointerEvent): void {
-    event.preventDefault();
-    panelResizeRef.current = { startClientY: event.clientY, startHeightPx: panelHeightPx };
-    window.addEventListener('pointermove', handlePanelResizeMove);
-    window.addEventListener('pointerup', stopPanelResize, { once: true });
-  }
-
   function handleDoubleClick(
     segment: TimelineSegment,
     index: number,
@@ -500,28 +490,109 @@ export function CutTimeline(): JSX.Element {
   }
 
   return (
-    <div
-      className="flex w-full shrink-0 flex-col border-t border-line bg-surface"
-      style={{ height: panelHeightPx }}
+    <ResizablePanel
+      edge="top"
+      size={panelHeightPx}
+      onResize={setPanelHeightPx}
+      min={MIN_PANEL_HEIGHT_PX}
+      max={MAX_PANEL_HEIGHT_PX}
+      className="flex w-full flex-col rounded-lg border border-line bg-surface"
+      handleClassName="z-40"
     >
-      <div
-        onPointerDown={startPanelResize}
-        title="Drag to resize the timeline"
-        className="h-1.5 shrink-0 cursor-row-resize bg-transparent hover:bg-accent/70"
-      />
-
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
-        {/* <div className="flex shrink-0 items-center gap-3 text-xs text-white/50">
-          <span className="flex items-center gap-1.5">
-            <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
-          </span>
-          <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
-            {formatTime(totalDurationMs)} total
-          </span>
-          <span className="ml-auto text-white/30">
-            Click to select · double-click to split · drag to reorder, trim, or scrub
-          </span>
-        </div> */}
+        <div className="flex shrink-0 items-center gap-1">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo"
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo"
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
+            >
+              <Redo2 size={14} />
+            </button>
+
+            <div className="mx-1 h-4 w-px bg-line" />
+
+            <button
+              onClick={() => setCutToolActive(!isCutToolActive)}
+              title={
+                isCutToolActive
+                  ? 'Cut tool active -- click the timeline to trim'
+                  : 'Cut tool -- click to arm, then click the timeline to trim'
+              }
+              className={cn(
+                'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                isCutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
+              )}
+            >
+              <Scissors size={13} />
+            </button>
+            <button
+              onClick={() => setZoomToolActive(!isZoomToolActive)}
+              title={
+                isZoomToolActive
+                  ? 'Zoom tool active -- click the timeline to place a keyframe'
+                  : 'Zoom tool -- click to arm, then click the timeline to place a keyframe'
+              }
+              className={cn(
+                'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                isZoomToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
+              )}
+            >
+              <ZoomIn size={13} />
+            </button>
+
+            <div className="mx-1 h-4 w-px bg-line" />
+
+            <button
+              onClick={() => selectedSegmentId && deleteSegment(selectedSegmentId)}
+              disabled={!selectedSegmentId}
+              title="Delete selected clip"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2 disabled:opacity-30"
+            >
+              <Trash2 size={13} />
+            </button>
+
+            <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setTimelineZoom(Math.max(MIN_TIMELINE_ZOOM, zoom - 0.5))}
+              title="Zoom out timeline"
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2"
+            >
+              <Minus size={13} />
+            </button>
+            <input
+              type="range"
+              min={MIN_TIMELINE_ZOOM}
+              max={MAX_TIMELINE_ZOOM}
+              step={0.5}
+              value={zoom}
+              onChange={(e) => setTimelineZoom(Number(e.target.value))}
+              title="Timeline zoom"
+              className="w-24 accent-accent"
+            />
+            <button
+              onClick={() => setTimelineZoom(Math.min(MAX_TIMELINE_ZOOM, zoom + 0.5))}
+              title="Zoom in timeline"
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2"
+            >
+              <Plus size={13} />
+            </button>
+          </div>
+        </div>
 
         {/*
           Every track (ruler, clips, Zoom/Caption/Speed/Crop pills) lives
@@ -759,6 +830,33 @@ export function CutTimeline(): JSX.Element {
                         }
                       />
                       <ContextMenu.Content>
+                        <ContextMenu.SubmenuRoot>
+                          <ContextMenu.SubmenuTrigger>
+                            <Gauge size={13} className="shrink-0" />
+                            Set speed
+                          </ContextMenu.SubmenuTrigger>
+                          <ContextMenu.Content>
+                            <ContextMenu.RadioGroup
+                              value={segment.speed}
+                              onValueChange={(value) =>
+                                setSegmentSpeed(segment.id, value as typeof segment.speed)
+                              }
+                            >
+                              {CLIP_SPEED_OPTIONS.map((speed) => (
+                                <ContextMenu.RadioItem key={speed} value={speed}>
+                                  {speed}x
+                                </ContextMenu.RadioItem>
+                              ))}
+                            </ContextMenu.RadioGroup>
+                          </ContextMenu.Content>
+                        </ContextMenu.SubmenuRoot>
+                        <ContextMenu.Separator />
+                        <ContextMenu.Item
+                          onClick={() => resetSegmentTrim(segment.id)}
+                          disabled={!segment.trimmed && !hasMergeableCutBoundary(segments, index)}
+                        >
+                          Reset trim
+                        </ContextMenu.Item>
                         <ContextMenu.Item
                           onClick={() => deleteSegment(segment.id)}
                           disabled={segments.length <= 1}
@@ -805,7 +903,6 @@ export function CutTimeline(): JSX.Element {
             <CaptionTrack />
             <AnnotationTrack />
             <BlurMaskTrack />
-            <SpeedTrack />
             <CropTrack />
 
             <Playhead
@@ -817,6 +914,6 @@ export function CutTimeline(): JSX.Element {
           </div>
         </div>
       </div>
-    </div>
+    </ResizablePanel>
   );
 }

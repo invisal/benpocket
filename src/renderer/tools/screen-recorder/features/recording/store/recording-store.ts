@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { AudioInputOptions, CaptureSource } from '@screen-recorder/types/recording';
 import type { CaptureRegionSelection } from '@shared/capture-region';
 
@@ -50,26 +51,37 @@ interface RecordingStoreState {
   setAutoZoomEnabled: (enabled: boolean) => void;
 }
 
-export const useRecordingStore = create<RecordingStoreState>((set, get) => ({
-  selectedSource: null,
-  nativePickerStream: null,
-  cropRegion: null,
-  audio: { microphoneEnabled: true, systemAudioEnabled: false },
-  autoZoomEnabled: true,
-  setSelectedSource: (selectedSource) => {
-    stopStream(get().nativePickerStream);
-    set({ selectedSource, nativePickerStream: null, cropRegion: null });
-  },
-  setNativePickerSelection: (stream, selectedSource) => {
-    stopStream(get().nativePickerStream);
-    set({ selectedSource, nativePickerStream: stream, cropRegion: null });
-  },
-  takeNativePickerStream: () => {
-    const stream = get().nativePickerStream;
-    set({ nativePickerStream: null });
-    return stream;
-  },
-  setCropRegion: (cropRegion) => set({ cropRegion }),
-  setAudio: (audio) => set((state) => ({ audio: { ...state.audio, ...audio } })),
-  setAutoZoomEnabled: (autoZoomEnabled) => set({ autoZoomEnabled })
-}));
+export const useRecordingStore = create<RecordingStoreState>()(
+  persist(
+    (set, get) => ({
+      selectedSource: null,
+      nativePickerStream: null,
+      cropRegion: null,
+      audio: { microphoneEnabled: true, systemAudioEnabled: false },
+      autoZoomEnabled: true,
+      setSelectedSource: (selectedSource) => {
+        stopStream(get().nativePickerStream);
+        set({ selectedSource, nativePickerStream: null, cropRegion: null });
+      },
+      setNativePickerSelection: (stream, selectedSource) => {
+        stopStream(get().nativePickerStream);
+        set({ selectedSource, nativePickerStream: stream, cropRegion: null });
+      },
+      takeNativePickerStream: () => {
+        const stream = get().nativePickerStream;
+        set({ nativePickerStream: null });
+        return stream;
+      },
+      setCropRegion: (cropRegion) => set({ cropRegion }),
+      setAudio: (audio) => set((state) => ({ audio: { ...state.audio, ...audio } })),
+      setAutoZoomEnabled: (autoZoomEnabled) => set({ autoZoomEnabled })
+    }),
+    {
+      name: 'craftbox-screen-recorder-recording-settings',
+      // Only the Settings-page defaults survive a restart -- the current
+      // pick/stream/crop are tied to whatever's on screen right now, not a
+      // preference, and a MediaStream can't be serialized to storage anyway.
+      partialize: (state) => ({ audio: state.audio, autoZoomEnabled: state.autoZoomEnabled })
+    }
+  )
+);

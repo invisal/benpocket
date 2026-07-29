@@ -17,11 +17,13 @@ import type { CursorTrackerBounds } from './cursor-tracker';
  */
 export class ClickTracker {
   private listener: ((event: UiohookMouseEvent) => void) | null = null;
+  private bounds: CursorTrackerBounds = { x: 0, y: 0, width: 1, height: 1 };
   private hookRunning = false;
   private clickCount = 0;
 
   start(webContents: WebContents, bounds: CursorTrackerBounds, startedAt: number): void {
     this.stop();
+    this.bounds = bounds;
     this.clickCount = 0;
     console.log('[click-tracker] started, bounds:', bounds);
 
@@ -30,8 +32,8 @@ export class ClickTracker {
         this.stop();
         return;
       }
-      const x = (event.x - bounds.x) / bounds.width;
-      const y = (event.y - bounds.y) / bounds.height;
+      const x = (event.x - this.bounds.x) / this.bounds.width;
+      const y = (event.y - this.bounds.y) / this.bounds.height;
       // Same reasoning as cursor-tracker.ts: ignore clicks outside the
       // recorded screen rather than clamping them to the edge.
       if (x < 0 || x > 1 || y < 0 || y > 1) return;
@@ -56,6 +58,11 @@ export class ClickTracker {
       uIOhook.stop();
       this.hookRunning = false;
     }
+  }
+
+  /** Re-bases normalization onto a freshly-queried rect -- see window-bounds-poller.ts. */
+  updateBounds(bounds: CursorTrackerBounds): void {
+    this.bounds = bounds;
   }
 }
 

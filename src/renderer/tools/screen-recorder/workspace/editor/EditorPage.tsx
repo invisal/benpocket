@@ -10,9 +10,17 @@ import { PreviewStage, type PreviewVideoController } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
 import { EditorToolPanel } from './EditorToolPanel';
+import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
+
+const TOOL_PANEL_MIN_WIDTH = 220;
+const TOOL_PANEL_MAX_WIDTH = 420;
+/** EditorToolRail's own fixed width (w-14) -- the combined rail+panel card is resized as one unit from the rail's outer left edge, so this is subtracted back out to keep `toolPanelWidth` meaning just the panel's own width. */
+const EDITOR_TOOL_RAIL_WIDTH_PX = 56;
 
 export function EditorPage(): JSX.Element {
   const lastRecording = useAppStore((state) => state.lastRecording);
+  const toolPanelWidth = useAppStore((state) => state.toolPanelWidth);
+  const setToolPanelWidth = useAppStore((state) => state.setToolPanelWidth);
 
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
@@ -27,8 +35,6 @@ export function EditorPage(): JSX.Element {
   const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
   const activeTool = useTimelineStore((s) => s.activeTool);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
-  const isCutToolActive = useTimelineStore((s) => s.isCutToolActive);
-  const setCutToolActive = useTimelineStore((s) => s.setCutToolActive);
   const seekRequestMs = useTimelineStore((s) => s.seekRequestMs);
   const clearSeekRequest = useTimelineStore((s) => s.clearSeekRequest);
   // Lives in the timeline store (not local state) for the same reason
@@ -78,9 +84,17 @@ export function EditorPage(): JSX.Element {
   // user already made on the current recording. Undo/redo history is scoped
   // to this same session boundary -- otherwise Undo could reach back past
   // the fresh recording into whatever the previous one's edits looked like.
+  // A loaded project is a different kind of "different recording": it
+  // already restored real `tracks` (see applyProjectSnapshot), so
+  // `skipNextAutoInit` skips the single-full-duration-segment reset that
+  // would otherwise clobber those restored cuts right after load.
   useEffect(() => {
     if (lastRecording && duration > 0) {
-      initializeFromDuration(duration * 1000);
+      if (useTimelineStore.getState().skipNextAutoInit) {
+        useTimelineStore.setState({ skipNextAutoInit: false });
+      } else {
+        initializeFromDuration(duration * 1000);
+      }
       resetHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,8 +142,8 @@ export function EditorPage(): JSX.Element {
   }
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 gap-1.5">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
         <PreviewStage
           // Remounts the whole stage (and both internal <video> elements,
           // see PreviewStage's dual-buffer comment) on a genuinely new
@@ -164,24 +178,36 @@ export function EditorPage(): JSX.Element {
           isPlaying={isPlaying}
           cropToolActive={cropToolActive}
           onToggleCrop={() => setCropToolActive((v) => !v)}
-          cutToolActive={isCutToolActive}
-          onToggleCutTool={() => setCutToolActive(!isCutToolActive)}
           currentTimeMs={currentTimeMs}
           durationMs={duration * 1000}
         />
       </div>
 
-      <EditorToolRail
-        active={activeTool}
-        onSelect={(tool) => setActiveTool(activeTool === tool ? null : tool)}
-      />
-      {activeTool && (
-        <EditorToolPanel
-          tool={activeTool}
-          currentTimeMs={currentTimeMs}
-          sourceResolution={sourceResolution}
-          selectedSegment={selectedSegment}
-        />
+      {activeTool ? (
+        <ResizablePanel
+          edge="left"
+          size={EDITOR_TOOL_RAIL_WIDTH_PX + toolPanelWidth}
+          onResize={(size) => setToolPanelWidth(size - EDITOR_TOOL_RAIL_WIDTH_PX)}
+          min={EDITOR_TOOL_RAIL_WIDTH_PX + TOOL_PANEL_MIN_WIDTH}
+          max={EDITOR_TOOL_RAIL_WIDTH_PX + TOOL_PANEL_MAX_WIDTH}
+          className="flex overflow-hidden rounded-lg border border-line bg-surface"
+          handleClassName="z-40"
+        >
+          <EditorToolRail
+            active={activeTool}
+            onSelect={(tool) => setActiveTool(activeTool === tool ? null : tool)}
+          />
+          <EditorToolPanel
+            tool={activeTool}
+            currentTimeMs={currentTimeMs}
+            sourceResolution={sourceResolution}
+            selectedSegment={selectedSegment}
+          />
+        </ResizablePanel>
+      ) : (
+        <div className="flex shrink-0 overflow-hidden rounded-lg border border-line bg-surface">
+          <EditorToolRail active={activeTool} onSelect={(tool) => setActiveTool(tool)} />
+        </div>
       )}
     </div>
   );

@@ -19,6 +19,8 @@ import type { ExportAudioMuxerCodec, VideoMuxer } from './muxer';
 const AUDIO_BITRATE = 128_000;
 const DECODE_BACKPRESSURE_LIMIT = 20;
 const SEEK_TIMEOUT_MS = 5_000;
+// Same tolerance streaming-decoder.ts uses for its own segment-boundary check.
+const PREROLL_EPSILON_US = 1_000;
 
 export interface ExportAudioCodec {
   encoderCodec: string;
@@ -164,15 +166,25 @@ export class AudioProcessor {
       return startTimestampUs;
     }
 
+    const startSec = segment.range.startMs / 1000;
+    const endSec = segment.range.endMs / 1000;
+
     const decodedFrames: AudioData[] = [];
     const decoder = new AudioDecoder({
-      output: (data) => decodedFrames.push(data),
+      // The demuxer can hand back a frame or two from just before `startSec`
+      // (decoder priming) -- keeping those would give the first frame a
+      // timestamp earlier than the previous segment's already-muxed output,
+      // which the muxer rejects as an out-of-order GOP.
+      output: (data) => {
+        if (data.timestamp < startSec * 1_000_000 - PREROLL_EPSILON_US) {
+          data.close();
+          return;
+        }
+        decodedFrames.push(data);
+      },
       error: (e) => console.error('[AudioProcessor] Decode error:', e)
     });
     decoder.configure(audioConfig);
-
-    const startSec = segment.range.startMs / 1000;
-    const endSec = segment.range.endMs / 1000;
     const reader = demuxer.read('audio', startSec, endSec).getReader();
     try {
       while (!this.cancelled) {
@@ -474,7 +486,6 @@ export class AudioProcessor {
     }
     encoder.configure(encodeConfig);
 
-    let maxOutputTimestampUs = startTimestampUs;
     for (const audioData of decodedFrames) {
       if (this.cancelled) {
         audioData.close();
@@ -489,14 +500,25 @@ export class AudioProcessor {
       );
       audioData.close();
       encoder.encode(adjusted);
-      const frameEndUs = outputTimestampUs + (adjusted.duration ?? 0);
-      if (frameEndUs > maxOutputTimestampUs) maxOutputTimestampUs = frameEndUs;
       adjusted.close();
     }
 
     if (encoder.state === 'configured') {
       await encoder.flush();
       encoder.close();
+    }
+
+    // The encoder can re-pack input into its own frame size (e.g. decoded
+    // AAC frames re-encoded as Opus frames), so the chunks it actually
+    // outputs don't necessarily line up with the input frames' own
+    // timestamps/durations -- track the next segment's start from what was
+    // really encoded, not from the input, or the gap between the two is
+    // exactly what lets the next segment's first chunk land before this
+    // segment's last one.
+    let maxOutputTimestampUs = startTimestampUs;
+    for (const { chunk } of encodedChunks) {
+      const chunkEndUs = chunk.timestamp + (chunk.duration ?? 0);
+      if (chunkEndUs > maxOutputTimestampUs) maxOutputTimestampUs = chunkEndUs;
     }
 
     for (const { chunk, meta } of encodedChunks) {

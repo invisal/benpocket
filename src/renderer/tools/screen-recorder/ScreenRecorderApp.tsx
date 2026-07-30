@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { Activity, useState } from 'react';
 import { Flag, Loader2, Save } from 'lucide-react';
 import { useAppStore } from './app/app-store';
 import { useToastStore } from './app/toast-store';
@@ -21,7 +21,20 @@ import { ToastViewport } from './components/ui/toast';
 
 const SIDEBAR_MIN_WIDTH = 220;
 const SIDEBAR_MAX_WIDTH = 420;
-
+const routes = [
+  {
+    id: 'editor',
+    component: <EditorPage />
+  },
+  {
+    id: 'library',
+    component: <LibraryPage />
+  },
+  {
+    id: 'settings',
+    component: <SettingsPage />
+  }
+];
 export function ScreenRecorderApp(): JSX.Element {
   const route = useAppStore((state) => state.route);
   const sidebarWidth = useAppStore((state) => state.sidebarWidth);
@@ -118,9 +131,14 @@ export function ScreenRecorderApp(): JSX.Element {
                 route === 'editor' ? 'bg-surface-sunken' : 'border border-line bg-surface'
               )}
             >
-              {route === 'editor' && <EditorPage />}
-              {route === 'library' && <LibraryPage />}
-              {route === 'settings' && <SettingsPage />}
+              {routes.map((r) => {
+                const isActive = route === r.id;
+                return (
+                  <Activity key={r.id} mode={isActive ? 'visible' : 'hidden'}>
+                    {r.component}
+                  </Activity>
+                );
+              })}
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import https from 'https';
 import { URL } from 'url';
 import { buildKubeApiPath } from '../constants/k8sResources';
+import { KubeConfigService } from './KubeConfigService';
 
 export interface KubeApiConfig {
   server?: string;
@@ -20,42 +21,30 @@ export class KubeClientService {
   }
 
   /**
-   * Direct REST API client service transport helper.
-   * Performs direct REST HTTP/HTTPS requests to API Server endpoint when endpoint URL is supplied.
+   * Direct REST API client service powered by @kubernetes/client-node.
+   * Executes HTTP/HTTPS requests to the cluster API Server endpoint using KubeConfig auth & TLS settings.
    */
   public static async getResourcesDirect(
     configPath?: string,
     contextName?: string,
     resource?: string,
-    namespace?: string,
-    apiConfig?: KubeApiConfig
+    namespace?: string
   ): Promise<{ items?: unknown[]; error?: string } | null> {
-    void configPath;
-    void contextName;
-
-    if (!apiConfig || !apiConfig.server || !resource) {
+    if (!resource) {
       return null;
     }
 
     try {
+      const kc = KubeConfigService.loadKubeConfig(configPath, contextName);
+      const cluster = kc.getCurrentCluster();
+
+      if (!cluster || !cluster.server) {
+        return null;
+      }
+
       const path = this.buildResourcePath(resource, namespace);
-      const fullUrl = `${apiConfig.server.replace(/\/$/, '')}${path}`;
+      const fullUrl = `${cluster.server.replace(/\/$/, '')}${path}`;
       const urlObj = new URL(fullUrl);
-
-      const caBuffer =
-        apiConfig.caData && apiConfig.caData !== 'DATA+OMITTED'
-          ? Buffer.from(apiConfig.caData, 'base64')
-          : undefined;
-
-      const certBuffer =
-        apiConfig.certData && apiConfig.certData !== 'DATA+OMITTED'
-          ? Buffer.from(apiConfig.certData, 'base64')
-          : undefined;
-
-      const keyBuffer =
-        apiConfig.keyData && apiConfig.keyData !== 'DATA+OMITTED'
-          ? Buffer.from(apiConfig.keyData, 'base64')
-          : undefined;
 
       const requestOptions: https.RequestOptions = {
         hostname: urlObj.hostname,
@@ -63,14 +52,16 @@ export class KubeClientService {
         path: `${urlObj.pathname}${urlObj.search}`,
         method: 'GET',
         headers: {
-          Accept: 'application/json',
-          ...(apiConfig.token ? { Authorization: `Bearer ${apiConfig.token}` } : {})
-        },
-        ca: caBuffer,
-        cert: certBuffer,
-        key: keyBuffer,
-        rejectUnauthorized: false
+          Accept: 'application/json'
+        }
       };
+
+      // Apply TLS certs, CA, skipTLSVerify, agent, and Bearer / exec tokens via @kubernetes/client-node
+      await kc.applyToHTTPSOptions(requestOptions);
+
+      if (cluster.skipTLSVerify) {
+        requestOptions.rejectUnauthorized = false;
+      }
 
       const response = await new Promise<{ status: number; data: string }>((resolve, reject) => {
         const req = https.request(requestOptions, (res) => {
@@ -91,13 +82,13 @@ export class KubeClientService {
       });
 
       if (response.status === 200) {
-        console.log(resource, '--- Direct api');
+        console.log(`[KubeClientService] Direct API success for ${resource}`);
         const parsed = JSON.parse(response.data);
         return { items: parsed.items || [] };
       }
     } catch (err) {
-      console.log(resource, '--- Direct API call failed:', err);
-      // Return null to signal fallback to KubeCliService
+      console.log(`[KubeClientService] Direct API call failed for ${resource}:`, err);
+      // Return null to signal fallback to KubeCliService (kubectl)
       return null;
     }
 

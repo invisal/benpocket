@@ -158,10 +158,18 @@ export async function getKubeApiConfig(
   }
 }
 
+import { KubeConfigService } from './services/KubeConfigService';
+
 /**
- * Lists contexts and endpoints from a kubeconfig file by running config view.
+ * Lists contexts and endpoints from a kubeconfig file using @kubernetes/client-node with kubectl fallback.
  */
 export async function listKubeconfigContexts(kubeconfigPath?: string): Promise<K8sContext[]> {
+  try {
+    return KubeConfigService.listContexts(kubeconfigPath);
+  } catch (err) {
+    console.warn('[k8s-cli] KubeConfigService listContexts failed, falling back to kubectl:', err);
+  }
+
   try {
     const rawJson = await runKubectl(['config', 'view', '-o', 'json'], kubeconfigPath);
     const config = JSON.parse(rawJson);

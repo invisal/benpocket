@@ -1,10 +1,15 @@
 import type React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Cpu, RefreshCw } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
 import { Select } from '@renderer/components/ui/Select';
 import { cn } from 'cnfast';
+import type { NodeResource } from './types';
+import { isMasterNode, isWorkerNode } from './clusterMetrics';
 
 interface ClusterOverviewHeaderProps {
+  nodesFilter: string;
+  setNodesFilter: (val: string) => void;
+  nodes: NodeResource[];
   timeRange: string;
   setTimeRange: (val: string) => void;
   refreshInterval: string;
@@ -14,6 +19,9 @@ interface ClusterOverviewHeaderProps {
 }
 
 export const ClusterOverviewHeader: React.FC<ClusterOverviewHeaderProps> = ({
+  nodesFilter,
+  setNodesFilter,
+  nodes,
   timeRange,
   setTimeRange,
   refreshInterval,
@@ -21,14 +29,49 @@ export const ClusterOverviewHeader: React.FC<ClusterOverviewHeaderProps> = ({
   isRefreshing,
   onSync
 }) => {
+  const masterCount = nodes.filter(isMasterNode).length;
+  const workerCount = nodes.filter(isWorkerNode).length;
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 w-full">
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans">
-          Cluster Pulse
+      {/* Left side: Nodes Filter Dropdown */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-sans">
+          Nodes:
         </span>
+        <Select.Root value={nodesFilter} onValueChange={(val) => val && setNodesFilter(val)}>
+          <Select.Trigger className="h-7 text-[10px] py-1 px-2 border border-border bg-surface font-sans min-w-[140px] flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1.5 truncate">
+              <Cpu className="size-3 text-accent shrink-0" />
+              <Select.Value placeholder="Select node..." />
+            </div>
+          </Select.Trigger>
+          <Select.Content side="bottom" align="start">
+            <Select.Item value="all">
+              <Select.ItemText>All Nodes ({nodes.length})</Select.ItemText>
+            </Select.Item>
+            <Select.Item value="master">
+              <Select.ItemText>Master / Control-Plane ({masterCount})</Select.ItemText>
+            </Select.Item>
+            <Select.Item value="worker">
+              <Select.ItemText>Worker Nodes ({workerCount})</Select.ItemText>
+            </Select.Item>
+
+            {nodes.length > 0 && <div className="my-1 border-t border-border-dark/60" />}
+
+            {nodes.map((node) => {
+              const name = node.metadata?.name || '';
+              return (
+                <Select.Item key={name} value={name}>
+                  <Select.ItemText>{name}</Select.ItemText>
+                </Select.Item>
+              );
+            })}
+          </Select.Content>
+        </Select.Root>
       </div>
 
+      {/* Right side: History, Interval, Sync controls */}
       <div className="flex items-center gap-3">
         {/* Time range history window */}
         <div className="flex items-center gap-1.5">

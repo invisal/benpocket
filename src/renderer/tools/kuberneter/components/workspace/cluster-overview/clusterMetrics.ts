@@ -1,6 +1,54 @@
 import { parseCpu, parseMemoryToMiB } from '../../../utils/parseQuantity';
 import type { NodeResource, NodeMetric, PodResource } from './types';
 
+export function isMasterNode(node: NodeResource): boolean {
+  const labels = node.metadata?.labels || {};
+  return (
+    'node-role.kubernetes.io/control-plane' in labels ||
+    'node-role.kubernetes.io/master' in labels ||
+    labels['kubernetes.io/role'] === 'master' ||
+    labels['kubernetes.io/role'] === 'control-plane'
+  );
+}
+
+export function isWorkerNode(node: NodeResource): boolean {
+  return !isMasterNode(node);
+}
+
+export function filterNodes(nodes: NodeResource[], filter: string): NodeResource[] {
+  if (filter === 'all' || !filter) return nodes;
+  if (filter === 'master') return nodes.filter(isMasterNode);
+  if (filter === 'worker') return nodes.filter(isWorkerNode);
+  return nodes.filter((n) => n.metadata?.name === filter);
+}
+
+export function filterNodeMetrics(
+  nodeMetrics: Record<string, NodeMetric>,
+  filteredNodes: NodeResource[]
+): Record<string, NodeMetric> {
+  const nodeNames = new Set(filteredNodes.map((n) => n.metadata?.name).filter(Boolean));
+  const filtered: Record<string, NodeMetric> = {};
+  for (const [key, val] of Object.entries(nodeMetrics)) {
+    if (nodeNames.has(key)) {
+      filtered[key] = val;
+    }
+  }
+  return filtered;
+}
+
+export function filterPodsByNodes(
+  pods: PodResource[],
+  filteredNodes: NodeResource[],
+  nodeFilter: string
+): PodResource[] {
+  if (nodeFilter === 'all') return pods;
+  const nodeNames = new Set(filteredNodes.map((n) => n.metadata?.name).filter(Boolean));
+  return pods.filter((pod) => {
+    const assignedNode = pod.spec?.nodeName;
+    return assignedNode ? nodeNames.has(assignedNode) : false;
+  });
+}
+
 export function getCapacitySums(nodes: NodeResource[]) {
   let capacityCpu = 0;
   let capacityMem = 0;

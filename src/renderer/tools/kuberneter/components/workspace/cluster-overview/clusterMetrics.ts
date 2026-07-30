@@ -132,8 +132,8 @@ export function getWorkloadMetrics(pods: PodResource[], selectedNamespace: strin
 
 export function getLiveMetrics(
   nodeMetrics: Record<string, NodeMetric>,
-  capacityCpu: number,
-  capacityMem: number
+  allocatableCpu: number,
+  allocatableMem: number
 ) {
   let liveCpuMillicores = 0;
   let liveMemMiB = 0;
@@ -148,8 +148,8 @@ export function getLiveMetrics(
   // Memory: MiB → GiB
   const usageMem = liveMemMiB / 1024;
 
-  const cpuPct = capacityCpu > 0 ? (usageCpu / capacityCpu) * 100 : 0;
-  const memPct = capacityMem > 0 ? (usageMem / capacityMem) * 100 : 0;
+  const cpuPct = allocatableCpu > 0 ? (usageCpu / allocatableCpu) * 100 : 0;
+  const memPct = allocatableMem > 0 ? (usageMem / allocatableMem) * 100 : 0;
 
   return { usageCpu, usageMem, cpuPct, memPct };
 }

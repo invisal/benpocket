@@ -34,6 +34,11 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isWide, setIsWide] = useState(true);
 
+  const formatValue = (val: number, u: string) => {
+    if (u === '') return Math.round(val).toString();
+    return val.toFixed(2);
+  };
+
   // 1. Observe actual card container width for layout responsiveness
   useEffect(() => {
     if (!containerRef.current) return;
@@ -80,6 +85,9 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
     const textColor = computedStyles.getPropertyValue('--color-text-base').trim() || '#ffffff';
     const trackColor = computedStyles.getPropertyValue('--color-surface-3').trim() || '#27272a';
 
+    // Use allocatable capacity as 100% boundary limit instead of total physical capacity
+    const maxBound = allocatable > 0 ? allocatable : capacity;
+
     const getRingData = (val: number, max: number, color: string) => {
       return [
         {
@@ -114,7 +122,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
         avoidLabelOverlap: false,
         label: { show: false },
         silent: true,
-        data: getRingData(usage, capacity, colors.usage)
+        data: getRingData(usage, maxBound, colors.usage)
       });
       // 2. Requests (Middle)
       series.push({
@@ -126,7 +134,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
         avoidLabelOverlap: false,
         label: { show: false },
         silent: true,
-        data: getRingData(requests, capacity, colors.requests)
+        data: getRingData(requests, maxBound, colors.requests)
       });
       // 3. Limits (Inner)
       series.push({
@@ -138,7 +146,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
         avoidLabelOverlap: false,
         label: { show: false },
         silent: true,
-        data: getRingData(limits, capacity, colors.limits)
+        data: getRingData(limits, maxBound, colors.limits)
       });
     } else {
       // Pods: Single Ring
@@ -151,13 +159,15 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
         avoidLabelOverlap: false,
         label: { show: false },
         silent: true,
-        data: getRingData(usage, capacity, colors.usage)
+        data: getRingData(usage, maxBound, colors.usage)
       });
     }
 
+    const titleText = unit === '' ? `${Math.round(usage)}` : `${usage.toFixed(1)}${unit}`;
+
     const option: echarts.EChartsOption = {
       title: {
-        text: `${usage.toFixed(1)}${unit}`,
+        text: titleText,
         left: 'center',
         top: 'middle', // Align text exactly in the center of the ring
         textStyle: {
@@ -172,7 +182,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
     };
 
     chartInstanceRef.current.setOption(option);
-  }, [usage, requests, limits, capacity, colors, title, unit]);
+  }, [usage, requests, limits, capacity, allocatable, colors, title, unit]);
 
   const hasConcentric = !!colors.limits && !!colors.requests;
 
@@ -215,7 +225,8 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
               <span className="text-zinc-400 font-medium truncate">Live Usage</span>
             </div>
             <span className="font-mono text-text-base font-semibold shrink-0">
-              {usage.toFixed(2)} {unit}
+              {formatValue(usage, unit)}
+              {unit ? ` ${unit}` : ''}
             </span>
           </div>
 
@@ -231,7 +242,8 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
                   <span className="text-zinc-400 font-medium truncate">Requests</span>
                 </div>
                 <span className="font-mono text-text-base font-semibold shrink-0">
-                  {requests.toFixed(2)} {unit}
+                  {formatValue(requests, unit)}
+                  {unit ? ` ${unit}` : ''}
                 </span>
               </div>
 
@@ -245,7 +257,8 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
                   <span className="text-zinc-400 font-medium truncate">Limits</span>
                 </div>
                 <span className="font-mono text-text-base font-semibold shrink-0">
-                  {limits.toFixed(2)} {unit}
+                  {formatValue(limits, unit)}
+                  {unit ? ` ${unit}` : ''}
                 </span>
               </div>
             </>
@@ -257,7 +270,8 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
           <div className="flex justify-between items-center gap-2 min-w-0 w-full">
             <span className="text-zinc-555 font-medium pl-3 truncate">Allocatable</span>
             <span className="font-mono text-text-dim shrink-0">
-              {allocatable.toFixed(2)} {unit}
+              {formatValue(allocatable, unit)}
+              {unit ? ` ${unit}` : ''}
             </span>
           </div>
 
@@ -265,7 +279,8 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
           <div className="flex justify-between items-center gap-2 min-w-0 w-full">
             <span className="text-zinc-555 font-medium pl-3 truncate">Capacity</span>
             <span className="font-mono text-text-dim shrink-0">
-              {capacity.toFixed(2)} {unit}
+              {formatValue(capacity, unit)}
+              {unit ? ` ${unit}` : ''}
             </span>
           </div>
         </div>

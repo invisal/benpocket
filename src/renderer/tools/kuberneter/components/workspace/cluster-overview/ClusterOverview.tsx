@@ -62,8 +62,8 @@ export const ClusterOverview: React.FC = () => {
   const capacities = getCapacitySums(filteredNodes);
   const utilization = getLiveMetrics(
     filteredNodeMetrics,
-    capacities.capacityCpu,
-    capacities.capacityMem
+    capacities.allocatableCpu,
+    capacities.allocatableMem
   );
   const workloads = getWorkloadMetrics(filteredPods, kuberneterSelectedNamespace);
 

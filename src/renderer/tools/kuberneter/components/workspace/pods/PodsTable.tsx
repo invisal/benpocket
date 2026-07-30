@@ -5,6 +5,7 @@ import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
 import { cn } from 'cnfast';
 import { type PodData } from '../../../types/PodData';
+import { parseK8sCapacity, parseCpu } from '../../../utils/formatCapacity';
 
 interface PodsTableProps {
   filteredData: PodData[];
@@ -96,6 +97,7 @@ export const PodsTable: React.FC<PodsTableProps> = ({
       {
         key: 'cpu',
         header: 'CPU',
+        sortValue: (row) => parseCpu(row.cpu),
         render: (row) => {
           const isNA = row.cpu === 'N/A';
           return (
@@ -109,6 +111,7 @@ export const PodsTable: React.FC<PodsTableProps> = ({
       {
         key: 'memory',
         header: 'Memory',
+        sortValue: (row) => parseK8sCapacity(row.memory),
         render: (row) => {
           const isNA = row.memory === 'N/A';
           return (

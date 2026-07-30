@@ -6,6 +6,7 @@ import { MoreVertical, AlertTriangle } from 'lucide-react';
 import { type PersistentVolumeData } from '../../../types/PersistentVolumeData';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { parseK8sCapacity } from '../../../utils/formatCapacity';
 
 interface PersistentVolumesTableProps {
   filteredData: PersistentVolumeData[];
@@ -122,6 +123,7 @@ export const PersistentVolumesTable: React.FC<PersistentVolumesTableProps> = ({
       {
         key: 'capacity',
         header: 'Capacity',
+        sortValue: (row) => parseK8sCapacity(row.capacity),
         render: (row) => (
           <span className="text-zinc-300 font-mono text-[11px]">{row.capacity}</span>
         ),

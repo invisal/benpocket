@@ -1,4 +1,4 @@
-import { parseCpu, parseMemoryToMiB } from '../../../utils/parseQuantity';
+import { parseCpu, parseMemoryToMiB } from '../../../utils/formatCapacity';
 import type { NodeResource, NodeMetric, PodResource } from './types';
 
 export function isMasterNode(node: NodeResource): boolean {

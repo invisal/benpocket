@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { Loader2, MessageSquare, Save } from 'lucide-react';
+import { Flag, Loader2, Save } from 'lucide-react';
 import { useAppStore } from './app/app-store';
 import { useToastStore } from './app/toast-store';
 import { cn } from './lib/utils';
@@ -84,14 +84,14 @@ export function ScreenRecorderApp(): JSX.Element {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Decorative only -- there's no feedback flow wired up yet. */}
             <button
-              title="Send feedback"
+              onClick={() => window.open('https://github.com/invisal/benpocket/issues', '_blank')}
+              title="Report an issue"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-2 hover:text-foreground"
             >
               <span className="flex items-center gap-1.5">
-                <MessageSquare size={13} />
-                Send feedback
+                <Flag size={13} />
+                Report an issue
               </span>
             </button>
             <ExportPopoverButton disabled={route !== 'editor'} />

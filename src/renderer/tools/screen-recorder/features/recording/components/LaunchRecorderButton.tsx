@@ -6,8 +6,16 @@ import { openRecorderToolbarFor } from '../lib/open-recorder-toolbar';
 export function LaunchRecorderButton() {
   const isRecording = useAppStore((state) => state.isRecording);
   const route = useAppStore((state) => state.route);
+  const isEditor = route === 'editor' || isRecording;
 
   async function handleNewRecord() {
+    if (isEditor) {
+      const confirmed = window.confirm(
+        'Leave the editor and start a new recording? Any unsaved changes will be lost.'
+      );
+      if (!confirmed) return;
+    }
+
     const sources = await window.screenRecorder.recording.getCaptureSources();
     const defaultSource =
       sources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ??
@@ -16,10 +24,8 @@ export function LaunchRecorderButton() {
     if (defaultSource) await openRecorderToolbarFor(defaultSource);
   }
 
-  const disabled = route === 'editor' || isRecording;
-
   return (
-    <Button onClick={handleNewRecord} variant="outline" disabled={disabled}>
+    <Button onClick={handleNewRecord} variant="outline">
       {isRecording ? (
         <Square size={12} className="text-muted-foreground" fill="currentColor" />
       ) : (

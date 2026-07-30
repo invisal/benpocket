@@ -3,6 +3,7 @@ import {
   AppWindow,
   Crop,
   GripVertical,
+  Loader2,
   Mic,
   MicOff,
   Monitor,
@@ -25,6 +26,7 @@ import type {
   RecorderToolbarOpenPayload,
   RecorderToolbarRecordingResult
 } from '@shared/recorder-toolbar';
+import { pickDefaultCaptureSource } from '../features/recording/lib/pick-default-capture-source';
 
 const TABS: { type: CaptureTargetType; label: string; icon: typeof Monitor }[] = [
   { type: 'screen', label: 'Display', icon: Monitor },
@@ -98,6 +100,7 @@ function disablePointerEvents(): void {
 export function RecorderToolbarApp(): JSX.Element | null {
   const init = useMemo(() => parseInit(), []);
   const [sources, setSources] = useState<CaptureSource[]>([]);
+  const [sourcesLoaded, setSourcesLoaded] = useState(false);
   const [sourceId, setSourceId] = useState<string | null>(init?.sourceId ?? null);
   const [audio, setAudio] = useState<AudioInputOptions>(
     init?.audio ?? { microphoneEnabled: true, systemAudioEnabled: false }
@@ -129,8 +132,15 @@ export function RecorderToolbarApp(): JSX.Element | null {
   useEffect(() => {
     window.screenRecorder.recording
       .getCaptureSources()
-      .then(setSources)
-      .catch(() => setSources([]));
+      .then((fetched) => {
+        setSources(fetched);
+        // Opening "fresh" (no source picked yet, see openRecorderToolbarFor)
+        // leaves sourceId null until this resolves -- pick the same default
+        // a caller would have, now that the source list actually exists.
+        setSourceId((current) => current ?? pickDefaultCaptureSource(fetched)?.id ?? null);
+      })
+      .catch(() => setSources([]))
+      .finally(() => setSourcesLoaded(true));
   }, []);
 
   // This window is now taller than the pill it shows (see TOOLBAR_HEIGHT in
@@ -457,7 +467,31 @@ export function RecorderToolbarApp(): JSX.Element | null {
     );
   }
 
-  if (!focusedSource) return null;
+  if (!focusedSource) {
+    // Still waiting on the one capture-sources fetch this window itself
+    // needs (see the effect above) -- show something immediately rather
+    // than a blank always-on-top window while it resolves. Once loaded with
+    // genuinely nothing to focus (no sources at all), falls through to null.
+    if (!sourcesLoaded) {
+      return (
+        <div className="relative flex h-full items-end justify-center pb-4">
+          <div className="absolute inset-0" onMouseEnter={disablePointerEvents} />
+          <div
+            ref={pillRef}
+            onMouseEnter={enablePointerEvents}
+            className={cn(
+              DRAG,
+              'flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2.5 shadow-2xl backdrop-blur'
+            )}
+          >
+            <Loader2 size={14} className="animate-spin text-white/70" />
+            <span className="text-[12px] text-white/70">Loading…</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="relative flex h-full flex-col items-center justify-end gap-2 pb-4">

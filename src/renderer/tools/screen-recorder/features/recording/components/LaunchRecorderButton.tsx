@@ -16,12 +16,11 @@ export function LaunchRecorderButton() {
       if (!confirmed) return;
     }
 
-    const sources = await window.screenRecorder.recording.getCaptureSources();
-    const defaultSource =
-      sources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ??
-      sources.find((s) => s.type === 'screen') ??
-      sources[0];
-    if (defaultSource) await openRecorderToolbarFor(defaultSource);
+    // No source passed -- opens the toolbar immediately instead of waiting
+    // on a full capture-sources fetch (thumbnails for every screen/window
+    // is the slow part); the toolbar picks its own default once its own
+    // fetch resolves. See openRecorderToolbarFor's doc.
+    await openRecorderToolbarFor();
   }
 
   return (

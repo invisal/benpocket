@@ -2,16 +2,10 @@ import type { JSX } from 'react';
 import { type RefObject } from 'react';
 import { ChevronDown, Crop, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
+import type { PreviewVideoController } from '@screen-recorder/types/editor';
 import { useExportStore } from '../../features/export/store/export-store';
 import { cn } from '../../lib/utils';
-import type { PreviewVideoController } from './PreviewStage';
-
-const ASPECT_LABELS: Record<AspectRatio, string> = {
-  '16:9': 'Wide 16:9',
-  '9:16': 'Vertical 9:16',
-  '1:1': 'Square 1:1',
-  '4:3': 'Standard 4:3'
-};
+import { ASPECT_LABELS } from './editorTools';
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.max(0, ms) / 1000;

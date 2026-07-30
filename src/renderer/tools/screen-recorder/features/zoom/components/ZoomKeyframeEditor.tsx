@@ -2,6 +2,7 @@ import type { JSX, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import { Crosshair, Plus, Trash2 } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
+import type { SourceResolution } from '@screen-recorder/types/editor';
 import { ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { useZoomStore } from '../store/zoom-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
@@ -46,7 +47,7 @@ interface ZoomKeyframeEditorProps {
   /** Current preview position (ms, source-relative) -- "Add keyframe here" targets this. */
   currentTimeMs: number;
   /** Recording's native resolution, when known -- lets position be edited in exact source pixels rather than only percent. */
-  sourceResolution: { width: number; height: number } | null;
+  sourceResolution: SourceResolution | null;
 }
 
 /** A number input that only commits on blur/Enter, so mid-typing states (e.g. an empty field) don't get clamped away as you type. */
@@ -102,7 +103,7 @@ function KeyframeDetailPanel({
 }: {
   kf: ZoomKeyframe;
   armedKeyframeId: string | null;
-  sourceResolution: { width: number; height: number } | null;
+  sourceResolution: SourceResolution | null;
   /** The recording's own length -- a keyframe's duration can run right up to this (or the next keyframe, whichever's closer), not some arbitrary fixed cap. */
   sourceDurationMs: number;
   armPositioning: (id: string) => void;

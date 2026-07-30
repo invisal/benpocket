@@ -105,7 +105,13 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.ExportReadFileBytes, filePath),
     /** Writes the finished export's bytes to the already-chosen output path (see dialog.showSaveExportPath). */
     writeFileBytes: (filePath: string, data: ArrayBuffer): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.ExportWriteFileBytes, filePath, data)
+      ipcRenderer.invoke(IpcChannels.ExportWriteFileBytes, filePath, data),
+    /** A safe OS-temp-dir path for `fileName` -- "Copy to clipboard" exports here instead of a user-chosen path. */
+    getTempPath: (fileName: string): Promise<string> =>
+      ipcRenderer.invoke(IpcChannels.ExportGetTempPath, fileName),
+    /** Writes an already-exported file's path to the system clipboard as a file reference (pastes as the real file in Finder/Mail/Slack/...). */
+    copyToClipboard: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.ExportCopyToClipboard, filePath)
   },
   settings: {
     get: (): Promise<Record<string, unknown>> => ipcRenderer.invoke(IpcChannels.GetSettings),

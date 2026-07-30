@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
-import { useState } from 'react';
-import { Loader2, MessageSquare, Save } from 'lucide-react';
+import { Activity, useState } from 'react';
+import { Flag, Loader2, Save } from 'lucide-react';
 import { useAppStore } from './app/app-store';
 import { useToastStore } from './app/toast-store';
 import { cn } from './lib/utils';
@@ -11,7 +11,7 @@ import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 import { CutTimeline } from './features/timeline/components/CutTimeline';
 import { RecordingControllerProvider } from './features/recording/context/RecordingControllerContext';
 import { RecorderToolbarBridge } from './features/recording/components/RecorderToolbarBridge';
-import { ExportPopoverButton } from './features/export/components/ExportPopoverButton';
+import { ExportDialogButton } from './features/export/components/ExportDialog';
 import { LaunchRecorderButton } from './features/recording/components/LaunchRecorderButton';
 import { SaveProjectDialog } from './features/project/components/SaveProjectDialog';
 import { buildProjectSnapshot } from './features/project/lib/build-project-snapshot';
@@ -21,7 +21,20 @@ import { ToastViewport } from './components/ui/toast';
 
 const SIDEBAR_MIN_WIDTH = 220;
 const SIDEBAR_MAX_WIDTH = 420;
-
+const routes = [
+  {
+    id: 'editor',
+    component: <EditorPage />
+  },
+  {
+    id: 'library',
+    component: <LibraryPage />
+  },
+  {
+    id: 'settings',
+    component: <SettingsPage />
+  }
+];
 export function ScreenRecorderApp(): JSX.Element {
   const route = useAppStore((state) => state.route);
   const sidebarWidth = useAppStore((state) => state.sidebarWidth);
@@ -84,17 +97,17 @@ export function ScreenRecorderApp(): JSX.Element {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Decorative only -- there's no feedback flow wired up yet. */}
             <button
-              title="Send feedback"
+              onClick={() => window.open('https://github.com/invisal/benpocket/issues', '_blank')}
+              title="Report an issue"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-2 hover:text-foreground"
             >
               <span className="flex items-center gap-1.5">
-                <MessageSquare size={13} />
-                Send feedback
+                <Flag size={13} />
+                Report an issue
               </span>
             </button>
-            <ExportPopoverButton disabled={route !== 'editor'} />
+            <ExportDialogButton disabled={route !== 'editor'} />
           </div>
         </nav>
 
@@ -118,9 +131,14 @@ export function ScreenRecorderApp(): JSX.Element {
                 route === 'editor' ? 'bg-surface-sunken' : 'border border-line bg-surface'
               )}
             >
-              {route === 'editor' && <EditorPage />}
-              {route === 'library' && <LibraryPage />}
-              {route === 'settings' && <SettingsPage />}
+              {routes.map((r) => {
+                const isActive = route === r.id;
+                return (
+                  <Activity key={r.id} mode={isActive ? 'visible' : 'hidden'}>
+                    {r.component}
+                  </Activity>
+                );
+              })}
             </div>
           </div>
 

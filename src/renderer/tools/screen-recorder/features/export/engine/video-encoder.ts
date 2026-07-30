@@ -44,7 +44,12 @@ function qualityToBitsPerPixel(quality: number): number {
   return 0.2;
 }
 
-function computeBitrate(width: number, height: number, frameRate: number, quality: number): number {
+export function computeBitrate(
+  width: number,
+  height: number,
+  frameRate: number,
+  quality: number
+): number {
   return Math.round(width * height * frameRate * qualityToBitsPerPixel(quality));
 }
 

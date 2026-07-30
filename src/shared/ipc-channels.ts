@@ -24,6 +24,8 @@ export const IpcChannels = {
   DeleteProject: 'project:delete',
   ExportReadFileBytes: 'export:read-file-bytes',
   ExportWriteFileBytes: 'export:write-file-bytes',
+  ExportGetTempPath: 'export:get-temp-path',
+  ExportCopyToClipboard: 'export:copy-to-clipboard',
   ShowSaveExportDialog: 'dialog:show-save-export',
   ShowOpenVideoDialog: 'dialog:show-open-video',
   SaveScreenshot: 'screenshot:save',

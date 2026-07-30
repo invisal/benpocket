@@ -6,20 +6,25 @@ import { openRecorderToolbarFor } from '../lib/open-recorder-toolbar';
 export function LaunchRecorderButton() {
   const isRecording = useAppStore((state) => state.isRecording);
   const route = useAppStore((state) => state.route);
+  const isEditor = route === 'editor' || isRecording;
 
   async function handleNewRecord() {
-    const sources = await window.screenRecorder.recording.getCaptureSources();
-    const defaultSource =
-      sources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ??
-      sources.find((s) => s.type === 'screen') ??
-      sources[0];
-    if (defaultSource) await openRecorderToolbarFor(defaultSource);
+    if (isEditor) {
+      const confirmed = window.confirm(
+        'Leave the editor and start a new recording? Any unsaved changes will be lost.'
+      );
+      if (!confirmed) return;
+    }
+
+    // No source passed -- opens the toolbar immediately instead of waiting
+    // on a full capture-sources fetch (thumbnails for every screen/window
+    // is the slow part); the toolbar picks its own default once its own
+    // fetch resolves. See openRecorderToolbarFor's doc.
+    await openRecorderToolbarFor();
   }
 
-  const disabled = route === 'editor' || isRecording;
-
   return (
-    <Button onClick={handleNewRecord} variant="outline" disabled={disabled}>
+    <Button onClick={handleNewRecord} variant="outline">
       {isRecording ? (
         <Square size={12} className="text-muted-foreground" fill="currentColor" />
       ) : (

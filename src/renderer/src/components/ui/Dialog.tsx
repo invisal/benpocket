@@ -10,7 +10,7 @@ export function DialogBackdrop({
   return (
     <DialogPrimitive.Backdrop
       className={cn(
-        'fixed inset-0 z-50 bg-black/50',
+        'fixed inset-0 z-50 bg-black/70',
         'transition-opacity',
         'data-[starting-style]:opacity-0',
         'data-[ending-style]:opacity-0',
@@ -21,18 +21,29 @@ export function DialogBackdrop({
   );
 }
 
+const DIALOG_SIZE_CLASSNAMES = {
+  default: 'max-w-md',
+  large: 'max-w-2xl'
+};
+
 export function DialogContent({
   className,
   children,
   showClose = true,
+  size = 'default',
   ...props
-}: ComponentProps<typeof DialogPrimitive.Popup> & { showClose?: boolean }) {
+}: ComponentProps<typeof DialogPrimitive.Popup> & {
+  showClose?: boolean;
+  /** `'large'` is for content-heavy modals (e.g. a settings/wizard-style dialog) that would feel cramped at the default width -- still centered, not edge-to-edge. */
+  size?: keyof typeof DIALOG_SIZE_CLASSNAMES;
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogBackdrop />
       <DialogPrimitive.Popup
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2',
+          'fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2',
+          DIALOG_SIZE_CLASSNAMES[size],
           'rounded-md border border-border-dark bg-surface p-4 text-text-base shadow-lg outline-none',
           'transition-[transform,opacity]',
           'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',

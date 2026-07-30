@@ -41,16 +41,10 @@ export function TrayBridge(): null {
 
     const unsubscribeOpen = window.screenRecorder.tray.onOpenRecordPicker(() => {
       focusRecorderTab();
-      void (async () => {
-        const sources = await window.screenRecorder.recording.getCaptureSources();
-        // Prefer the primary display -- see ScreenRecorderSidebar.tsx's
-        // handleNewRecord for why "the first screen source" isn't safe.
-        const defaultSource =
-          sources.find((s) => s.type === 'screen' && s.isPrimaryDisplay) ??
-          sources.find((s) => s.type === 'screen') ??
-          sources[0];
-        if (defaultSource) await openRecorderToolbarFor(defaultSource);
-      })();
+      // No source passed -- opens immediately instead of waiting on a full
+      // capture-sources fetch; the toolbar picks its own default once its
+      // own fetch resolves. See openRecorderToolbarFor's doc.
+      void openRecorderToolbarFor();
     });
     const unsubscribeSelect = window.screenRecorder.tray.onSourceSelected((source) => {
       focusRecorderTab();

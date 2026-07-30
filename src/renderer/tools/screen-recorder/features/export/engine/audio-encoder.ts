@@ -16,7 +16,7 @@ import type { ExportAudioMuxerCodec, VideoMuxer } from './muxer';
  * speed != 1 segments are carried over closely.
  */
 
-const AUDIO_BITRATE = 128_000;
+export const AUDIO_BITRATE = 128_000;
 const DECODE_BACKPRESSURE_LIMIT = 20;
 const SEEK_TIMEOUT_MS = 5_000;
 // Same tolerance streaming-decoder.ts uses for its own segment-boundary check.

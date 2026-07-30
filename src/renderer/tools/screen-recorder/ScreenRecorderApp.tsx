@@ -11,7 +11,7 @@ import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 import { CutTimeline } from './features/timeline/components/CutTimeline';
 import { RecordingControllerProvider } from './features/recording/context/RecordingControllerContext';
 import { RecorderToolbarBridge } from './features/recording/components/RecorderToolbarBridge';
-import { ExportPopoverButton } from './features/export/components/ExportPopoverButton';
+import { ExportDialogButton } from './features/export/components/ExportDialog';
 import { LaunchRecorderButton } from './features/recording/components/LaunchRecorderButton';
 import { SaveProjectDialog } from './features/project/components/SaveProjectDialog';
 import { buildProjectSnapshot } from './features/project/lib/build-project-snapshot';
@@ -94,7 +94,7 @@ export function ScreenRecorderApp(): JSX.Element {
                 Report an issue
               </span>
             </button>
-            <ExportPopoverButton disabled={route !== 'editor'} />
+            <ExportDialogButton disabled={route !== 'editor'} />
           </div>
         </nav>
 

@@ -29,12 +29,17 @@ interface UseExportActionResult {
   progress: ExportProgressState | null;
   canExport: boolean;
   handleExport: () => Promise<void>;
+  handleCopyToClipboard: () => Promise<void>;
   handleCancel: () => void;
 }
 
 /**
- * Shared export trigger: save-path dialog -> screenRecorder.export.start ->
- * live progress via onProgress -> error surfacing.
+ * Shared export trigger, two flavors sharing one pipeline run:
+ * - `handleExport`: save-path dialog -> encode straight to that path.
+ * - `handleCopyToClipboard`: encode to a temp file -> write that file's path
+ *   to the OS clipboard as a file reference (see copy-file-to-clipboard.ts),
+ *   so pasting elsewhere pastes the real exported file.
+ * Both report progress and errors the same way, and both can be cancelled.
  */
 export function useExportAction(): UseExportActionResult {
   const lastRecording = useAppStore((state) => state.lastRecording);
@@ -48,25 +53,26 @@ export function useExportAction(): UseExportActionResult {
   const [progress, setProgress] = useState<ExportProgressState | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  async function handleExport(): Promise<void> {
+  function validateExportable(): string | null {
     const sourceVideoPath = lastRecording?.filePath ?? null;
     if (!sourceVideoPath) {
       setStatus('error');
       setError('Recording is still being saved. Try again in a moment.');
-      return;
+      return null;
     }
     if (segments.length === 0 || segments.some((s) => s.range.endMs <= s.range.startMs)) {
       setStatus('error');
       setError('Nothing to export -- cut out every clip on the timeline.');
-      return;
+      return null;
     }
+    return sourceVideoPath;
+  }
 
-    const outputPath = await window.screenRecorder.dialog.showSaveExportPath(
-      `${defaultExportFileName()}.${store.format}`,
-      store.format
-    );
-    if (!outputPath) return;
-
+  async function runExportPipeline(
+    sourceVideoPath: string,
+    outputPath: string,
+    afterSuccess?: () => Promise<void>
+  ): Promise<void> {
     setStatus('exporting');
     setError(null);
     setProgress({ percent: 0, stage: 'rendering' });
@@ -97,6 +103,7 @@ export function useExportAction(): UseExportActionResult {
         },
         controller.signal
       );
+      if (afterSuccess) await afterSuccess();
       setStatus('idle');
       setProgress(null);
     } catch (err) {
@@ -114,6 +121,32 @@ export function useExportAction(): UseExportActionResult {
     }
   }
 
+  async function handleExport(): Promise<void> {
+    const sourceVideoPath = validateExportable();
+    if (!sourceVideoPath) return;
+
+    const outputPath = await window.screenRecorder.dialog.showSaveExportPath(
+      `${defaultExportFileName()}.${store.format}`,
+      store.format
+    );
+    if (!outputPath) return;
+
+    await runExportPipeline(sourceVideoPath, outputPath);
+  }
+
+  async function handleCopyToClipboard(): Promise<void> {
+    const sourceVideoPath = validateExportable();
+    if (!sourceVideoPath) return;
+
+    const outputPath = await window.screenRecorder.export.getTempPath(
+      `${defaultExportFileName()}.${store.format}`
+    );
+
+    await runExportPipeline(sourceVideoPath, outputPath, () =>
+      window.screenRecorder.export.copyToClipboard(outputPath)
+    );
+  }
+
   function handleCancel(): void {
     abortControllerRef.current?.abort();
   }
@@ -124,6 +157,7 @@ export function useExportAction(): UseExportActionResult {
     progress,
     canExport: Boolean(lastRecording),
     handleExport,
+    handleCopyToClipboard,
     handleCancel
   };
 }

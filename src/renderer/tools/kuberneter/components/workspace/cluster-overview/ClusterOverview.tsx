@@ -112,15 +112,9 @@ export const ClusterOverview: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kuberneterSelectedCluster, kuberneterSelectedNamespace, activeConfigPath]);
 
-  // 2. Background polling interval timer
+  // 2. Background metric polling interval timer for live CPU/Mem chart trends
   useEffect(() => {
     if (refreshInterval === 'off') return;
-
-    // Trigger a background refresh immediately on interval change, without showing full page loader
-    if (!isLoading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchData(true);
-    }
 
     const intervalMap: Record<string, number> = {
       '5s': 5000,
@@ -129,7 +123,7 @@ export const ClusterOverview: React.FC = () => {
       '60s': 60000
     };
 
-    const ms = intervalMap[refreshInterval] || 5000;
+    const ms = intervalMap[refreshInterval] || 10000;
     const timer = setInterval(() => {
       fetchData(true);
     }, ms);

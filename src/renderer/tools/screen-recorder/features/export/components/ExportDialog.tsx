@@ -135,11 +135,10 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
       <Dialog.Trigger
         disabled={disabled || !canExport}
         title={disabled || !canExport ? 'Record something first' : undefined}
+        render={<Button variant="secondary" size="sm" />}
       >
-        <Button variant="secondary" size="sm">
-          <Download size={13} />
-          Export
-        </Button>
+        <Download size={13} />
+        Export
       </Dialog.Trigger>
 
       <Dialog.Content size="large" showClose={!isExporting}>

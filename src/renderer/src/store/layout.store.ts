@@ -22,6 +22,12 @@ interface LayoutState {
   activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null;
   isRightPanelOpen: boolean;
   rightPanelWidth: number;
+
+  // Bottom Panel state
+  isBottomPanelOpen: boolean;
+  bottomPanelHeight: number;
+  bottomPanelTab: string;
+
   openTabs: Tab[];
   activeTabId: string | null;
 
@@ -32,6 +38,13 @@ interface LayoutState {
   // Layout Toggle Actions
   toggleRightPanel: () => void;
   setRightPanelWidth: (width: number) => void;
+  toggleBottomPanel: () => void;
+  setBottomPanelHeight: (height: number) => void;
+  maximizeBottomPanel: () => void;
+  minimizeBottomPanel: () => void;
+  toggleMaximizeBottomPanel: () => void;
+  setBottomPanelTab: (tab: string) => void;
+  openBottomPanelWithTab: (tab: string) => void;
 
   // Tab Actions
   openTab: (tab: Tab) => void;
@@ -59,6 +72,11 @@ export const useLayoutStore = create<LayoutState>()(
       activeActivity: null,
       isRightPanelOpen: false,
       rightPanelWidth: 260,
+
+      isBottomPanelOpen: false,
+      bottomPanelHeight: 220,
+      bottomPanelTab: 'terminal',
+
       openTabs: [],
       activeTabId: null,
 
@@ -67,6 +85,38 @@ export const useLayoutStore = create<LayoutState>()(
 
       toggleRightPanel: () => set((state) => ({ isRightPanelOpen: !state.isRightPanelOpen })),
       setRightPanelWidth: (width) => set({ rightPanelWidth: Math.max(150, Math.min(width, 500)) }),
+
+      toggleBottomPanel: () => set((state) => ({ isBottomPanelOpen: !state.isBottomPanelOpen })),
+      setBottomPanelHeight: (height) =>
+        set({
+          bottomPanelHeight: Math.max(
+            100,
+            Math.min(height, typeof window !== 'undefined' ? window.innerHeight - 32 : 900)
+          )
+        }),
+      maximizeBottomPanel: () =>
+        set({
+          isBottomPanelOpen: true,
+          bottomPanelHeight: typeof window !== 'undefined' ? window.innerHeight - 32 : 800
+        }),
+      minimizeBottomPanel: () =>
+        set({
+          isBottomPanelOpen: true,
+          bottomPanelHeight:
+            typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.2) : 200
+        }),
+      toggleMaximizeBottomPanel: () =>
+        set((state) => {
+          const maxH = typeof window !== 'undefined' ? window.innerHeight - 32 : 800;
+          const minH = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.2) : 200;
+          const isCurrentlyMax = state.bottomPanelHeight >= maxH - 50;
+          return {
+            isBottomPanelOpen: true,
+            bottomPanelHeight: isCurrentlyMax ? minH : maxH
+          };
+        }),
+      setBottomPanelTab: (tab) => set({ bottomPanelTab: tab }),
+      openBottomPanelWithTab: (tab) => set({ isBottomPanelOpen: true, bottomPanelTab: tab }),
 
       openTab: (tab) =>
         set((state) => {

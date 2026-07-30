@@ -5,14 +5,28 @@ import { ActivityBar } from './ActivityBar';
 import { RightPanel } from './RightPanel';
 import { StatusBar } from './StatusBar';
 import { useThemeStore } from '../../store/theme.store';
+import { useLayoutStore } from '../../store/layout.store';
 import { ToolTabContents } from '../providers/ToolProvider';
 
 export const AppShell: React.FC = () => {
   const theme = useThemeStore((state) => state.theme);
 
+  const toggleBottomPanel = useLayoutStore((s) => s.toggleBottomPanel);
+
   useEffect(() => {
     document.documentElement.classList.toggle('light', theme === 'light');
   }, [theme]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === '`' || e.code === 'Backquote')) {
+        e.preventDefault();
+        toggleBottomPanel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleBottomPanel]);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-zinc-900 text-zinc-300 font-sans antialiased">

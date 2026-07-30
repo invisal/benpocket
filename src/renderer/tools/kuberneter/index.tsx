@@ -1,6 +1,7 @@
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { KuberneterSidebar } from './components/sidebar/KuberneterSidebar';
 import { Workspace } from '@renderer/components/layout/Workspace';
+import { BottomPanel } from '@renderer/components/layout/BottomPanel';
 import { useLayoutStore } from '../../src/store/layout.store';
 import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
@@ -89,8 +90,9 @@ function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: str
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
         <Workspace />
+        <BottomPanel />
       </div>
     </div>
   );

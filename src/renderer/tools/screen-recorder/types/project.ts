@@ -39,6 +39,8 @@ export interface CursorSettings {
   clickBounce: number;
   /** Whether the expanding click-ripple ring (resolveClickRipple, cursor-path.ts) draws at all -- independent of `clickBounce`'s own icon squash/pop, which stays on regardless. Off by default. */
   clickRippleEnabled: boolean;
+  /** Whether resolveCursorGesture's hover/drag hand icon can ever show at all -- off means the cursor stays the plain arrow the entire time, regardless of what the recording's click/movement data would otherwise infer. On by default. */
+  handGestureEnabled: boolean;
 }
 
 export interface CaptionSettings {

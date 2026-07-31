@@ -6,6 +6,7 @@ export {
   smoothCursorPath,
   sampleCursorPath,
   resolveClickBounceScale,
-  resolveClickRipple
+  resolveClickRipple,
+  resolveCursorGesture
 } from '@shared/cursor-path';
-export type { CursorPathPoint, ClickRipple } from '@shared/cursor-path';
+export type { CursorPathPoint, ClickRipple, CursorGesture } from '@shared/cursor-path';

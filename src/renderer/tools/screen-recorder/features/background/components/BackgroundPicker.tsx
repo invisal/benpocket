@@ -51,13 +51,11 @@ export function BackgroundPicker(): JSX.Element {
     kind,
     value,
     padding,
-    blur,
     cornerRadius,
     shadow,
     setKind,
     setValue,
     setPadding,
-    setBlur,
     setCornerRadius,
     setShadow
   } = useBackgroundStore();
@@ -225,15 +223,7 @@ export function BackgroundPicker(): JSX.Element {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 border-t border-line pt-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Background blur</span>
-          <span className="text-xs text-muted-foreground">{blur}px</span>
-        </div>
-        <Slider value={blur} min={0} max={20} step={1} onChange={setBlur} />
-      </div>
-
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">Padding</span>
           <span className="text-xs text-muted-foreground">{padding}%</span>
@@ -241,7 +231,7 @@ export function BackgroundPicker(): JSX.Element {
         <Slider value={padding} min={0} max={30} step={1} onChange={setPadding} />
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">Corner radius</span>
           <span className="text-xs text-muted-foreground">{cornerRadius}px</span>
@@ -249,7 +239,7 @@ export function BackgroundPicker(): JSX.Element {
         <Slider value={cornerRadius} min={0} max={40} step={1} onChange={setCornerRadius} />
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">Drop shadow</span>
           <span className="text-xs text-muted-foreground">{shadow}</span>

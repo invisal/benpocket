@@ -27,7 +27,7 @@ function SliderRow({
   onChange: (value: number) => void;
 }): JSX.Element {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2 mb-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Icon size={13} className="text-muted-foreground" />
@@ -50,6 +50,7 @@ export function CursorSettingsPanel(): JSX.Element {
     motionBlur,
     clickBounce,
     clickRippleEnabled,
+    handGestureEnabled,
     setVisible,
     setClipToCanvas,
     setStyle,
@@ -57,7 +58,8 @@ export function CursorSettingsPanel(): JSX.Element {
     setSmoothing,
     setMotionBlur,
     setClickBounce,
-    setClickRippleEnabled
+    setClickRippleEnabled,
+    setHandGestureEnabled
   } = useCursorStore();
 
   return (
@@ -81,6 +83,15 @@ export function CursorSettingsPanel(): JSX.Element {
             label="Show expanding ripple on click"
           />
         </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">Hand Gesture</span>
+          <Switch
+            checked={handGestureEnabled}
+            onChange={setHandGestureEnabled}
+            label="Show a hand icon while hovering or dragging -- off keeps the plain arrow the whole time"
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-2 border-t border-line pt-3">
@@ -101,7 +112,12 @@ export function CursorSettingsPanel(): JSX.Element {
                   : 'border-line hover:border-accent/40'
               )}
             >
-              <CursorStyleIcon fill={preset.fill} stroke={preset.stroke} size={18} />
+              <CursorStyleIcon
+                fill={preset.fill}
+                stroke={preset.stroke}
+                size={18}
+                customIcon={preset.customIcon}
+              />
             </button>
           ))}
         </div>

@@ -1,33 +1,41 @@
 import type { JSX } from 'react';
 import { useWebcamStore } from '../store/webcam-store';
+import { Switch } from '../../../components/ui/switch';
+import { SettingsRow } from '../../../components/ui/settings-row';
+import { cn } from '../../../lib/utils';
+
+const SHAPE_OPTIONS = [
+  { id: 'circle', label: 'Circle' },
+  { id: 'rounded-square', label: 'Rounded' },
+  { id: 'square', label: 'Square' }
+] as const;
 
 export function WebcamShapePicker(): JSX.Element {
   const { shape, setShape, mirrored, setMirrored } = useWebcamStore();
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-3 gap-1.5">
-        {(['circle', 'rounded-square', 'square'] as const).map((option) => (
-          <button
-            key={option}
-            onClick={() => setShape(option)}
-            className={`truncate rounded-lg border px-2 py-1 text-[11px] ${
-              shape === option ? 'border-accent text-accent' : 'border-line text-muted-foreground'
-            }`}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-      <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
-          checked={mirrored}
-          onChange={(e) => setMirrored(e.target.checked)}
-          className="h-3.5 w-3.5 accent-accent"
-        />
-        Mirror
-      </label>
-    </div>
+    <>
+      <SettingsRow title="Shape" description="Shape of the webcam overlay.">
+        <div className="flex overflow-hidden rounded-lg border border-line">
+          {SHAPE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => setShape(option.id)}
+              className={cn(
+                'px-2.5 py-1 text-xs transition-colors',
+                shape === option.id
+                  ? 'bg-accent text-white'
+                  : 'text-muted-foreground hover:bg-surface-2'
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </SettingsRow>
+      <SettingsRow title="Mirror" description="Flip the webcam preview horizontally.">
+        <Switch checked={mirrored} onChange={setMirrored} label="Mirror" />
+      </SettingsRow>
+    </>
   );
 }

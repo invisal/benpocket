@@ -6,12 +6,12 @@ import { RoleBindingsTable } from './RoleBindingsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useRoleBindings } from '../../../hooks/useRoleBindings';
 
-interface RoleBindingsProps {
-  roleBindingsData: RoleBindingData[];
-}
+export const RoleBindings: React.FC = () => {
+  const { data: roleBindingsData, isLoading, errorMsg } = useRoleBindings(true);
 
-export const RoleBindings: React.FC<RoleBindingsProps> = ({ roleBindingsData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -171,32 +171,34 @@ export const RoleBindings: React.FC<RoleBindingsProps> = ({ roleBindingsData }) 
   );
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <RoleBindingsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          namespaces={namespaces}
-          namespace={namespace}
-          onNamespaceChange={handleNamespaceChange}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <RoleBindingsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            namespaces={namespaces}
+            namespace={namespace}
+            onNamespaceChange={handleNamespaceChange}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <RoleBindingsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectBinding={handleSelectBinding}
+          selectedBindingId={selectedBindingId}
         />
-      }
-    >
-      <RoleBindingsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectBinding={handleSelectBinding}
-        selectedBindingId={selectedBindingId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

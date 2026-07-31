@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type ConfigMapData } from '../types/ConfigMapData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -26,5 +27,5 @@ export function useConfigMaps(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ConfigMapData>('configmaps', transform, enabled);
+  return useKubeQuery<ConfigMapData>(K8S_RESOURCE_KEYS.CONFIGMAPS, transform, enabled);
 }

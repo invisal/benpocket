@@ -6,13 +6,16 @@ import { JobsTable } from './JobsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useJobs } from '../../../hooks/useJobs';
 
 interface JobsProps {
-  jobsData: JobData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Jobs: React.FC<JobsProps> = ({ jobsData, kuberneterSelectedNamespace }) => {
+export const Jobs: React.FC<JobsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: jobsData, isLoading, errorMsg } = useJobs(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -115,29 +118,31 @@ export const Jobs: React.FC<JobsProps> = ({ jobsData, kuberneterSelectedNamespac
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <JobsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <JobsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <JobsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectJob={handleSelectJob}
+          selectedJobId={selectedJobId}
         />
-      }
-    >
-      <JobsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectJob={handleSelectJob}
-        selectedJobId={selectedJobId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

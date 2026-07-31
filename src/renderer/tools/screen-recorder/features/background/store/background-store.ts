@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { BackgroundSettings } from '@screen-recorder/types/project';
-import { WALLPAPER_PRESETS } from '@shared/wallpaper-presets';
 import { withHistory } from '../../history/lib/with-history';
+import { WALLPAPER_IMAGE_PRESETS } from '../lib/wallpaper-images';
 
 interface BackgroundStoreState extends BackgroundSettings {
   setKind: (kind: BackgroundSettings['kind']) => void;
@@ -25,7 +25,7 @@ export const useBackgroundStore = create<BackgroundStoreState>(
     }),
     (set) => ({
       kind: 'wallpaper',
-      value: WALLPAPER_PRESETS[0].id,
+      value: WALLPAPER_IMAGE_PRESETS[0].id,
       padding: 2,
       blur: 0,
       cornerRadius: 12,

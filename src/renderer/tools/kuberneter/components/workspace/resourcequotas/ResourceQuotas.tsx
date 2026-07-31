@@ -6,16 +6,16 @@ import { ResourceQuotasTable } from './ResourceQuotasTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useResourceQuotas } from '../../../hooks/useResourceQuotas';
 
 interface ResourceQuotasProps {
-  resourceQuotasData: ResourceQuotaData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const ResourceQuotas: React.FC<ResourceQuotasProps> = ({
-  resourceQuotasData,
-  kuberneterSelectedNamespace
-}) => {
+export const ResourceQuotas: React.FC<ResourceQuotasProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: resourceQuotasData, isLoading, errorMsg } = useResourceQuotas(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -127,29 +127,31 @@ export const ResourceQuotas: React.FC<ResourceQuotasProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <ResourceQuotasToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <ResourceQuotasToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <ResourceQuotasTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectResourceQuota={handleSelectResourceQuota}
+          selectedResourceQuotaId={selectedResourceQuotaId}
         />
-      }
-    >
-      <ResourceQuotasTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectResourceQuota={handleSelectResourceQuota}
-        selectedResourceQuotaId={selectedResourceQuotaId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

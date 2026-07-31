@@ -6,16 +6,17 @@ import { ServiceAccountsTable } from './ServiceAccountsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useServiceAccounts } from '../../../hooks/useServiceAccounts';
 
-interface ServiceAccountsProps {
-  serviceAccountsData: ServiceAccountData[];
-  kuberneterSelectedNamespace: string;
-}
+export const ServiceAccounts: React.FC = () => {
+  const { data: serviceAccountsData, isLoading, errorMsg } = useServiceAccounts(true);
 
-export const ServiceAccounts: React.FC<ServiceAccountsProps> = ({
-  serviceAccountsData,
-  kuberneterSelectedNamespace
-}) => {
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const kuberneterSelectedNamespace = useKuberneterStore(
+    (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
+  );
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -119,29 +120,31 @@ export const ServiceAccounts: React.FC<ServiceAccountsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <ServiceAccountsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <ServiceAccountsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <ServiceAccountsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectServiceAccount={handleSelectSa}
+          selectedServiceAccountId={selectedSaId}
         />
-      }
-    >
-      <ServiceAccountsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectServiceAccount={handleSelectSa}
-        selectedServiceAccountId={selectedSaId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

@@ -15,6 +15,8 @@ interface ResizablePanelProps {
   /** Whether `size`/`min`/`max` are pixels or a percentage of the parent container. Defaults to 'px'. */
   unit?: ResizablePanelUnit;
   className?: string;
+  /** Overrides the drag handle's own visual styling (hover/active highlight) -- defaults to a subtle accent highlight. Pass e.g. `'z-40'` alone to keep the handle draggable (cursor still changes on hover) with no visible indicator at all. */
+  handleClassName?: string;
   children?: React.ReactNode;
 }
 
@@ -33,6 +35,7 @@ export function ResizablePanel({
   max = Infinity,
   unit = 'px',
   className = '',
+  handleClassName = 'hover:bg-accent/30 active:bg-accent transition-colors z-40',
   children
 }: ResizablePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -87,11 +90,7 @@ export function ResizablePanel({
       {children}
       <div
         onMouseDown={handleMouseDown}
-        className={cn(
-          'absolute',
-          edgeClasses[edge],
-          'hover:bg-accent/30 active:bg-accent transition-colors z-40'
-        )}
+        className={cn('absolute', edgeClasses[edge], handleClassName)}
       />
     </div>
   );

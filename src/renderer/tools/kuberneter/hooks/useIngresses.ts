@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type IngressData, type IngressRuleData } from '../types/IngressData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -138,5 +139,5 @@ export function useIngresses(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<IngressData>('ingresses', transform, enabled);
+  return useKubeQuery<IngressData>(K8S_RESOURCE_KEYS.INGRESSES, transform, enabled);
 }

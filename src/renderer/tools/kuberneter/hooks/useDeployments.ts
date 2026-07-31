@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type DeployData } from '../types/DeployData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -161,8 +162,8 @@ export function useDeployments(enabled: boolean) {
     () => async (configPath: string | undefined, cluster: string, ns: string) => {
       try {
         const [replicaSetsRes, podsRes] = await Promise.all([
-          window.kuberneter.getResources(configPath, cluster, 'replicasets', ns),
-          window.kuberneter.getResources(configPath, cluster, 'pods', ns)
+          window.kuberneter.getResources(configPath, cluster, K8S_RESOURCE_KEYS.REPLICA_SETS, ns),
+          window.kuberneter.getResources(configPath, cluster, K8S_RESOURCE_KEYS.PODS, ns)
         ]);
         return {
           replicaSets: replicaSetsRes?.items || [],
@@ -176,5 +177,10 @@ export function useDeployments(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<DeployData>('deployments', transform, enabled, fetchExtraData);
+  return useKubeQuery<DeployData>(
+    K8S_RESOURCE_KEYS.DEPLOYMENTS,
+    transform,
+    enabled,
+    fetchExtraData
+  );
 }

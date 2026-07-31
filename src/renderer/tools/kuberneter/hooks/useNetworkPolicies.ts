@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type NetworkPolicyData, type RuleData, type PeerData } from '../types/NetworkPolicyData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -222,5 +223,5 @@ export function useNetworkPolicies(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<NetworkPolicyData>('networkpolicies', transform, enabled);
+  return useKubeQuery<NetworkPolicyData>(K8S_RESOURCE_KEYS.NETWORK_POLICIES, transform, enabled);
 }

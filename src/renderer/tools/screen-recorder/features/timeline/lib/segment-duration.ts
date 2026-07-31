@@ -16,6 +16,24 @@ export function getSegmentOutputDurationMs(
 type Seg = Pick<TimelineSegment, 'range' | 'speed'>;
 
 /**
+ * Whether `segments[index]` still touches, contiguously in source-ms, the
+ * immediate neighbor(s) `splitAt` created it alongside -- what "Reset trim"
+ * merges back together. Both sides of a cut carry `split: true`, but a
+ * segment can be adjacent to an unrelated (not from the same cut) segment
+ * too, so `split` alone isn't enough -- the contiguity check is what
+ * confirms it's really the other half of the same cut.
+ */
+export function hasMergeableCutBoundary(segments: TimelineSegment[], index: number): boolean {
+  const segment = segments[index];
+  if (!segment.split) return false;
+  const prev = segments[index - 1];
+  const next = segments[index + 1];
+  const mergesWithPrev = !!prev?.split && prev.range.endMs === segment.range.startMs;
+  const mergesWithNext = !!next?.split && segment.range.endMs === next.range.startMs;
+  return mergesWithPrev || mergesWithNext;
+}
+
+/**
  * Maps a source-ms position (e.g. the playing `<video>`'s `currentTime`)
  * to its position on the ripple/output timeline `CutTimeline` draws, or
  * `null` if it falls inside a cut-out gap (no kept segment covers it).
@@ -53,6 +71,27 @@ export function outputMsToSourceMs(segments: Seg[], outputMs: number): number | 
   return null;
 }
 
+// Like `sourceMsToOutputMs`, but a source-ms in a cut-out gap projects
+// forward to where the next kept segment begins, instead of returning null.
+export function sourceMsToOutputBoundaryMs(
+  segments: Seg[],
+  totalOutputMs: number,
+  sourceMs: number
+): number {
+  let cursor = 0;
+  for (const segment of segments) {
+    const { startMs, endMs } = segment.range;
+    if (sourceMs < startMs) return cursor;
+    if (sourceMs < endMs) return cursor + (sourceMs - startMs) / segment.speed;
+    cursor += getSegmentOutputDurationMs(segment);
+  }
+  return totalOutputMs;
+}
+
+export function segmentsOverlapRange(segments: Seg[], startMs: number, endMs: number): boolean {
+  return segments.some((s) => s.range.startMs < endMs && s.range.endMs > startMs);
+}
+
 /**
  * Maps a source-ms `[startMs, endMs)` range (a zoom keyframe's window, a
  * caption's span, etc.) onto the ripple/output timeline as a `{left,
@@ -62,8 +101,7 @@ export function outputMsToSourceMs(segments: Seg[], outputMs: number): number | 
  * cut yet" special case.
  *
  * Returns `null` if `startMs` itself falls inside a cut-out gap (the whole
- * thing was cut away). If only the tail was cut, the end clamps to the full
- * output duration rather than disappearing.
+ * thing was cut away).
  */
 export function sourceRangeToOutputPercent(
   segments: Seg[],
@@ -74,7 +112,7 @@ export function sourceRangeToOutputPercent(
   if (totalOutputMs <= 0) return null;
   const outputStart = sourceMsToOutputMs(segments, startMs);
   if (outputStart === null) return null;
-  const outputEnd = sourceMsToOutputMs(segments, endMs) ?? totalOutputMs;
+  const outputEnd = sourceMsToOutputBoundaryMs(segments, totalOutputMs, endMs);
   const widthMs = Math.max(0, outputEnd - outputStart);
   return {
     leftPercent: (outputStart / totalOutputMs) * 100,

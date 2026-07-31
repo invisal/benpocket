@@ -4,6 +4,7 @@ export interface TimeRange {
 }
 
 export type ClipSpeed = 0.5 | 1 | 1.25 | 1.5 | 2;
+export const CLIP_SPEED_OPTIONS: ClipSpeed[] = [0.5, 1, 1.25, 1.5, 2];
 
 /**
  * Normalized (0-1) crop rect relative to the *source recording's* native
@@ -26,15 +27,21 @@ export interface TimelineSegment {
   id: string;
   trackId: string;
   range: TimeRange;
+  /**
+   * `range` as it was the moment this segment was created (by
+   * `initializeFromDuration` or, for a split result, by `splitAt` itself) --
+   * never mutated afterward. `resizeSegmentEdge` only ever writes `range`,
+   * so this is what "Reset trim" restores back to.
+   */
+  originalRange: TimeRange;
   speed: ClipSpeed;
   sourceOffsetMs: number;
   crop: CropRect | null;
   /**
    * Whether this clip's own in/out point has been manually dragged since it
    * was created (see `resizeSegmentEdge`) -- not set by splitting alone.
-   * Purely a UI/editing-history flag (not read at export): drives the
-   * sparse "Trim" indicator pill in `TrimTrack`, the same "only show a pill
-   * when something's actually been done" pattern as `SpeedTrack`/`CropTrack`.
+   * Drives the sparse "Trim" indicator pill in `TrimTrack` and gates the
+   * context menu's "Reset trim" action.
    */
   trimmed: boolean;
   /**
@@ -63,4 +70,6 @@ export interface ZoomKeyframe {
   position: { x: number; y: number } | 'auto-cursor';
   /** Fixed ease-in/ease-out time either side of the hold -- see zoom-resolve.ts's resolveZoom. */
   holdTransitionMs: number;
+  /** Off but not deleted -- `resolveZoom` skips it entirely, in both the editor preview and export. */
+  enabled: boolean;
 }

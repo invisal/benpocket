@@ -6,16 +6,16 @@ import { CronJobsTable } from './CronJobsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useCronJobs } from '../../../hooks/useCronJobs';
 
 interface CronJobsProps {
-  cronJobsData: CronJobData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const CronJobs: React.FC<CronJobsProps> = ({
-  cronJobsData,
-  kuberneterSelectedNamespace
-}) => {
+export const CronJobs: React.FC<CronJobsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: cronJobsData, isLoading, errorMsg } = useCronJobs(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -130,29 +130,31 @@ export const CronJobs: React.FC<CronJobsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <CronJobsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <CronJobsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <CronJobsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectCronJob={handleSelectCronJob}
+          selectedCronJobId={selectedCronJobId}
         />
-      }
-    >
-      <CronJobsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectCronJob={handleSelectCronJob}
-        selectedCronJobId={selectedCronJobId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

@@ -5,7 +5,7 @@ import type {
   RecordingRequest,
   RecordingSession
 } from '@screen-recorder/types/recording';
-import type { Project, CursorPathPoint } from '@screen-recorder/types/project';
+import type { Project, ProjectSummary, CursorPathPoint } from '@screen-recorder/types/project';
 import type { ExportFormat } from '@screen-recorder/types/export';
 import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
 import type {
@@ -41,6 +41,9 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.SaveRecordingFile, fileName, data),
     deleteFile: (filePath: string): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.DeleteRecordingFile, filePath),
+    /** Opens a recording file in the OS's default player -- for Sidebar's "Recent" entries that aren't the live in-session `lastRecording`. */
+    openFile: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.OpenRecordingFile, filePath),
     /** Fresh on-screen bounds for a window source (by its desktopCapturer id) right now, or null if it can't be resolved (source isn't a window, window closed, unsupported platform). */
     refreshWindowBounds: (sourceId: string): Promise<CaptureSource['displayBounds'] | null> =>
       ipcRenderer.invoke(IpcChannels.RefreshWindowBounds, sourceId)
@@ -63,10 +66,18 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.NativeRecordingStop)
   },
   cursor: {
+    /**
+     * `followWindowId` (a window's native handle, see parseWindowSourceId)
+     * opts into live bounds-following for the duration of the recording --
+     * pass null for a screen source, a native-picker source, or a window
+     * source with a fixed crop region already overriding `bounds`.
+     */
     startTracking: (
       bounds: { x: number; y: number; width: number; height: number },
-      startedAt: number
-    ): Promise<void> => ipcRenderer.invoke(IpcChannels.StartCursorTracking, bounds, startedAt),
+      startedAt: number,
+      followWindowId: number | null
+    ): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.StartCursorTracking, bounds, startedAt, followWindowId),
     stopTracking: (): Promise<void> => ipcRenderer.invoke(IpcChannels.StopCursorTracking),
     onSample: (callback: (sample: CursorPathPoint) => void): (() => void) => {
       const listener = (_event: unknown, sample: CursorPathPoint): void => callback(sample);
@@ -83,7 +94,10 @@ export const screenRecorderApi = {
     open: (projectId: string): Promise<Project | null> =>
       ipcRenderer.invoke(IpcChannels.OpenProject, projectId),
     save: (project: Project): Promise<boolean> =>
-      ipcRenderer.invoke(IpcChannels.SaveProject, project)
+      ipcRenderer.invoke(IpcChannels.SaveProject, project),
+    list: (): Promise<ProjectSummary[]> => ipcRenderer.invoke(IpcChannels.ListProjects),
+    remove: (projectId: string): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.DeleteProject, projectId)
   },
   export: {
     /** Reads a local file's raw bytes for the in-renderer WebCodecs export pipeline (feeding the WASM demuxer) -- unbounded, unlike file-explorer's preview-scoped binary read. */
@@ -91,7 +105,13 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.ExportReadFileBytes, filePath),
     /** Writes the finished export's bytes to the already-chosen output path (see dialog.showSaveExportPath). */
     writeFileBytes: (filePath: string, data: ArrayBuffer): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.ExportWriteFileBytes, filePath, data)
+      ipcRenderer.invoke(IpcChannels.ExportWriteFileBytes, filePath, data),
+    /** A safe OS-temp-dir path for `fileName` -- "Copy to clipboard" exports here instead of a user-chosen path. */
+    getTempPath: (fileName: string): Promise<string> =>
+      ipcRenderer.invoke(IpcChannels.ExportGetTempPath, fileName),
+    /** Writes an already-exported file's path to the system clipboard as a file reference (pastes as the real file in Finder/Mail/Slack/...). */
+    copyToClipboard: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.ExportCopyToClipboard, filePath)
   },
   settings: {
     get: (): Promise<Record<string, unknown>> => ipcRenderer.invoke(IpcChannels.GetSettings),
@@ -129,7 +149,9 @@ export const screenRecorderApi = {
   },
   dialog: {
     showSaveExportPath: (defaultFileName: string, format: ExportFormat): Promise<string | null> =>
-      ipcRenderer.invoke(IpcChannels.ShowSaveExportDialog, defaultFileName, format)
+      ipcRenderer.invoke(IpcChannels.ShowSaveExportDialog, defaultFileName, format),
+    /** Native "openFile" picker restricted to video extensions -- Sidebar's "Import" button. */
+    showOpenVideo: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.ShowOpenVideoDialog)
   },
   simulator: {
     /** Name of the currently booted iOS Simulator device, or null if none is booted / Xcode Command Line Tools aren't installed. */

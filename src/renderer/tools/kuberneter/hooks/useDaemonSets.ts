@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type DaemonSetData } from '../types/DaemonSetData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -44,5 +45,5 @@ export function useDaemonSets(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<DaemonSetData>('daemonsets', transform, enabled);
+  return useKubeQuery<DaemonSetData>(K8S_RESOURCE_KEYS.DAEMON_SETS, transform, enabled);
 }

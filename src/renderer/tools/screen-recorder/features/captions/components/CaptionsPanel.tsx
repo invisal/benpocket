@@ -16,13 +16,13 @@ export function CaptionsPanel(): JSX.Element {
   const { enabled, segments, toggleEnabled, setSegments } = useCaptionsStore();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between">
         <span className="text-xs font-medium">Show captions</span>
         <Switch checked={enabled} onChange={toggleEnabled} label="Show captions" />
       </label>
 
-      <div className={cn('flex flex-col gap-3', !enabled && 'pointer-events-none opacity-40')}>
+      <div className={cn('flex flex-col gap-2', !enabled && 'pointer-events-none opacity-40')}>
         <Button
           variant="secondary"
           disabled

@@ -2,8 +2,10 @@ import type { JSX, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import { Crosshair, Plus, Trash2 } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
-import { ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
+import type { SourceResolution } from '@screen-recorder/types/editor';
+import { ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { useZoomStore } from '../store/zoom-store';
+import { useTimelineStore } from '../../timeline/store/timeline-store';
 import { Slider } from '../../../components/ui/slider';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
@@ -24,26 +26,19 @@ export const MAX_HOLD_TRANSITION_MS = 2000;
 function SliderField({
   label,
   valueLabel,
-  description,
   children
 }: {
   label: string;
   valueLabel: string;
-  description?: string;
   children: ReactNode;
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
+        <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
         <span className="text-[11px] text-muted-foreground">{valueLabel}</span>
       </div>
       {children}
-      {description && (
-        <p className="text-[10px] leading-snug text-muted-foreground/70">{description}</p>
-      )}
     </div>
   );
 }
@@ -52,35 +47,40 @@ interface ZoomKeyframeEditorProps {
   /** Current preview position (ms, source-relative) -- "Add keyframe here" targets this. */
   currentTimeMs: number;
   /** Recording's native resolution, when known -- lets position be edited in exact source pixels rather than only percent. */
-  sourceResolution: { width: number; height: number } | null;
+  sourceResolution: SourceResolution | null;
 }
 
 /** A number input that only commits on blur/Enter, so mid-typing states (e.g. an empty field) don't get clamped away as you type. */
 function CoordinateInput({
+  prefix,
   value,
   max,
   onCommit
 }: {
+  prefix: string;
   value: number;
   max: number;
   onCommit: (value: number) => void;
 }): JSX.Element {
   return (
-    <input
-      type="number"
-      min={0}
-      max={max}
-      defaultValue={value}
-      key={value}
-      onBlur={(e) => {
-        const next = Number(e.target.value);
-        if (Number.isFinite(next)) onCommit(Math.min(max, Math.max(0, Math.round(next))));
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-      }}
-      className="w-full rounded-md border border-line bg-transparent px-1.5 py-1 text-[11px] text-foreground outline-none focus:border-accent"
-    />
+    <span className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 focus-within:ring-1 focus-within:ring-accent">
+      <span className="text-[11px] text-muted-foreground">{prefix}</span>
+      <input
+        type="number"
+        min={0}
+        max={max}
+        defaultValue={value}
+        key={value}
+        onBlur={(e) => {
+          const next = Number(e.target.value);
+          if (Number.isFinite(next)) onCommit(Math.min(max, Math.max(0, Math.round(next))));
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        className="w-full min-w-0 bg-transparent text-[11px] text-foreground outline-none"
+      />
+    </span>
   );
 }
 
@@ -95,6 +95,7 @@ function KeyframeDetailPanel({
   kf,
   armedKeyframeId,
   sourceResolution,
+  sourceDurationMs,
   armPositioning,
   disarmPositioning,
   removeKeyframe,
@@ -102,11 +103,17 @@ function KeyframeDetailPanel({
 }: {
   kf: ZoomKeyframe;
   armedKeyframeId: string | null;
-  sourceResolution: { width: number; height: number } | null;
+  sourceResolution: SourceResolution | null;
+  /** The recording's own length -- a keyframe's duration can run right up to this (or the next keyframe, whichever's closer), not some arbitrary fixed cap. */
+  sourceDurationMs: number;
   armPositioning: (id: string) => void;
   disarmPositioning: () => void;
   removeKeyframe: (id: string) => void;
-  updateKeyframe: (id: string, patch: Partial<Omit<ZoomKeyframe, 'id'>>) => void;
+  updateKeyframe: (
+    id: string,
+    patch: Partial<Omit<ZoomKeyframe, 'id'>>,
+    sourceDurationMs?: number
+  ) => void;
 }): JSX.Element {
   const fixedPosition = kf.position === 'auto-cursor' ? null : kf.position;
   const pixelX =
@@ -117,7 +124,7 @@ function KeyframeDetailPanel({
       : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="font-mono text-xs text-muted-foreground">{formatTime(kf.atMs)}</span>
         <div className="flex items-center gap-1">
@@ -150,6 +157,7 @@ function KeyframeDetailPanel({
           <div className="flex items-center gap-2">
             <div className="grid flex-1 grid-cols-2 gap-1.5">
               <CoordinateInput
+                prefix="X"
                 value={pixelX ?? Math.round(fixedPosition.x * 100)}
                 max={sourceResolution ? sourceResolution.width : 100}
                 onCommit={(next) =>
@@ -162,6 +170,7 @@ function KeyframeDetailPanel({
                 }
               />
               <CoordinateInput
+                prefix="Y"
                 value={pixelY ?? Math.round(fixedPosition.y * 100)}
                 max={sourceResolution ? sourceResolution.height : 100}
                 onCommit={(next) =>
@@ -185,18 +194,11 @@ function KeyframeDetailPanel({
               Follow cursor
             </button>
           </div>
-          <p className="text-[10px] leading-snug text-muted-foreground/70">
-            Exact point the zoom centers on, instead of following the recorded cursor.
-          </p>
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        <SliderField
-          label="Zoom level"
-          valueLabel={`${kf.depth.toFixed(1)}×`}
-          description="How far the view scales in at full zoom."
-        >
+      <div className="flex flex-col gap-2">
+        <SliderField label="Zoom level" valueLabel={`${kf.depth.toFixed(1)}×`}>
           <Slider
             value={kf.depth}
             min={1}
@@ -206,24 +208,19 @@ function KeyframeDetailPanel({
           />
         </SliderField>
 
-        <SliderField
-          label="Duration"
-          valueLabel={`${(kf.durationMs / 1000).toFixed(1)}s`}
-          description="Total time this keyframe is active, in and out included."
-        >
+        <SliderField label="Duration" valueLabel={`${(kf.durationMs / 1000).toFixed(1)}s`}>
           <Slider
             value={kf.durationMs}
             min={ZOOM_MIN_DURATION_MS}
-            max={ZOOM_MAX_DURATION_MS}
+            max={Math.max(ZOOM_MIN_DURATION_MS, sourceDurationMs - kf.atMs)}
             step={50}
-            onChange={(durationMs) => updateKeyframe(kf.id, { durationMs })}
+            onChange={(durationMs) => updateKeyframe(kf.id, { durationMs }, sourceDurationMs)}
           />
         </SliderField>
 
         <SliderField
           label="Hold transition"
           valueLabel={`${(kf.holdTransitionMs / 1000).toFixed(2)}s`}
-          description="Time easing in and out; the rest holds at full zoom."
         >
           <Slider
             value={kf.holdTransitionMs}
@@ -236,9 +233,7 @@ function KeyframeDetailPanel({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Easing
-        </span>
+        <span className="text-[10px] font-medium text-muted-foreground">Easing</span>
         <div className="flex gap-1">
           {EASINGS.map((easing) => (
             <button
@@ -255,9 +250,6 @@ function KeyframeDetailPanel({
             </button>
           ))}
         </div>
-        <p className="text-[10px] leading-snug text-muted-foreground/70">
-          Curve the zoom follows in and out.
-        </p>
       </div>
     </div>
   );
@@ -280,6 +272,7 @@ export function ZoomKeyframeEditor({
     disarmPositioning,
     setSelectedKeyframeId
   } = useZoomStore();
+  const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   const sorted = [...keyframes].sort((a, b) => a.atMs - b.atMs);
   const selected = sorted.find((k) => k.id === selectedKeyframeId) ?? null;
 
@@ -294,11 +287,9 @@ export function ZoomKeyframeEditor({
   }, [selectedKeyframeId]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Zoom mode
-        </span>
+        <span className="text-xs font-medium text-muted-foreground">Zoom mode</span>
         <div className="grid grid-cols-2 gap-2">
           {(['auto', 'manual'] as const).map((option) => (
             <button
@@ -315,17 +306,12 @@ export function ZoomKeyframeEditor({
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground/70">
-          {mode === 'auto'
-            ? 'Zoom windows trigger on real clicks recorded during capture, and follow the recorded cursor path for the duration of each zoom.'
-            : 'Add keyframes manually at the point you’re currently previewing.'}
-        </p>
       </div>
 
       <Button
         variant="secondary"
         onClick={() => {
-          const id = addKeyframe(currentTimeMs);
+          const id = addKeyframe(currentTimeMs, sourceDurationMs);
           armPositioning(id);
           setSelectedKeyframeId(id);
         }}
@@ -356,6 +342,7 @@ export function ZoomKeyframeEditor({
             kf={selected}
             armedKeyframeId={armedKeyframeId}
             sourceResolution={sourceResolution}
+            sourceDurationMs={sourceDurationMs}
             armPositioning={armPositioning}
             disarmPositioning={disarmPositioning}
             removeKeyframe={removeKeyframe}

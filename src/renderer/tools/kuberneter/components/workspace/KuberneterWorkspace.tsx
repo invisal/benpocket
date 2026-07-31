@@ -1,5 +1,4 @@
 import type React from 'react';
-import { useWorkspaceResources } from '../../hooks/useWorkspaceResources';
 import { ClusterOverview } from './cluster-overview/ClusterOverview';
 import { Pods } from './pods/Pods';
 import { Deployments } from './deployments/Deployments';
@@ -33,8 +32,9 @@ import { Endpoints } from './endpoints/Endpoints';
 import { Ingresses } from './ingresses/Ingresses';
 import { IngressClasses } from './ingressclasses/IngressClasses';
 import { NetworkPolicies } from './networkpolicies/NetworkPolicies';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../store/kuberneter.store';
 import { DetailContent } from './details/DetailContent';
 import { HelmCharts } from './helm-charts/HelmCharts';
 import { HelmReleases } from './helm-releases/HelmReleases';
@@ -44,6 +44,7 @@ import { Roles } from './roles/Roles';
 import { ClusterRoleBindings } from './clusterrolebindings/ClusterRoleBindings';
 import { RoleBindings } from './rolebindings/RoleBindings';
 import { PortForwarding } from './portforwarding/PortForwarding';
+import { KuberneterSettings } from './settings/KuberneterSettings';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -55,48 +56,18 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
   const { openTabs, activeTabId } = useLayoutStore();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
-  const {
-    kuberneterSelectedCluster,
-    kuberneterSelectedNamespace,
-    podsData,
-    deploysData,
-    daemonSetsData,
-    statefulSetsData,
-    replicaSetsData,
-    jobsData,
-    cronJobsData,
-    servicesData,
-    configMapsData,
-    secretsData,
-    resourceQuotasData,
-    limitRangesData,
-    hpasData,
-    pdbsData,
-    priorityClassesData,
-    runtimeClassesData,
-    leasesData,
-    mutatingWebhooksData,
-    validatingWebhooksData,
-    applicationsData,
-    nodesData,
-    endpointSlicesData,
-    endpointsData,
-    ingressesData,
-    ingressClassesData,
-    networkPoliciesData,
-    pvcsData,
-    pvsData,
-    storageClassesData,
-    namespacesData,
-    eventsData,
-    serviceAccountsData,
-    clusterRolesData,
-    rolesData,
-    clusterRoleBindingsData,
-    roleBindingsData,
-    isLoading,
-    errorMsg
-  } = useWorkspaceResources(resource);
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const kuberneterSelectedCluster = useKuberneterStore(
+    (s) => s.kuberneterInstanceCluster[activeInstanceId] || ''
+  );
+  const kuberneterSelectedNamespace = useKuberneterStore(
+    (s) => s.kuberneterInstanceNamespace[activeInstanceId] || 'All Namespaces'
+  );
+
+  // Settings page works without a cluster connection
+  if (resource === 'settings') {
+    return <KuberneterSettings />;
+  }
 
   // If there's no connected cluster
   if (!kuberneterSelectedCluster) {
@@ -113,238 +84,135 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0">
-      {isLoading && (
-        <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
-          <Loader2 className="size-6 text-accent animate-spin" />
-          <p className="text-[10px] text-zinc-500">Querying live Kubernetes cluster resources...</p>
+      {resource.endsWith('-detail') && activeTab && (
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-surface p-4 overflow-y-auto">
+          <DetailContent
+            contentType={resource.replace('-detail', '')}
+            payload={(activeTab.meta as { payload?: unknown })?.payload}
+            isTab
+          />
         </div>
       )}
 
-      {errorMsg && !isLoading && (
-        <div className="shrink-0 flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
-          <AlertCircle className="size-4.5 shrink-0 mt-0.5" />
-          <div className="font-semibold break-all">
-            <p>Error running kubectl command:</p>
-            <p className="font-normal text-zinc-400 mt-1 font-mono text-[10px] bg-black/20 p-2 rounded border border-border-dark/30">
-              {errorMsg}
-            </p>
-          </div>
-        </div>
+      {resource === 'overview' && <ClusterOverview />}
+
+      {resource === 'workloads-overview' && <WorkloadOverview />}
+
+      {resource === 'pods' && <Pods kuberneterSelectedNamespace={kuberneterSelectedNamespace} />}
+
+      {resource === 'deployments' && (
+        <Deployments kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
       )}
 
-      {!isLoading && !errorMsg && (
-        <>
-          {resource.endsWith('-detail') && activeTab && (
-            <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-surface p-4 overflow-y-auto">
-              <DetailContent
-                contentType={resource.replace('-detail', '')}
-                payload={(activeTab.meta as { payload?: unknown })?.payload}
-                isTab
-              />
-            </div>
-          )}
-
-          {resource === 'overview' && <ClusterOverview />}
-
-          {resource === 'workloads-overview' && <WorkloadOverview />}
-
-          {resource === 'pods' && (
-            <Pods podsData={podsData} kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
-          )}
-
-          {resource === 'deployments' && (
-            <Deployments
-              deploysData={deploysData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'daemonsets' && (
-            <DaemonSets
-              daemonSetsData={daemonSetsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'statefulsets' && (
-            <StatefulSets
-              statefulSetsData={statefulSetsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'replicasets' && (
-            <ReplicaSets
-              replicaSetsData={replicaSetsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'jobs' && (
-            <Jobs jobsData={jobsData} kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
-          )}
-
-          {resource === 'cronjobs' && (
-            <CronJobs
-              cronJobsData={cronJobsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'services' && (
-            <Services
-              servicesData={servicesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'pvcs' && (
-            <PersistentVolumeClaims
-              pvcsData={pvcsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'pvs' && <PersistentVolumes pvsData={pvsData} />}
-
-          {resource === 'storageclasses' && (
-            <StorageClasses storageClassesData={storageClassesData} />
-          )}
-
-          {resource === 'namespaces' && <Namespaces namespacesData={namespacesData} />}
-
-          {resource === 'events' && <Events eventsData={eventsData} />}
-
-          {resource === 'endpointslices' && (
-            <EndpointSlices
-              endpointSlicesData={endpointSlicesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'endpoints' && (
-            <Endpoints
-              endpointsData={endpointsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'ingresses' && (
-            <Ingresses
-              ingressesData={ingressesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'ingressclasses' && (
-            <IngressClasses ingressClassesData={ingressClassesData} />
-          )}
-
-          {resource === 'networkpolicies' && (
-            <NetworkPolicies
-              networkPoliciesData={networkPoliciesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'configmaps' && (
-            <ConfigMaps
-              configMapsData={configMapsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'secrets' && (
-            <Secrets
-              secretsData={secretsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'resourcequotas' && (
-            <ResourceQuotas
-              resourceQuotasData={resourceQuotasData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'limitranges' && (
-            <LimitRanges
-              limitRangesData={limitRangesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'hpas' && (
-            <HorizontalPodAutoscalers
-              hpasData={hpasData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'pdbs' && (
-            <PodDisruptionBudgets
-              pdbsData={pdbsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'priorityclasses' && (
-            <PriorityClasses priorityClassesData={priorityClassesData} />
-          )}
-
-          {resource === 'runtimeclasses' && (
-            <RuntimeClasses runtimeClassesData={runtimeClassesData} />
-          )}
-
-          {resource === 'leases' && (
-            <Leases
-              leasesData={leasesData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'mutatingwebhooks' && (
-            <MutatingWebhooks mutatingWebhooksData={mutatingWebhooksData} />
-          )}
-
-          {resource === 'validatingwebhooks' && (
-            <ValidatingWebhooks validatingWebhooksData={validatingWebhooksData} />
-          )}
-
-          {resource === 'apps' && (
-            <Application
-              applicationsData={applicationsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'helm-charts' && <HelmCharts />}
-
-          {resource === 'helm-releases' && <HelmReleases />}
-
-          {resource === 'serviceaccounts' && (
-            <ServiceAccounts
-              serviceAccountsData={serviceAccountsData}
-              kuberneterSelectedNamespace={kuberneterSelectedNamespace}
-            />
-          )}
-
-          {resource === 'clusterroles' && <ClusterRoles clusterRolesData={clusterRolesData} />}
-
-          {resource === 'roles' && <Roles rolesData={rolesData} />}
-
-          {resource === 'clusterrolebindings' && (
-            <ClusterRoleBindings clusterRoleBindingsData={clusterRoleBindingsData} />
-          )}
-
-          {resource === 'bindings' && <RoleBindings roleBindingsData={roleBindingsData} />}
-
-          {resource === 'nodes' && <Nodes nodesData={nodesData} />}
-
-          {resource === 'portforwarding' && <PortForwarding />}
-        </>
+      {resource === 'daemonsets' && (
+        <DaemonSets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
       )}
+
+      {resource === 'statefulsets' && (
+        <StatefulSets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'replicasets' && (
+        <ReplicaSets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'jobs' && <Jobs kuberneterSelectedNamespace={kuberneterSelectedNamespace} />}
+
+      {resource === 'cronjobs' && (
+        <CronJobs kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'services' && (
+        <Services kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'pvcs' && (
+        <PersistentVolumeClaims kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'pvs' && <PersistentVolumes />}
+
+      {resource === 'storageclasses' && <StorageClasses />}
+
+      {resource === 'namespaces' && <Namespaces />}
+
+      {resource === 'events' && <Events />}
+
+      {resource === 'endpointslices' && (
+        <EndpointSlices kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'endpoints' && (
+        <Endpoints kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'ingresses' && (
+        <Ingresses kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'ingressclasses' && <IngressClasses />}
+
+      {resource === 'networkpolicies' && (
+        <NetworkPolicies kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'configmaps' && (
+        <ConfigMaps kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'secrets' && (
+        <Secrets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'resourcequotas' && (
+        <ResourceQuotas kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'limitranges' && (
+        <LimitRanges kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'hpas' && (
+        <HorizontalPodAutoscalers kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'pdbs' && (
+        <PodDisruptionBudgets kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'priorityclasses' && <PriorityClasses />}
+
+      {resource === 'runtimeclasses' && <RuntimeClasses />}
+
+      {resource === 'leases' && (
+        <Leases kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'mutatingwebhooks' && <MutatingWebhooks />}
+
+      {resource === 'validatingwebhooks' && <ValidatingWebhooks />}
+
+      {resource === 'apps' && (
+        <Application kuberneterSelectedNamespace={kuberneterSelectedNamespace} />
+      )}
+
+      {resource === 'helm-charts' && <HelmCharts />}
+
+      {resource === 'helm-releases' && <HelmReleases />}
+
+      {resource === 'serviceaccounts' && <ServiceAccounts />}
+
+      {resource === 'clusterroles' && <ClusterRoles />}
+
+      {resource === 'roles' && <Roles />}
+
+      {resource === 'clusterrolebindings' && <ClusterRoleBindings />}
+
+      {resource === 'bindings' && <RoleBindings />}
+
+      {resource === 'nodes' && <Nodes />}
+
+      {resource === 'portforwarding' && <PortForwarding />}
     </div>
   );
 };

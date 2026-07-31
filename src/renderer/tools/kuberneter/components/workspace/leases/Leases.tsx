@@ -6,13 +6,16 @@ import { LeasesTable } from './LeasesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useLeases } from '../../../hooks/useLeases';
 
 interface LeasesProps {
-  leasesData: LeaseData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Leases: React.FC<LeasesProps> = ({ leasesData, kuberneterSelectedNamespace }) => {
+export const Leases: React.FC<LeasesProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: leasesData, isLoading, errorMsg } = useLeases(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -123,29 +126,31 @@ export const Leases: React.FC<LeasesProps> = ({ leasesData, kuberneterSelectedNa
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <LeasesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <LeasesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <LeasesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectLease={handleSelectLease}
+          selectedLeaseId={selectedLeaseId}
         />
-      }
-    >
-      <LeasesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectLease={handleSelectLease}
-        selectedLeaseId={selectedLeaseId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

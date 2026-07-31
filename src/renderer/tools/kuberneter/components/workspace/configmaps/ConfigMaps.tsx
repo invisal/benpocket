@@ -6,16 +6,16 @@ import { ConfigMapsTable } from './ConfigMapsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useConfigMaps } from '../../../hooks/useConfigMaps';
 
 interface ConfigMapsProps {
-  configMapsData: ConfigMapData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const ConfigMaps: React.FC<ConfigMapsProps> = ({
-  configMapsData,
-  kuberneterSelectedNamespace
-}) => {
+export const ConfigMaps: React.FC<ConfigMapsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: configMapsData, isLoading, errorMsg } = useConfigMaps(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -119,29 +119,31 @@ export const ConfigMaps: React.FC<ConfigMapsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <ConfigMapsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <ConfigMapsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <ConfigMapsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectConfigMap={handleSelectConfigMap}
+          selectedConfigMapId={selectedConfigMapId}
         />
-      }
-    >
-      <ConfigMapsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectConfigMap={handleSelectConfigMap}
-        selectedConfigMapId={selectedConfigMapId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

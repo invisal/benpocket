@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import {
   type ServiceData,
   type ServiceEndpointSlice,
@@ -219,8 +220,8 @@ export function useServices(enabled: boolean) {
     () => async (configPath: string | undefined, cluster: string, ns: string) => {
       try {
         const [endpointsRes, endpointSlicesRes] = await Promise.all([
-          window.kuberneter.getResources(configPath, cluster, 'endpoints', ns),
-          window.kuberneter.getResources(configPath, cluster, 'endpointslices', ns)
+          window.kuberneter.getResources(configPath, cluster, K8S_RESOURCE_KEYS.ENDPOINTS, ns),
+          window.kuberneter.getResources(configPath, cluster, K8S_RESOURCE_KEYS.ENDPOINT_SLICES, ns)
         ]);
         return {
           endpoints: endpointsRes?.items || [],
@@ -234,5 +235,5 @@ export function useServices(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ServiceData>('services', transform, enabled, fetchExtraData);
+  return useKubeQuery<ServiceData>(K8S_RESOURCE_KEYS.SERVICES, transform, enabled, fetchExtraData);
 }

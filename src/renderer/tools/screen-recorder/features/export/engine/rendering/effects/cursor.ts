@@ -14,6 +14,19 @@ const CURSOR_PATH: [number, number][] = [
 /** Local-space pivot (the glyph's tip) that click-bounce scales around, same as frame-compositor.ts's `drawCursorIcon`. */
 const TIP: [number, number] = [5, 3];
 
+/** Expanding, fading ring for the click-ripple effect -- see resolveClickRipple in cursor-path.ts. Drawn stroked-only (not filled) so it reads as a ring emanating outward, not a solid dot. */
+function drawClickRippleInto(
+  g: Graphics,
+  x: number,
+  y: number,
+  radiusPx: number,
+  color: string,
+  alpha: number
+): void {
+  if (radiusPx <= 0 || alpha <= 0) return;
+  g.circle(x, y, radiusPx).stroke({ color, width: Math.max(1.5, radiusPx * 0.08), alpha });
+}
+
 function drawCursorIconInto(
   g: Graphics,
   x: number,
@@ -70,6 +83,17 @@ export class CursorEffect {
       this.container.mask = this.maskGraphics;
     } else {
       this.container.mask = null;
+    }
+
+    if (cursor.ripple) {
+      drawClickRippleInto(
+        this.graphics,
+        cursor.ripple.posPx.x,
+        cursor.ripple.posPx.y,
+        cursor.ripple.radiusPx,
+        cursor.fill,
+        cursor.ripple.alpha
+      );
     }
 
     for (const ghost of cursor.ghosts) {

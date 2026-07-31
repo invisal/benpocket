@@ -6,13 +6,16 @@ import { SecretsTable } from './SecretsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useSecrets } from '../../../hooks/useSecrets';
 
 interface SecretsProps {
-  secretsData: SecretData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Secrets: React.FC<SecretsProps> = ({ secretsData, kuberneterSelectedNamespace }) => {
+export const Secrets: React.FC<SecretsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: secretsData, isLoading, errorMsg } = useSecrets(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -128,29 +131,31 @@ export const Secrets: React.FC<SecretsProps> = ({ secretsData, kuberneterSelecte
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <SecretsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <SecretsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <SecretsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectSecret={handleSelectSecret}
+          selectedSecretId={selectedSecretId}
         />
-      }
-    >
-      <SecretsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectSecret={handleSelectSecret}
-        selectedSecretId={selectedSecretId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

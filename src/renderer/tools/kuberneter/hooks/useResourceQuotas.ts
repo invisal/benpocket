@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type ResourceQuotaData } from '../types/ResourceQuotaData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -51,5 +52,5 @@ export function useResourceQuotas(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ResourceQuotaData>('resourcequotas', transform, enabled);
+  return useKubeQuery<ResourceQuotaData>(K8S_RESOURCE_KEYS.RESOURCE_QUOTAS, transform, enabled);
 }

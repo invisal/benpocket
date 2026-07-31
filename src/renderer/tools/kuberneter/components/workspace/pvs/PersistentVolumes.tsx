@@ -6,12 +6,12 @@ import { PersistentVolumesTable } from './PersistentVolumesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { usePersistentVolumes } from '../../../hooks/usePersistentVolumes';
 
-interface PersistentVolumesProps {
-  pvsData: PersistentVolumeData[];
-}
+export const PersistentVolumes: React.FC = () => {
+  const { data: pvsData, isLoading, errorMsg } = usePersistentVolumes(true);
 
-export const PersistentVolumes: React.FC<PersistentVolumesProps> = ({ pvsData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -124,29 +124,31 @@ export const PersistentVolumes: React.FC<PersistentVolumesProps> = ({ pvsData })
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <PersistentVolumesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <PersistentVolumesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <PersistentVolumesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectPv={handleSelectPv}
+          selectedPvId={selectedPvId}
         />
-      }
-    >
-      <PersistentVolumesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectPv={handleSelectPv}
-        selectedPvId={selectedPvId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

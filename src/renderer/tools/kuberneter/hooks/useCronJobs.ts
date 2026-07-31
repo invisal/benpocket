@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type CronJobData } from '../types/CronJobData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -40,5 +41,5 @@ export function useCronJobs(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<CronJobData>('cronjobs', transform, enabled);
+  return useKubeQuery<CronJobData>(K8S_RESOURCE_KEYS.CRON_JOBS, transform, enabled);
 }

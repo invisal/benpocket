@@ -6,12 +6,12 @@ import { RuntimeClassesTable } from './RuntimeClassesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useRuntimeClasses } from '../../../hooks/useRuntimeClasses';
 
-interface RuntimeClassesProps {
-  runtimeClassesData: RuntimeClassData[];
-}
+export const RuntimeClasses: React.FC = () => {
+  const { data: runtimeClassesData, isLoading, errorMsg } = useRuntimeClasses(true);
 
-export const RuntimeClasses: React.FC<RuntimeClassesProps> = ({ runtimeClassesData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -114,29 +114,31 @@ export const RuntimeClasses: React.FC<RuntimeClassesProps> = ({ runtimeClassesDa
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <RuntimeClassesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <RuntimeClassesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <RuntimeClassesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectRuntimeClass={handleSelectRuntimeClass}
+          selectedRuntimeClassId={selectedRuntimeClassId}
         />
-      }
-    >
-      <RuntimeClassesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectRuntimeClass={handleSelectRuntimeClass}
-        selectedRuntimeClassId={selectedRuntimeClassId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

@@ -6,16 +6,16 @@ import { DeploymentsTable } from './DeploymentsTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useDeployments } from '../../../hooks/useDeployments';
 
 interface DeploymentsProps {
-  deploysData: DeployData[];
   kuberneterSelectedNamespace: string;
 }
 
-export const Deployments: React.FC<DeploymentsProps> = ({
-  deploysData,
-  kuberneterSelectedNamespace
-}) => {
+export const Deployments: React.FC<DeploymentsProps> = ({ kuberneterSelectedNamespace }) => {
+  const { data: deploysData, isLoading, errorMsg } = useDeployments(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -132,29 +132,31 @@ export const Deployments: React.FC<DeploymentsProps> = ({
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <DeploymentsToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <DeploymentsToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <DeploymentsTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectDeploy={handleSelectDeploy}
+          selectedDeployId={selectedDeployId}
         />
-      }
-    >
-      <DeploymentsTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectDeploy={handleSelectDeploy}
-        selectedDeployId={selectedDeployId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

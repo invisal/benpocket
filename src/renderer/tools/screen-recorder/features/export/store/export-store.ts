@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { AspectRatio, ExportCodec, ExportFormat } from '@screen-recorder/types/export';
 import { EXPORT_PRESETS } from '../presets';
 
@@ -59,51 +60,75 @@ interface ExportStoreState {
   setIsExporting: (isExporting: boolean) => void;
 }
 
-export const useExportStore = create<ExportStoreState>((set) => ({
-  presetId: defaultPreset.id,
-  format: defaultPreset.format,
-  codec: defaultPreset.codec,
-  aspectRatio: '16:9',
-  resolution: { width: defaultPreset.resolution.width, height: defaultPreset.resolution.height },
-  frameRate: defaultPreset.frameRate,
-  quality: defaultPreset.quality,
-  includeAudio: true,
-  isExporting: false,
-  setPreset: (presetId) => {
-    const preset = EXPORT_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    set((state) => ({
-      presetId,
-      format: preset.format,
-      codec: preset.codec,
-      resolution: resolveResolution(preset.resolution.width, state.aspectRatio),
-      frameRate: preset.frameRate,
-      quality: preset.quality
-    }));
-  },
-  // Any manual tweak after picking a preset detaches from that preset (falls
-  // back to "Custom") so the UI doesn't show a preset selected that no
-  // longer matches the actual settings.
-  setFormat: (format) => set({ format, presetId: 'custom' }),
-  setCodec: (codec) => set({ codec, presetId: 'custom' }),
-  setAspectRatio: (aspectRatio) =>
-    set((state) => ({
-      aspectRatio,
-      resolution: resolveResolution(
-        Math.max(state.resolution.width, state.resolution.height),
-        aspectRatio
-      )
-    })),
-  setResolution: (resolution) =>
-    set((state) => ({
-      resolution: resolveResolution(
-        Math.max(resolution.width, resolution.height),
-        state.aspectRatio
-      ),
-      presetId: 'custom'
-    })),
-  setFrameRate: (frameRate) => set({ frameRate, presetId: 'custom' }),
-  setQuality: (quality) => set({ quality, presetId: 'custom' }),
-  setIncludeAudio: (includeAudio) => set({ includeAudio }),
-  setIsExporting: (isExporting) => set({ isExporting })
-}));
+export const useExportStore = create<ExportStoreState>()(
+  persist(
+    (set) => ({
+      presetId: defaultPreset.id,
+      format: defaultPreset.format,
+      codec: defaultPreset.codec,
+      aspectRatio: '16:9',
+      resolution: {
+        width: defaultPreset.resolution.width,
+        height: defaultPreset.resolution.height
+      },
+      frameRate: defaultPreset.frameRate,
+      quality: defaultPreset.quality,
+      includeAudio: true,
+      isExporting: false,
+      setPreset: (presetId) => {
+        const preset = EXPORT_PRESETS.find((p) => p.id === presetId);
+        if (!preset) return;
+        set((state) => ({
+          presetId,
+          format: preset.format,
+          codec: preset.codec,
+          resolution: resolveResolution(preset.resolution.width, state.aspectRatio),
+          frameRate: preset.frameRate,
+          quality: preset.quality
+        }));
+      },
+      // Any manual tweak after picking a preset detaches from that preset
+      // (falls back to "Custom") so the UI doesn't show a preset selected
+      // that no longer matches the actual settings.
+      setFormat: (format) => set({ format, presetId: 'custom' }),
+      setCodec: (codec) => set({ codec, presetId: 'custom' }),
+      setAspectRatio: (aspectRatio) =>
+        set((state) => ({
+          aspectRatio,
+          resolution: resolveResolution(
+            Math.max(state.resolution.width, state.resolution.height),
+            aspectRatio
+          )
+        })),
+      setResolution: (resolution) =>
+        set((state) => ({
+          resolution: resolveResolution(
+            Math.max(resolution.width, resolution.height),
+            state.aspectRatio
+          ),
+          presetId: 'custom'
+        })),
+      setFrameRate: (frameRate) => set({ frameRate, presetId: 'custom' }),
+      setQuality: (quality) => set({ quality, presetId: 'custom' }),
+      setIncludeAudio: (includeAudio) => set({ includeAudio }),
+      setIsExporting: (isExporting) => set({ isExporting })
+    }),
+    {
+      name: 'craftbox-screen-recorder-export-settings',
+      // Everything except the transient in-progress flag is a persistent
+      // default for the next export -- including manual tweaks (a detached
+      // "Custom" configuration should survive a restart just as much as a
+      // picked preset does).
+      partialize: (state) => ({
+        presetId: state.presetId,
+        format: state.format,
+        codec: state.codec,
+        aspectRatio: state.aspectRatio,
+        resolution: state.resolution,
+        frameRate: state.frameRate,
+        quality: state.quality,
+        includeAudio: state.includeAudio
+      })
+    }
+  )
+);

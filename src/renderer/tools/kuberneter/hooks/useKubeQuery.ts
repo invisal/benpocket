@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore } from '../store/kuberneter.store';
 import { type K8sResource } from '../types/K8sResource';
+import { useKubeWatch } from './useKubeWatch';
 
 export function useKubeQuery<T>(
   queryResource: string,
@@ -23,131 +24,94 @@ export function useKubeQuery<T>(
     (s) => s.kuberneterInstanceRefreshInterval[activeInstanceId] || '60s'
   );
 
-  const [data, setData] = useState<T[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const isWatchActive = enabled && !!kuberneterSelectedCluster;
 
-  const transformRef = useRef(transform);
-  const fetchExtraRef = useRef(fetchExtraData);
+  // Subscribe to real-time watch push events for active workspace resource queries
+  useKubeWatch(queryResource, isWatchActive);
 
-  useEffect(() => {
-    transformRef.current = transform;
-    fetchExtraRef.current = fetchExtraData;
-  }, [transform, fetchExtraData]);
+  const intervalMap: Record<string, number> = {
+    '5s': 5000,
+    '10s': 10000,
+    '30s': 30000,
+    '60s': 60000
+  };
 
-  const fetchResources = useCallback(
-    async (isBackground = false) => {
-      if (!enabled || !kuberneterSelectedCluster) return;
+  // Suppress periodic polling when real-time watch push is actively running;
+  // fall back to configured refreshInterval if watch is inactive
+  const refetchInterval = isWatchActive
+    ? false
+    : refreshInterval === 'off'
+      ? false
+      : (intervalMap[refreshInterval] ?? 60000);
 
-      if (!isBackground) {
-        setIsLoading(true);
-        setErrorMsg(null);
-      }
-
-      try {
-        const configPathArg = activeConfigPath === 'default' ? undefined : activeConfigPath;
-
-        const [res, extraData] = await Promise.all([
-          window.kuberneter.getResources(
-            configPathArg,
-            kuberneterSelectedCluster,
-            queryResource,
-            kuberneterSelectedNamespace
-          ),
-          fetchExtraRef.current
-            ? fetchExtraRef.current(
-                configPathArg,
-                kuberneterSelectedCluster,
-                kuberneterSelectedNamespace
-              )
-            : Promise.resolve(undefined)
-        ]);
-
-        if (res && res.error) {
-          setErrorMsg(res.error);
-          return;
-        }
-
-        const rawItems = (res?.items as K8sResource[]) || [];
-        const transformed = await transformRef.current(rawItems, extraData);
-        const enriched = transformed.map((tObj: unknown) => {
-          if (tObj && typeof tObj === 'object') {
-            const obj = tObj as Record<string, unknown>;
-            const name = obj['name'] as string | undefined;
-            const ns = (obj['ns'] || obj['namespace']) as string | undefined;
-            let matchedRaw: K8sResource | undefined;
-            if (name) {
-              matchedRaw = rawItems.find(
-                (raw) => raw.metadata?.name === name && (!ns || raw.metadata?.namespace === ns)
-              );
-            }
-            return {
-              ...obj,
-              creationTimestamp:
-                (obj['creationTimestamp'] as string) ||
-                matchedRaw?.metadata?.creationTimestamp ||
-                '',
-              createdTime:
-                (obj['createdTime'] as string) ||
-                (matchedRaw?.metadata?.creationTimestamp
-                  ? new Date(matchedRaw.metadata.creationTimestamp).toLocaleString()
-                  : '')
-            };
-          }
-          return tObj;
-        }) as unknown as T[];
-        setData(enriched);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (!isBackground) {
-          setErrorMsg(msg || 'Failed to fetch cluster resources.');
-        } else {
-          console.warn('Background fetch failed:', msg);
-        }
-      } finally {
-        if (!isBackground) {
-          setIsLoading(false);
-        }
-      }
-    },
-    [
-      enabled,
-      kuberneterSelectedCluster,
+  const query = useQuery<T[]>({
+    queryKey: [
+      'kuberneter',
+      'resource',
       activeConfigPath,
+      kuberneterSelectedCluster,
       queryResource,
       kuberneterSelectedNamespace
-    ]
-  );
+    ],
+    queryFn: async () => {
+      const configPathArg = activeConfigPath === 'default' ? undefined : activeConfigPath;
 
-  useEffect(() => {
-    if (enabled) {
-      queueMicrotask(() => fetchResources(false));
-    }
-  }, [fetchResources, enabled]);
+      const [res, extraData] = await Promise.all([
+        window.kuberneter.getResources(
+          configPathArg,
+          kuberneterSelectedCluster,
+          queryResource,
+          kuberneterSelectedNamespace
+        ),
+        fetchExtraData
+          ? fetchExtraData(configPathArg, kuberneterSelectedCluster, kuberneterSelectedNamespace)
+          : Promise.resolve(undefined)
+      ]);
 
-  useEffect(() => {
-    if (!enabled || refreshInterval === 'off' || !kuberneterSelectedCluster) return;
+      if (res && res.error) {
+        throw new Error(res.error);
+      }
 
-    const intervalMap: Record<string, number> = {
-      '5s': 5000,
-      '10s': 10000,
-      '30s': 30000,
-      '60s': 60000
-    };
+      const rawItems = (res?.items as K8sResource[]) || [];
+      const transformed = await transform(rawItems, extraData);
+      const enriched = transformed.map((tObj: unknown) => {
+        if (tObj && typeof tObj === 'object') {
+          const obj = tObj as Record<string, unknown>;
+          const name = obj['name'] as string | undefined;
+          const ns = (obj['ns'] || obj['namespace']) as string | undefined;
+          let matchedRaw: K8sResource | undefined;
+          if (name) {
+            matchedRaw = rawItems.find(
+              (raw) => raw.metadata?.name === name && (!ns || raw.metadata?.namespace === ns)
+            );
+          }
+          return {
+            ...obj,
+            creationTimestamp:
+              (obj['creationTimestamp'] as string) || matchedRaw?.metadata?.creationTimestamp || '',
+            createdTime:
+              (obj['createdTime'] as string) ||
+              (matchedRaw?.metadata?.creationTimestamp
+                ? new Date(matchedRaw.metadata.creationTimestamp).toLocaleString()
+                : '')
+          };
+        }
+        return tObj;
+      }) as unknown as T[];
 
-    const ms = intervalMap[refreshInterval] || 60000;
-    const timer = setInterval(() => {
-      fetchResources(true);
-    }, ms);
-
-    return () => clearInterval(timer);
-  }, [fetchResources, enabled, kuberneterSelectedCluster, refreshInterval]);
+      return enriched;
+    },
+    enabled: enabled && !!kuberneterSelectedCluster,
+    refetchInterval,
+    placeholderData: keepPreviousData
+  });
 
   return {
-    data,
-    isLoading,
-    errorMsg,
+    data: query.data ?? [],
+    isLoading: query.isLoading,
+    errorMsg: query.error ? (query.error as Error).message : null,
     kuberneterSelectedCluster,
-    kuberneterSelectedNamespace
+    kuberneterSelectedNamespace,
+    refetch: query.refetch
   };
 }

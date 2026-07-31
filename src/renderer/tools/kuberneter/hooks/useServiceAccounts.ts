@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type ServiceAccountData } from '../types/ServiceAccountData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -41,5 +42,5 @@ export function useServiceAccounts(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<ServiceAccountData>('serviceaccounts', transform, enabled);
+  return useKubeQuery<ServiceAccountData>(K8S_RESOURCE_KEYS.SERVICE_ACCOUNTS, transform, enabled);
 }

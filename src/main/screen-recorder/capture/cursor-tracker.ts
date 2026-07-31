@@ -20,11 +20,13 @@ export interface CursorTrackerBounds {
  */
 export class CursorTracker {
   private timer: NodeJS.Timeout | null = null;
+  private bounds: CursorTrackerBounds = { x: 0, y: 0, width: 1, height: 1 };
   private sentCount = 0;
   private skippedOutOfBoundsCount = 0;
 
   start(webContents: WebContents, bounds: CursorTrackerBounds, startedAt: number): void {
     this.stop();
+    this.bounds = bounds;
     this.sentCount = 0;
     this.skippedOutOfBoundsCount = 0;
     console.log('[cursor-tracker] started, bounds:', bounds);
@@ -35,8 +37,8 @@ export class CursorTracker {
         return;
       }
       const point = screen.getCursorScreenPoint();
-      const x = (point.x - bounds.x) / bounds.width;
-      const y = (point.y - bounds.y) / bounds.height;
+      const x = (point.x - this.bounds.x) / this.bounds.width;
+      const y = (point.y - this.bounds.y) / this.bounds.height;
       // Skip samples while the cursor is outside the captured area rather
       // than clamping -- clamped edge points would otherwise drag the
       // smoothed path to the border every time the user's mouse leaves the
@@ -58,6 +60,11 @@ export class CursorTracker {
     }
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+  }
+
+  /** Re-bases normalization onto a freshly-queried rect -- see window-bounds-poller.ts. */
+  updateBounds(bounds: CursorTrackerBounds): void {
+    this.bounds = bounds;
   }
 }
 

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type PodDisruptionBudgetData } from '../types/PodDisruptionBudgetData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -61,5 +62,9 @@ export function usePdbs(enabled: boolean) {
     []
   );
 
-  return useKubeQuery<PodDisruptionBudgetData>('poddisruptionbudgets', transform, enabled);
+  return useKubeQuery<PodDisruptionBudgetData>(
+    K8S_RESOURCE_KEYS.POD_DISRUPTION_BUDGETS,
+    transform,
+    enabled
+  );
 }

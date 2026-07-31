@@ -1,94 +1,144 @@
-import type { ComponentType, JSX } from 'react';
-import { FolderOpen, Settings as SettingsIcon, Sliders } from 'lucide-react';
-import { useAppStore, type ScreenRecorderRoute } from './app/app-store';
+import type { JSX } from 'react';
+import { Activity, useState } from 'react';
+import { Flag, Loader2, Save } from 'lucide-react';
+import { useAppStore } from './app/app-store';
+import { useToastStore } from './app/toast-store';
 import { cn } from './lib/utils';
 import { EditorPage } from './workspace/editor/EditorPage';
 import { LibraryPage } from './workspace/library/LibraryPage';
-import { PresetsPage } from './workspace/presets/PresetsPage';
 import { SettingsPage } from './workspace/settings/SettingsPage';
 import { ScreenRecorderSidebar } from './sidebar/ScreenRecorderSidebar';
 import { CutTimeline } from './features/timeline/components/CutTimeline';
 import { RecordingControllerProvider } from './features/recording/context/RecordingControllerContext';
 import { RecorderToolbarBridge } from './features/recording/components/RecorderToolbarBridge';
-import { ExportPopoverButton } from './features/export/components/ExportPopoverButton';
-import { useExportStore } from './features/export/store/export-store';
+import { ExportDialogButton } from './features/export/components/ExportDialog';
+import { LaunchRecorderButton } from './features/recording/components/LaunchRecorderButton';
+import { SaveProjectDialog } from './features/project/components/SaveProjectDialog';
+import { buildProjectSnapshot } from './features/project/lib/build-project-snapshot';
+import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
+import { Button } from '@renderer/components/ui/Button';
+import { ToastViewport } from './components/ui/toast';
 
-const NAV_ITEMS: {
-  route: ScreenRecorderRoute;
-  label: string;
-  icon: ComponentType<{ size?: number }>;
-}[] = [
-  { route: 'library', label: 'Library', icon: FolderOpen },
-  { route: 'presets', label: 'Presets', icon: Sliders },
-  { route: 'settings', label: 'Settings', icon: SettingsIcon }
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 420;
+const routes = [
+  {
+    id: 'editor',
+    component: <EditorPage />
+  },
+  {
+    id: 'library',
+    component: <LibraryPage />
+  },
+  {
+    id: 'settings',
+    component: <SettingsPage />
+  }
 ];
-
 export function ScreenRecorderApp(): JSX.Element {
   const route = useAppStore((state) => state.route);
-  const setRoute = useAppStore((state) => state.setRoute);
+  const sidebarWidth = useAppStore((state) => state.sidebarWidth);
+  const setSidebarWidth = useAppStore((state) => state.setSidebarWidth);
   const lastRecording = useAppStore((state) => state.lastRecording);
-  const isExporting = useExportStore((state) => state.isExporting);
+  const currentProjectId = useAppStore((state) => state.currentProjectId);
+  const projectName = useAppStore((state) => state.projectName);
+  const setCurrentProjectId = useAppStore((state) => state.setCurrentProjectId);
+  const bumpProjectsVersion = useAppStore((state) => state.bumpProjectsVersion);
+  const showToast = useToastStore((state) => state.showToast);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [isQuickSaving, setIsQuickSaving] = useState(false);
 
-  function handleNavClick(itemRoute: ScreenRecorderRoute): void {
-    if (isExporting) return;
-    setRoute(itemRoute);
+  // A project that's already been named once (has a `currentProjectId`) just
+  // re-saves silently in place -- only the *first* save needs the dialog to
+  // ask for a name. Errors surface as a toast rather than a dialog since
+  // there's no form here to show a field-level error in.
+  async function handleSaveClick(): Promise<void> {
+    if (!currentProjectId) {
+      setIsSaveDialogOpen(true);
+      return;
+    }
+    const project = buildProjectSnapshot(projectName);
+    if (!project) return;
+    setIsQuickSaving(true);
+    try {
+      const ok = await window.screenRecorder.project.save(project);
+      if (ok) {
+        setCurrentProjectId(project.id);
+        bumpProjectsVersion();
+        showToast('Project saved');
+      } else {
+        showToast('Failed to save project', 'error');
+      }
+    } finally {
+      setIsQuickSaving(false);
+    }
   }
 
   return (
     <RecordingControllerProvider>
       <RecorderToolbarBridge />
-      <div className="flex flex-1 flex-col min-h-0 bg-surface text-foreground">
-        <nav className="flex shrink-0 items-center gap-1 border-b border-line px-4 py-2">
-          {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon }) => (
-            <button
-              key={itemRoute}
-              onClick={() => handleNavClick(itemRoute)}
-              disabled={isExporting}
-              title={isExporting ? 'Export in progress' : undefined}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-30',
-                route === itemRoute
-                  ? 'bg-accent/10 text-accent'
-                  : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
-              )}
+      <div className="screen-recorder-app flex flex-1 flex-col min-h-0 bg-surface-sunken text-foreground">
+        <nav className="flex shrink-0 items-center gap-3 bg-surface px-4 py-2">
+          <div className="flex shrink-0 items-center gap-2">
+            <LaunchRecorderButton />
+            <Button
+              onClick={() => void handleSaveClick()}
+              disabled={route !== 'editor' || !lastRecording || isQuickSaving}
             >
-              <Icon size={13} />
-              {label}
+              {isQuickSaving ? (
+                <Loader2 size={12} className="animate-spin text-muted-foreground" />
+              ) : (
+                <Save size={12} className="text-muted-foreground" />
+              )}
+              <span className="text-xs font-medium text-muted-foreground">
+                {isQuickSaving ? 'Saving…' : 'Save'}
+              </span>
+            </Button>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => window.open('https://github.com/invisal/benpocket/issues', '_blank')}
+              title="Report an issue"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+            >
+              <span className="flex items-center gap-1.5">
+                <Flag size={13} />
+                Report an issue
+              </span>
             </button>
-          ))}
-          <button
-            onClick={() => lastRecording && handleNavClick('editor')}
-            disabled={!lastRecording || isExporting}
-            title={
-              isExporting
-                ? 'Export in progress'
-                : lastRecording
-                  ? undefined
-                  : 'Record something first'
-            }
-            className={cn(
-              'ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-30',
-              route === 'editor'
-                ? 'bg-accent/10 text-accent'
-                : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
-            )}
-          >
-            Editor
-          </button>
-          <ExportPopoverButton disabled={route !== 'editor'} />
+            <ExportDialogButton disabled={route !== 'editor'} />
+          </div>
         </nav>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1">
-            <div className="w-64 shrink-0 overflow-y-auto border-r border-line bg-surface p-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2">
+          <div className="flex min-h-0 flex-1 gap-1.5">
+            <ResizablePanel
+              edge="right"
+              size={sidebarWidth}
+              onResize={setSidebarWidth}
+              min={SIDEBAR_MIN_WIDTH}
+              max={SIDEBAR_MAX_WIDTH}
+              className="flex overflow-y-auto rounded-lg border border-line bg-surface"
+              handleClassName="z-40"
+            >
               <ScreenRecorderSidebar />
-            </div>
+            </ResizablePanel>
 
-            <div className="flex min-h-0 flex-1 overflow-auto">
-              {route === 'editor' && <EditorPage />}
-              {route === 'library' && <LibraryPage />}
-              {route === 'presets' && <PresetsPage />}
-              {route === 'settings' && <SettingsPage />}
+            <div
+              className={cn(
+                'flex min-h-0 flex-1 overflow-auto rounded-lg',
+                route === 'editor' ? 'bg-surface-sunken' : 'border border-line bg-surface'
+              )}
+            >
+              {routes.map((r) => {
+                const isActive = route === r.id;
+                return (
+                  <Activity key={r.id} mode={isActive ? 'visible' : 'hidden'}>
+                    {r.component}
+                  </Activity>
+                );
+              })}
             </div>
           </div>
 
@@ -99,6 +149,9 @@ export function ScreenRecorderApp(): JSX.Element {
           {route === 'editor' && <CutTimeline />}
         </div>
       </div>
+
+      <SaveProjectDialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen} />
+      <ToastViewport />
     </RecordingControllerProvider>
   );
 }

@@ -1,7 +1,9 @@
 import type { Project } from '@screen-recorder/types/project';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
-import { sampleCursorPath, resolveClickBounceScale } from '@shared/cursor-path';
+import { enrichWallpaperPreset } from '../../../background/lib/wave-wallpaper';
+import { findWallpaperImagePreset } from '../../../background/lib/wallpaper-images';
+import { sampleCursorPath, resolveClickBounceScale, resolveClickRipple } from '@shared/cursor-path';
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
 import { resolveZoom } from '@shared/zoom-resolve';
@@ -29,7 +31,9 @@ function resolveBackground(project: Project): BackgroundSceneData {
       return { kind: 'linear-gradient', angleDeg: Number(angleDeg), colors: [color1, color2] };
     }
     case 'wallpaper': {
-      const preset = findWallpaperPreset(background.value);
+      const imagePreset = findWallpaperImagePreset(background.value);
+      if (imagePreset) return { kind: 'image', path: imagePreset.src, blurPx: 0 };
+      const preset = enrichWallpaperPreset(findWallpaperPreset(background.value));
       return preset.type === 'wave'
         ? { kind: 'radial-blobs', backgroundColor: preset.backgroundColor, blobs: preset.blobs }
         : { kind: 'linear-gradient', angleDeg: preset.angleDeg, colors: preset.colors };
@@ -82,6 +86,10 @@ function resolveCursor(
     }
   }
 
+  const ripple = cursor.clickRippleEnabled
+    ? resolveClickRipple(clickPath, atMs, cursor.clickBounce)
+    : null;
+
   return {
     posPx: toPx(point),
     sizePx,
@@ -89,7 +97,16 @@ function resolveCursor(
     stroke: preset.stroke,
     clickScale: resolveClickBounceScale(clickPath, atMs, cursor.clickBounce),
     clipToCanvas: cursor.clipToCanvas,
-    ghosts
+    ghosts,
+    // Grows from ~1x to ~4x the icon's own size -- same formula as
+    // CursorOverlay.tsx's live-preview ripple, so the export matches.
+    ripple: ripple
+      ? {
+          posPx: toPx(ripple.pos),
+          radiusPx: (sizePx * (1 + ripple.progress * 3)) / 2,
+          alpha: ripple.alpha
+        }
+      : null
   };
 }
 
@@ -185,11 +202,20 @@ function resolveCaption(project: Project, atMs: number): { text: string } | null
 
 /**
  * Pure "what should be on screen at `atMs`" evaluation -- no PixiJS, no I/O.
- * `smoothedCursorPath` is precomputed once per export (smoothing doesn't
- * depend on `atMs`) and passed in rather than recomputed every frame.
- * `sourceAspect` is the recording's (post-crop) aspect ratio -- the caller
- * (export-orchestrator.ts) already derives this once from ffprobe + the
- * first kept segment's crop, same as today's export-manager.ts did.
+ * `smoothedCursorPath`/`autoZoomFocalPaths` are precomputed once per export
+ * (neither depends on `atMs`) and passed in rather than recomputed every
+ * frame -- deliberately two *different* things over the same raw path, not
+ * one shared one: `smoothedCursorPath` (the user's own `CursorSettings.
+ * smoothing`) draws the cursor icon, while `autoZoomFocalPaths` (one
+ * deadzone-camera-simulated path per 'auto-cursor' keyframe, see
+ * computeAutoZoomFocalPath in zoom-resolve.ts) drives the zoom camera's
+ * focal point -- panning the whole zoomed viewport needs to hold still for
+ * small movements and only pan once the cursor nears the edge of what's
+ * visible, or auto-zoom visibly snaps/re-centers on every movement instead
+ * of gliding the way Screen Studio's camera does. `sourceAspect` is the
+ * recording's (post-crop) aspect ratio -- the caller (export-
+ * orchestrator.ts) already derives this once from ffprobe + the first kept
+ * segment's crop, same as today's export-manager.ts did.
  */
 export function evaluateSceneAtMs(
   project: Project,
@@ -197,7 +223,8 @@ export function evaluateSceneAtMs(
   outputWidth: number,
   outputHeight: number,
   sourceAspect: number,
-  smoothedCursorPath: CursorPathPoint[]
+  smoothedCursorPath: CursorPathPoint[],
+  autoZoomFocalPaths: Map<string, CursorPathPoint[]>
 ): SceneDescription {
   const innerRect = computeInnerRect(
     outputWidth,
@@ -208,7 +235,7 @@ export function evaluateSceneAtMs(
   const referenceScale = outputWidth / REFERENCE_CANVAS_WIDTH;
   const cornerRadiusPx = project.background.cornerRadius * referenceScale;
 
-  const zoom = resolveZoom(atMs, project.zoomKeyframes, smoothedCursorPath);
+  const zoom = resolveZoom(atMs, project.zoomKeyframes, autoZoomFocalPaths);
   const shadow = resolveShadow(project.background.shadow, referenceScale);
   if (shadow) shadow.radiusPx = cornerRadiusPx;
 

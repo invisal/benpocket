@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
+import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
 import { type ValidatingWebhookConfigurationData } from '../types/ValidatingWebhookConfigurationData';
 import { type WebhookItem } from '../types/MutatingWebhookConfigurationData';
 import { type K8sResource } from '../types/K8sResource';
@@ -126,7 +127,7 @@ export function useValidatingWebhooks(enabled: boolean) {
   );
 
   return useKubeQuery<ValidatingWebhookConfigurationData>(
-    'validatingwebhookconfigurations',
+    K8S_RESOURCE_KEYS.VALIDATING_WEBHOOK_CONFIGURATIONS,
     transform,
     enabled
   );

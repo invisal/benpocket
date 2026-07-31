@@ -6,12 +6,12 @@ import { ClusterRolesTable } from './ClusterRolesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ResourceView } from '../ResourceView';
+import { useClusterRoles } from '../../../hooks/useClusterRoles';
 
-interface ClusterRolesProps {
-  clusterRolesData: ClusterRoleData[];
-}
+export const ClusterRoles: React.FC = () => {
+  const { data: clusterRolesData, isLoading, errorMsg } = useClusterRoles(true);
 
-export const ClusterRoles: React.FC<ClusterRolesProps> = ({ clusterRolesData }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
@@ -128,29 +128,31 @@ export const ClusterRoles: React.FC<ClusterRolesProps> = ({ clusterRolesData }) 
   };
 
   return (
-    <KubeWorkspaceLayout
-      header={
-        <ClusterRolesToolbar
-          searchQuery={searchQuery}
-          caseSensitive={caseSensitive}
-          useRegex={useRegex}
-          totalCount={filteredData.length}
-          selectedCount={selectedIds.size}
-          onSearchChange={setSearchQuery}
-          onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
-          onRegexToggle={() => setUseRegex((v) => !v)}
-          onDownload={handleDownloadCsv}
+    <ResourceView isLoading={isLoading} errorMsg={errorMsg}>
+      <KubeWorkspaceLayout
+        header={
+          <ClusterRolesToolbar
+            searchQuery={searchQuery}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
+            totalCount={filteredData.length}
+            selectedCount={selectedIds.size}
+            onSearchChange={setSearchQuery}
+            onCaseSensitiveToggle={() => setCaseSensitive((v) => !v)}
+            onRegexToggle={() => setUseRegex((v) => !v)}
+            onDownload={handleDownloadCsv}
+          />
+        }
+      >
+        <ClusterRolesTable
+          filteredData={filteredData}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onSelectRole={handleSelectRole}
+          selectedRoleId={selectedRoleId}
         />
-      }
-    >
-      <ClusterRolesTable
-        filteredData={filteredData}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onSelectRole={handleSelectRole}
-        selectedRoleId={selectedRoleId}
-      />
-    </KubeWorkspaceLayout>
+      </KubeWorkspaceLayout>
+    </ResourceView>
   );
 };

@@ -89,8 +89,9 @@ function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: str
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
+      {/* Main Content Area. overflow-hidden makes this a hard boundary so the
+          bottom panel can never paint over the status bar below it. */}
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden">
         <Workspace />
         <BottomPanel />
       </div>

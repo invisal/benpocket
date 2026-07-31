@@ -4,8 +4,13 @@ import { useLayoutStore } from '../../store/layout.store';
 import { KuberneterBottomPanel } from '../../../tools/kuberneter/components/bottom-panel/KuberneterBottomPanel';
 
 export const BottomPanel: React.FC = () => {
-  const { isBottomPanelOpen, bottomPanelHeight, setBottomPanelHeight, activeActivity } =
-    useLayoutStore();
+  const {
+    isBottomPanelOpen,
+    bottomPanelHeight,
+    setBottomPanelHeight,
+    isBottomPanelMaximized,
+    activeActivity
+  } = useLayoutStore();
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -16,8 +21,9 @@ export const BottomPanel: React.FC = () => {
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaY = moveEvent.clientY - startY;
-      const maxAllowedHeight = window.innerHeight - 32;
-      finalHeight = Math.max(100, Math.min(startHeight - deltaY, maxAllowedHeight));
+      // Only enforce the minimum here; the container's overflow-hidden +
+      // maxHeight:100% clamps the top end, so no innerHeight math is needed.
+      finalHeight = Math.max(100, startHeight - deltaY);
       if (panelRef.current) {
         panelRef.current.style.height = `${finalHeight}px`;
       }
@@ -38,7 +44,14 @@ export const BottomPanel: React.FC = () => {
   return (
     <div
       ref={panelRef}
-      style={{ height: `${bottomPanelHeight}px` }}
+      // When maximized the panel fills its container (height:100%). Otherwise it
+      // uses the dragged height, and maxHeight:100% caps it to the container so
+      // an oversized value is clamped by flexbox instead of overflowing onto the
+      // status bar. shrink-0 keeps it from collapsing below the set height.
+      style={{
+        height: isBottomPanelMaximized ? '100%' : `${bottomPanelHeight}px`,
+        maxHeight: '100%'
+      }}
       className="relative bg-surface-2 border-t border-border-dark flex flex-col w-full select-none shrink-0 min-h-0 z-30"
     >
       {/* Top Vertical Resize Handle (matches sidebar handle size h-0.75 & accent hover colors) */}

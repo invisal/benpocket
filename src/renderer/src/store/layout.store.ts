@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useKuberneterStore } from '../../tools/kuberneter/store/kuberneter.store';
 
+/** Smallest bottom-panel height (px) a drag is allowed to settle on. */
+const MIN_BOTTOM_PANEL_HEIGHT = 100;
+
 export interface Tab {
   id: string;
   title: string;
@@ -25,7 +28,10 @@ interface LayoutState {
 
   // Bottom Panel state
   isBottomPanelOpen: boolean;
+  /** Height (px) used when NOT maximized. When maximized, CSS fills the container. */
   bottomPanelHeight: number;
+  /** When true the panel fills its container (via CSS), ignoring bottomPanelHeight. */
+  isBottomPanelMaximized: boolean;
   bottomPanelTab: string;
 
   openTabs: Tab[];
@@ -40,8 +46,6 @@ interface LayoutState {
   setRightPanelWidth: (width: number) => void;
   toggleBottomPanel: () => void;
   setBottomPanelHeight: (height: number) => void;
-  maximizeBottomPanel: () => void;
-  minimizeBottomPanel: () => void;
   toggleMaximizeBottomPanel: () => void;
   setBottomPanelTab: (tab: string) => void;
   openBottomPanelWithTab: (tab: string) => void;
@@ -75,6 +79,7 @@ export const useLayoutStore = create<LayoutState>()(
 
       isBottomPanelOpen: false,
       bottomPanelHeight: 220,
+      isBottomPanelMaximized: false,
       bottomPanelTab: 'terminal',
 
       openTabs: [],
@@ -87,34 +92,19 @@ export const useLayoutStore = create<LayoutState>()(
       setRightPanelWidth: (width) => set({ rightPanelWidth: Math.max(150, Math.min(width, 500)) }),
 
       toggleBottomPanel: () => set((state) => ({ isBottomPanelOpen: !state.isBottomPanelOpen })),
+      // Only enforce a minimum; the max is handled purely in CSS (maxHeight:100%
+      // on a container with overflow-hidden), so no innerHeight math is needed.
+      // A manual drag also exits the maximized state.
       setBottomPanelHeight: (height) =>
         set({
-          bottomPanelHeight: Math.max(
-            100,
-            Math.min(height, typeof window !== 'undefined' ? window.innerHeight - 32 : 900)
-          )
-        }),
-      maximizeBottomPanel: () =>
-        set({
-          isBottomPanelOpen: true,
-          bottomPanelHeight: typeof window !== 'undefined' ? window.innerHeight - 32 : 800
-        }),
-      minimizeBottomPanel: () =>
-        set({
-          isBottomPanelOpen: true,
-          bottomPanelHeight:
-            typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.2) : 200
+          bottomPanelHeight: Math.max(MIN_BOTTOM_PANEL_HEIGHT, height),
+          isBottomPanelMaximized: false
         }),
       toggleMaximizeBottomPanel: () =>
-        set((state) => {
-          const maxH = typeof window !== 'undefined' ? window.innerHeight - 32 : 800;
-          const minH = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.2) : 200;
-          const isCurrentlyMax = state.bottomPanelHeight >= maxH - 50;
-          return {
-            isBottomPanelOpen: true,
-            bottomPanelHeight: isCurrentlyMax ? minH : maxH
-          };
-        }),
+        set((state) => ({
+          isBottomPanelOpen: true,
+          isBottomPanelMaximized: !state.isBottomPanelMaximized
+        })),
       setBottomPanelTab: (tab) => set({ bottomPanelTab: tab }),
       openBottomPanelWithTab: (tab) => set({ isBottomPanelOpen: true, bottomPanelTab: tab }),
 

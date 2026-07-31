@@ -9,15 +9,13 @@ import { type KuberneterBottomPanelTabItem, generateTabId } from './types';
 import { cn } from 'cnfast';
 
 export const KuberneterBottomPanel: React.FC = () => {
-  const { toggleBottomPanel, toggleMaximizeBottomPanel, bottomPanelHeight } = useLayoutStore();
+  const { toggleBottomPanel, toggleMaximizeBottomPanel } = useLayoutStore();
+  const isMaximized = useLayoutStore((s) => s.isBottomPanelMaximized);
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
   const kuberneterInstanceConfigPath = useKuberneterStore((s) => s.kuberneterInstanceConfigPath);
   const activeCluster = kuberneterInstanceCluster[activeInstanceId] || '';
   const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || 'default';
-
-  const maxH = typeof window !== 'undefined' ? window.innerHeight - 32 : 800;
-  const isMaximized = bottomPanelHeight >= maxH - 50;
 
   // Tabs state - defaults to Terminal tab
   const [tabs, setTabs] = useState<KuberneterBottomPanelTabItem[]>([

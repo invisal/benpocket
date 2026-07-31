@@ -231,7 +231,6 @@ export function PreviewStage({
             )}
           </div>
 
-          {!isVideoReady && !videoError && <EditorLoading />}
           {videoError && <VideoErrorOverlay message={videoError} />}
 
           {!cropToolActive && (
@@ -247,6 +246,7 @@ export function PreviewStage({
         />
 
         <CaptionBar currentTimeMs={zoomTimeMs} />
+        {!isVideoReady && !videoError && <EditorLoading />}
       </div>
     </div>
   );

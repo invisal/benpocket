@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type {
+  HttpAuth,
   HttpRequestPayload,
   HttpResponsePayload,
   KeyValuePair
@@ -11,10 +12,17 @@ function enabledPairs(pairs: KeyValuePair[] | undefined): KeyValuePair[] {
   return (pairs ?? []).filter((p) => p.enabled && p.key.trim().length > 0);
 }
 
-function buildRequestUrl(rawUrl: string, params: KeyValuePair[] | undefined): string {
+function buildRequestUrl(
+  rawUrl: string,
+  params: KeyValuePair[] | undefined,
+  auth: HttpAuth | undefined
+): string {
   const url = new URL(rawUrl);
   for (const pair of enabledPairs(params)) {
     url.searchParams.set(pair.key, pair.value);
+  }
+  if (auth?.type === 'apikey' && auth.apikey?.in === 'query' && auth.apikey.key) {
+    url.searchParams.set(auth.apikey.key, auth.apikey.value ?? '');
   }
   return url.toString();
 }
@@ -30,6 +38,32 @@ function buildRequestHeaders(headers: KeyValuePair[] | undefined): Record<string
 function hasHeader(headers: Record<string, string>, name: string): boolean {
   const target = name.toLowerCase();
   return Object.keys(headers).some((key) => key.toLowerCase() === target);
+}
+
+// Kept in sync with authToHeader()/the query-param branch above and in
+// src/renderer/tools/http-client/lib/auth.ts, so the Headers tab preview matches
+// what actually gets sent. A header the user set explicitly always wins.
+function applyAuthHeader(headers: Record<string, string>, auth: HttpAuth | undefined): void {
+  if (!auth) return;
+  if (auth.type === 'bearer' && auth.bearer?.token && !hasHeader(headers, 'authorization')) {
+    headers['Authorization'] = `Bearer ${auth.bearer.token}`;
+  } else if (
+    auth.type === 'basic' &&
+    (auth.basic?.username || auth.basic?.password) &&
+    !hasHeader(headers, 'authorization')
+  ) {
+    const encoded = Buffer.from(
+      `${auth.basic?.username ?? ''}:${auth.basic?.password ?? ''}`
+    ).toString('base64');
+    headers['Authorization'] = `Basic ${encoded}`;
+  } else if (
+    auth.type === 'apikey' &&
+    auth.apikey?.in !== 'query' &&
+    auth.apikey?.key &&
+    !hasHeader(headers, auth.apikey.key)
+  ) {
+    headers[auth.apikey.key] = auth.apikey.value ?? '';
+  }
 }
 
 // Kept in sync with src/renderer/tools/http-client/lib/autoHeaders.ts, which shows
@@ -94,11 +128,12 @@ export function registerHttpHandlers(): void {
 
       try {
         try {
-          requestUrl = buildRequestUrl(payload.url, payload.params);
+          requestUrl = buildRequestUrl(payload.url, payload.params, payload.auth);
         } catch {
           throw new Error('Invalid URL - check the address is complete (e.g. https://...).');
         }
         const headers = buildRequestHeaders(payload.headers);
+        applyAuthHeader(headers, payload.auth);
 
         for (const [name, value] of Object.entries(DEFAULT_HEADERS)) {
           if (!hasHeader(headers, name)) headers[name] = value;

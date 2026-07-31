@@ -16,6 +16,32 @@ export interface KeyValuePair {
   enabled: boolean;
 }
 
+export type HttpAuthType = 'inherit' | 'noauth' | 'bearer' | 'basic' | 'apikey' | 'oauth2';
+
+export interface HttpAuth {
+  type: HttpAuthType;
+  bearer?: { token: string };
+  basic?: { username: string; password: string };
+  apikey?: { key: string; value: string; in: 'header' | 'query' };
+  oauth2?: { tokenUrl: string; clientId: string; clientSecret: string; scope?: string };
+}
+
+export interface OAuth2TokenRequest {
+  tokenUrl: string;
+  clientId: string;
+  clientSecret: string;
+  scope?: string;
+}
+
+export interface OAuth2TokenResult {
+  ok: boolean;
+  accessToken?: string;
+  tokenType?: string;
+  /** Seconds until expiry, as reported by the token endpoint. */
+  expiresIn?: number;
+  error?: string;
+}
+
 export interface HttpRequestPayload {
   method: HttpMethod;
   url: string;
@@ -23,6 +49,8 @@ export interface HttpRequestPayload {
   params: KeyValuePair[];
   bodyType: HttpBodyType;
   body: string;
+  /** Optional so requests sent before this field existed still type-check; treat missing as 'noauth'. */
+  auth?: HttpAuth;
   timeoutMs?: number;
 }
 
@@ -92,6 +120,8 @@ export interface SavedRequest {
   bodyType: HttpBodyType;
   /** HTTP-only; empty for 'WEBSOCKET' requests. */
   body: string;
+  /** HTTP-only; optional so requests saved before this field existed still load - treat missing as 'noauth'. */
+  auth?: HttpAuth;
   updatedAt: number;
 }
 
@@ -100,6 +130,8 @@ export interface CollectionFolder {
   name: string;
   folders: CollectionFolder[];
   requests: SavedRequest[];
+  /** Auth requests in this folder inherit by default. 'inherit' here means "use the parent folder/collection's auth". Missing/undefined is treated as 'inherit'. */
+  auth?: HttpAuth;
 }
 
 export interface Collection {
@@ -109,6 +141,8 @@ export interface Collection {
   workspaceId: string;
   requests: SavedRequest[];
   folders: CollectionFolder[];
+  /** The root of the inheritance chain. 'inherit'/missing resolves to 'noauth'. */
+  auth?: HttpAuth;
 }
 
 export interface CreateCollectionPayload {
@@ -173,6 +207,17 @@ export interface MoveFolderPayload {
   folderId: string;
   /** Destination parent folder. Omit/null to move to the collection root. */
   targetParentFolderId?: string | null;
+}
+
+export interface SetCollectionAuthPayload {
+  collectionId: string;
+  auth: HttpAuth;
+}
+
+export interface SetFolderAuthPayload {
+  collectionId: string;
+  folderId: string;
+  auth: HttpAuth;
 }
 
 export interface ExportCollectionPayload {

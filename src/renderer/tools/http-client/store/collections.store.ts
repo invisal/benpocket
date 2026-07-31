@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type {
   Collection,
   ExportCollectionResult,
+  HttpAuth,
   ImportCollectionResult,
   SavedRequest,
   WsAckResult
@@ -44,6 +45,8 @@ interface CollectionsState {
     folderId: string,
     targetParentFolderId: string | null
   ) => Promise<void>;
+  setCollectionAuth: (collectionId: string, auth: HttpAuth) => Promise<void>;
+  setFolderAuth: (collectionId: string, folderId: string, auth: HttpAuth) => Promise<void>;
   /** Prompts a save dialog and writes the collection as a Postman v2.1 file. */
   exportCollection: (collectionId: string) => Promise<ExportCollectionResult>;
   /** Prompts an open dialog, parses a Postman v2.0 or v2.1 collection file, and adds it as a new collection. */
@@ -121,6 +124,16 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     assertOk(
       await window.api.collections.moveFolder({ collectionId, folderId, targetParentFolderId })
     );
+    await get().load();
+  },
+
+  setCollectionAuth: async (collectionId, auth) => {
+    assertOk(await window.api.collections.setCollectionAuth({ collectionId, auth }));
+    await get().load();
+  },
+
+  setFolderAuth: async (collectionId, folderId, auth) => {
+    assertOk(await window.api.collections.setFolderAuth({ collectionId, folderId, auth }));
     await get().load();
   },
 

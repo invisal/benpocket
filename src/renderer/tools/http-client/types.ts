@@ -1,4 +1,9 @@
-import type { HttpBodyType, HttpMethod, RequestProtocol } from '../../../preload/http-client/types';
+import type {
+  HttpAuth,
+  HttpBodyType,
+  HttpMethod,
+  RequestProtocol
+} from '../../../preload/http-client/types';
 import type { KeyValueRow } from './lib/keyValueRows';
 
 /** Binds a tab to a saved request, so a repeat Save updates it in place instead of creating a duplicate. */
@@ -17,6 +22,7 @@ export interface PostmanTabSeed {
   params?: KeyValueRow[];
   bodyType?: HttpBodyType;
   body?: string;
+  auth?: HttpAuth;
   wsUrl?: string;
   savedCollectionId?: string;
   savedRequestId?: string;

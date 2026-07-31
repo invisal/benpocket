@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { useThemeStore } from '../../../../src/store/theme.store';
 import { buildXtermTheme } from './xtermTheme';
 
 export interface UseKuberneterTerminalParams {
@@ -41,6 +42,7 @@ export function useKuberneterTerminal({
   const fitRef = useRef<FitAddon | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
   const [hasExited, setHasExited] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -168,6 +170,21 @@ export function useKuberneterTerminal({
     });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
+
+  // Re-theme live when the app toggles light/dark. buildXtermTheme() reads the
+  // active CSS vars (which flip with the `.light` class), so recomputing here
+  // keeps the terminal background dark in dark mode instead of freezing on the
+  // value captured at mount. Deferred a frame because AppShell (a parent) flips
+  // the `.light` class in its own effect, which runs AFTER this child effect —
+  // rAF lets the class + style recalc land first so we read the new vars.
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    const raf = requestAnimationFrame(() => {
+      if (termRef.current) termRef.current.options.theme = buildXtermTheme();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [theme]);
 
   const search = useCallback((query: string, direction: 'next' | 'prev') => {
     if (!searchRef.current || !query) return;

@@ -1,19 +1,12 @@
 import { useCallback } from 'react';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
 import { readTabSeed } from '../lib/readTabSeed';
+import { bindingStore } from '../lib/bindingStore';
 import type { SavedBinding } from '../types';
 import { useHttp, disposeHttpTab, type UseHttpResult } from './useHttp';
 import { useWebSocket, disposeWebSocketTab, type UseWebSocketResult } from './useWebSocket';
 
 export type ProtocolTab = 'HTTP' | 'WEBSOCKET';
-
-function createDefaultBinding(tabId: string): SavedBinding | null {
-  const seed = readTabSeed(tabId);
-  if (seed?.savedCollectionId && seed?.savedRequestId) {
-    return { collectionId: seed.savedCollectionId, requestId: seed.savedRequestId };
-  }
-  return null;
-}
 
 function createDefaultProtocol(tabId: string): ProtocolTab {
   return readTabSeed(tabId)?.protocol === 'WEBSOCKET' ? 'WEBSOCKET' : 'HTTP';
@@ -23,12 +16,6 @@ const protocolStore = createTabScopedStore<ProtocolTab>(createDefaultProtocol, {
   key: (tabId) => `postman-protocol-${tabId}`,
   serialize: (s) => s,
   deserialize: (raw) => (raw === 'WEBSOCKET' ? 'WEBSOCKET' : 'HTTP')
-});
-
-const bindingStore = createTabScopedStore<SavedBinding | null>(createDefaultBinding, {
-  key: (tabId) => `postman-binding-${tabId}`,
-  serialize: (s) => s,
-  deserialize: (raw) => (raw as SavedBinding | null) ?? null
 });
 
 export interface UseApiClientResult {

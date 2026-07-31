@@ -1,6 +1,12 @@
-import type { HttpBodyType, HttpMethod, KeyValuePair } from '../../../../preload/http-client/types';
+import type {
+  HttpAuth,
+  HttpBodyType,
+  HttpMethod,
+  KeyValuePair
+} from '../../../../preload/http-client/types';
 import type { KeyValueRow } from './keyValueRows';
 import { resolveJsonVariables, resolveVariables } from './variables';
+import { authToHeader, resolveAuth } from './auth';
 
 export interface AutoHeader {
   key: string;
@@ -35,12 +41,16 @@ export function getAutoHeaders(
   bodyType: HttpBodyType,
   body: string,
   headers: KeyValueRow[],
-  variables: KeyValuePair[]
+  variables: KeyValuePair[],
+  auth: HttpAuth
 ): AutoHeader[] {
   const explicitKeys = new Set(
     headers.filter((h) => h.enabled && h.key.trim()).map((h) => h.key.trim().toLowerCase())
   );
   const auto: AutoHeader[] = [];
+
+  const authHeader = authToHeader(resolveAuth(auth, variables));
+  if (authHeader && !explicitKeys.has(authHeader.key.toLowerCase())) auto.push(authHeader);
 
   const resolvedUrl = resolveVariables(url, variables);
   try {

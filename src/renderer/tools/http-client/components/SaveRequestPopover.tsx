@@ -4,6 +4,7 @@ import { Popover } from '@base-ui/react/popover';
 import { Save } from 'lucide-react';
 import { useCollectionsStore } from '../store/collections.store';
 import type {
+  HttpAuth,
   HttpBodyType,
   HttpMethod,
   RequestProtocol,
@@ -12,6 +13,7 @@ import type {
 import type { KeyValueRow } from '../lib/keyValueRows';
 import type { SavedBinding } from '../types';
 import { findRequestInContainer, flattenFolderOptions } from '../lib/collectionTree';
+import { DEFAULT_HTTP_AUTH } from '../lib/auth';
 
 interface SaveRequestPopoverProps {
   tabTitle: string;
@@ -23,6 +25,7 @@ interface SaveRequestPopoverProps {
   params?: KeyValueRow[];
   bodyType?: HttpBodyType;
   body?: string;
+  auth?: HttpAuth;
   binding: SavedBinding | null;
   /** Pre-select this collection/folder on first open, e.g. when the tab was opened via "new request in folder". Ignored once `binding` is set. */
   defaultCollectionId?: string;
@@ -44,6 +47,7 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
   params,
   bodyType,
   body,
+  auth,
   binding,
   defaultCollectionId,
   defaultFolderId,
@@ -126,6 +130,7 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
               params: params ?? [],
               bodyType: bodyType ?? 'none',
               body: body ?? '',
+              auth: auth ?? DEFAULT_HTTP_AUTH,
               updatedAt: Date.now()
             }
           : {

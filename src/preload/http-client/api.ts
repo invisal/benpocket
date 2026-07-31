@@ -20,6 +20,8 @@ import type {
   ImportEnvironmentResult,
   MoveFolderPayload,
   MoveRequestPayload,
+  OAuth2TokenRequest,
+  OAuth2TokenResult,
   RenameCollectionPayload,
   RenameEnvironmentPayload,
   RenameFolderPayload,
@@ -28,6 +30,8 @@ import type {
   ResolveEnvironmentImportPayload,
   SaveEnvironmentVariablesPayload,
   SaveRequestPayload,
+  SetCollectionAuthPayload,
+  SetFolderAuthPayload,
   Workspace,
   WsAckResult,
   WsConnectPayload,
@@ -40,6 +44,7 @@ import type {
 export interface PostmanBridge {
   http: {
     send: (payload: HttpRequestPayload) => Promise<HttpResponsePayload>;
+    oauth2GetToken: (payload: OAuth2TokenRequest) => Promise<OAuth2TokenResult>;
   };
   ws: {
     connect: (payload: WsConnectPayload) => Promise<WsAckResult>;
@@ -60,6 +65,8 @@ export interface PostmanBridge {
     deleteFolder: (payload: DeleteFolderPayload) => Promise<WsAckResult>;
     moveRequest: (payload: MoveRequestPayload) => Promise<WsAckResult>;
     moveFolder: (payload: MoveFolderPayload) => Promise<WsAckResult>;
+    setCollectionAuth: (payload: SetCollectionAuthPayload) => Promise<WsAckResult>;
+    setFolderAuth: (payload: SetFolderAuthPayload) => Promise<WsAckResult>;
     exportToFile: (payload: ExportCollectionPayload) => Promise<ExportCollectionResult>;
     importFromFile: (workspaceId: string) => Promise<ImportCollectionResult>;
   };
@@ -88,7 +95,9 @@ export const postmanApi: PostmanBridge = {
   // REST client - executed in the main process to avoid renderer CORS limits.
   http: {
     send: (payload: HttpRequestPayload): Promise<HttpResponsePayload> =>
-      ipcRenderer.invoke('http:send', payload)
+      ipcRenderer.invoke('http:send', payload),
+    oauth2GetToken: (payload: OAuth2TokenRequest): Promise<OAuth2TokenResult> =>
+      ipcRenderer.invoke('http:oauth2GetToken', payload)
   },
 
   // WebSocket client - sockets live in the main process; the renderer only
@@ -132,6 +141,10 @@ export const postmanApi: PostmanBridge = {
       ipcRenderer.invoke('collections:moveRequest', payload),
     moveFolder: (payload: MoveFolderPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('collections:moveFolder', payload),
+    setCollectionAuth: (payload: SetCollectionAuthPayload): Promise<WsAckResult> =>
+      ipcRenderer.invoke('collections:setCollectionAuth', payload),
+    setFolderAuth: (payload: SetFolderAuthPayload): Promise<WsAckResult> =>
+      ipcRenderer.invoke('collections:setFolderAuth', payload),
     exportToFile: (payload: ExportCollectionPayload): Promise<ExportCollectionResult> =>
       ipcRenderer.invoke('collections:exportToFile', payload),
     importFromFile: (workspaceId: string): Promise<ImportCollectionResult> =>

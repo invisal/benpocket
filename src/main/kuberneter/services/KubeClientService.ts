@@ -3,15 +3,6 @@ import { URL } from 'url';
 import { buildKubeApiPath } from '../constants/k8sResources';
 import { KubeConfigService } from './KubeConfigService';
 
-export interface KubeApiConfig {
-  server?: string;
-  token?: string;
-  caData?: string;
-  certData?: string;
-  keyData?: string;
-  insecureSkipTlsVerify?: boolean;
-}
-
 export class KubeClientService {
   /**
    * Helper to construct API URL path for a resource and namespace

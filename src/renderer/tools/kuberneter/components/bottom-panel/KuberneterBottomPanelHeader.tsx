@@ -95,7 +95,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
 
           {/* Plus Dropdown Menu */}
           {isPlusMenuOpen && (
-            <div className="absolute top-full left-0 mt-1 w-40 bg-surface border border-border-dark rounded-md shadow-2xl z-[100] py-1 text-xs">
+            <div className="absolute top-full left-0 mt-1 w-40 bg-surface border border-border-dark rounded-md shadow-2xl z-100 py-1 text-xs">
               <button
                 onClick={() => {
                   onAddTab('create-resource');

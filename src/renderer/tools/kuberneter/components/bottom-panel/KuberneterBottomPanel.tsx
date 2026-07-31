@@ -12,7 +12,9 @@ export const KuberneterBottomPanel: React.FC = () => {
   const { toggleBottomPanel, toggleMaximizeBottomPanel, bottomPanelHeight } = useLayoutStore();
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
-  const activeCluster = kuberneterInstanceCluster[activeInstanceId] || 'do-sgp1-l192-kube';
+  const kuberneterInstanceConfigPath = useKuberneterStore((s) => s.kuberneterInstanceConfigPath);
+  const activeCluster = kuberneterInstanceCluster[activeInstanceId] || '';
+  const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || 'default';
 
   const maxH = typeof window !== 'undefined' ? window.innerHeight - 32 : 800;
   const isMaximized = bottomPanelHeight >= maxH - 50;
@@ -26,12 +28,7 @@ export const KuberneterBottomPanel: React.FC = () => {
   // Per-tab YAML state for Create Resource tabs
   const [resourceYamls, setResourceYamls] = useState<Record<string, string>>({});
 
-  // Terminal shell state per terminal tab
-  const [terminalHistories, setTerminalHistories] = useState<Record<string, string[]>>({
-    'term-default': [`Kubernetes cluster ${activeCluster} in context.`, `keppere@MacBook-Air ~ % `]
-  });
-
-  const currentTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+  //const currentTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
   const handleAddTab = (type: 'terminal' | 'create-resource') => {
     const newId = generateTabId(type);
@@ -48,12 +45,7 @@ export const KuberneterBottomPanel: React.FC = () => {
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newId);
 
-    if (type === 'terminal') {
-      setTerminalHistories((prev) => ({
-        ...prev,
-        [newId]: [`Kubernetes cluster ${activeCluster} in context.`, `keppere@MacBook-Air ~ % `]
-      }));
-    } else {
+    if (type === 'create-resource') {
       setResourceYamls((prev) => ({ ...prev, [newId]: '' }));
     }
   };
@@ -71,47 +63,12 @@ export const KuberneterBottomPanel: React.FC = () => {
       };
       setTabs([defaultTerm]);
       setActiveTabId(defaultTerm.id);
-      setTerminalHistories((prev) => ({
-        ...prev,
-        [defaultTerm.id]: [
-          `Kubernetes cluster ${activeCluster} in context.`,
-          `keppere@MacBook-Air ~ % `
-        ]
-      }));
       return;
     }
     setTabs(remaining);
     if (activeTabId === id) {
       setActiveTabId(remaining[remaining.length - 1].id);
     }
-  };
-
-  const handleTerminalSubmit = (cmd: string, tabId: string) => {
-    const trimmed = cmd.trim();
-    if (!trimmed) return;
-
-    let response = `Command executed: ${trimmed}`;
-    if (trimmed === 'clear') {
-      setTerminalHistories((prev) => ({
-        ...prev,
-        [tabId]: [`keppere@MacBook-Air ~ % `]
-      }));
-      return;
-    } else if (trimmed === 'help') {
-      response = 'Available commands: kubectl get nodes, kubectl get pods, clear, help';
-    } else if (trimmed.startsWith('kubectl')) {
-      response = `[kubectl] Executing command on cluster ${activeCluster}...`;
-    }
-
-    setTerminalHistories((prev) => ({
-      ...prev,
-      [tabId]: [
-        ...(prev[tabId] || []),
-        `keppere@MacBook-Air ~ % ${trimmed}`,
-        response,
-        `keppere@MacBook-Air ~ % `
-      ]
-    }));
   };
 
   return (
@@ -129,31 +86,48 @@ export const KuberneterBottomPanel: React.FC = () => {
       />
 
       {/* Tab Contents View */}
-      {currentTab && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface-1">
-          {/* VIEW A: TERMINAL TAB */}
-          {currentTab.type === 'terminal' && (
-            <KuberneterTerminalView
-              activeCluster={activeCluster}
-              history={terminalHistories[currentTab.id] || []}
-              onSubmitCommand={(cmd) => handleTerminalSubmit(cmd, currentTab.id)}
-            />
-          )}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface-1 relative">
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTabId;
 
-          {/* VIEW B: CREATE RESOURCE TAB */}
-          {currentTab.type === 'create-resource' && (
-            <KuberneterCreateResourceView
-              yaml={resourceYamls[currentTab.id] || ''}
-              onChangeYaml={(newYaml) =>
-                setResourceYamls((prev) => ({ ...prev, [currentTab.id]: newYaml }))
-              }
-              onApply={() => {
-                // Handle resource application logic
-              }}
-            />
-          )}
-        </div>
-      )}
+          // Terminal tabs stay mounted while hidden so the PTY session and
+          // scrollback survive tab switches (matching VS Code's behavior).
+          if (tab.type === 'terminal') {
+            return (
+              <div
+                key={tab.id}
+                className={cn(
+                  'absolute inset-0 flex flex-col min-h-0',
+                  isActive ? 'z-10' : 'z-0 invisible pointer-events-none'
+                )}
+              >
+                <KuberneterTerminalView
+                  sessionId={tab.id}
+                  contextName={activeCluster}
+                  kubeconfigPath={activeConfigPath}
+                  isActive={isActive}
+                />
+              </div>
+            );
+          }
+
+          // Create-resource tabs only render when active.
+          if (!isActive) return null;
+          return (
+            <div key={tab.id} className="absolute inset-0 flex flex-col min-h-0 z-10">
+              <KuberneterCreateResourceView
+                yaml={resourceYamls[tab.id] || ''}
+                onChangeYaml={(newYaml) =>
+                  setResourceYamls((prev) => ({ ...prev, [tab.id]: newYaml }))
+                }
+                onApply={() => {
+                  // Handle resource application logic
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

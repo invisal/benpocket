@@ -98,7 +98,8 @@ export function useExportAction(): UseExportActionResult {
             range: s.range,
             crop: s.crop,
             speed: s.speed,
-            cursorHidden: s.cursorHidden
+            cursorHidden: s.cursorHidden,
+            webcamHidden: s.webcamHidden
           })),
           project: buildExportProject(sourceVideoPath, durationMs)
         },

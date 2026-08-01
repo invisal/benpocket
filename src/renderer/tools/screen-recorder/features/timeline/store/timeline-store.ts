@@ -142,7 +142,9 @@ interface TimelineStoreState {
   setSegmentSpeed: (segmentId: string, speed: ClipSpeed) => void;
   /** Cursor visibility is per-clip: independent of the global `CursorSettings.visible` toggle. */
   setSegmentCursorHidden: (segmentId: string, cursorHidden: boolean) => void;
-  /** Kept clips (range + crop + speed + cursor visibility) in output order -- this is exactly ExportOptions.segments. */
+  /** Webcam PiP visibility is per-clip: independent of the global `WebcamOptions.enabled` toggle. */
+  setSegmentWebcamHidden: (segmentId: string, webcamHidden: boolean) => void;
+  /** Kept clips (range + crop + speed + cursor/webcam visibility) in output order -- this is exactly ExportOptions.segments. */
   getExportSegments: () => ExportSegment[];
   getOutputDurationMs: () => number;
 }
@@ -227,7 +229,8 @@ export const useTimelineStore = create<TimelineStoreState>(
           crop: null,
           trimmed: false,
           split: false,
-          cursorHidden: false
+          cursorHidden: false,
+          webcamHidden: false
         };
         set({
           sourceDurationMs: durationMs,
@@ -397,12 +400,21 @@ export const useTimelineStore = create<TimelineStoreState>(
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
       },
 
+      setSegmentWebcamHidden: (segmentId, webcamHidden) => {
+        const track = primaryTrack(get().tracks);
+        const segments = track.segments.map((segment) =>
+          segment.id === segmentId ? { ...segment, webcamHidden } : segment
+        );
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
       getExportSegments: () =>
         primaryTrack(get().tracks).segments.map((s) => ({
           range: s.range,
           crop: s.crop,
           speed: s.speed,
-          cursorHidden: s.cursorHidden
+          cursorHidden: s.cursorHidden,
+          webcamHidden: s.webcamHidden
         })),
 
       getOutputDurationMs: () =>

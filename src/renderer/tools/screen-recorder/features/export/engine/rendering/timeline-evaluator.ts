@@ -120,8 +120,12 @@ function resolveCursor(
   };
 }
 
-function resolveWebcam(project: Project, referenceScale: number): WebcamSceneData | null {
-  if (!project.webcam.enabled) return null;
+function resolveWebcam(
+  project: Project,
+  referenceScale: number,
+  webcamHidden: boolean
+): WebcamSceneData | null {
+  if (!project.webcam.enabled || webcamHidden) return null;
   const { webcam } = project;
   return {
     xPx: webcam.position.x * referenceScale,
@@ -230,6 +234,7 @@ function resolveCaption(project: Project, atMs: number): { text: string } | null
  * (its own per-clip "Hide mouse cursor" flag, see CutTimeline.tsx) -- the
  * caller already has it on hand from the same decode callback that supplies
  * `atMs`, so it's passed straight through rather than re-derived here.
+ * `webcamHidden` is the same idea for that segment's "Hide webcam" flag.
  */
 export function evaluateSceneAtMs(
   project: Project,
@@ -239,7 +244,8 @@ export function evaluateSceneAtMs(
   sourceAspect: number,
   smoothedCursorPath: CursorPathPoint[],
   autoZoomFocalPaths: Map<string, CursorPathPoint[]>,
-  cursorHidden: boolean
+  cursorHidden: boolean,
+  webcamHidden: boolean
 ): SceneDescription {
   const innerRect = computeInnerRect(
     outputWidth,
@@ -272,7 +278,7 @@ export function evaluateSceneAtMs(
       cursorHidden
     ),
     blurMasks: resolveBlurMasks(project, innerRect, atMs),
-    webcam: resolveWebcam(project, referenceScale),
+    webcam: resolveWebcam(project, referenceScale, webcamHidden),
     annotations: resolveAnnotations(project, referenceScale, atMs),
     caption: resolveCaption(project, atMs)
   };

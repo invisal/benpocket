@@ -121,7 +121,8 @@ export async function exportGif(
             range: { startMs, endMs },
             crop: null,
             speed: segment.speed,
-            cursorHidden: false
+            cursorHidden: false,
+            webcamHidden: false
           };
         })
         .filter((segment) => segment.range.endMs > segment.range.startMs);
@@ -161,7 +162,8 @@ export async function exportGif(
             sourceAspect,
             smoothedCursorPath,
             autoZoomFocalPaths,
-            segment.cursorHidden
+            segment.cursorHidden,
+            segment.webcamHidden
           );
 
           let webcamFrame: VideoFrame | null = null;

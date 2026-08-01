@@ -5,12 +5,13 @@ export type ExportFormat = 'mp4' | 'webm' | 'mov' | 'gif';
 export type ExportCodec = 'h264' | 'h265' | 'av1';
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 
-/** One kept clip: its source range, crop, speed, and cursor visibility (all per-clip, not global). */
+/** One kept clip: its source range, crop, speed, and cursor/webcam visibility (all per-clip, not global). */
 export interface ExportSegment {
   range: TimeRange;
   crop: CropRect | null;
   speed: ClipSpeed;
   cursorHidden: boolean;
+  webcamHidden: boolean;
 }
 
 export interface ExportOptions {

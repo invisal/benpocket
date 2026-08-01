@@ -55,6 +55,8 @@ export interface TimelineSegment {
   split: boolean;
   /** Hides the mouse cursor overlay (in both preview and export) for this clip's own duration -- independent of the global `CursorSettings.visible` toggle, which hides it everywhere. Set via the timeline's per-clip "Hide mouse cursor" context menu item. */
   cursorHidden: boolean;
+  /** Hides the webcam PiP overlay (in both preview and export) for this clip's own duration -- independent of the global `WebcamOptions.enabled` toggle, which hides it everywhere. Set via the timeline's per-clip "Hide webcam" context menu item. */
+  webcamHidden: boolean;
 }
 
 export interface TimelineTrack {

@@ -42,7 +42,7 @@ export function WebcamPanel(): JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between">
-        <span className="text-xs font-medium">Webcam overlay</span>
+        <span className="text-xs font-medium">Show Webcam</span>
         <Switch
           checked={isEnabled}
           onChange={toggleEnabled}

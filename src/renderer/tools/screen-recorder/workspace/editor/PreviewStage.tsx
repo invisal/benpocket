@@ -132,10 +132,11 @@ export function PreviewStage({
     ? sourceResolution.width / sourceResolution.height
     : undefined;
 
-  // Per-clip "Hide mouse cursor" (see CutTimeline.tsx's context menu) --
-  // independent of the global `cursor.visible` toggle, which CursorOverlay
-  // already handles on its own.
-  const activeSegmentForCursor = segments.find(
+  // Per-clip "Hide mouse cursor" / "Hide webcam" (see CutTimeline.tsx's
+  // context menu) -- independent of the global `cursor.visible` /
+  // `webcam.enabled` toggles, which CursorOverlay/WebcamPip already handle
+  // on their own.
+  const activeSegment = segments.find(
     (s) => zoomTimeMs >= s.range.startMs && zoomTimeMs < s.range.endMs
   );
 
@@ -234,7 +235,7 @@ export function PreviewStage({
                 clickPath={clickPath}
                 currentTimeMs={zoomTimeMs}
                 stageWidthPx={stageWidthPx}
-                cursorHidden={activeSegmentForCursor?.cursorHidden ?? false}
+                cursorHidden={activeSegment?.cursorHidden ?? false}
               />
             )}
           </div>
@@ -251,6 +252,7 @@ export function PreviewStage({
           webcamVideoRef={webcamVideoRef}
           previewScale={previewScale}
           cropToolActive={cropToolActive}
+          webcamHidden={activeSegment?.webcamHidden ?? false}
         />
 
         <CaptionBar currentTimeMs={zoomTimeMs} />

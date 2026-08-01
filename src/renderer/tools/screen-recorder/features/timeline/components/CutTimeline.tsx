@@ -12,6 +12,8 @@ import {
   Scissors,
   Trash2,
   Undo2,
+  Video,
+  VideoOff,
   ZoomIn
 } from 'lucide-react';
 import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
@@ -30,6 +32,7 @@ import { CLIP_ROW_HEIGHT_PX } from '../lib/assign-lanes';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
 import { useZoomStore, findKeyframeContaining } from '../../zoom/store/zoom-store';
+import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
 import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
@@ -172,6 +175,7 @@ export function CutTimeline(): JSX.Element {
   const resetSegmentTrim = useTimelineStore((s) => s.resetSegmentTrim);
   const setSegmentSpeed = useTimelineStore((s) => s.setSegmentSpeed);
   const setSegmentCursorHidden = useTimelineStore((s) => s.setSegmentCursorHidden);
+  const setSegmentWebcamHidden = useTimelineStore((s) => s.setSegmentWebcamHidden);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);
   const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   // Gates the ruler's hover-scrub below -- only toggles on play/pause (not a
@@ -204,6 +208,11 @@ export function CutTimeline(): JSX.Element {
   const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
   const panelHeightPx = useAppStore((s) => s.timelinePanelHeight);
   const setPanelHeightPx = useAppStore((s) => s.setTimelinePanelHeight);
+  // "Hide webcam" only makes sense to offer when this recording actually has
+  // a webcam track and the PiP overlay is currently on -- same gate WebcamPip
+  // itself uses to decide whether to render at all.
+  const hasWebcamTrack = useAppStore((s) => Boolean(s.lastRecording?.webcamPreviewUrl));
+  const webcamEnabled = useWebcamStore((s) => s.enabled);
   const waveformPeaks = useWaveformStore((s) => s.peaks);
   const loadWaveformForUrl = useWaveformStore((s) => s.loadForUrl);
   // Decoded once per recording (cached in the store, keyed by URL) rather
@@ -866,6 +875,22 @@ export function CutTimeline(): JSX.Element {
                             {segment.cursorHidden ? 'Show mouse cursor' : 'Hide mouse cursor'}
                           </span>
                         </ContextMenu.Item>
+                        {hasWebcamTrack && webcamEnabled && (
+                          <ContextMenu.Item
+                            onClick={() =>
+                              setSegmentWebcamHidden(segment.id, !segment.webcamHidden)
+                            }
+                          >
+                            <span className="flex items-center gap-2">
+                              {segment.webcamHidden ? (
+                                <VideoOff size={13} className="shrink-0" />
+                              ) : (
+                                <Video size={13} className="shrink-0" />
+                              )}
+                              {segment.webcamHidden ? 'Show webcam' : 'Hide webcam'}
+                            </span>
+                          </ContextMenu.Item>
+                        )}
                         <ContextMenu.Separator />
                         <ContextMenu.Item
                           onClick={() => resetSegmentTrim(segment.id)}

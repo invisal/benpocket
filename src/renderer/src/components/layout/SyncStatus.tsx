@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon } from 'lucide-react';
 import cn from 'cnfast';
 import { Popover } from '../ui/Popover';
 import { Button } from '../ui/Button';
@@ -8,7 +8,6 @@ import { useSyncStore } from '../../store/sync.store';
 import { useProfilesStore } from '../../store/profiles.store';
 
 export const SyncStatus: React.FC = () => {
-  const { profiles, activeProfileId, error: profileError, deleteProfile } = useProfilesStore();
   const {
     unpushedCount,
     isSyncing,
@@ -20,8 +19,9 @@ export const SyncStatus: React.FC = () => {
     checkStatus,
     sync
   } = useSyncStore();
-  const activeProfile = profiles.find((profile) => profile.id === activeProfileId) ?? null;
-
+  const activeProfile = useProfilesStore((state) =>
+    state.profiles.find((profile) => profile.id === state.activeProfileId)
+  );
   // One-time fetch of the current value on mount.
   useEffect(() => {
     void refresh();
@@ -39,14 +39,12 @@ export const SyncStatus: React.FC = () => {
     });
   }, []);
 
-  const handleRemoveProfile = (): void => {
-    if (!activeProfile) return;
-    const confirmed = window.confirm(
-      `Remove profile "${activeProfile.name}"? This deletes its local data and can't be undone.`
-    );
-    if (!confirmed) return;
-    void deleteProfile(activeProfile.id);
-  };
+  if (activeProfile?.kind === 'local') return null;
+
+  const behindCount = remoteStatus?.count ?? 0;
+  const hasLocalChanges = unpushedCount > 0;
+  const hasRemoteChanges = behindCount > 0;
+  const isUpToDate = !hasLocalChanges && !hasRemoteChanges;
 
   return (
     <Popover.Root
@@ -58,54 +56,58 @@ export const SyncStatus: React.FC = () => {
     >
       <Popover.Trigger
         className={cn(
-          'flex h-full items-center gap-1.5 px-2.5 text-xs text-muted-foreground outline-none',
+          'flex h-full items-center gap-1.5 px-4 text-xs text-muted-foreground outline-none',
           'hover:bg-surface-2 hover:text-foreground'
         )}
       >
-        <RefreshCw size={12} className={cn(isSyncing && 'animate-spin')} />
-        {unpushedCount} uncommit{unpushedCount === 1 ? '' : 's'} | Sync
+        <ArrowUpDownIcon size={12} className={cn(isSyncing && 'animate-spin')} />
+        <span>Sync</span>
       </Popover.Trigger>
 
       <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-xs">
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-foreground">Sync</span>
-          <span className="text-muted-foreground">
-            {unpushedCount} uncommitted patch{unpushedCount === 1 ? '' : 'es'}
-          </span>
-        </div>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Pushes local changes to this profile&apos;s remote and pulls down anything new. A no-op
-          for local-only profiles.
-        </p>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {isCheckingStatus
-            ? 'Checking remote…'
-            : remoteStatus?.hasChanges
-              ? `Remote is ${remoteStatus.count} patch${remoteStatus.count === 1 ? '' : 'es'} ahead.`
-              : remoteStatus
-                ? 'Up to date with remote.'
-                : null}
-        </p>
         {statusError && <p className="text-[11px] leading-relaxed text-red-400">{statusError}</p>}
+
+        <h2 className="font-medium">
+          {isUpToDate ? 'Everything is synced' : 'Changes need to be synced'}
+        </h2>
+        <ul className="text-xs mb-2 gap-1 flex flex-col">
+          <li className="flex items-center gap-2">
+            <ArrowUpIcon
+              size={14}
+              className={hasLocalChanges ? 'text-blue-500' : 'text-muted-foreground'}
+            />
+            <span>
+              {hasLocalChanges
+                ? `${unpushedCount} local change${unpushedCount === 1 ? '' : 's'} waiting to push`
+                : 'No local changes to push'}
+            </span>
+          </li>
+          <li className="flex items-center gap-2">
+            <ArrowDownIcon
+              size={14}
+              className={hasRemoteChanges ? 'text-green-500' : 'text-muted-foreground'}
+            />
+            <span>
+              {isCheckingStatus && remoteStatus === null
+                ? 'Checking remote…'
+                : hasRemoteChanges
+                  ? `${behindCount} change${behindCount === 1 ? '' : 's'} behind remote`
+                  : 'Up to date with remote'}
+            </span>
+          </li>
+        </ul>
+
         {syncError && <p className="text-[11px] leading-relaxed text-red-400">{syncError}</p>}
-        <Button size="sm" onClick={() => void sync()} disabled={isSyncing} className="w-full">
+
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => void sync()}
+          disabled={isSyncing}
+          className="w-full"
+        >
           {isSyncing ? 'Syncing...' : 'Sync now'}
         </Button>
-
-        <div className="border-t border-border pt-2.5">
-          {profileError && (
-            <p className="mb-2 text-[11px] leading-relaxed text-red-400">{profileError}</p>
-          )}
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleRemoveProfile}
-            disabled={!activeProfile}
-            className="w-full"
-          >
-            Remove profile
-          </Button>
-        </div>
       </Popover.Content>
     </Popover.Root>
   );

@@ -5,6 +5,8 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useProfilesStore } from '../../store/profiles.store';
 
+const API_BASE_URL = 'https://benpocket.com';
+
 type Step =
   | { kind: 'connect' }
   | { kind: 'connecting' }
@@ -34,7 +36,6 @@ export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOp
   const createProfile = useProfilesStore((state) => state.createProfile);
 
   const [name, setName] = useState('');
-  const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [step, setStep] = useState<Step>({ kind: 'connect' });
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,7 +44,6 @@ export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOp
 
   function reset(): void {
     setName('');
-    setApiBaseUrl('');
     setStep({ kind: 'connect' });
     setPassword('');
     setConfirmPassword('');
@@ -57,17 +57,11 @@ export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOp
   }
 
   async function handleConnect(): Promise<void> {
-    const trimmedUrl = apiBaseUrl.trim();
-    if (!trimmedUrl) {
-      setError('Enter the server URL.');
-      return;
-    }
-
     setError(null);
     setIsBusy(true);
     setStep({ kind: 'connecting' });
 
-    const loginResult = await window.auth.loginGithub(trimmedUrl);
+    const loginResult = await window.auth.loginGithub(API_BASE_URL);
     if (!loginResult.ok) {
       setIsBusy(false);
       setError(loginResult.error);
@@ -76,7 +70,7 @@ export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOp
     }
     const { accessToken, refreshToken } = loginResult;
 
-    const statusResult = await window.auth.getAccountKeyStatus(trimmedUrl, accessToken);
+    const statusResult = await window.auth.getAccountKeyStatus(API_BASE_URL, accessToken);
     setIsBusy(false);
     if (!statusResult.ok) {
       setError(statusResult.error);
@@ -87,14 +81,14 @@ export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOp
     if (statusResult.status.hasKey) {
       setStep({
         kind: 'enter-password',
-        apiBaseUrl: trimmedUrl,
+        apiBaseUrl: API_BASE_URL,
         accessToken,
         refreshToken,
         wrappedDek: statusResult.status.wrappedDek,
         kdfSalt: statusResult.status.kdfSalt
       });
     } else {
-      setStep({ kind: 'create-password', apiBaseUrl: trimmedUrl, accessToken, refreshToken });
+      setStep({ kind: 'create-password', apiBaseUrl: API_BASE_URL, accessToken, refreshToken });
     }
   }
 
@@ -191,12 +185,6 @@ export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOp
                 placeholder="Profile name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={isBusy}
-              />
-              <Input
-                placeholder="Server URL (e.g. https://api.benpocket.com)"
-                value={apiBaseUrl}
-                onChange={(e) => setApiBaseUrl(e.target.value)}
                 disabled={isBusy}
               />
               <Button variant="primary" onClick={() => void handleConnect()} disabled={isBusy}>

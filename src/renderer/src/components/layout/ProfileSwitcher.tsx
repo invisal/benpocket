@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
-import { Check, Cloud, FlaskConical, User } from 'lucide-react';
+import { Check, Cloud, FlaskConical, Trash2, User } from 'lucide-react';
 import cn from 'cnfast';
 import { useProfilesStore } from '../../store/profiles.store';
 import type { ProfileDescriptor } from '../../../../preload/store/types';
@@ -19,7 +19,8 @@ function kindIcon(kind: ProfileDescriptor['kind']): React.ReactNode {
 }
 
 export const ProfileSwitcher: React.FC = () => {
-  const { profiles, activeProfileId, isLoaded, error, load, switchProfile } = useProfilesStore();
+  const { profiles, activeProfileId, isLoaded, error, load, switchProfile, deleteProfile } =
+    useProfilesStore();
   const [open, setOpen] = useState(false);
   const [showGithubDialog, setShowGithubDialog] = useState(false);
 
@@ -29,6 +30,14 @@ export const ProfileSwitcher: React.FC = () => {
 
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) ?? null;
   const initial = activeProfile?.name.trim().charAt(0).toUpperCase() || '?';
+
+  const handleRemoveProfile = (profile: ProfileDescriptor): void => {
+    const confirmed = window.confirm(
+      `Remove profile "${profile.name}"? This deletes its local data and can't be undone.`
+    );
+    if (!confirmed) return;
+    void deleteProfile(profile.id);
+  };
 
   return (
     <>
@@ -48,23 +57,34 @@ export const ProfileSwitcher: React.FC = () => {
                 Profiles
               </span>
               {profiles.map((profile) => (
-                <button
+                <div
                   key={profile.id}
-                  onClick={() => {
-                    if (profile.id !== activeProfileId) switchProfile(profile.id);
-                    setOpen(false);
-                  }}
                   className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 rounded text-left cursor-pointer',
+                    'group flex items-center gap-0.5 rounded',
                     profile.id === activeProfileId ? 'bg-surface-2' : 'hover:bg-surface-2'
                   )}
                 >
-                  <span className="text-zinc-500 shrink-0">{kindIcon(profile.kind)}</span>
-                  <span className="flex-1 truncate text-zinc-200">{profile.name}</span>
-                  {profile.id === activeProfileId && (
-                    <Check size={12} className="text-accent shrink-0" />
-                  )}
-                </button>
+                  <button
+                    onClick={() => {
+                      if (profile.id !== activeProfileId) switchProfile(profile.id);
+                      setOpen(false);
+                    }}
+                    className="flex flex-1 min-w-0 items-center gap-2 px-2 py-1.5 rounded text-left cursor-pointer"
+                  >
+                    <span className="text-zinc-500 shrink-0">{kindIcon(profile.kind)}</span>
+                    <span className="flex-1 truncate text-zinc-200">{profile.name}</span>
+                    {profile.id === activeProfileId && (
+                      <Check size={12} className="text-accent shrink-0" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleRemoveProfile(profile)}
+                    title={`Remove "${profile.name}"`}
+                    className="mr-1 shrink-0 rounded p-1 text-zinc-500 opacity-0 cursor-pointer transition-opacity hover:bg-surface-3 hover:text-red-400 group-hover:opacity-100"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
               ))}
               <div className="my-0.5 border-t border-border" />
               <button

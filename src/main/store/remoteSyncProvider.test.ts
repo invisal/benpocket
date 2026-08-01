@@ -36,7 +36,9 @@ function createFakeOfflineStore(): FakeOfflineStore {
     listUnpushedPatches: () => [],
     markPushed: () => {},
     getSyncCursor: () => 0,
-    applyRemotePatches: () => {}
+    applyRemotePatches: () => {},
+    listCompactionCandidates: () => [],
+    applyCompact: () => {}
   };
 }
 
@@ -179,6 +181,65 @@ describe('pull', () => {
 
     const patches = await provider.pull(5);
     expect(patches).toEqual([{ docKey: 'doc-1', remoteSeq: 6, patch: Buffer.from('world') }]);
+  });
+
+  it('carries isBaseline through onto the returned RemotePatch', async () => {
+    const { provider, dek } = setup();
+    const encrypted = encryptPatch(dek, 'doc-1', Buffer.from('merged'));
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse(200, [{ docKey: 'doc-1', seq: 12, patch: encrypted, isBaseline: true }])
+      )
+    );
+
+    const patches = await provider.pull(0);
+    expect(patches).toEqual([
+      { docKey: 'doc-1', remoteSeq: 12, patch: Buffer.from('merged'), isBaseline: true }
+    ]);
+  });
+});
+
+describe('compact', () => {
+  it('sends the encrypted baseline and passes through {ok, noop}', async () => {
+    const { provider, dek } = setup();
+
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe(`${descriptor.apiBaseUrl}/api/kv/doc-1/compact`);
+      expect(init?.method).toBe('POST');
+      const sent = JSON.parse(init?.body as string) as { upToSeq: number; baseline: string };
+      expect(sent.upToSeq).toBe(12);
+      expect(decryptPatch(dek, 'doc-1', sent.baseline)).toEqual(Buffer.from('merged'));
+      return jsonResponse(200, { ok: true, noop: true });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await provider.compact!('doc-1', 12, Buffer.from('merged'));
+    expect(result).toEqual({ ok: true, noop: true });
+  });
+
+  it('URL-encodes a docKey that needs it', async () => {
+    const { provider } = setup();
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(url).toBe(`${descriptor.apiBaseUrl}/api/kv/doc%2Fwith%20slash/compact`);
+      return jsonResponse(200, { ok: true });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await provider.compact!('doc/with slash', 1, Buffer.from('x'));
+  });
+
+  it('throws with the response body on a non-ok status', async () => {
+    const { provider } = setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('boom', { status: 400 }))
+    );
+
+    await expect(provider.compact!('doc-1', 1, Buffer.from('x'))).rejects.toThrow(
+      /Compact failed: 400/
+    );
   });
 });
 

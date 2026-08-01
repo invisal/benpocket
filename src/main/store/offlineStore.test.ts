@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'crypto';
-import { Doc, applyUpdate } from 'yjs';
+import { Doc, applyUpdate, mergeUpdates } from 'yjs';
 import { createOfflineStore } from './offlineStore';
 
 // safeStorage needs a real Electron runtime -- stand in with a reversible
@@ -155,5 +155,155 @@ describe('sync bookkeeping', () => {
     applyUpdate(replay, snapshot!);
     expect(replay.getMap('root').get('counter')).toBe(1);
     expect(store.getSyncCursor()).toBe(1);
+  });
+
+  it('applyRemotePatches trims local patches and writes sync_snapshot when a pulled entry is a baseline', async () => {
+    const store = await freshStore();
+    const [first, second] = makeSequentialPatches([1, 2]);
+    await store.appendPatch('doc', first);
+    const [pending] = store.listUnpushedPatches();
+    store.markPushed([{ localId: pending.localId, remoteSeq: 1 }]);
+
+    // Simulates a device receiving a compacted baseline via pull, folding in
+    // seq 1 (already known locally) plus seq 2 (new).
+    const mergedBaseline = Buffer.from(mergeUpdates([first, second]));
+    store.applyRemotePatches([
+      { docKey: 'doc', remoteSeq: 2, patch: mergedBaseline, isBaseline: true }
+    ]);
+
+    expect(store.getSyncCursor()).toBe(2);
+    const snapshot = await store.loadSnapshot('doc');
+    const replay = new Doc();
+    applyUpdate(replay, snapshot!);
+    expect(replay.getMap('root').get('counter')).toBe(2);
+  });
+});
+
+describe('listCompactionCandidates', () => {
+  it('returns nothing when no patches are confirmed pushed', async () => {
+    const store = await freshStore();
+    await store.appendPatch('doc', makePatch(1));
+    expect(store.listCompactionCandidates()).toEqual([]);
+  });
+
+  it('excludes a doc with only 1 confirmed patch', async () => {
+    const store = await freshStore();
+    await store.appendPatch('doc', makePatch(1));
+    const [pending] = store.listUnpushedPatches();
+    store.markPushed([{ localId: pending.localId, remoteSeq: 1 }]);
+
+    expect(store.listCompactionCandidates()).toEqual([]);
+  });
+
+  it('merges only confirmed patches, excluding unpushed ones, and reports the max confirmed remote_seq', async () => {
+    const store = await freshStore();
+    const [first, second, third] = makeSequentialPatches([1, 2, 3]);
+    await store.appendPatch('doc', first);
+    await store.appendPatch('doc', second);
+    await store.appendPatch('doc', third); // stays unpushed
+
+    const pending = store.listUnpushedPatches();
+    store.markPushed([
+      { localId: pending[0].localId, remoteSeq: 1 },
+      { localId: pending[1].localId, remoteSeq: 2 }
+    ]);
+
+    const [candidate] = store.listCompactionCandidates();
+    expect(candidate.docKey).toBe('doc');
+    expect(candidate.upToSeq).toBe(2);
+
+    const replay = new Doc();
+    applyUpdate(replay, candidate.baseline);
+    expect(replay.getMap('root').get('counter')).toBe(2); // not 3 -- the unpushed patch is excluded
+  });
+
+  it('counts a pulled (not pushed) remote_seq row toward the group too', async () => {
+    const store = await freshStore();
+    const [first, second] = makeSequentialPatches([1, 2]);
+    await store.appendPatch('doc', first);
+    const [pending] = store.listUnpushedPatches();
+    store.markPushed([{ localId: pending.localId, remoteSeq: 1 }]);
+    store.applyRemotePatches([{ docKey: 'doc', remoteSeq: 2, patch: second }]);
+
+    const [candidate] = store.listCompactionCandidates();
+    expect(candidate.upToSeq).toBe(2);
+  });
+
+  it('keeps two doc keys independent', async () => {
+    const store = await freshStore();
+    const [aFirst, aSecond] = makeSequentialPatches([1, 2]);
+    await store.appendPatch('doc-a', aFirst);
+    await store.appendPatch('doc-a', aSecond);
+    const [bFirst, bSecond] = makeSequentialPatches([10, 20]);
+    await store.appendPatch('doc-b', bFirst);
+    await store.appendPatch('doc-b', bSecond);
+
+    const pending = store.listUnpushedPatches();
+    store.markPushed(
+      pending.map((patch, index) => ({ localId: patch.localId, remoteSeq: index + 1 }))
+    );
+
+    const candidates = store.listCompactionCandidates();
+    expect(candidates.map((c) => c.docKey).sort()).toEqual(['doc-a', 'doc-b']);
+  });
+});
+
+describe('applyCompact', () => {
+  it('trims confirmed patches at or below upToSeq and loadSnapshot still returns the full merged state', async () => {
+    const store = await freshStore();
+    const [first, second, third] = makeSequentialPatches([1, 2, 3]);
+    await store.appendPatch('doc', first);
+    await store.appendPatch('doc', second);
+    await store.appendPatch('doc', third);
+
+    const pending = store.listUnpushedPatches();
+    store.markPushed(
+      pending.map((patch, index) => ({ localId: patch.localId, remoteSeq: index + 1 }))
+    );
+
+    const baseline = Buffer.from(mergeUpdates([first, second]));
+    store.applyCompact('doc', 2, baseline);
+
+    // Only the seq-3 patch should remain in the raw patches table now --
+    // loadSnapshot must still reconstruct the full (1,2,3) state via
+    // sync_snapshot + the remaining row.
+    const snapshot = await store.loadSnapshot('doc');
+    const replay = new Doc();
+    applyUpdate(replay, snapshot!);
+    expect(replay.getMap('root').get('counter')).toBe(3);
+  });
+
+  it('never touches unpushed (remote_seq IS NULL) patches', async () => {
+    const store = await freshStore();
+    const [first, second] = makeSequentialPatches([1, 2]);
+    await store.appendPatch('doc', first);
+    const [pending] = store.listUnpushedPatches();
+    store.markPushed([{ localId: pending.localId, remoteSeq: 1 }]);
+    await store.appendPatch('doc', second); // stays unpushed
+
+    store.applyCompact('doc', 1, Buffer.from(mergeUpdates([first])));
+
+    expect(store.listUnpushedPatches()).toHaveLength(1);
+  });
+
+  it('is a no-op on sync_snapshot when upToSeq is not higher than what is already stored, but still deletes the now-redundant rows', async () => {
+    const store = await freshStore();
+    const [first, second] = makeSequentialPatches([1, 2]);
+    await store.appendPatch('doc', first);
+    await store.appendPatch('doc', second);
+    const pending = store.listUnpushedPatches();
+    store.markPushed(
+      pending.map((patch, index) => ({ localId: patch.localId, remoteSeq: index + 1 }))
+    );
+
+    store.applyCompact('doc', 2, Buffer.from(mergeUpdates([first, second])));
+    // A lower upToSeq arriving afterward (e.g. a stale server ack) must not
+    // regress the stored snapshot.
+    store.applyCompact('doc', 1, Buffer.from(mergeUpdates([first])));
+
+    const snapshot = await store.loadSnapshot('doc');
+    const replay = new Doc();
+    applyUpdate(replay, snapshot!);
+    expect(replay.getMap('root').get('counter')).toBe(2);
   });
 });

@@ -79,6 +79,14 @@ export interface RemotePatch {
   docKey: string;
   remoteSeq: number;
   patch: Buffer; // plaintext -- the provider has already decrypted this before returning it
+  /** True when this entry is a doc's compacted baseline rather than a granular patch -- see OfflineStore.applyCompact. */
+  isBaseline?: boolean;
+}
+
+export interface CompactionCandidate {
+  docKey: string;
+  baseline: Buffer; // plaintext, merged via yjs mergeUpdates over this device's already-confirmed patches
+  upToSeq: number; // MAX(remote_seq) among the patches folded into baseline
 }
 
 export interface RemoteSyncStatus {
@@ -93,6 +101,17 @@ export interface SyncProvider {
 
   /** Cheap precheck: is there anything newer than sinceSeq on the remote, without downloading/decrypting it. */
   status(sinceSeq: number): Promise<RemoteSyncStatus>;
+
+  /** Optional -- only RemoteSyncProvider implements this (local/mock-remote
+   * have no server-side patch log to compact). Submits a merged baseline for
+   * one doc, covering ops up to upToSeq. `noop: true` means another device
+   * already compacted at least as far -- not an error, the caller still
+   * trims its own local copy either way (see ProfileManager.compact()). */
+  compact?(
+    docKey: string,
+    upToSeq: number,
+    baseline: Buffer
+  ): Promise<{ ok: boolean; noop?: boolean }>;
 
   /** Closes any resource this provider opened (e.g. MockSyncProvider's own sqlite connection). No-op if it opened nothing. */
   close(): void;
@@ -124,4 +143,20 @@ export interface OfflineStore {
   markPushed(acks: PushAck[]): void;
   getSyncCursor(): number;
   applyRemotePatches(patches: RemotePatch[]): void; // also advances the cursor
+
+  /** Doc keys with >=2 remote_seq-confirmed patches, each group merged into
+   * one plaintext baseline (yjs mergeUpdates) plus the max remote_seq folded
+   * into it. Never includes unpushed (remote_seq IS NULL) patches -- those
+   * don't exist server-side under any seq yet. Input for SyncProvider.compact(). */
+  listCompactionCandidates(): CompactionCandidate[];
+
+  /** Replaces local knowledge of `key` up to `upToSeq` with a single baseline:
+   * upserts `sync_snapshot` (monotonic -- a lower upToSeq than what's already
+   * stored there is a no-op) and deletes local patches for `key` with
+   * `remote_seq <= upToSeq` (never touches unpushed remote_seq IS NULL rows).
+   * Called both after this device's own remote compact (regardless of noop)
+   * and when applyRemotePatches receives a pulled baseline entry -- always
+   * safe because remote_seq-confirmed patches are already durable
+   * server-side one way or another. */
+  applyCompact(key: string, upToSeq: number, baseline: Buffer): void;
 }

@@ -2,8 +2,41 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { randomBytes } from 'crypto';
+import { Doc } from 'yjs';
 import { createProfileManager, type ProfileManager } from './profileManager';
-import type { MockRemoteProfileDescriptor } from './types';
+import type { MockRemoteProfileDescriptor, ProfileConfig } from './types';
+
+// Sequential transactions on one shared doc, so patches are causally ordered
+// (mirrors offlineStore.test.ts's helper of the same name) -- required for
+// mergeUpdates to produce a deterministic result inside listCompactionCandidates.
+function makeSequentialPatches(values: number[]): Buffer[] {
+  const doc = new Doc();
+  const patches: Buffer[] = [];
+  doc.on('update', (update: Uint8Array) => patches.push(Buffer.from(update)));
+  for (const value of values) {
+    doc.transact(() => doc.getMap('root').set('counter', value));
+  }
+  return patches;
+}
+
+function remoteConfig(): Extract<ProfileConfig, { kind: 'remote' }> {
+  return {
+    kind: 'remote',
+    apiBaseUrl: 'https://api.example.com',
+    provider: 'github',
+    refreshToken: 'refresh-1',
+    token: 'access-1',
+    dek: randomBytes(32)
+  };
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
 
 // safeStorage needs a real Electron runtime -- stand in with a reversible
 // no-op so encrypt/decrypt round-trips work the same way in tests.
@@ -35,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const manager of managers) manager.closeAll();
   rmSync(dir, { recursive: true, force: true });
+  vi.unstubAllGlobals();
 });
 
 describe('ensureDefaultLocalProfile', () => {
@@ -231,5 +265,97 @@ describe('getUnpushedPatchCount', () => {
 
     await manager.sync();
     expect(await manager.getUnpushedPatchCount()).toBe(0);
+  });
+});
+
+describe('compact', () => {
+  it('is a no-op (beyond its internal sync()) for the local profile', async () => {
+    const manager = newManager();
+    manager.ensureDefaultLocalProfile();
+    await expect(manager.compact()).resolves.toEqual([]);
+  });
+
+  it('is a no-op (beyond its internal sync()) for a mock-remote profile -- no compact support', async () => {
+    const manager = newManager();
+    manager.ensureDefaultLocalProfile();
+    const mock = manager.create({ name: 'Mock', config: { kind: 'mock-remote' } });
+    manager.switchProfile(mock.id);
+
+    await manager.appendPatch('doc', Buffer.from('hello'));
+    await manager.compact();
+    // compact()'s internal sync() still pushed the pending patch, even though
+    // nothing about compaction itself applies to mock-remote.
+    expect(await manager.getUnpushedPatchCount()).toBe(0);
+  });
+
+  it('merges a doc with 2+ confirmed patches and calls the remote compact endpoint once with the merged upToSeq', async () => {
+    const manager = newManager();
+    manager.ensureDefaultLocalProfile();
+    const remote = manager.create({ name: 'Remote', config: remoteConfig() });
+    manager.switchProfile(remote.id);
+
+    const [first, second] = makeSequentialPatches([1, 2]);
+    await manager.appendPatch('doc', first);
+    await manager.appendPatch('doc', second);
+
+    let pushSeq = 0;
+    let compactCalls = 0;
+    let compactedUpToSeq: number | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith('/api/kv/patches') && init?.method === 'POST') {
+          const body = JSON.parse(init.body as string) as { clientId: number }[];
+          return jsonResponse(
+            200,
+            body.map((item) => ({ clientId: item.clientId, seq: ++pushSeq }))
+          );
+        }
+        if (url.includes('/api/kv/patches?since=')) return jsonResponse(200, []);
+        if (url.endsWith('/compact')) {
+          compactCalls++;
+          compactedUpToSeq = (JSON.parse(init?.body as string) as { upToSeq: number }).upToSeq;
+          return jsonResponse(200, { ok: true });
+        }
+        throw new Error(`unexpected fetch to ${url}`);
+      })
+    );
+
+    await manager.compact();
+
+    expect(compactCalls).toBe(1);
+    expect(compactedUpToSeq).toBe(2);
+  });
+
+  it('never calls compact for a doc with fewer than 2 confirmed patches', async () => {
+    const manager = newManager();
+    manager.ensureDefaultLocalProfile();
+    const remote = manager.create({ name: 'Remote', config: remoteConfig() });
+    manager.switchProfile(remote.id);
+
+    await manager.appendPatch('doc', makeSequentialPatches([1])[0]);
+
+    let compactCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith('/api/kv/patches') && init?.method === 'POST') {
+          const body = JSON.parse(init.body as string) as { clientId: number }[];
+          return jsonResponse(
+            200,
+            body.map((item, index) => ({ clientId: item.clientId, seq: index + 1 }))
+          );
+        }
+        if (url.includes('/api/kv/patches?since=')) return jsonResponse(200, []);
+        if (url.endsWith('/compact')) {
+          compactCalls++;
+          return jsonResponse(200, { ok: true });
+        }
+        throw new Error(`unexpected fetch to ${url}`);
+      })
+    );
+
+    await manager.compact();
+    expect(compactCalls).toBe(0);
   });
 });

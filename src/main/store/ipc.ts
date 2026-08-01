@@ -148,6 +148,21 @@ export function registerProfileHandlers(): void {
     }
   });
 
+  ipcMain.handle('profiles:compact', async (): Promise<SyncResult> => {
+    try {
+      const changedKeys = await getProfileManager().compact();
+      broadcastDocsChanged(changedKeys);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Something went wrong.' };
+    } finally {
+      // compact() runs sync() internally, which can mark patches pushed
+      // before a later step fails -- always resync the count, same reasoning
+      // as profiles:sync's finally.
+      broadcastUnpushedCount();
+    }
+  });
+
   // __DEV__ only, mock-remote profile creation: lets the user either create a
   // fresh sqlite file (a new "mock server") or open an existing one (to
   // simulate a second device joining an already-shared mock server).

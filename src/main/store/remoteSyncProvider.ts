@@ -107,12 +107,37 @@ export function createRemoteSyncProvider(
         throw new Error(`Pull failed: ${response.status} ${text.slice(0, 500)}`);
       }
 
-      const rows = (await response.json()) as { docKey: string; seq: number; patch: string }[];
+      const rows = (await response.json()) as {
+        docKey: string;
+        seq: number;
+        patch: string;
+        isBaseline?: boolean;
+      }[];
       return rows.map((row) => ({
         docKey: row.docKey,
         remoteSeq: row.seq,
-        patch: decryptPatch(dek, row.docKey, row.patch)
+        patch: decryptPatch(dek, row.docKey, row.patch),
+        isBaseline: row.isBaseline
       }));
+    },
+
+    async compact(
+      docKey: string,
+      upToSeq: number,
+      baseline: Buffer
+    ): Promise<{ ok: boolean; noop?: boolean }> {
+      const response = await authFetch(`/api/kv/${encodeURIComponent(docKey)}/compact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upToSeq, baseline: encryptPatch(dek, docKey, baseline) })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Compact failed: ${response.status} ${text.slice(0, 500)}`);
+      }
+
+      return (await response.json()) as { ok: boolean; noop?: boolean };
     },
 
     async status(sinceSeq: number): Promise<RemoteSyncStatus> {

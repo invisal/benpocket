@@ -40,6 +40,16 @@ export interface ProfileManager {
   /** Cheap precheck against the active profile's remote, without pulling/decrypting anything -- powers the status bar popover's "changes available" display. */
   checkRemoteStatus(): Promise<RemoteSyncStatus>;
 
+  /**
+   * Runs sync() first (so this device's remote_seq knowledge is current
+   * before computing candidates), then compacts every doc that has enough
+   * confirmed patches, via the active profile's SyncProvider. A no-op beyond
+   * that initial sync() if the provider doesn't implement compact (local,
+   * mock-remote). One doc's failure is logged and skipped rather than
+   * aborting the rest. Returns the same changed-docKeys list sync() produced.
+   */
+  compact(): Promise<string[]>;
+
   /** Closes every cached profile's OfflineStore -- call on app quit (and between tests). */
   closeAll(): void;
 }
@@ -222,6 +232,27 @@ export function createProfileManager(profilesDir: string): ProfileManager {
     async checkRemoteStatus(): Promise<RemoteSyncStatus> {
       const { store, provider } = getActiveSession();
       return provider.status(store.getSyncCursor());
+    },
+
+    async compact(): Promise<string[]> {
+      const changedKeys = await manager.sync();
+      const { store, provider } = getActiveSession();
+      if (!provider.compact) return changedKeys;
+
+      for (const candidate of store.listCompactionCandidates()) {
+        try {
+          const result = await provider.compact(
+            candidate.docKey,
+            candidate.upToSeq,
+            candidate.baseline
+          );
+          if (result.ok)
+            store.applyCompact(candidate.docKey, candidate.upToSeq, candidate.baseline);
+        } catch (err) {
+          console.error(`[compact] failed for "${candidate.docKey}":`, err);
+        }
+      }
+      return changedKeys;
     },
 
     closeAll(): void {

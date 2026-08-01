@@ -24,7 +24,9 @@ function fakeOfflineStore(): OfflineStore {
     listUnpushedPatches: () => [],
     markPushed: () => {},
     getSyncCursor: () => 0,
-    applyRemotePatches: () => {}
+    applyRemotePatches: () => {},
+    listCompactionCandidates: () => [],
+    applyCompact: () => {}
   };
 }
 

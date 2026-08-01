@@ -1,7 +1,14 @@
 import { DatabaseSync } from 'node:sqlite';
 import { safeStorage } from 'electron';
 import { mergeUpdates } from 'yjs';
-import type { OfflineStore, PendingPatch, ProfileId, PushAck, RemotePatch } from './types';
+import type {
+  CompactionCandidate,
+  OfflineStore,
+  PendingPatch,
+  ProfileId,
+  PushAck,
+  RemotePatch
+} from './types';
 
 // Single, from-scratch schema -- this is a new store, not an evolution of
 // today's singleton store.db, so there's nothing to migrate from. No
@@ -29,8 +36,9 @@ const MIGRATIONS: string[] = [
     last_synced_seq INTEGER NOT NULL DEFAULT 0
   );
 
-  -- No reader/writer yet -- a "resume from baseline instead of replaying the
-  -- whole patch log" fast path is a future addition, not needed for this pass.
+  -- "Resume from baseline instead of replaying the whole patch log" -- see
+  -- applyCompact()/loadSnapshot(). A row here means patches with
+  -- remote_seq <= baseline_seq for that key have been folded in and deleted.
   CREATE TABLE sync_snapshot (
     store_key TEXT PRIMARY KEY,
     baseline BLOB,
@@ -82,6 +90,34 @@ function writeCursor(db: DatabaseSync, seq: number): void {
 }
 
 /**
+ * Not wrapped in its own transaction -- callers run this inside whichever
+ * transaction they already hold (applyRemotePatches' existing one, or
+ * applyCompact()'s own). Upserting `sync_snapshot` is monotonic (a lower
+ * upToSeq than what's already stored there is a no-op on the snapshot row
+ * itself), but the DELETE below always runs regardless -- it's an idempotent
+ * subset-delete either way, since a doc's local patches with remote_seq below
+ * whatever the current baseline_seq is are always redundant.
+ */
+function applyCompactStatements(
+  db: DatabaseSync,
+  key: string,
+  upToSeq: number,
+  baseline: Buffer
+): void {
+  db.prepare(
+    `INSERT INTO sync_snapshot (store_key, baseline, baseline_seq, updated_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(store_key) DO UPDATE SET
+       baseline = excluded.baseline, baseline_seq = excluded.baseline_seq, updated_at = excluded.updated_at
+     WHERE excluded.baseline_seq > sync_snapshot.baseline_seq`
+  ).run(key, encrypt(baseline), upToSeq, Date.now());
+
+  db.prepare(
+    'DELETE FROM patches WHERE store_key = ? AND remote_seq IS NOT NULL AND remote_seq <= ?'
+  ).run(key, upToSeq);
+}
+
+/**
  * `dbPath` is an already-resolved absolute path (or `:memory:`) -- resolving
  * userData/profiles/<id>.db is ProfileManager's job, not this one's, so this
  * stays testable without mocking electron's `app`.
@@ -118,11 +154,22 @@ export function createOfflineStore(profileId: ProfileId, dbPath: string): Offlin
     },
 
     async loadSnapshot(key: string): Promise<Buffer | null> {
-      const rows = requireDb()
+      const database = requireDb();
+      const snapshot = database
+        .prepare('SELECT baseline FROM sync_snapshot WHERE store_key = ?')
+        .get(key) as { baseline: Uint8Array } | undefined;
+      // After a compact, `patches` only ever holds rows for `key` above the
+      // snapshot's baseline_seq (applyCompactStatements deletes the rest) --
+      // so snapshot + remaining patches always covers the full history.
+      const rows = database
         .prepare('SELECT patch FROM patches WHERE store_key = ? ORDER BY id')
-        .all(key) as { patch: Uint8Array }[];
-      if (rows.length === 0) return null;
+        .all(key) as {
+        patch: Uint8Array;
+      }[];
+      if (!snapshot && rows.length === 0) return null;
+
       const decrypted = rows.map((row) => decrypt(row.patch));
+      if (snapshot) decrypted.unshift(decrypt(snapshot.baseline));
       return decrypted.length === 1 ? decrypted[0] : Buffer.from(mergeUpdates(decrypted));
     },
 
@@ -181,10 +228,53 @@ export function createOfflineStore(profileId: ProfileId, dbPath: string): Offlin
       try {
         let maxSeq = readCursor(database);
         for (const patch of patches) {
-          insert.run(patch.docKey, encrypt(patch.patch), Date.now(), patch.remoteSeq);
+          if (patch.isBaseline) {
+            applyCompactStatements(database, patch.docKey, patch.remoteSeq, patch.patch);
+          } else {
+            insert.run(patch.docKey, encrypt(patch.patch), Date.now(), patch.remoteSeq);
+          }
           if (patch.remoteSeq > maxSeq) maxSeq = patch.remoteSeq;
         }
         writeCursor(database, maxSeq);
+        database.exec('COMMIT');
+      } catch (err) {
+        database.exec('ROLLBACK');
+        throw err;
+      }
+    },
+
+    listCompactionCandidates(): CompactionCandidate[] {
+      const database = requireDb();
+      const groups = database
+        .prepare(
+          `SELECT store_key, MAX(remote_seq) AS up_to_seq
+           FROM patches
+           WHERE remote_seq IS NOT NULL
+           GROUP BY store_key
+           HAVING COUNT(*) >= 2`
+        )
+        .all() as { store_key: string; up_to_seq: number }[];
+
+      return groups.map(({ store_key, up_to_seq }) => {
+        const rows = database
+          .prepare(
+            'SELECT patch FROM patches WHERE store_key = ? AND remote_seq IS NOT NULL ORDER BY id'
+          )
+          .all(store_key) as { patch: Uint8Array }[];
+        const decrypted = rows.map((row) => decrypt(row.patch));
+        return {
+          docKey: store_key,
+          baseline: Buffer.from(mergeUpdates(decrypted)),
+          upToSeq: up_to_seq
+        };
+      });
+    },
+
+    applyCompact(key: string, upToSeq: number, baseline: Buffer): void {
+      const database = requireDb();
+      database.exec('BEGIN');
+      try {
+        applyCompactStatements(database, key, upToSeq, baseline);
         database.exec('COMMIT');
       } catch (err) {
         database.exec('ROLLBACK');

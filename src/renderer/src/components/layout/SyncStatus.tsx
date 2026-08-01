@@ -15,9 +15,12 @@ export const SyncStatus: React.FC = () => {
     remoteStatus,
     isCheckingStatus,
     statusError,
+    isCompacting,
+    compactError,
     refresh,
     checkStatus,
-    sync
+    sync,
+    compact
   } = useSyncStore();
   const activeProfile = useProfilesStore((state) =>
     state.profiles.find((profile) => profile.id === state.activeProfileId)
@@ -98,6 +101,7 @@ export const SyncStatus: React.FC = () => {
         </ul>
 
         {syncError && <p className="text-[11px] leading-relaxed text-red-400">{syncError}</p>}
+        {compactError && <p className="text-[11px] leading-relaxed text-red-400">{compactError}</p>}
 
         <Button
           variant="primary"
@@ -108,6 +112,18 @@ export const SyncStatus: React.FC = () => {
         >
           {isSyncing ? 'Syncing...' : 'Sync now'}
         </Button>
+
+        {activeProfile?.kind === 'remote' && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void compact()}
+            disabled={isCompacting}
+            className="w-full"
+          >
+            {isCompacting ? 'Compacting...' : 'Compact'}
+          </Button>
+        )}
       </Popover.Content>
     </Popover.Root>
   );

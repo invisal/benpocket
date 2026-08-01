@@ -25,6 +25,10 @@ export interface ProfilesApi {
   /** Cheap remote precheck ({ hasChanges, latestSeq }) for the active profile, without pushing/pulling anything. */
   checkStatus: () => Promise<SyncStatusResult>;
   sync: () => Promise<SyncResult>;
+  /** Merges this device's confirmed patches per-doc into a baseline and asks
+   * the backend to compact its patch log for each. No-op beyond an internal
+   * sync() for profiles whose SyncProvider doesn't support it (local, mock-remote). */
+  compact: () => Promise<SyncResult>;
   /** Live push of the active profile's unpushed count after every appendPatch/sync/switch/delete. Returns an unsubscribe function. */
   onUnpushedCountChanged: (callback: (count: number) => void) => () => void;
   /** Live push of docKeys that received new remote patches via sync() -- lets usePersistStore reload just its own key. Returns an unsubscribe function. */
@@ -43,6 +47,7 @@ export const profilesApi: ProfilesApi = {
   getUnpushedCount: () => ipcRenderer.invoke('profiles:unpushed-count'),
   checkStatus: () => ipcRenderer.invoke('profiles:status'),
   sync: () => ipcRenderer.invoke('profiles:sync'),
+  compact: () => ipcRenderer.invoke('profiles:compact'),
   onUnpushedCountChanged: (callback) => {
     const listener = (_event: IpcRendererEvent, count: number): void => callback(count);
     ipcRenderer.on('profiles:unpushed-count-changed', listener);

@@ -13,12 +13,16 @@ interface SyncState {
   remoteStatus: RemoteStatus | null;
   isCheckingStatus: boolean;
   statusError: string | null;
+  isCompacting: boolean;
+  compactError: string | null;
   /** Re-reads the active profile's unpushed patch count from main -- only needed for the initial value on mount; live updates arrive via SyncStatus's onUnpushedCountChanged subscription. */
   refresh: () => Promise<void>;
   /** Cheap remote precheck, no push/pull -- called when the status bar popover opens. */
   checkStatus: () => Promise<void>;
   /** Pushes/pulls through the active profile's SyncProvider. The resulting count arrives via that same push subscription, not a manual refetch. */
   sync: () => Promise<void>;
+  /** Merges and compacts the active profile's remote patch log doc-by-doc. Runs a sync() on the main side first as a safety net. */
+  compact: () => Promise<void>;
 }
 
 // Renderer-side cache of the active profile's unpushed-patch count (see
@@ -31,6 +35,8 @@ export const useSyncStore = create<SyncState>()((set) => ({
   remoteStatus: null,
   isCheckingStatus: false,
   statusError: null,
+  isCompacting: false,
+  compactError: null,
 
   refresh: async () => {
     const unpushedCount = await window.profiles.getUnpushedCount();
@@ -61,6 +67,16 @@ export const useSyncStore = create<SyncState>()((set) => ({
     // The cursor just moved (or a real error happened either way) -- refresh
     // the remote-status display rather than leaving the pre-sync "N changes
     // available" stale in the popover.
+    await useSyncStore.getState().checkStatus();
+  },
+
+  compact: async () => {
+    set({ isCompacting: true, compactError: null });
+    const result = await window.profiles.compact();
+    set({
+      isCompacting: false,
+      compactError: result.ok ? null : (result.error ?? 'Something went wrong.')
+    });
     await useSyncStore.getState().checkStatus();
   }
 }));

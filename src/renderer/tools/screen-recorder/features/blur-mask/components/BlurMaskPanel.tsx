@@ -1,8 +1,8 @@
 import type { JSX } from 'react';
-import { Droplets, Square, Trash2 } from 'lucide-react';
+import { Droplets, Square, Timer, Trash2 } from 'lucide-react';
 import type { BlurMaskRegion } from '@screen-recorder/types/project';
 import { useBlurMaskStore, MIN_BLUR_INTENSITY, MAX_BLUR_INTENSITY } from '../store/blur-mask-store';
-import { Slider } from '../../../components/ui/slider';
+import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
 
@@ -128,19 +128,16 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
           </div>
 
           {selected.kind === 'blur' && (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium text-muted-foreground">Intensity</span>
-                <span className="text-[11px] text-muted-foreground">{selected.intensity}</span>
-              </div>
-              <Slider
-                value={selected.intensity}
-                min={MIN_BLUR_INTENSITY}
-                max={MAX_BLUR_INTENSITY}
-                step={1}
-                onChange={(intensity) => updateRegion(selected.id, { intensity })}
-              />
-            </div>
+            <SliderRow
+              icon={Droplets}
+              label="Intensity"
+              value={selected.intensity}
+              displayValue={`${selected.intensity}`}
+              min={MIN_BLUR_INTENSITY}
+              max={MAX_BLUR_INTENSITY}
+              step={1}
+              onChange={(intensity) => updateRegion(selected.id, { intensity })}
+            />
           )}
 
           {selected.kind === 'mask' && (
@@ -172,21 +169,16 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
             </div>
           )}
 
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium text-muted-foreground">Duration</span>
-              <span className="text-[11px] text-muted-foreground">
-                {(selected.durationMs / 1000).toFixed(1)}s
-              </span>
-            </div>
-            <Slider
-              value={selected.durationMs}
-              min={MIN_DURATION_MS}
-              max={MAX_DURATION_MS}
-              step={100}
-              onChange={(durationMs) => updateRegion(selected.id, { durationMs })}
-            />
-          </div>
+          <SliderRow
+            icon={Timer}
+            label="Duration"
+            value={selected.durationMs}
+            displayValue={`${(selected.durationMs / 1000).toFixed(1)}s`}
+            min={MIN_DURATION_MS}
+            max={MAX_DURATION_MS}
+            step={100}
+            onChange={(durationMs) => updateRegion(selected.id, { durationMs })}
+          />
         </div>
       )}
     </div>

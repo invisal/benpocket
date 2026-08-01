@@ -1,13 +1,14 @@
-import type { JSX, ReactNode } from 'react';
+import type { JSX } from 'react';
 import { useEffect, useRef } from 'react';
-import { Crosshair, Plus, Trash2 } from 'lucide-react';
+import { Crosshair, Gauge, Plus, Timer, Trash2, ZoomIn } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import type { SourceResolution } from '@screen-recorder/types/editor';
 import { ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { useZoomStore } from '../store/zoom-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
-import { Slider } from '../../../components/ui/slider';
+import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
+import { Select } from '@renderer/components/ui/Select';
 import { cn } from '../../../lib/utils';
 
 function formatTime(ms: number): string {
@@ -18,30 +19,16 @@ function formatTime(ms: number): string {
 }
 
 const EASINGS: ZoomKeyframe['easing'][] = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
+const EASING_LABELS: Record<ZoomKeyframe['easing'], string> = {
+  linear: 'Linear',
+  'ease-in': 'Ease In',
+  'ease-out': 'Ease Out',
+  'ease-in-out': 'Ease In Out'
+};
 // zoom-resolve.ts clamps this to half of a keyframe's own duration, so a
 // short keyframe degrades to a plain ease-in-then-out rather than clipping.
 export const MIN_HOLD_TRANSITION_MS = 50;
 export const MAX_HOLD_TRANSITION_MS = 2000;
-
-function SliderField({
-  label,
-  valueLabel,
-  children
-}: {
-  label: string;
-  valueLabel: string;
-  children: ReactNode;
-}): JSX.Element {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
-        <span className="text-[11px] text-muted-foreground">{valueLabel}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
 
 interface ZoomKeyframeEditorProps {
   /** Current preview position (ms, source-relative) -- "Add keyframe here" targets this. */
@@ -197,59 +184,60 @@ function KeyframeDetailPanel({
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <SliderField label="Zoom level" valueLabel={`${kf.depth.toFixed(1)}×`}>
-          <Slider
-            value={kf.depth}
-            min={1}
-            max={4}
-            step={0.1}
-            onChange={(depth) => updateKeyframe(kf.id, { depth })}
-          />
-        </SliderField>
+      <div className="flex flex-col gap-4">
+        <SliderRow
+          icon={ZoomIn}
+          label="Zoom level"
+          value={kf.depth}
+          displayValue={`${kf.depth.toFixed(1)}×`}
+          min={1}
+          max={4}
+          step={0.1}
+          onChange={(depth) => updateKeyframe(kf.id, { depth })}
+        />
 
-        <SliderField label="Duration" valueLabel={`${(kf.durationMs / 1000).toFixed(1)}s`}>
-          <Slider
-            value={kf.durationMs}
-            min={ZOOM_MIN_DURATION_MS}
-            max={Math.max(ZOOM_MIN_DURATION_MS, sourceDurationMs - kf.atMs)}
-            step={50}
-            onChange={(durationMs) => updateKeyframe(kf.id, { durationMs }, sourceDurationMs)}
-          />
-        </SliderField>
+        <SliderRow
+          icon={Timer}
+          label="Duration"
+          value={kf.durationMs}
+          displayValue={`${(kf.durationMs / 1000).toFixed(1)}s`}
+          min={ZOOM_MIN_DURATION_MS}
+          max={Math.max(ZOOM_MIN_DURATION_MS, sourceDurationMs - kf.atMs)}
+          step={50}
+          onChange={(durationMs) => updateKeyframe(kf.id, { durationMs }, sourceDurationMs)}
+        />
 
-        <SliderField
-          label="Hold transition"
-          valueLabel={`${(kf.holdTransitionMs / 1000).toFixed(2)}s`}
-        >
-          <Slider
-            value={kf.holdTransitionMs}
-            min={MIN_HOLD_TRANSITION_MS}
-            max={MAX_HOLD_TRANSITION_MS}
-            step={50}
-            onChange={(holdTransitionMs) => updateKeyframe(kf.id, { holdTransitionMs })}
-          />
-        </SliderField>
+        <SliderRow
+          icon={Gauge}
+          label="Speed"
+          value={kf.holdTransitionMs}
+          displayValue={`${(kf.holdTransitionMs / 1000).toFixed(2)}s`}
+          min={MIN_HOLD_TRANSITION_MS}
+          max={MAX_HOLD_TRANSITION_MS}
+          step={50}
+          onChange={(holdTransitionMs) => updateKeyframe(kf.id, { holdTransitionMs })}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-medium text-muted-foreground">Easing</span>
-        <div className="flex gap-1">
-          {EASINGS.map((easing) => (
-            <button
-              key={easing}
-              onClick={() => updateKeyframe(kf.id, { easing })}
-              className={cn(
-                'flex-1 rounded-md border px-1.5 py-1 text-[10px] font-medium transition-colors',
-                kf.easing === easing
-                  ? 'border-accent text-accent'
-                  : 'border-line text-muted-foreground hover:border-accent/40'
-              )}
-            >
-              {easing}
-            </button>
-          ))}
-        </div>
+        <Select.Root
+          value={kf.easing}
+          onValueChange={(value) =>
+            updateKeyframe(kf.id, { easing: value as ZoomKeyframe['easing'] })
+          }
+        >
+          <Select.Trigger size="sm" className="w-full justify-between">
+            <span className="truncate">{EASING_LABELS[kf.easing]}</span>
+          </Select.Trigger>
+          <Select.Content side="bottom" align="start">
+            {EASINGS.map((easing) => (
+              <Select.Item key={easing} value={easing}>
+                {EASING_LABELS[easing]}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
       </div>
     </div>
   );

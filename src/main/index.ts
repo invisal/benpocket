@@ -25,6 +25,7 @@ import { registerDisplayMediaHandler } from './screen-recorder/security/display-
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
+import { registerProfileHandlers, closeAllProfileSessions } from './store/ipc';
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -209,6 +210,10 @@ app.whenReady().then(() => {
   // File Explorer tool: directory listing, native file icons, open-with-default-app
   registerFileExplorerHandlers();
 
+  // Profile state (active profile + list of profiles), backing the activity
+  // bar's profile switcher.
+  registerProfileHandlers();
+
   // Tray icon is created on demand -- see TrayBridge, which registers it
   // only while the Screen Recorder tool tab is open.
   registerTrayHandlers(trayIcon);
@@ -233,6 +238,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  closeAllProfileSessions();
   destroyTray();
   destroyRecorderToolbar();
   destroySourcePickerOverlay();

@@ -1,4 +1,5 @@
 import type React from 'react';
+import { SyncStatus } from './SyncStatus';
 
 export const StatusBar: React.FC = () => {
   return (
@@ -7,6 +8,8 @@ export const StatusBar: React.FC = () => {
       <span> v{__APP_VERSION__}</span>
 
       <div className="h-full flex-1 border-l border-border bg-surface-2 bg-diagonal-stripes" />
+
+      <SyncStatus />
     </div>
   );
 };

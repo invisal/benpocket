@@ -1,6 +1,7 @@
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { KuberneterSidebar } from './components/sidebar/KuberneterSidebar';
 import { Workspace } from '@renderer/components/layout/Workspace';
+import { BottomPanel } from '@renderer/components/layout/BottomPanel';
 import { useLayoutStore } from '../../src/store/layout.store';
 import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
@@ -88,9 +89,11 @@ function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: str
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0">
+      {/* Main Content Area. overflow-hidden makes this a hard boundary so the
+          bottom panel can never paint over the status bar below it. */}
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden">
         <Workspace />
+        <BottomPanel />
       </div>
     </div>
   );

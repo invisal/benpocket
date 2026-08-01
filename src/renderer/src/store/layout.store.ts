@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useKuberneterStore } from '../../tools/kuberneter/store/kuberneter.store';
 
+/** Smallest bottom-panel height (px) a drag is allowed to settle on. */
+const MIN_BOTTOM_PANEL_HEIGHT = 100;
+
 export interface Tab {
   id: string;
   title: string;
@@ -22,6 +25,15 @@ interface LayoutState {
   activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null;
   isRightPanelOpen: boolean;
   rightPanelWidth: number;
+
+  // Bottom Panel state
+  isBottomPanelOpen: boolean;
+  /** Height (px) used when NOT maximized. When maximized, CSS fills the container. */
+  bottomPanelHeight: number;
+  /** When true the panel fills its container (via CSS), ignoring bottomPanelHeight. */
+  isBottomPanelMaximized: boolean;
+  bottomPanelTab: string;
+
   openTabs: Tab[];
   activeTabId: string | null;
 
@@ -32,6 +44,11 @@ interface LayoutState {
   // Layout Toggle Actions
   toggleRightPanel: () => void;
   setRightPanelWidth: (width: number) => void;
+  toggleBottomPanel: () => void;
+  setBottomPanelHeight: (height: number) => void;
+  toggleMaximizeBottomPanel: () => void;
+  setBottomPanelTab: (tab: string) => void;
+  openBottomPanelWithTab: (tab: string) => void;
 
   // Tab Actions
   openTab: (tab: Tab) => void;
@@ -59,6 +76,12 @@ export const useLayoutStore = create<LayoutState>()(
       activeActivity: null,
       isRightPanelOpen: false,
       rightPanelWidth: 260,
+
+      isBottomPanelOpen: false,
+      bottomPanelHeight: 220,
+      isBottomPanelMaximized: false,
+      bottomPanelTab: 'terminal',
+
       openTabs: [],
       activeTabId: null,
 
@@ -67,6 +90,23 @@ export const useLayoutStore = create<LayoutState>()(
 
       toggleRightPanel: () => set((state) => ({ isRightPanelOpen: !state.isRightPanelOpen })),
       setRightPanelWidth: (width) => set({ rightPanelWidth: Math.max(150, Math.min(width, 500)) }),
+
+      toggleBottomPanel: () => set((state) => ({ isBottomPanelOpen: !state.isBottomPanelOpen })),
+      // Only enforce a minimum; the max is handled purely in CSS (maxHeight:100%
+      // on a container with overflow-hidden), so no innerHeight math is needed.
+      // A manual drag also exits the maximized state.
+      setBottomPanelHeight: (height) =>
+        set({
+          bottomPanelHeight: Math.max(MIN_BOTTOM_PANEL_HEIGHT, height),
+          isBottomPanelMaximized: false
+        }),
+      toggleMaximizeBottomPanel: () =>
+        set((state) => ({
+          isBottomPanelOpen: true,
+          isBottomPanelMaximized: !state.isBottomPanelMaximized
+        })),
+      setBottomPanelTab: (tab) => set({ bottomPanelTab: tab }),
+      openBottomPanelWithTab: (tab) => set({ isBottomPanelOpen: true, bottomPanelTab: tab }),
 
       openTab: (tab) =>
         set((state) => {

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLayoutStore } from '../../../src/store/layout.store';
 import { useKuberneterStore, DEFAULT_METRICS_CONFIG } from '../store/kuberneter.store';
-import { parseK8sCapacity, formatCapacity } from '../utils/formatCapacity';
+import { parseK8sCapacity, formatCapacity, parseCpu } from '../utils/formatCapacity';
 
 // ─── Query key factories ──────────────────────────────────────────────────────
 
@@ -199,13 +199,9 @@ export function usePodMetricsRange(
 // ─── Display helpers used by usePods.ts ──────────────────────────────────────
 
 export function formatInstantCpu(raw: string): string {
-  const s = raw.trim();
-  if (s.endsWith('m')) {
-    const mc = parseInt(s.slice(0, -1), 10);
-    return (mc / 1000).toFixed(3);
-  }
-  const cores = parseFloat(s);
-  return isNaN(cores) ? 'N/A' : cores.toFixed(3);
+  const millicores = parseCpu(raw);
+  if (millicores === 0 && (!raw || raw === '0')) return '0.000';
+  return (millicores / 1000).toFixed(3);
 }
 
 export function formatInstantMemory(raw: string): string {

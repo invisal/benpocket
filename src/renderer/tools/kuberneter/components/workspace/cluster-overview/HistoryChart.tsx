@@ -11,9 +11,15 @@ interface HistoryPoint {
 
 interface HistoryChartProps {
   history: HistoryPoint[];
+  allocatableCpu?: number;
+  allocatableMem?: number;
 }
 
-export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
+export const HistoryChart: React.FC<HistoryChartProps> = ({
+  history,
+  allocatableCpu,
+  allocatableMem
+}) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
 
@@ -36,7 +42,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
     };
   }, []);
 
-  // 2. Perform delta updates when history changes
+  // 2. Perform delta updates when history or allocatable capacity bounds change
   useEffect(() => {
     if (!chartInstanceRef.current || !chartRef.current) return;
 
@@ -51,11 +57,16 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
     const cpuData = history.map((h) => h.cpu);
     const memData = history.map((h) => h.mem);
 
+    const maxCpuBound =
+      allocatableCpu && allocatableCpu > 0 ? parseFloat(allocatableCpu.toFixed(2)) : undefined;
+    const maxMemBound =
+      allocatableMem && allocatableMem > 0 ? parseFloat(allocatableMem.toFixed(2)) : undefined;
+
     const option: echarts.EChartsOption = {
       grid: {
-        top: '16%',
-        left: '4%',
-        right: '4%',
+        top: '18%',
+        left: '5%',
+        right: '5%',
         bottom: '12%',
         containLabel: true
       },
@@ -74,11 +85,18 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
           let res = `<div style="font-weight:bold; margin-bottom: 4px; font-size:10px;">Time: ${params[0].name}</div>`;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           params.forEach((item: any) => {
-            const val = typeof item.value === 'number' ? item.value.toFixed(1) : item.value;
+            const isCpu = item.seriesName.includes('CPU');
+            const val =
+              typeof item.value === 'number'
+                ? isCpu
+                  ? item.value.toFixed(3)
+                  : item.value.toFixed(2)
+                : item.value;
+            const unit = isCpu ? ' Cores' : ' GiB';
             res += `<div style="display:flex; justify-content:between; align-items:center; gap: 8px; font-size:10px;">
               <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background-color:${item.color};"></span>
               <span>${item.seriesName}:</span>
-              <span style="font-weight:bold; margin-left:auto;">${val}%</span>
+              <span style="font-weight:bold; margin-left:auto;">${val}${unit}</span>
             </div>`;
           });
           return res;
@@ -92,7 +110,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
           fontFamily: 'sans-serif'
         },
         top: '0%',
-        right: '4%'
+        left: 'center'
       },
       xAxis: {
         type: 'category',
@@ -107,25 +125,53 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
           fontFamily: 'monospace'
         }
       },
-      yAxis: {
-        type: 'value',
-        min: 0,
-        max: 100,
-        axisLine: { show: false },
-        splitLine: {
-          lineStyle: { color: borderColor, type: 'dashed' }
+      yAxis: [
+        {
+          type: 'value',
+          name: 'CPU (Cores)',
+          min: 0,
+          max: maxCpuBound,
+          nameTextStyle: {
+            color: subtextColor,
+            fontSize: 9,
+            fontFamily: 'monospace'
+          },
+          axisLine: { show: false },
+          splitLine: {
+            lineStyle: { color: borderColor, type: 'dashed' }
+          },
+          axisLabel: {
+            color: subtextColor,
+            fontSize: 9,
+            fontFamily: 'monospace',
+            formatter: '{value} Cores'
+          }
         },
-        axisLabel: {
-          color: subtextColor,
-          fontSize: 9,
-          fontFamily: 'monospace',
-          formatter: '{value}%'
+        {
+          type: 'value',
+          name: 'Memory (GiB)',
+          min: 0,
+          max: maxMemBound,
+          nameTextStyle: {
+            color: subtextColor,
+            fontSize: 9,
+            fontFamily: 'monospace'
+          },
+          axisLine: { show: false },
+          splitLine: { show: false },
+          axisLabel: {
+            color: subtextColor,
+            fontSize: 9,
+            fontFamily: 'monospace',
+            formatter: '{value} GiB'
+          }
         }
-      },
+      ],
       series: [
         {
           name: 'CPU Usage',
           type: 'line',
+          yAxisIndex: 0,
           data: cpuData,
           smooth: true,
           showSymbol: false,
@@ -143,6 +189,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
         {
           name: 'Memory Usage',
           type: 'line',
+          yAxisIndex: 1,
           data: memData,
           smooth: true,
           showSymbol: false,
@@ -161,7 +208,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ history }) => {
     };
 
     chartInstanceRef.current.setOption(option);
-  }, [history]);
+  }, [history, allocatableCpu, allocatableMem]);
 
   return (
     <div className={cn('p-2 flex flex-col gap-2 h-[280px] select-none min-w-0 w-full relative')}>

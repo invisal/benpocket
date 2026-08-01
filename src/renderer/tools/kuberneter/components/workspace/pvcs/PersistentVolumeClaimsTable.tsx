@@ -6,6 +6,7 @@ import { MoreVertical } from 'lucide-react';
 import { type PersistentVolumeClaimData } from '../../../types/PersistentVolumeClaimData';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { parseK8sCapacity } from '../../../utils/formatCapacity';
 
 interface PersistentVolumeClaimsTableProps {
   filteredData: PersistentVolumeClaimData[];
@@ -120,6 +121,7 @@ export const PersistentVolumeClaimsTable: React.FC<PersistentVolumeClaimsTablePr
       {
         key: 'capacity',
         header: 'Size',
+        sortValue: (row) => parseK8sCapacity(row.capacity),
         render: (row) => (
           <span className="text-zinc-300 font-mono text-[11px]">{row.capacity}</span>
         ),

@@ -8,7 +8,12 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
 import { type K8sResource } from '../../../types/K8sResource';
-import { parseK8sCapacity, formatCapacity } from '../../../utils/formatCapacity';
+import {
+  parseK8sCapacity,
+  formatCapacity,
+  parseCpu,
+  parseMemoryToMiB
+} from '../../../utils/formatCapacity';
 import {
   MoreVertical,
   Cpu,
@@ -437,27 +442,8 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
 
       // Find metric
       const metric = topPods.find((m) => m.name === name && m.namespace === namespace);
-      let cpuVal = 0;
-      if (metric?.cpu) {
-        const rawCpu = metric.cpu.trim();
-        if (rawCpu.endsWith('m')) {
-          cpuVal = parseInt(rawCpu.slice(0, -1), 10);
-        } else {
-          cpuVal = parseFloat(rawCpu) * 1000;
-        }
-      }
-
-      let memVal = 0;
-      if (metric?.memory) {
-        const rawMem = metric.memory.trim();
-        if (rawMem.endsWith('Mi')) {
-          memVal = parseInt(rawMem.slice(0, -2), 10);
-        } else if (rawMem.endsWith('Gi')) {
-          memVal = parseInt(rawMem.slice(0, -2), 10) * 1024;
-        } else if (rawMem.endsWith('Ki')) {
-          memVal = parseInt(rawMem.slice(0, -2), 10) / 1024;
-        }
-      }
+      const cpuVal = metric?.cpu ? parseCpu(metric.cpu) : 0;
+      const memVal = metric?.memory ? parseMemoryToMiB(metric.memory) : 0;
 
       return {
         id: `${namespace}/${name}/${idx}`,
@@ -538,6 +524,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'cpu_spark',
         header: 'CPU',
+        sortValue: (row) => row.cpuVal,
         render: (row) => {
           const pct = Math.min(100, Math.max(3, (row.cpuVal / 1000) * 100));
           return (
@@ -559,6 +546,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'memory_spark',
         header: 'Memory',
+        sortValue: (row) => row.memVal,
         render: (row) => {
           const pct = Math.min(100, Math.max(3, (row.memVal / 512) * 100));
           return (

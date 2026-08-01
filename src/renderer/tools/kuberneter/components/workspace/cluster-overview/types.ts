@@ -41,6 +41,7 @@ export interface PodResource {
     phase?: string;
   };
   spec?: {
+    nodeName?: string;
     containers?: {
       resources?: {
         requests?: {

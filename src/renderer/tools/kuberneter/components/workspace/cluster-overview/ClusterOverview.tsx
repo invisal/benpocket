@@ -7,7 +7,14 @@ import { HistoryChart } from './HistoryChart';
 import { WarningsFeed } from './WarningsFeed';
 import { ClusterOverviewHeader } from './ClusterOverviewHeader';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
-import { getCapacitySums, getWorkloadMetrics, getLiveMetrics } from './clusterMetrics';
+import {
+  getCapacitySums,
+  getWorkloadMetrics,
+  getLiveMetrics,
+  filterNodes,
+  filterNodeMetrics,
+  filterPodsByNodes
+} from './clusterMetrics';
 import type { NodeResource, PodResource, EventResource, NodeMetric } from './types';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -31,6 +38,7 @@ export const ClusterOverview: React.FC = () => {
   );
 
   // User control states
+  const [nodesFilter, setNodesFilter] = useState('worker');
   const [timeRange, setTimeRange] = useState('1h');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -46,9 +54,18 @@ export const ClusterOverview: React.FC = () => {
   // Historical metrics timeline data
   const [history, setHistory] = useState<{ time: string; cpu: number; mem: number }[]>([]);
 
-  const capacities = getCapacitySums(nodes);
-  const utilization = getLiveMetrics(nodeMetrics, capacities.capacityCpu, capacities.capacityMem);
-  const workloads = getWorkloadMetrics(pods, kuberneterSelectedNamespace);
+  // Filter datasets based on selected nodes filter (All, Master, Worker, or Specific Node)
+  const filteredNodes = filterNodes(nodes, nodesFilter);
+  const filteredNodeMetrics = filterNodeMetrics(nodeMetrics, filteredNodes);
+  const filteredPods = filterPodsByNodes(pods, filteredNodes, nodesFilter);
+
+  const capacities = getCapacitySums(filteredNodes);
+  const utilization = getLiveMetrics(
+    filteredNodeMetrics,
+    capacities.allocatableCpu,
+    capacities.allocatableMem
+  );
+  const workloads = getWorkloadMetrics(filteredPods, kuberneterSelectedNamespace);
 
   const fetchData = async (isBackground = false) => {
     if (!kuberneterSelectedCluster) return;
@@ -112,15 +129,9 @@ export const ClusterOverview: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kuberneterSelectedCluster, kuberneterSelectedNamespace, activeConfigPath]);
 
-  // 2. Background polling interval timer
+  // 2. Background metric polling interval timer for live CPU/Mem chart trends
   useEffect(() => {
     if (refreshInterval === 'off') return;
-
-    // Trigger a background refresh immediately on interval change, without showing full page loader
-    if (!isLoading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchData(true);
-    }
 
     const intervalMap: Record<string, number> = {
       '5s': 5000,
@@ -129,7 +140,7 @@ export const ClusterOverview: React.FC = () => {
       '60s': 60000
     };
 
-    const ms = intervalMap[refreshInterval] || 5000;
+    const ms = intervalMap[refreshInterval] || 10000;
     const timer = setInterval(() => {
       fetchData(true);
     }, ms);
@@ -138,14 +149,14 @@ export const ClusterOverview: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kuberneterSelectedCluster, kuberneterSelectedNamespace, activeConfigPath, refreshInterval]);
 
-  // Clear history when cluster or config changes (namespace changes do not affect node utilization)
+  // Clear history when cluster, config, or nodes filter changes
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHistory([]);
-  }, [kuberneterSelectedCluster, activeConfigPath]);
+  }, [kuberneterSelectedCluster, activeConfigPath, nodesFilter]);
 
   useEffect(() => {
-    if (isLoading || errorMsg || nodes.length === 0) return;
+    if (isLoading || errorMsg || filteredNodes.length === 0) return;
 
     const time = new Date().toLocaleTimeString([], {
       hour: '2-digit',
@@ -172,12 +183,12 @@ export const ClusterOverview: React.FC = () => {
             minute: '2-digit',
             second: '2-digit'
           });
-          const cpuNoise = (Math.random() - 0.5) * 4;
-          const memNoise = (Math.random() - 0.5) * 2.5;
+          const cpuNoise = (Math.random() - 0.5) * 0.08 * utilization.usageCpu;
+          const memNoise = (Math.random() - 0.5) * 0.05 * utilization.usageMem;
           initialHistory.push({
             time: timeStr,
-            cpu: Math.max(0, Math.min(100, utilization.cpuPct + cpuNoise)),
-            mem: Math.max(0, Math.min(100, utilization.memPct + memNoise))
+            cpu: Math.max(0, parseFloat((utilization.usageCpu + cpuNoise).toFixed(3))),
+            mem: Math.max(0, parseFloat((utilization.usageMem + memNoise).toFixed(2)))
           });
         }
         return initialHistory;
@@ -188,12 +199,12 @@ export const ClusterOverview: React.FC = () => {
         ...prev,
         {
           time,
-          cpu: utilization.cpuPct,
-          mem: utilization.memPct
+          cpu: parseFloat(utilization.usageCpu.toFixed(3)),
+          mem: parseFloat(utilization.usageMem.toFixed(2))
         }
       ].slice(-200);
     });
-  }, [utilization.cpuPct, utilization.memPct, isLoading, errorMsg, nodes.length]);
+  }, [utilization.usageCpu, utilization.usageMem, isLoading, errorMsg, filteredNodes.length]);
 
   if (isLoading) {
     return (
@@ -228,6 +239,9 @@ export const ClusterOverview: React.FC = () => {
     <KubeWorkspaceLayout
       header={
         <ClusterOverviewHeader
+          nodesFilter={nodesFilter}
+          setNodesFilter={setNodesFilter}
+          nodes={nodes}
           timeRange={timeRange}
           setTimeRange={setTimeRange}
           refreshInterval={refreshInterval}
@@ -288,7 +302,11 @@ export const ClusterOverview: React.FC = () => {
 
         {/* Row 2: Live Utilization Timeline */}
         <div className="shrink-0 px-4">
-          <HistoryChart history={filteredHistory} />
+          <HistoryChart
+            history={filteredHistory}
+            allocatableCpu={capacities.allocatableCpu}
+            allocatableMem={capacities.allocatableMem}
+          />
         </div>
 
         {/* Row 3: Live Warnings Feed — shrink-0 since WarningsFeed has its own min/max height */}

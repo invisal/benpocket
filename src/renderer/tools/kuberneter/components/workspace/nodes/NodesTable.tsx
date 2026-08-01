@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { KubeTable, type Column } from '../../kubeTable';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
 import { type NodeData } from '../../../types/NodeData';
+import { parseK8sCapacity } from '../../../utils/formatCapacity';
 
 interface NodesTableProps {
   filteredData: NodeData[];
@@ -99,6 +100,7 @@ export const NodesTable: React.FC<NodesTableProps> = ({
       {
         key: 'cpu',
         header: 'CPU',
+        sortValue: (row) => parseK8sCapacity(row.rawCpu) || row.cpuPercent,
         render: (row) => (
           <div title={`Raw Usage: ${row.rawCpu}`}>
             <MetricCell percent={row.cpuPercent} capacity={`${row.cpuCapacity} Cores`} />
@@ -109,6 +111,7 @@ export const NodesTable: React.FC<NodesTableProps> = ({
       {
         key: 'memory',
         header: 'Memory',
+        sortValue: (row) => parseK8sCapacity(row.rawMemory) || row.memoryPercent,
         render: (row) => (
           <div title={`Raw Usage: ${row.rawMemory}`}>
             <MetricCell percent={row.memoryPercent} capacity={row.memoryCapacity} />
@@ -119,6 +122,7 @@ export const NodesTable: React.FC<NodesTableProps> = ({
       {
         key: 'disk',
         header: 'Disk',
+        sortValue: (row) => parseK8sCapacity(row.rawDisk) || row.diskPercent,
         render: (row) => (
           <div title={`Raw Capacity: ${row.rawDisk}`}>
             <MetricCell percent={row.diskPercent} capacity={row.diskCapacity} />

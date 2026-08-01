@@ -260,9 +260,6 @@ export function useWorkloadOverview(): WorkloadSummary {
   const activeConfigPath = useKuberneterStore(
     (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
-  const refreshInterval = useKuberneterStore(
-    (s) => s.kuberneterInstanceRefreshInterval[activeInstanceId] || '60s'
-  );
 
   const [podsData, setPodsData] = useState<PodData[]>([]);
   const [deploysData, setDeploysData] = useState<DeployData[]>([]);
@@ -335,24 +332,9 @@ export function useWorkloadOverview(): WorkloadSummary {
     [kuberneterSelectedCluster, kuberneterSelectedNamespace, activeConfigPath]
   );
 
-  // Parse refresh interval string like "30s", "5m", "1h"
-  const getIntervalMs = (interval: string): number => {
-    const match = interval.match(/^(\d+)(s|m|h)$/);
-    if (!match) return 60_000;
-    const [, num, unit] = match;
-    const n = parseInt(num, 10);
-    if (unit === 's') return n * 1000;
-    if (unit === 'm') return n * 60_000;
-    if (unit === 'h') return n * 3_600_000;
-    return 60_000;
-  };
-
   useEffect(() => {
     queueMicrotask(() => fetchAll(false));
-    const ms = getIntervalMs(refreshInterval);
-    const id = setInterval(() => fetchAll(true), ms);
-    return () => clearInterval(id);
-  }, [fetchAll, refreshInterval]);
+  }, [fetchAll]);
 
   return {
     podsData,

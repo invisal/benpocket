@@ -1,4 +1,4 @@
-import { runKubectl } from '../k8s-cli';
+import { runKubectl, runKubectlWithInput } from '../k8s-cli';
 import { isClusterScopedResource } from '../constants/k8sResources';
 
 export class KubeCliService {
@@ -46,6 +46,39 @@ export class KubeCliService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { error: message };
+    }
+  }
+
+  public static async getResourceYaml(
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    resource: string,
+    name: string,
+    namespace?: string
+  ): Promise<{ yaml?: string; error?: string }> {
+    try {
+      const args = ['get', resource, name, '-o', 'yaml'];
+      if (contextName) args.unshift('--context', contextName);
+      if (namespace && namespace !== 'All Namespaces') args.push('-n', namespace);
+      const yaml = await runKubectl(args, kubeconfigPath);
+      return { yaml };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  }
+
+  public static async applyResourceYaml(
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    yamlContent: string
+  ): Promise<{ result?: string; error?: string }> {
+    try {
+      const args = ['apply', '-f', '-'];
+      if (contextName) args.unshift('--context', contextName);
+      const result = await runKubectlWithInput(args, yamlContent, kubeconfigPath);
+      return { result };
+    } catch (err) {
+      return { error: (err as Error).message };
     }
   }
 }

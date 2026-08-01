@@ -39,6 +39,14 @@ export interface WatchEvent {
   object?: unknown;
 }
 
+export interface TerminalSpawnOptions {
+  kubeconfigPath?: string;
+  contextName?: string;
+  cols?: number;
+  rows?: number;
+  cwd?: string;
+}
+
 export interface KuberneterApi {
   listContexts: (kubeconfigPath?: string) => Promise<ListContextsResponse>;
   selectKubeconfigFile: () => Promise<string | null>;
@@ -49,6 +57,18 @@ export interface KuberneterApi {
     resource: string,
     namespace?: string
   ) => Promise<GetResourcesResponse>;
+  getResourceYaml: (
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    resource: string,
+    name: string,
+    namespace?: string
+  ) => Promise<{ yaml?: string; error?: string }>;
+  applyResourceYaml: (
+    yamlContent: string,
+    kubeconfigPath?: string,
+    contextName?: string
+  ) => Promise<{ result?: string; error?: string }>;
   startWatch: (id: string, options: WatchOptions) => Promise<{ success?: boolean; error?: string }>;
   stopWatch: (id: string) => Promise<{ success?: boolean; error?: string }>;
   onWatchEvent: (callback: (event: WatchEvent) => void) => () => void;
@@ -135,6 +155,21 @@ export interface KuberneterApi {
     filesystem: { usage: number[]; limit: number[] };
     error?: string;
   }>;
+  /** Spawn a PTY-backed shell session for the given terminal id. */
+  terminalCreate: (
+    id: string,
+    options: TerminalSpawnOptions
+  ) => Promise<{ success?: boolean; error?: string }>;
+  /** Send keystrokes / pasted text to a terminal session. */
+  terminalInput: (id: string, data: string) => void;
+  /** Inform the PTY of a new viewport size (columns x rows). */
+  terminalResize: (id: string, cols: number, rows: number) => void;
+  /** Kill a terminal session and release its resources. */
+  terminalDispose: (id: string) => Promise<{ success?: boolean; error?: string }>;
+  /** Subscribe to PTY output for a session. Returns an unsubscribe fn. */
+  onTerminalData: (id: string, callback: (data: string) => void) => () => void;
+  /** Subscribe to PTY exit for a session. Returns an unsubscribe fn. */
+  onTerminalExit: (id: string, callback: (exitCode: number, signal?: number) => void) => () => void;
 }
 
 export interface HelmChartItem {
@@ -192,6 +227,17 @@ export const kuberneterApi: KuberneterApi = {
       resource,
       namespace
     ),
+  getResourceYaml: (kubeconfigPath, contextName, resource, name, namespace) =>
+    ipcRenderer.invoke(
+      'kuberneter:get-resource-yaml',
+      kubeconfigPath,
+      contextName,
+      resource,
+      name,
+      namespace
+    ),
+  applyResourceYaml: (yamlContent, kubeconfigPath, contextName) =>
+    ipcRenderer.invoke('kuberneter:apply-resource-yaml', yamlContent, kubeconfigPath, contextName),
   startWatch: (id, options) => ipcRenderer.invoke('kuberneter:start-watch', id, options),
   stopWatch: (id) => ipcRenderer.invoke('kuberneter:stop-watch', id),
   onWatchEvent: (callback) => {
@@ -239,5 +285,29 @@ export const kuberneterApi: KuberneterApi = {
     ),
   startPortForward: (params) => ipcRenderer.invoke('kuberneter:start-port-forward', params),
   stopPortForward: (id) => ipcRenderer.invoke('kuberneter:stop-port-forward', id),
-  queryPodMetricsRange: (params) => ipcRenderer.invoke('kuberneter:query-pod-metrics-range', params)
+  queryPodMetricsRange: (params) =>
+    ipcRenderer.invoke('kuberneter:query-pod-metrics-range', params),
+  terminalCreate: (id, options) => ipcRenderer.invoke('kuberneter:terminal-create', id, options),
+  terminalInput: (id, data) => ipcRenderer.send('kuberneter:terminal-input', id, data),
+  terminalResize: (id, cols, rows) =>
+    ipcRenderer.send('kuberneter:terminal-resize', id, cols, rows),
+  terminalDispose: (id) => ipcRenderer.invoke('kuberneter:terminal-dispose', id),
+  onTerminalData: (id, callback) => {
+    const subscription = (_: unknown, eventId: string, data: string) => {
+      if (eventId === id) callback(data);
+    };
+    ipcRenderer.on('kuberneter:terminal-data', subscription);
+    return () => {
+      ipcRenderer.removeListener('kuberneter:terminal-data', subscription);
+    };
+  },
+  onTerminalExit: (id, callback) => {
+    const subscription = (_: unknown, eventId: string, exitCode: number, signal?: number) => {
+      if (eventId === id) callback(exitCode, signal);
+    };
+    ipcRenderer.on('kuberneter:terminal-exit', subscription);
+    return () => {
+      ipcRenderer.removeListener('kuberneter:terminal-exit', subscription);
+    };
+  }
 };

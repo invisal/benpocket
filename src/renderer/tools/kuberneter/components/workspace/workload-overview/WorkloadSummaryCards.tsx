@@ -1,14 +1,5 @@
 import type React from 'react';
-import {
-  Layers2,
-  Cpu,
-  Server,
-  RefreshCw,
-  Copy,
-  Briefcase,
-  Clock4,
-  AlertTriangle
-} from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { type PodData } from '../../../types/PodData';
 import { type DeployData } from '../../../types/DeployData';
 import { type DaemonSetData } from '../../../types/DaemonSetData';
@@ -20,7 +11,6 @@ import { type CronJobData } from '../../../types/CronJobData';
 interface WorkloadCard {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
   total: number;
   healthy: number;
   warning: number;
@@ -91,7 +81,6 @@ function buildCards(props: WorkloadSummaryCardsProps): WorkloadCard[] {
     {
       id: 'pods',
       label: 'Pods',
-      icon: Cpu,
       total: podsData.length,
       healthy: runningPods,
       warning: pendingPods,
@@ -101,7 +90,6 @@ function buildCards(props: WorkloadSummaryCardsProps): WorkloadCard[] {
     {
       id: 'deployments',
       label: 'Deployments',
-      icon: Layers2,
       total: deploysData.length,
       healthy: healthyDeploys,
       warning: warningDeploys,
@@ -111,7 +99,6 @@ function buildCards(props: WorkloadSummaryCardsProps): WorkloadCard[] {
     {
       id: 'daemonsets',
       label: 'Daemon Sets',
-      icon: Server,
       total: daemonSetsData.length,
       healthy: healthyDs,
       warning: warningDs,
@@ -121,7 +108,6 @@ function buildCards(props: WorkloadSummaryCardsProps): WorkloadCard[] {
     {
       id: 'statefulsets',
       label: 'Stateful Sets',
-      icon: RefreshCw,
       total: statefulSetsData.length,
       healthy: healthySs,
       warning: warningSs,
@@ -131,7 +117,6 @@ function buildCards(props: WorkloadSummaryCardsProps): WorkloadCard[] {
     {
       id: 'replicasets',
       label: 'Replica Sets',
-      icon: Copy,
       total: replicaSetsData.length,
       healthy: healthyRs,
       warning: warningRs,
@@ -141,7 +126,6 @@ function buildCards(props: WorkloadSummaryCardsProps): WorkloadCard[] {
     {
       id: 'jobs',
       label: 'Jobs',
-      icon: Briefcase,
       total: jobsData.length,
       healthy: succeededJobs,
       warning: runningJobs,
@@ -151,7 +135,6 @@ function buildCards(props: WorkloadSummaryCardsProps): WorkloadCard[] {
     {
       id: 'cronjobs',
       label: 'Cron Jobs',
-      icon: Clock4,
       total: cronJobsData.length,
       healthy: healthyCjs,
       warning: activeCjs,
@@ -168,7 +151,6 @@ export const WorkloadSummaryCards: React.FC<WorkloadSummaryCardsProps> = (props)
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-0 divide-x divide-border/40">
       {cards.map((card) => {
-        const Icon = card.icon;
         const hasAnyIssues = card.warning > 0 || card.failed > 0;
         const healthyPct = card.total > 0 ? (card.healthy / card.total) * 100 : 0;
         const warningPct = card.total > 0 ? (card.warning / card.total) * 100 : 0;
@@ -182,12 +164,9 @@ export const WorkloadSummaryCards: React.FC<WorkloadSummaryCardsProps> = (props)
           >
             {/* Header row */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Icon className="size-3.5 text-zinc-500 group-hover:text-accent transition-colors" />
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-zinc-400 transition-colors">
-                  {card.label}
-                </span>
-              </div>
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-zinc-400 transition-colors">
+                {card.label}
+              </span>
               {hasAnyIssues && <AlertTriangle className="size-3 text-amber-500/80 shrink-0" />}
             </div>
 

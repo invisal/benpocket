@@ -39,7 +39,6 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
   });
   useZoomStore.setState({
     keyframes: project.zoomKeyframes,
-    armedKeyframeId: null,
     selectedKeyframeId: null
   });
   useWebcamStore.setState(project.webcam);

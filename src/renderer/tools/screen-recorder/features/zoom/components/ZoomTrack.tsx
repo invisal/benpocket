@@ -213,7 +213,7 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
               ) : (
                 <Mouse size={14} className="text-text-dim" />
               )}
-              {kf.position === 'auto-cursor' ? 'Fix to First Click' : 'Follow Cursor'}
+              {kf.position === 'auto-cursor' ? 'Manual' : 'Follow Cursor'}
             </span>
           </ContextMenu.Item>
         )}

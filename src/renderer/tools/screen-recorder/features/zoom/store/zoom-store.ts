@@ -3,6 +3,7 @@ import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import {
   DEFAULT_ZOOM_DEPTH,
   DEFAULT_ZOOM_DURATION_MS,
+  DEFAULT_ZOOM_EASING,
   DEFAULT_ZOOM_HOLD_TRANSITION_MS,
   ZOOM_MIN_DURATION_MS
 } from '@shared/constants';
@@ -90,7 +91,7 @@ export const useZoomStore = create<ZoomStoreState>(
                 atMs: clamped.atMs,
                 durationMs: clamped.durationMs,
                 depth: DEFAULT_ZOOM_DEPTH,
-                easing: 'ease-in-out',
+                easing: DEFAULT_ZOOM_EASING,
                 position: 'auto-cursor',
                 holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS,
                 enabled: true

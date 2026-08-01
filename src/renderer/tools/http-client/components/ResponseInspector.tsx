@@ -3,17 +3,12 @@ import { useMemo, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import type { HttpResponsePayload } from '../../../../preload/http-client/types';
-import { base64ToBytes, bytesToText } from '../lib/bytes';
+import { base64ToBytes, bytesToText, formatBytes } from '../lib/bytes';
+import { tabClassName } from '../lib/tabClassName';
 import { ResponseBodyViewer } from './ResponseBodyViewer';
 import { ResponseHeadersTable } from './ResponseHeadersTable';
 
 type ResponseTabValue = 'body' | 'headers';
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function statusColorClass(status: number, ok: boolean): string {
   if (status === 0) return 'text-red-500';
@@ -77,24 +72,10 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({ response, 
               className="flex flex-col min-h-0 flex-1"
             >
               <Tabs.List className="flex gap-4 border-b border-border px-3 text-xs select-none shrink-0">
-                <Tabs.Tab
-                  value="body"
-                  className={`py-1.5 border-b -mb-px cursor-pointer transition-colors ${
-                    activeTab === 'body'
-                      ? 'border-accent text-accent font-semibold'
-                      : 'border-transparent text-zinc-555 hover:text-zinc-350'
-                  }`}
-                >
+                <Tabs.Tab value="body" className={tabClassName(activeTab === 'body')}>
                   Body
                 </Tabs.Tab>
-                <Tabs.Tab
-                  value="headers"
-                  className={`py-1.5 border-b -mb-px cursor-pointer transition-colors ${
-                    activeTab === 'headers'
-                      ? 'border-accent text-accent font-semibold'
-                      : 'border-transparent text-zinc-555 hover:text-zinc-350'
-                  }`}
-                >
+                <Tabs.Tab value="headers" className={tabClassName(activeTab === 'headers')}>
                   Headers ({headerEntries.length})
                 </Tabs.Tab>
               </Tabs.List>

@@ -9,6 +9,7 @@ import { getActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
 import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
+import { makeId } from '../lib/makeId';
 import { resolveJsonVariables, resolveRows, resolveVariables } from '../lib/variables';
 import { DEFAULT_HTTP_AUTH, resolveAuth } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
@@ -54,7 +55,7 @@ function mergeParamsFromUrl(url: string, existingParams: KeyValueRow[]): KeyValu
   const merged: KeyValueRow[] = parsed.map(({ key, value }) => {
     const bucket = pool.get(key);
     const reused = bucket?.shift();
-    return reused ? { ...reused, value } : { id: crypto.randomUUID(), key, value, enabled: true };
+    return reused ? { ...reused, value } : { id: makeId(), key, value, enabled: true };
   });
   return withTrailingRow(merged);
 }

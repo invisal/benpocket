@@ -1,8 +1,7 @@
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Check, Copy } from 'lucide-react';
-
-const COPY_FEEDBACK_MS = 1500;
+import { useCopyFeedback } from '../hooks/useCopyFeedback';
 
 interface ResponseHeadersTableProps {
   headers: Record<string, string>;
@@ -10,33 +9,17 @@ interface ResponseHeadersTableProps {
 
 /** Read-only response headers table, styled after KeyValueEditor's grid but without the editable inputs. */
 export const ResponseHeadersTable: React.FC<ResponseHeadersTableProps> = ({ headers }) => {
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedKey, copyKeyed] = useCopyFeedback<string>();
+  const [copiedAll, copyAll] = useCopyFeedback();
 
   const entries = useMemo(
     () => Object.entries(headers).sort(([a], [b]) => a.localeCompare(b)),
     [headers]
   );
 
-  const copy = async (text: string, key: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedKey(key);
-      setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), COPY_FEEDBACK_MS);
-    } catch {
-      // Clipboard API unavailable/denied - nothing else to fall back to.
-    }
-  };
-
-  const copyAll = async (): Promise<void> => {
+  const handleCopyAll = (): void => {
     const text = entries.map(([key, value]) => `${key}: ${value}`).join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedAll(true);
-      setTimeout(() => setCopiedAll(false), COPY_FEEDBACK_MS);
-    } catch {
-      // Clipboard API unavailable/denied - nothing else to fall back to.
-    }
+    void copyAll(text);
   };
 
   if (entries.length === 0) {
@@ -51,7 +34,7 @@ export const ResponseHeadersTable: React.FC<ResponseHeadersTableProps> = ({ head
           <span>Value</span>
         </div>
         <button
-          onClick={copyAll}
+          onClick={handleCopyAll}
           title="Copy all headers"
           className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500 hover:text-foreground cursor-pointer transition-colors shrink-0"
         >
@@ -67,7 +50,7 @@ export const ResponseHeadersTable: React.FC<ResponseHeadersTableProps> = ({ head
           <span className="text-accent font-mono text-xs break-all select-text">{key}</span>
           <span className="text-zinc-400 font-mono text-xs break-all select-text">{value}</span>
           <button
-            onClick={() => copy(value, key)}
+            onClick={() => copyKeyed(value, key)}
             title="Copy value"
             className="p-0.5 text-zinc-600 hover:text-foreground cursor-pointer transition-colors justify-self-center"
           >

@@ -1,13 +1,9 @@
 import type { KeyValuePair } from '../../../../preload/http-client/types';
+import { makeId } from './makeId';
 
 export interface KeyValueRow extends KeyValuePair {}
 
-export function makeId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
+export { makeId };
 
 function blankRow(): KeyValueRow {
   return { id: makeId(), key: '', value: '', enabled: true };

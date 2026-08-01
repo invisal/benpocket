@@ -108,17 +108,20 @@ export function registerWorkspaceHandlers(): void {
   ipcMain.handle(
     'workspaces:delete',
     async (_event, payload: DeleteWorkspacePayload): Promise<WsAckResult> => {
-      const workspaces = await readWorkspaces();
+      const [workspaces, collections, environments] = await Promise.all([
+        readWorkspaces(),
+        readCollections(),
+        readEnvironments()
+      ]);
       if (workspaces.length <= 1) {
         return { ok: false, error: 'Cannot delete the last workspace.' };
       }
-      await writeWorkspaces(workspaces.filter((w) => w.id !== payload.workspaceId));
 
-      const collections = await readCollections();
-      await writeCollections(collections.filter((c) => c.workspaceId !== payload.workspaceId));
-
-      const environments = await readEnvironments();
-      await writeEnvironments(environments.filter((e) => e.workspaceId !== payload.workspaceId));
+      await Promise.all([
+        writeWorkspaces(workspaces.filter((w) => w.id !== payload.workspaceId)),
+        writeCollections(collections.filter((c) => c.workspaceId !== payload.workspaceId)),
+        writeEnvironments(environments.filter((e) => e.workspaceId !== payload.workspaceId))
+      ]);
 
       return { ok: true };
     }

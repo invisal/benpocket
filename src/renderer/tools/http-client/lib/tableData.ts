@@ -12,9 +12,13 @@ export function buildTableData(value: unknown): TableData | null {
   if (Array.isArray(value)) {
     if (value.length > 0 && value.every(isPlainObject)) {
       const columns: string[] = [];
+      const seen = new Set<string>();
       for (const item of value as Record<string, unknown>[]) {
         for (const key of Object.keys(item)) {
-          if (!columns.includes(key)) columns.push(key);
+          if (!seen.has(key)) {
+            seen.add(key);
+            columns.push(key);
+          }
         }
       }
       return { kind: 'rows', columns, rows: value as Record<string, unknown>[] };

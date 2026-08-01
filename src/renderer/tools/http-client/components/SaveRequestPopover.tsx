@@ -14,6 +14,8 @@ import type { KeyValueRow } from '../lib/keyValueRows';
 import type { SavedBinding } from '../types';
 import { findRequestInContainer, flattenFolderOptions } from '../lib/collectionTree';
 import { DEFAULT_HTTP_AUTH } from '../lib/auth';
+import { nativeSelectClassName } from '../lib/nativeSelectClassName';
+import { makeId } from '../lib/makeId';
 
 interface SaveRequestPopoverProps {
   tabTitle: string;
@@ -31,11 +33,6 @@ interface SaveRequestPopoverProps {
   defaultCollectionId?: string;
   defaultFolderId?: string | null;
   onSaved: (binding: SavedBinding, name: string) => void;
-}
-
-function makeRequestId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
@@ -115,9 +112,7 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
       if (!targetCollectionId) return;
 
       const requestId =
-        binding && binding.collectionId === targetCollectionId
-          ? binding.requestId
-          : makeRequestId();
+        binding && binding.collectionId === targetCollectionId ? binding.requestId : makeId('req');
       const request: SavedRequest =
         protocol === 'HTTP'
           ? {
@@ -201,7 +196,7 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
                     setCollectionId(e.target.value);
                     setFolderId('');
                   }}
-                  className="bg-surface-2 border border-border rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
+                  className={nativeSelectClassName()}
                 >
                   {collections.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -227,7 +222,7 @@ export const SaveRequestPopover: React.FC<SaveRequestPopoverProps> = ({
                 <select
                   value={folderId}
                   onChange={(e) => setFolderId(e.target.value)}
-                  className="bg-surface-2 border border-border rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
+                  className={nativeSelectClassName()}
                 >
                   <option value="">Collection Root</option>
                   {folderOptions.map((f) => (

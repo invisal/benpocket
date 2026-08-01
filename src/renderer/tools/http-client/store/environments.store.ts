@@ -6,15 +6,10 @@ import type {
   ExportEnvironmentResult,
   ImportedEnvironmentDraft,
   ImportEnvironmentResult,
-  KeyValuePair,
-  WsAckResult
+  KeyValuePair
 } from '../../../../preload/http-client/types';
+import { assertOk } from '../lib/ipcResult';
 import { useWorkspacesStore } from './workspaces.store';
-
-/** Throws with the server's error message when a mutation IPC call fails, so callers can surface it. */
-function assertOk(result: WsAckResult): void {
-  if (!result.ok) throw new Error(result.error ?? 'Something went wrong.');
-}
 
 interface EnvironmentsState {
   environments: Environment[];

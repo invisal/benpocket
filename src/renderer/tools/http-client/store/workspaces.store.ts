@@ -1,11 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Workspace, WsAckResult } from '../../../../preload/http-client/types';
-
-/** Throws with the server's error message when a mutation IPC call fails, so callers can surface it. */
-function assertOk(result: WsAckResult): void {
-  if (!result.ok) throw new Error(result.error ?? 'Something went wrong.');
-}
+import type { Workspace } from '../../../../preload/http-client/types';
+import { assertOk } from '../lib/ipcResult';
 
 interface WorkspacesState {
   workspaces: Workspace[];

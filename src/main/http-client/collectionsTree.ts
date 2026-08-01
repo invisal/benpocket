@@ -1,4 +1,5 @@
 import type { Collection, CollectionFolder, SavedRequest } from '../../preload/http-client/types';
+import { countRequestsRecursive, isFolderOrDescendant } from '../../shared/collection-tree';
 
 /** Anything that can directly hold requests and sub-folders: a Collection root or a CollectionFolder. */
 type RequestContainer = Pick<Collection, 'requests' | 'folders'>;
@@ -83,16 +84,4 @@ export function removeFolder(collection: Collection, folderId: string): Collecti
   return parent.folders.splice(index, 1)[0] ?? null;
 }
 
-/** True if `candidateId` is `folder` itself or nested anywhere underneath it. */
-export function isFolderOrDescendant(folder: CollectionFolder, candidateId: string): boolean {
-  if (folder.id === candidateId) return true;
-  return folder.folders.some((f) => isFolderOrDescendant(f, candidateId));
-}
-
-/** Total request count in this container and everything nested under it. */
-export function countRequestsRecursive(container: RequestContainer): number {
-  return (
-    container.requests.length +
-    container.folders.reduce((sum, f) => sum + countRequestsRecursive(f), 0)
-  );
-}
+export { countRequestsRecursive, isFolderOrDescendant };

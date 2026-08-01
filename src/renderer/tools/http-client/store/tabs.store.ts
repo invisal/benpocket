@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { PostmanTabSeed } from '../types';
+import { makeId } from '../lib/makeId';
 
 export interface PostmanTab {
   id: string;
@@ -31,9 +32,7 @@ interface PostmanTabsState {
 }
 
 function makeTabId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-    return `postman-req-${crypto.randomUUID()}`;
-  return `postman-req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return makeId('postman-req');
 }
 
 /**

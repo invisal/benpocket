@@ -74,7 +74,8 @@ interface KuberneterState {
   setKuberneterActiveBottomPanelTabId: (id: string) => void;
   addKuberneterBottomPanelTab: (tab: KuberneterBottomPanelTab) => void;
   closeKuberneterBottomPanelTab: (id: string) => void;
-  openPodTerminalTab: (podName: string, namespace?: string) => void;
+  openPodTerminalTab: (podName: string, namespace?: string, containerName?: string) => void;
+  openPodLogsTab: (podName: string, namespace?: string, containerName?: string) => void;
   openNodeTerminalTab: (nodeName: string) => void;
 
   addKuberneterKubeconfig: (filePath: string) => void;
@@ -136,10 +137,10 @@ export const useKuberneterStore = create<KuberneterState>()(
           };
         }),
 
-      openPodTerminalTab: (podName, namespace) => {
+      openPodTerminalTab: (podName, namespace, containerName) => {
         if (!podName) return;
         const state = get();
-        const tabTitle = `Pod: ${podName}`;
+        const tabTitle = containerName ? `Pod: ${podName} (${containerName})` : `Pod: ${podName}`;
         const existing = state.kuberneterBottomPanelTabs.find(
           (t) => t.title === tabTitle && t.type === 'terminal'
         );
@@ -151,9 +152,43 @@ export const useKuberneterStore = create<KuberneterState>()(
           return;
         }
 
-        const newId = `term-pod-${podName}-${Date.now()}`;
+        const newId = `term-pod-${podName}-${containerName || 'default'}-${Date.now()}`;
         const nsFlag = namespace ? `-n ${namespace} ` : '';
-        const command = `kubectl exec -it ${podName} ${nsFlag}-- sh || kubectl exec -it ${podName} ${nsFlag}-- bash`;
+        const cFlag = containerName ? `-c ${containerName} ` : '';
+        const command = `kubectl exec -it ${podName} ${nsFlag}${cFlag}-- sh || kubectl exec -it ${podName} ${nsFlag}${cFlag}-- bash`;
+
+        const newTab: KuberneterBottomPanelTab = {
+          id: newId,
+          type: 'terminal',
+          title: tabTitle,
+          initialCommand: command
+        };
+
+        set({
+          kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, newTab],
+          kuberneterActiveBottomPanelTabId: newId
+        });
+      },
+
+      openPodLogsTab: (podName, namespace, containerName) => {
+        if (!podName) return;
+        const state = get();
+        const tabTitle = containerName ? `Logs: ${podName} (${containerName})` : `Logs: ${podName}`;
+        const existing = state.kuberneterBottomPanelTabs.find(
+          (t) => t.title === tabTitle && t.type === 'terminal'
+        );
+
+        useLayoutStore.getState().openBottomPanelWithTab('terminal');
+
+        if (existing) {
+          set({ kuberneterActiveBottomPanelTabId: existing.id });
+          return;
+        }
+
+        const newId = `term-logs-${podName}-${containerName || 'default'}-${Date.now()}`;
+        const nsFlag = namespace ? `-n ${namespace} ` : '';
+        const cFlag = containerName ? `-c ${containerName}` : `--all-containers=true`;
+        const command = `kubectl logs -f ${podName} ${nsFlag}${cFlag}`;
 
         const newTab: KuberneterBottomPanelTab = {
           id: newId,

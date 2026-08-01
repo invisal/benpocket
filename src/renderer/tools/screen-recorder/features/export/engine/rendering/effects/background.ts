@@ -7,6 +7,7 @@ import {
   Sprite,
   Texture
 } from 'pixi.js';
+import { withAlpha } from '../../../../background/lib/wave-wallpaper';
 import type { BackgroundSceneData } from '../types';
 
 /**
@@ -72,6 +73,7 @@ export class BackgroundEffect {
     this.graphics.clear();
 
     if (data.kind === 'color') {
+      this.graphics.filters = [];
       this.graphics.rect(0, 0, width, height).fill(data.color);
       return;
     }
@@ -86,17 +88,27 @@ export class BackgroundEffect {
           innerRadius: 0,
           outerCenter: center,
           outerRadius: blob.radiusPct / 100,
+          // A mid-stop that's still mostly opaque (rather than jumping
+          // straight to transparent) is what gives the blob a soft,
+          // melted-together edge instead of a visible ring.
           colorStops: [
             { offset: 0, color: blob.color },
-            { offset: 1, color: 'rgba(0,0,0,0)' }
+            { offset: 0.55, color: withAlpha(blob.color, 0.65) },
+            { offset: 1, color: withAlpha(blob.color, 0) }
           ],
           textureSpace: 'local'
         });
         this.graphics.rect(0, 0, width, height).fill(gradient);
       }
+      // Real blur on top of the gradient falloff is what sells the
+      // flowing, out-of-focus look of macOS's own default wallpapers --
+      // scaled to canvas size so it reads the same at any export resolution.
+      this.blurFilter.strength = Math.max(width, height) * 0.03;
+      this.graphics.filters = [this.blurFilter];
       return;
     }
 
+    this.graphics.filters = [];
     // Same angle convention as CSS linear-gradient() (0deg = up, clockwise),
     // matching frame-compositor.ts's fillLinearGradient and the live preview.
     const angleRad = (data.angleDeg * Math.PI) / 180;

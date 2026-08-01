@@ -1,5 +1,6 @@
-import type { JSX } from 'react';
+import { Activity, type JSX } from 'react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
+import type { SourceResolution } from '@screen-recorder/types/editor';
 import { BackgroundPicker } from '../../features/background/components/BackgroundPicker';
 import { CursorSettingsPanel } from '../../features/cursor/components/CursorSettingsPanel';
 import { WebcamPanel } from '../../features/webcam/components/WebcamPanel';
@@ -8,14 +9,28 @@ import { AnnotationsPanel } from '../../features/annotations/components/Annotati
 import { BlurMaskPanel } from '../../features/blur-mask/components/BlurMaskPanel';
 import { ZoomKeyframeEditor } from '../../features/zoom/components/ZoomKeyframeEditor';
 import { ClipSettingsPanel } from '../../features/timeline/components/ClipSettingsPanel';
-import { EDITOR_TOOLS, type EditorTool } from './editorTools';
+import { type EditorTool } from './editorTools';
 
 interface EditorToolPanelProps {
   tool: EditorTool;
   currentTimeMs: number;
-  sourceResolution: { width: number; height: number } | null;
+  sourceResolution: SourceResolution | null;
   selectedSegment: TimelineSegment | null;
 }
+const tools = [
+  {
+    id: 'background',
+    label: 'Background',
+    component: BackgroundPicker
+  },
+  { id: 'cursor', label: 'Cursor', component: CursorSettingsPanel },
+  { id: 'webcam', label: 'Webcam', component: WebcamPanel },
+  { id: 'captions', label: 'Captions', component: CaptionsPanel },
+  { id: 'annotations', label: 'Annotations', component: AnnotationsPanel },
+  { id: 'blur-mask', label: 'Blur/Mask', component: BlurMaskPanel },
+  { id: 'zoom', label: 'Zoom', component: ZoomKeyframeEditor },
+  { id: 'clip', label: 'Clip', component: ClipSettingsPanel }
+] as const;
 
 export function EditorToolPanel({
   tool,
@@ -23,23 +38,22 @@ export function EditorToolPanel({
   sourceResolution,
   selectedSegment
 }: EditorToolPanelProps): JSX.Element {
-  const label = EDITOR_TOOLS.find((t) => t.id === tool)?.label ?? '';
-
+  const label = tools.find((t) => t.id === tool)?.label ?? '';
   return (
-    <aside className="flex w-70 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-surface p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </h2>
-      {tool === 'background' && <BackgroundPicker />}
-      {tool === 'cursor' && <CursorSettingsPanel />}
-      {tool === 'webcam' && <WebcamPanel />}
-      {tool === 'captions' && <CaptionsPanel />}
-      {tool === 'annotations' && <AnnotationsPanel currentTimeMs={currentTimeMs} />}
-      {tool === 'blur-mask' && <BlurMaskPanel currentTimeMs={currentTimeMs} />}
-      {tool === 'zoom' && (
-        <ZoomKeyframeEditor currentTimeMs={currentTimeMs} sourceResolution={sourceResolution} />
-      )}
-      {tool === 'clip' && <ClipSettingsPanel segment={selectedSegment} />}
+    <aside className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto border-l border-line p-3">
+      <h2 className="text-sm font-semibold text-foreground">{label}</h2>
+      {tools.map((t) => {
+        const Component = t.component;
+        return (
+          <Activity key={t.id} mode={t.id === tool ? 'visible' : 'hidden'}>
+            <Component
+              currentTimeMs={currentTimeMs}
+              sourceResolution={sourceResolution}
+              segment={selectedSegment}
+            />
+          </Activity>
+        );
+      })}
     </aside>
   );
 }

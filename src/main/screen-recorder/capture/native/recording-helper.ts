@@ -469,7 +469,10 @@ export interface WindowBoundsResult {
  * resolves null there (same convention the old AppleScript-based window-
  * bounds lookup this replaces used).
  */
-export function getWindowBoundsById(windowId: number): Promise<WindowBoundsResult | null> {
+function queryWindowBounds(
+  windowId: number,
+  mode: 'window-bounds' | 'window-bounds-live'
+): Promise<WindowBoundsResult | null> {
   if (process.platform !== 'darwin') return Promise.resolve(null);
 
   const helperPath = findHelperPath(MAC_ADAPTER);
@@ -483,7 +486,7 @@ export function getWindowBoundsById(windowId: number): Promise<WindowBoundsResul
       resolve(result);
     };
 
-    const child = spawn(helperPath, [JSON.stringify({ mode: 'window-bounds', windowId })], {
+    const child = spawn(helperPath, [JSON.stringify({ mode, windowId })], {
       stdio: ['ignore', 'pipe', 'ignore']
     });
 
@@ -514,6 +517,28 @@ export function getWindowBoundsById(windowId: number): Promise<WindowBoundsResul
       }
     });
   });
+}
+
+export function getWindowBoundsById(windowId: number): Promise<WindowBoundsResult | null> {
+  return queryWindowBounds(windowId, 'window-bounds');
+}
+
+/**
+ * Same result shape as `getWindowBoundsById`, but backed by Quartz Window
+ * Services (`CGWindowListCopyWindowInfo`) instead of ScreenCaptureKit's
+ * `SCShareableContent` -- see queryWindowBoundsQuartz() in main.swift for
+ * why: this is the one meant to be called *repeatedly* while a recording is
+ * live (see window-bounds-poller.ts), and hammering SCShareableContent from
+ * a second process while the real recording's SCStream is running was
+ * observed to interrupt that stream (SCStreamErrorDomain -3805). Quartz
+ * Window Services doesn't touch the ScreenCaptureKit daemon at all, so it
+ * can't cause that. `getWindowBoundsById` (SCShareableContent-based) stays
+ * the one used for the one-shot pre-recording refresh, where there's no
+ * live stream yet to interrupt and exact agreement with what
+ * ScreenCaptureKit itself would resolve matters more.
+ */
+export function getWindowBoundsLive(windowId: number): Promise<WindowBoundsResult | null> {
+  return queryWindowBounds(windowId, 'window-bounds-live');
 }
 
 /** Safety net for abnormal termination -- see main/index.ts's `before-quit` hook. */

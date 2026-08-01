@@ -1,6 +1,7 @@
 import type { VideoCodec } from 'mediabunny';
 import type { ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import { smoothCursorPath } from '@shared/cursor-path';
+import { computeAutoZoomFocalPath } from '@shared/zoom-resolve';
 import { evaluateSceneAtMs } from './rendering/timeline-evaluator';
 import { PixiSceneRenderer } from './rendering/pixi-scene-renderer';
 import { resolveCropRect, centerSquareCrop } from './rendering/crop';
@@ -78,7 +79,6 @@ export function isSourceCopyEligible(
  */
 export async function exportVideoOnly(
   request: VideoExportRequest,
-  canvas: OffscreenCanvas,
   onProgress: (progress: ExportProgress) => void,
   wasmUrl: string,
   signal?: AbortSignal
@@ -89,6 +89,18 @@ export async function exportVideoOnly(
   const { muxerCodec } = resolveCodecCandidate(options.format, options.codec);
   for (const hardwareAcceleration of getEncoderPreferences(muxerCodec)) {
     try {
+      // A fresh OffscreenCanvas per attempt, not one shared across retries --
+      // PixiSceneRenderer.create() (via autoDetectRenderer) acquires a
+      // WebGL/WebGPU rendering context on whatever canvas it's given, and a
+      // canvas can only ever hand out one context for its lifetime (the
+      // platform has no supported way to release/reacquire one). The first
+      // attempt already creates a real renderer (and so a real context)
+      // *before* createVideoEncoder's hardware-support check even runs, so a
+      // failed first attempt still leaves the canvas's context claimed;
+      // reusing it for the retry silently hung forever (no error, no
+      // timeout) instead of failing fast -- confirmed as the cause of
+      // "hangs at 0%" after a 'prefer-hardware attempt failed' warning.
+      const canvas = new OffscreenCanvas(options.resolution.width, options.resolution.height);
       return await runOnce(
         options,
         sourceFile,
@@ -145,6 +157,14 @@ async function runOnce(
     const smoothedCursorPath = smoothCursorPath(
       options.project.cursorPath,
       options.project.cursor.smoothing
+    );
+    // One deadzone-camera-simulated path per 'auto-cursor' keyframe -- see
+    // computeAutoZoomFocalPath's doc for why this can't just reuse
+    // smoothedCursorPath above.
+    const autoZoomFocalPaths = new Map(
+      options.project.zoomKeyframes
+        .filter((kf) => kf.position === 'auto-cursor')
+        .map((kf) => [kf.id, computeAutoZoomFocalPath(options.project.cursorPath, kf)])
     );
 
     renderer = await PixiSceneRenderer.create(
@@ -234,7 +254,8 @@ async function runOnce(
             options.resolution.width,
             options.resolution.height,
             sourceAspect,
-            smoothedCursorPath
+            smoothedCursorPath,
+            autoZoomFocalPaths
           );
 
           let webcamFrame: VideoFrame | null = null;

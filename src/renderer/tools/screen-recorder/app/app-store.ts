@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { CursorPathPoint } from '@screen-recorder/types/project';
 
-export type ScreenRecorderRoute = 'editor' | 'library' | 'presets' | 'settings';
+export type ScreenRecorderRoute = 'editor' | 'library' | 'settings';
 
 interface LastRecording {
   previewUrl: string;
@@ -40,6 +40,22 @@ interface AppStoreState {
   /** Library's "Remove" action -- just the in-memory/route-level state; the caller is responsible for deleting the underlying file and revoking `previewUrl` first (see LibraryPage.tsx). */
   clearLastRecording: () => void;
   projectName: string;
+  setProjectName: (projectName: string) => void;
+  /** Set once a project's first successful save assigns it an id -- reused on subsequent saves so "Save project" overwrites the same file instead of piling up duplicates. */
+  currentProjectId: string | null;
+  setCurrentProjectId: (currentProjectId: string) => void;
+  /** Bumped on every successful `project:save` so long-lived components (the sidebar's recent-projects list, which doesn't remount on route change like LibraryPage does) know to re-fetch `project:list`. */
+  projectsVersion: number;
+  bumpProjectsVersion: () => void;
+  /** Left "Assets" sidebar's own drag-resized width, px -- see ResizablePanel in ScreenRecorderApp.tsx. */
+  sidebarWidth: number;
+  setSidebarWidth: (sidebarWidth: number) => void;
+  /** EditorToolPanel's own drag-resized width, px -- see ResizablePanel in EditorPage.tsx. */
+  toolPanelWidth: number;
+  setToolPanelWidth: (toolPanelWidth: number) => void;
+  /** CutTimeline's own drag-resized height, px -- see ResizablePanel in CutTimeline.tsx. */
+  timelinePanelHeight: number;
+  setTimelinePanelHeight: (timelinePanelHeight: number) => void;
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
@@ -52,5 +68,16 @@ export const useAppStore = create<AppStoreState>((set) => ({
   lastRecording: null,
   setLastRecording: (lastRecording) => set({ lastRecording }),
   clearLastRecording: () => set({ lastRecording: null }),
-  projectName: 'Untitled Recording'
+  projectName: 'Untitled Recording',
+  setProjectName: (projectName) => set({ projectName }),
+  currentProjectId: null,
+  setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
+  projectsVersion: 0,
+  bumpProjectsVersion: () => set((state) => ({ projectsVersion: state.projectsVersion + 1 })),
+  sidebarWidth: 288,
+  setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
+  toolPanelWidth: 280,
+  setToolPanelWidth: (toolPanelWidth) => set({ toolPanelWidth }),
+  timelinePanelHeight: 180,
+  setTimelinePanelHeight: (timelinePanelHeight) => set({ timelinePanelHeight })
 }));

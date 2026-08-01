@@ -238,6 +238,30 @@ body {
   background: var(--color-scrollbar-thumb-hover);
 }
 
+/* Hide the native up/down spinner on number inputs -- screen-recorder only,
+   see the `screen-recorder-app` class on ScreenRecorderApp.tsx's root. */
+.screen-recorder-app input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.screen-recorder-app input[type='number']::-webkit-outer-spin-button,
+.screen-recorder-app input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide scrollbar indicators everywhere in screen-recorder -- scrolling still
+   works, there's just no visible track/thumb. */
+.screen-recorder-app,
+.screen-recorder-app * {
+  scrollbar-width: none;
+}
+.screen-recorder-app::-webkit-scrollbar,
+.screen-recorder-app *::-webkit-scrollbar {
+  display: none;
+}
+
 /* Tab bar scrollbar: only visible on hover */
 .tab-bar-container::-webkit-scrollbar {
   height: 3px;

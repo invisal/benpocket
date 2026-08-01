@@ -8,7 +8,9 @@ import type {
 import type { ExportSegment } from '@screen-recorder/types/export';
 import type { EditorTool } from '../../../workspace/editor/editorTools';
 import { withHistory } from '../../history/lib/with-history';
-import { getSegmentOutputDurationMs } from '../lib/segment-duration';
+import { beginGesture, endGesture } from '../../history/store/history-store';
+import { useZoomStore } from '../../zoom/store/zoom-store';
+import { getSegmentOutputDurationMs, segmentsOverlapRange } from '../lib/segment-duration';
 
 export const PRIMARY_VIDEO_TRACK_ID = 'video-1';
 const MIN_SEGMENT_MS = 200;
@@ -97,6 +99,14 @@ interface TimelineStoreState {
    * position from the video's own `timeupdate`.
    */
   seekRequestMs: number | null;
+  /**
+   * One-shot flag set by project-load hydration (see
+   * features/project/lib/apply-project-snapshot.ts) so EditorPage's "a
+   * different recording loaded" effect skips clobbering the just-restored
+   * `tracks` with a fresh single full-duration segment. Cleared as soon as
+   * that effect consumes it.
+   */
+  skipNextAutoInit: boolean;
   setPlayhead: (ms: number) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setIsHoverScrubbing: (isHoverScrubbing: boolean) => void;
@@ -124,12 +134,8 @@ interface TimelineStoreState {
   deleteSegment: (segmentId: string) => void;
   reorderSegments: (fromIndex: number, toIndex: number) => void;
   resizeSegmentEdge: (segmentId: string, edge: 'start' | 'end', newSourceMs: number) => void;
-  /**
-   * Clears the `trimmed` display flag TrimTrack reads -- doesn't restore the
-   * segment's original range (that's not stored anywhere), just dismisses
-   * the "this clip was trimmed" pill.
-   */
-  setSegmentTrimmed: (segmentId: string, trimmed: boolean) => void;
+  /** Restores a segment's range back to `originalRange` and clears `trimmed`. */
+  resetSegmentTrim: (segmentId: string) => void;
   /** Crop is per-clip: each segment can be framed differently. */
   setSegmentCrop: (segmentId: string, crop: CropRect | null) => void;
   /** Speed is per-clip: each segment can play back at a different rate. */
@@ -147,6 +153,17 @@ function primaryTrack(tracks: TimelineTrack[]): TimelineTrack {
 
 function replaceTrack(tracks: TimelineTrack[], updated: TimelineTrack): TimelineTrack[] {
   return tracks.map((t) => (t.id === updated.id ? updated : t));
+}
+
+// Must run before the caller's own `set()`, not after -- otherwise the
+// gesture's recorded "before" snapshot is taken mid-cut instead of pre-cut.
+function pruneOrphanedZoomKeyframes(keptSegments: TimelineSegment[]): void {
+  const { keyframes, removeKeyframe } = useZoomStore.getState();
+  for (const kf of keyframes) {
+    if (!segmentsOverlapRange(keptSegments, kf.atMs, kf.atMs + kf.durationMs)) {
+      removeKeyframe(kf.id);
+    }
+  }
 }
 
 export const useTimelineStore = create<TimelineStoreState>(
@@ -170,6 +187,7 @@ export const useTimelineStore = create<TimelineStoreState>(
       isCutToolActive: false,
       isZoomToolActive: false,
       seekRequestMs: null,
+      skipNextAutoInit: false,
       setPlayhead: (playheadMs) => set({ playheadMs }),
       setIsPlaying: (isPlaying) => set({ isPlaying }),
       setIsHoverScrubbing: (isHoverScrubbing) => set({ isHoverScrubbing }),
@@ -201,6 +219,7 @@ export const useTimelineStore = create<TimelineStoreState>(
           id: crypto.randomUUID(),
           trackId: PRIMARY_VIDEO_TRACK_ID,
           range: { startMs: 0, endMs: durationMs },
+          originalRange: { startMs: 0, endMs: durationMs },
           speed: 1,
           sourceOffsetMs: 0,
           crop: null,
@@ -239,12 +258,14 @@ export const useTimelineStore = create<TimelineStoreState>(
               {
                 ...segment,
                 range: { startMs: segment.range.startMs, endMs: splitSourceMs },
+                originalRange: { startMs: segment.range.startMs, endMs: splitSourceMs },
                 split: true
               },
               {
                 ...segment,
                 id: crypto.randomUUID(),
                 range: { startMs: splitSourceMs, endMs: segment.range.endMs },
+                originalRange: { startMs: splitSourceMs, endMs: segment.range.endMs },
                 split: true
               }
             );
@@ -258,12 +279,11 @@ export const useTimelineStore = create<TimelineStoreState>(
       deleteSegment: (segmentId) => {
         const track = primaryTrack(get().tracks);
         if (track.segments.length <= 1) return;
-        set({
-          tracks: replaceTrack(get().tracks, {
-            ...track,
-            segments: track.segments.filter((s) => s.id !== segmentId)
-          })
-        });
+        const segments = track.segments.filter((s) => s.id !== segmentId);
+        beginGesture();
+        pruneOrphanedZoomKeyframes(segments);
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+        endGesture();
       },
 
       reorderSegments: (fromIndex, toIndex) => {
@@ -307,12 +327,47 @@ export const useTimelineStore = create<TimelineStoreState>(
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
       },
 
-      setSegmentTrimmed: (segmentId, trimmed) => {
+      resetSegmentTrim: (segmentId) => {
         const track = primaryTrack(get().tracks);
-        const segments = track.segments.map((segment) =>
-          segment.id === segmentId ? { ...segment, trimmed } : segment
+        const segments = track.segments;
+        const index = segments.findIndex((s) => s.id === segmentId);
+        if (index === -1) return;
+
+        const segment = segments[index];
+        const prev = segments[index - 1];
+        const next = segments[index + 1];
+        const mergesWithPrev =
+          segment.split && !!prev?.split && prev.range.endMs === segment.range.startMs;
+        const mergesWithNext =
+          segment.split && !!next?.split && segment.range.endMs === next.range.startMs;
+
+        // A cut's two halves are each other's only real "trim" to undo --
+        // merge whichever neighbor(s) still share that cut boundary back
+        // into one un-cut segment, rather than restoring `range` in place
+        // (there's nothing to restore to: a split segment's own range *is*
+        // its originalRange, see `splitAt`).
+        if (mergesWithPrev || mergesWithNext) {
+          const start = mergesWithPrev ? index - 1 : index;
+          const end = mergesWithNext ? index + 1 : index;
+          const first = segments[start];
+          const last = segments[end];
+          const merged: TimelineSegment = {
+            ...first,
+            range: { startMs: first.range.startMs, endMs: last.range.endMs },
+            originalRange: { startMs: first.range.startMs, endMs: last.range.endMs },
+            trimmed: false,
+            split: false
+          };
+          const nextSegments = [...segments.slice(0, start), merged, ...segments.slice(end + 1)];
+          set({ tracks: replaceTrack(get().tracks, { ...track, segments: nextSegments }) });
+          return;
+        }
+
+        if (!segment.trimmed) return;
+        const nextSegments = segments.map((s) =>
+          s.id === segmentId ? { ...s, range: s.originalRange, trimmed: false } : s
         );
-        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments: nextSegments }) });
       },
 
       setSegmentCrop: (segmentId, crop) => {

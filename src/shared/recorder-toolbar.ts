@@ -13,7 +13,8 @@ import type { CaptureRegionSelection, ScreenRect } from './capture-region';
  * shared store instance.
  */
 export interface RecorderToolbarOpenPayload {
-  sourceId: string;
+  /** Omitted when opening "fresh" (no source picked yet) -- see openRecorderToolbarFor, which no longer waits on a slow capture-sources fetch before opening. The toolbar picks its own default once its own fetch resolves. */
+  sourceId?: string;
   audio: AudioInputOptions;
   webcam: WebcamOptions;
   /** Drag-selected sub-rectangle of a display ("Area" mode) -- see capture-engine.ts's live crop relay. */

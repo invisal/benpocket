@@ -40,7 +40,7 @@ export function WebcamPanel(): JSX.Element {
   const isEnabled = enabled && hasWebcamFootage;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between">
         <span className="text-xs font-medium">Webcam overlay</span>
         <Switch
@@ -50,17 +50,9 @@ export function WebcamPanel(): JSX.Element {
           disabled={!hasWebcamFootage}
         />
       </label>
-      {!hasWebcamFootage && (
-        <p className="-mt-2 text-[11px] text-muted-foreground/70">
-          Turn on your camera before recording to use a webcam overlay.
-        </p>
-      )}
-
-      <div className={cn('flex flex-col gap-4', !isEnabled && 'pointer-events-none opacity-40')}>
+      <div className={cn('flex flex-col gap-3', !isEnabled && 'pointer-events-none opacity-40')}>
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Shape
-          </span>
+          <span className="text-xs font-medium text-muted-foreground">Shape</span>
           <div className="grid grid-cols-3 gap-2">
             {SHAPES.map((option) => {
               const Icon = option.icon;
@@ -84,7 +76,7 @@ export function WebcamPanel(): JSX.Element {
         </div>
 
         <label className="flex items-center justify-between text-xs">
-          <span className="font-medium uppercase tracking-wide text-muted-foreground">Mirror</span>
+          <span className="font-medium text-muted-foreground">Mirror</span>
           <input
             type="checkbox"
             checked={mirrored}
@@ -95,41 +87,38 @@ export function WebcamPanel(): JSX.Element {
 
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Size
-            </span>
+            <span className="text-xs font-medium text-muted-foreground">Size</span>
             <span className="text-xs text-muted-foreground">{size}px</span>
           </div>
           <Slider value={size} min={80} max={360} step={4} onChange={setSize} />
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              X
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] text-muted-foreground">Position X</span>
+            <span className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 focus-within:ring-1 focus-within:ring-accent">
+              <span className="text-[11px] text-muted-foreground">X</span>
+              <input
+                type="number"
+                value={Math.round(position.x)}
+                onChange={(e) => setPosition({ ...position, x: Number(e.target.value) })}
+                className="w-full min-w-0 bg-transparent text-[11px] text-foreground outline-none"
+              />
             </span>
-            <input
-              type="number"
-              value={Math.round(position.x)}
-              onChange={(e) => setPosition({ ...position, x: Number(e.target.value) })}
-              className="rounded-lg border border-line bg-surface px-2 py-1.5 text-xs"
-            />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Y
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] text-muted-foreground">Position Y</span>
+            <span className="flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 focus-within:ring-1 focus-within:ring-accent">
+              <span className="text-[11px] text-muted-foreground">Y</span>
+              <input
+                type="number"
+                value={Math.round(position.y)}
+                onChange={(e) => setPosition({ ...position, y: Number(e.target.value) })}
+                className="w-full min-w-0 bg-transparent text-[11px] text-foreground outline-none"
+              />
             </span>
-            <input
-              type="number"
-              value={Math.round(position.y)}
-              onChange={(e) => setPosition({ ...position, y: Number(e.target.value) })}
-              className="rounded-lg border border-line bg-surface px-2 py-1.5 text-xs"
-            />
           </label>
         </div>
-        <p className="text-[11px] text-muted-foreground/70">
-          Or drag the PiP directly on the preview above.
-        </p>
       </div>
     </div>
   );

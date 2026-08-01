@@ -15,6 +15,8 @@ import type {
   RenameFolderPayload,
   RenameRequestPayload,
   SaveRequestPayload,
+  SetCollectionAuthPayload,
+  SetFolderAuthPayload,
   WsAckResult
 } from '../../../preload/http-client/types';
 import {
@@ -225,6 +227,32 @@ export function registerCollectionHandlers(): void {
       if (!destination) return { ok: false, error: 'Target folder not found.' };
       removeFolder(target, payload.folderId);
       destination.folders.push(folder);
+      await writeCollections(collections);
+      return { ok: true };
+    }
+  );
+
+  ipcMain.handle(
+    'collections:setCollectionAuth',
+    async (_event, payload: SetCollectionAuthPayload): Promise<WsAckResult> => {
+      const collections = await readCollections();
+      const target = collections.find((c) => c.id === payload.collectionId);
+      if (!target) return { ok: false, error: 'Collection not found.' };
+      target.auth = payload.auth;
+      await writeCollections(collections);
+      return { ok: true };
+    }
+  );
+
+  ipcMain.handle(
+    'collections:setFolderAuth',
+    async (_event, payload: SetFolderAuthPayload): Promise<WsAckResult> => {
+      const collections = await readCollections();
+      const target = collections.find((c) => c.id === payload.collectionId);
+      if (!target) return { ok: false, error: 'Collection not found.' };
+      const folder = findFolder(target, payload.folderId);
+      if (!folder) return { ok: false, error: 'Folder not found.' };
+      folder.auth = payload.auth;
       await writeCollections(collections);
       return { ok: true };
     }

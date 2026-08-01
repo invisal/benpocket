@@ -1,6 +1,10 @@
 import type { JSX } from 'react';
 import { Mouse, Target, ZoomIn } from 'lucide-react';
-import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS } from '@shared/constants';
+import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
+import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS } from '@shared/constants';
+import { sampleCursorPath, type CursorPathPoint } from '@shared/cursor-path';
+import { ContextMenu } from '@renderer/components/ui/ContextMenu';
+import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
@@ -10,8 +14,14 @@ import {
 } from '../../timeline/lib/segment-duration';
 import { useZoomStore, findKeyframeContaining } from '../store/zoom-store';
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+/** The first real recorded mousedown within a keyframe's own window, if any. */
+function firstClickInWindow(
+  clickPath: CursorPathPoint[],
+  atMs: number,
+  durationMs: number
+): { x: number; y: number } | null {
+  const click = clickPath.find((c) => c.atMs >= atMs && c.atMs <= atMs + durationMs);
+  return click ? { x: click.x, y: click.y } : null;
 }
 
 // Deliberately shorter than `DEFAULT_ZOOM_DURATION_MS` -- this only sizes
@@ -45,13 +55,34 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
+  const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   const keyframes = useZoomStore((s) => s.keyframes);
   const updateKeyframe = useZoomStore((s) => s.updateKeyframe);
+  const duplicateKeyframe = useZoomStore((s) => s.duplicateKeyframe);
   const removeKeyframe = useZoomStore((s) => s.removeKeyframe);
   const selectedKeyframeId = useZoomStore((s) => s.selectedKeyframeId);
   const setSelectedKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
+  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
+  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
+
+  // Disabling "follow cursor" needs *some* fixed point to land on --
+  // preferably the first real click inside this keyframe's own window
+  // (matches how auto-generated keyframes are seeded from clicks in the
+  // first place, see auto-zoom-engine.ts), falling back to wherever the
+  // cursor actually was at the keyframe's start for a manually-added
+  // keyframe with no click nearby, and only landing on dead-center as a
+  // last resort (a 'window' capture never gets a cursor path at all).
+  function toggleFollowCursor(kf: ZoomKeyframe): void {
+    if (kf.position !== 'auto-cursor') {
+      updateKeyframe(kf.id, { position: 'auto-cursor' });
+      return;
+    }
+    const fixed = firstClickInWindow(clickPath, kf.atMs, kf.durationMs) ??
+      sampleCursorPath(cursorPath, kf.atMs) ?? { x: 0.5, y: 0.5 };
+    updateKeyframe(kf.id, { position: fixed });
+  }
 
   // No ghost over a stretch that already has a keyframe -- a click there
   // wouldn't add one *here* anyway (it'd snap in right after the existing
@@ -144,21 +175,48 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
           setActiveTool('zoom');
           setSelectedKeyframeId(kf.id);
         }}
-        onMove={(kf, atMs) => updateKeyframe(kf.id, { atMs })}
+        onMove={(kf, atMs) => updateKeyframe(kf.id, { atMs }, sourceDurationMs)}
         onResizeStart={(kf, newAtMs) => {
           const endMs = kf.atMs + kf.durationMs;
           const clampedAtMs = Math.min(newAtMs, endMs - ZOOM_MIN_DURATION_MS);
-          updateKeyframe(kf.id, {
-            atMs: clampedAtMs,
-            durationMs: clamp(endMs - clampedAtMs, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS)
-          });
+          updateKeyframe(
+            kf.id,
+            {
+              atMs: clampedAtMs,
+              durationMs: Math.max(endMs - clampedAtMs, ZOOM_MIN_DURATION_MS)
+            },
+            sourceDurationMs
+          );
         }}
         onResizeEnd={(kf, newEndMs) => {
-          updateKeyframe(kf.id, {
-            durationMs: clamp(newEndMs - kf.atMs, ZOOM_MIN_DURATION_MS, ZOOM_MAX_DURATION_MS)
-          });
+          updateKeyframe(
+            kf.id,
+            { durationMs: Math.max(newEndMs - kf.atMs, ZOOM_MIN_DURATION_MS) },
+            sourceDurationMs
+          );
         }}
         onDelete={(kf) => removeKeyframe(kf.id)}
+        isDisabled={(kf) => !kf.enabled}
+        onToggleDisabled={(kf) => updateKeyframe(kf.id, { enabled: !kf.enabled })}
+        onDuplicate={(kf) => {
+          const newId = duplicateKeyframe(kf.id, sourceDurationMs);
+          if (!newId) return;
+          requestSeek(kf.atMs + kf.durationMs);
+          setActiveTool('zoom');
+          setSelectedKeyframeId(newId);
+        }}
+        renderExtraMenuItems={(kf) => (
+          <ContextMenu.Item onClick={() => toggleFollowCursor(kf)}>
+            <span className="flex items-center gap-2">
+              {kf.position === 'auto-cursor' ? (
+                <Target size={14} className="text-text-dim" />
+              ) : (
+                <Mouse size={14} className="text-text-dim" />
+              )}
+              {kf.position === 'auto-cursor' ? 'Fix to First Click' : 'Follow Cursor'}
+            </span>
+          </ContextMenu.Item>
+        )}
       />
 
       {ghostPercent && (

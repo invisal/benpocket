@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { useShortcutsStore } from '../store/shortcuts-store';
+import { SettingsRow } from '../../../components/ui/settings-row';
 
 // TODO: click-to-record key combo UI - listen for keydown, build an
 // accelerator string, validate for conflicts, then persist via
@@ -8,16 +9,12 @@ export function ShortcutRecorder(): JSX.Element {
   const { bindings } = useShortcutsStore();
 
   return (
-    <div className="flex flex-col gap-2 text-xs">
+    <>
       {bindings.map((binding) => (
-        <div
-          key={binding.id}
-          className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2"
-        >
-          <span>{binding.action}</span>
-          <kbd className="rounded bg-surface-3 px-2 py-1">{binding.accelerator}</kbd>
-        </div>
+        <SettingsRow key={binding.id} title={binding.action}>
+          <kbd className="rounded bg-surface-3 px-2 py-1 text-xs">{binding.accelerator}</kbd>
+        </SettingsRow>
       ))}
-    </div>
+    </>
   );
 }

@@ -9,6 +9,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  KeyRound,
   Move,
   MoreHorizontal,
   Pencil,
@@ -24,9 +25,11 @@ import { useCollectionsStore } from './store/collections.store';
 import { useEnvironmentsStore } from './store/environments.store';
 import { disposeApiClientTab } from './hooks/useApiClient';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
+import { AuthorizationDialog } from './components/AuthorizationDialog';
 import type {
   Collection,
   CollectionFolder,
+  HttpAuth,
   SavedRequest
 } from '../../../preload/http-client/types';
 import type { PostmanTabSeed } from './types';
@@ -120,6 +123,8 @@ export const HttpClientSidebar: React.FC = () => {
     deleteFolder,
     moveRequest,
     moveFolder,
+    setCollectionAuth,
+    setFolderAuth,
     exportCollection,
     importCollection
   } = useCollectionsStore();
@@ -204,6 +209,7 @@ export const HttpClientSidebar: React.FC = () => {
             params: request.params,
             bodyType: request.bodyType,
             body: request.body,
+            auth: request.auth,
             savedCollectionId: collection.id,
             savedRequestId: request.id
           };
@@ -421,6 +427,8 @@ export const HttpClientSidebar: React.FC = () => {
               onMoveFolder={(folderId, targetParentFolderId) =>
                 runMutation(() => moveFolder(collection.id, folderId, targetParentFolderId))
               }
+              onSetAuth={(auth) => setCollectionAuth(collection.id, auth)}
+              onSetFolderAuth={(folderId, auth) => setFolderAuth(collection.id, folderId, auth)}
               onInvalidDrop={handleInvalidDrop}
               activeRequestId={activeCollectionId === collection.id ? activeRequestId : null}
             />
@@ -607,6 +615,8 @@ interface CollectionItemProps {
   onRenameFolder: (folderId: string, name: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
+  onSetAuth: (auth: HttpAuth) => Promise<void>;
+  onSetFolderAuth: (folderId: string, auth: HttpAuth) => Promise<void>;
   onInvalidDrop: (message: string) => void;
   /** The saved request id backing the currently active tab, if it lives in this collection. */
   activeRequestId: string | null;
@@ -630,6 +640,8 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
   onRenameFolder,
   onDeleteFolder,
   onMoveFolder,
+  onSetAuth,
+  onSetFolderAuth,
   onInvalidDrop,
   activeRequestId
 }) => {
@@ -638,6 +650,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [draftFolderName, setDraftFolderName] = useState('');
   const [isRootDropTarget, setIsRootDropTarget] = useState(false);
+  const [isEditingAuth, setIsEditingAuth] = useState(false);
 
   const handleRootDragOver = (e: React.DragEvent): void => {
     if (!e.dataTransfer.types.includes(DRAG_MIME_TYPE)) return;
@@ -765,12 +778,25 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
                   setIsRenaming(true);
                 }
               },
+              {
+                icon: <KeyRound size={12} />,
+                label: 'Authorization',
+                onClick: () => setIsEditingAuth(true)
+              },
               { icon: <Download size={12} />, label: 'Export', onClick: onExport },
               { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
             ]}
           />
         )}
       </div>
+
+      <AuthorizationDialog
+        open={isEditingAuth}
+        onOpenChange={setIsEditingAuth}
+        title={`${collection.name} Authorization`}
+        auth={collection.auth}
+        onSave={onSetAuth}
+      />
 
       {isExpanded && (
         <div
@@ -822,6 +848,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               onMoveFolder={onMoveFolder}
+              onSetFolderAuth={onSetFolderAuth}
               onInvalidDrop={onInvalidDrop}
               activeRequestId={activeRequestId}
             />
@@ -862,6 +889,7 @@ interface FolderItemProps {
   onRenameFolder: (folderId: string, name: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
+  onSetFolderAuth: (folderId: string, auth: HttpAuth) => Promise<void>;
   onInvalidDrop: (message: string) => void;
   /** The saved request id backing the currently active tab, if it lives in this collection. */
   activeRequestId: string | null;
@@ -883,6 +911,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
   onRenameFolder,
   onDeleteFolder,
   onMoveFolder,
+  onSetFolderAuth,
   onInvalidDrop,
   activeRequestId
 }) => {
@@ -892,6 +921,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
   const [draftSubfolderName, setDraftSubfolderName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
+  const [isEditingAuth, setIsEditingAuth] = useState(false);
 
   const isExpanded = expanded.has(folder.id);
   const indent = depth * 12;
@@ -1046,6 +1076,11 @@ const FolderItem: React.FC<FolderItemProps> = ({
                 }
               },
               {
+                icon: <KeyRound size={12} />,
+                label: 'Authorization',
+                onClick: () => setIsEditingAuth(true)
+              },
+              {
                 icon: <Trash2 size={12} />,
                 label: 'Delete',
                 danger: true,
@@ -1060,6 +1095,14 @@ const FolderItem: React.FC<FolderItemProps> = ({
           />
         )}
       </div>
+
+      <AuthorizationDialog
+        open={isEditingAuth}
+        onOpenChange={setIsEditingAuth}
+        title={`${folder.name} Authorization`}
+        auth={folder.auth}
+        onSave={(auth) => onSetFolderAuth(folder.id, auth)}
+      />
 
       {isCreatingSubfolder && (
         <input
@@ -1115,6 +1158,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               onMoveFolder={onMoveFolder}
+              onSetFolderAuth={onSetFolderAuth}
               onInvalidDrop={onInvalidDrop}
               activeRequestId={activeRequestId}
             />

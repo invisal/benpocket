@@ -11,6 +11,7 @@ interface CursorStoreState extends CursorSettings {
   setSmoothing: (smoothing: number) => void;
   setMotionBlur: (motionBlur: number) => void;
   setClickBounce: (clickBounce: number) => void;
+  setClickRippleEnabled: (clickRippleEnabled: boolean) => void;
 }
 
 export const useCursorStore = create<CursorStoreState>(
@@ -23,7 +24,8 @@ export const useCursorStore = create<CursorStoreState>(
       size: s.size,
       smoothing: s.smoothing,
       motionBlur: s.motionBlur,
-      clickBounce: s.clickBounce
+      clickBounce: s.clickBounce,
+      clickRippleEnabled: s.clickRippleEnabled
     }),
     (set) => ({
       visible: true,
@@ -33,13 +35,15 @@ export const useCursorStore = create<CursorStoreState>(
       smoothing: 0.67,
       motionBlur: 0,
       clickBounce: 2.5,
+      clickRippleEnabled: false,
       setVisible: (visible) => set({ visible }),
       setClipToCanvas: (clipToCanvas) => set({ clipToCanvas }),
       setStyle: (style) => set({ style }),
       setSize: (size) => set({ size }),
       setSmoothing: (smoothing) => set({ smoothing }),
       setMotionBlur: (motionBlur) => set({ motionBlur }),
-      setClickBounce: (clickBounce) => set({ clickBounce })
+      setClickBounce: (clickBounce) => set({ clickBounce }),
+      setClickRippleEnabled: (clickRippleEnabled) => set({ clickRippleEnabled })
     })
   )
 );

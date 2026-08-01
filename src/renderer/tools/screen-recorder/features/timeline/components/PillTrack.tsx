@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 import { useRef } from 'react';
+import { Copy, Eye, EyeOff, Trash2 } from 'lucide-react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { getSegmentOutputDurationMs, sourceRangeToOutputPercent } from '../lib/segment-duration';
@@ -28,6 +29,20 @@ export interface PillTrackProps<T extends { id: string }> {
   onResizeStart: (item: T, newStartMs: number) => void;
   onResizeEnd: (item: T, newEndMs: number) => void;
   onDelete?: (item: T) => void;
+  /** Whether an item is toggled off -- dims the pill and, via `onToggleDisabled`'s own handler, skips whatever the item actually does (e.g. `resolveZoom` ignoring a disabled zoom keyframe) without deleting it. */
+  isDisabled?: (item: T) => boolean;
+  onToggleDisabled?: (item: T) => void;
+  onDuplicate?: (item: T) => void;
+  /**
+   * Extra context-menu items specific to one track's own item type (e.g.
+   * ZoomTrack's "Follow Cursor" toggle, which only means anything for a
+   * `ZoomKeyframe` -- Caption/Annotation/BlurMask, which share this same
+   * component, have nothing analogous). Rendered inside the same
+   * `ContextMenu.Content` this component already owns, after Duplicate and
+   * before Delete -- return `ContextMenu.Item`(s) directly, same as this
+   * file's own built-in ones.
+   */
+  renderExtraMenuItems?: (item: T) => ReactNode;
 }
 
 /**
@@ -68,7 +83,11 @@ export function PillTrack<T extends { id: string }>({
   onMove,
   onResizeStart,
   onResizeEnd,
-  onDelete
+  onDelete,
+  isDisabled,
+  onToggleDisabled,
+  onDuplicate,
+  renderExtraMenuItems
 }: PillTrackProps<T>): JSX.Element | null {
   const totalOutputMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,7 +130,8 @@ export function PillTrack<T extends { id: string }>({
                     className={cn(
                       'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 active:cursor-grabbing',
                       colorClassName,
-                      isSelected?.(item) && 'ring-2 ring-purple-200'
+                      isSelected?.(item) && 'ring-2 ring-purple-200',
+                      isDisabled?.(item) && 'opacity-40'
                     )}
                     style={{
                       left: `${position.leftPercent}%`,
@@ -151,9 +171,37 @@ export function PillTrack<T extends { id: string }>({
                   </div>
                 }
               />
-              {onDelete && (
+              {(onToggleDisabled || onDuplicate || renderExtraMenuItems || onDelete) && (
                 <ContextMenu.Content>
-                  <ContextMenu.Item onClick={() => onDelete(item)}>Delete</ContextMenu.Item>
+                  {onToggleDisabled && (
+                    <ContextMenu.Item onClick={() => onToggleDisabled(item)}>
+                      <span className="flex items-center gap-2">
+                        {isDisabled?.(item) ? (
+                          <Eye size={14} className="text-text-dim" />
+                        ) : (
+                          <EyeOff size={14} className="text-text-dim" />
+                        )}
+                        {isDisabled?.(item) ? 'Enable' : 'Disable'}
+                      </span>
+                    </ContextMenu.Item>
+                  )}
+                  {onDuplicate && (
+                    <ContextMenu.Item onClick={() => onDuplicate(item)}>
+                      <span className="flex items-center gap-2">
+                        <Copy size={14} className="text-text-dim" />
+                        Duplicate
+                      </span>
+                    </ContextMenu.Item>
+                  )}
+                  {renderExtraMenuItems?.(item)}
+                  {onDelete && (
+                    <ContextMenu.Item onClick={() => onDelete(item)}>
+                      <span className="flex items-center gap-2">
+                        <Trash2 size={14} className="text-text-dim" />
+                        Delete
+                      </span>
+                    </ContextMenu.Item>
+                  )}
                 </ContextMenu.Content>
               )}
             </ContextMenu.Root>

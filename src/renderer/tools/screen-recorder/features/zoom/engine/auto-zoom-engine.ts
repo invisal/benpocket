@@ -39,10 +39,11 @@ const MIN_GAP_MS = DEFAULT_ZOOM_DURATION_MS;
  * clustering math above to keep windows apart on its own -- that math
  * assumed a fixed relationship between the gap threshold and the default
  * duration that a chain of merges could quietly violate (extending toward,
- * or past, the next click's own window), and had no upper bound at all, so
- * a long burst of clicks a bit over `MIN_GAP_MS` apart could grow one
- * window past `ZOOM_MAX_DURATION_MS` and into the next keyframe entirely.
- * Clamping every window against its neighbors as it's built makes
+ * or past, the next click's own window), with no upper bound at all, so a
+ * long burst of clicks a bit over `MIN_GAP_MS` apart could grow one window
+ * straight into the next keyframe entirely. Clamping every window against
+ * its neighbors (and, when there's no next keyframe, the recording's own
+ * length -- see clampToNonOverlapping's own doc) as it's built makes
  * "never overlapping" an actual guarantee instead of an emergent property
  * of the clustering constants happening to line up.
  */
@@ -75,7 +76,8 @@ export function generateAutoZoomKeyframes(clickSamples: CursorSample[]): ZoomKey
       depth: DEFAULT_ZOOM_DEPTH,
       easing: 'ease-in-out',
       position: 'auto-cursor',
-      holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS
+      holdTransitionMs: DEFAULT_ZOOM_HOLD_TRANSITION_MS,
+      enabled: true
     });
     lastClickAtMs = click.atMs;
   }

@@ -118,16 +118,22 @@ export function computeAutoZoomFocalPath(
  * compositor (frame-compositor.ts, canvas transform) so both zoom
  * identically -- what you see while editing is what gets exported.
  */
+/**
+ * Cubic, not quadratic -- a noticeably snappier "fast then settles" feel for
+ * the zoom scale itself. Quadratic's deceleration read as closer to linear
+ * than a deliberate ease. `ease-out` (what zoom-in ramps mostly use) should
+ * feel like it whips in and settles, not glide in evenly.
+ */
 export function easeZoom(t: number, easing: ZoomKeyframe['easing']): number {
   switch (easing) {
     case 'linear':
       return t;
     case 'ease-in':
-      return t * t;
+      return t * t * t;
     case 'ease-out':
-      return 1 - (1 - t) * (1 - t);
+      return 1 - (1 - t) ** 3;
     case 'ease-in-out':
-      return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+      return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
   }
 }
 
@@ -184,13 +190,24 @@ export function resolveZoom(
   const rampMs = Math.min(active.holdTransitionMs, active.durationMs / 2);
   const elapsed = atMs - active.atMs;
   const remaining = active.durationMs - elapsed;
+  // Ramp-out is evaluated in its OWN forward-running progress (0 at the
+  // start of the release, 1 at rest), not `easeZoom(remaining/rampMs, ...)`
+  // directly -- that reads `easeZoom` backwards in time, which for the two
+  // asymmetric curves (ease-in/ease-out) actually plays the *other* curve's
+  // shape in real time (e.g. picking 'ease-out' gave a graceful zoom-in but
+  // an abrupt slam-to-stop zoom-out). `1 - easeZoom(p, easing)` keeps the
+  // chosen easing's own character -- fast burst then graceful settle for
+  // 'ease-out', slow build then a snap for 'ease-in' -- consistent on both
+  // the way in and the way out. For the point-symmetric curves ('linear',
+  // 'ease-in-out') this is mathematically identical to the old formula, so
+  // only ease-in/ease-out actually change.
   const envelope =
     rampMs <= 0
       ? 1
       : elapsed < rampMs
         ? easeZoom(elapsed / rampMs, active.easing)
         : remaining < rampMs
-          ? easeZoom(remaining / rampMs, active.easing)
+          ? 1 - easeZoom(1 - remaining / rampMs, active.easing)
           : 1;
   const depth = 1 + (active.depth - 1) * envelope;
   const focal =

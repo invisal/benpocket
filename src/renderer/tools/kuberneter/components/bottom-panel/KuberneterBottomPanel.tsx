@@ -4,7 +4,7 @@ import { useLayoutStore } from '../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
 import { KuberneterBottomPanelHeader } from './KuberneterBottomPanelHeader';
 import { KuberneterTerminalView } from './KuberneterTerminalView';
-import { KuberneterCreateResourceView } from './KuberneterCreateResourceView';
+import { KuberneterResourceEditor } from './KuberneterResourceEditor';
 import { generateTabId } from './types';
 import { cn } from 'cnfast';
 
@@ -49,6 +49,10 @@ export const KuberneterBottomPanel: React.FC = () => {
     closeTab(id);
   };
 
+  const handleApplyYaml = (yamlContent: string) => {
+    return window.kuberneter.applyResourceYaml(yamlContent, activeConfigPath, activeCluster);
+  };
+
   return (
     <div className={cn('flex flex-col w-full h-full min-h-0 bg-surface-2 overflow-hidden')}>
       {/* Header Bar */}
@@ -90,18 +94,17 @@ export const KuberneterBottomPanel: React.FC = () => {
             );
           }
 
-          // Create-resource tabs only render when active.
+          // Resource Editor tabs only render when active.
           if (!isActive) return null;
           return (
             <div key={tab.id} className="absolute inset-0 flex flex-col min-h-0 z-10">
-              <KuberneterCreateResourceView
-                yaml={resourceYamls[tab.id] || ''}
+              <KuberneterResourceEditor
+                initialYaml={tab.initialYaml}
+                yaml={resourceYamls[tab.id] ?? tab.initialYaml ?? ''}
                 onChangeYaml={(newYaml) =>
                   setResourceYamls((prev) => ({ ...prev, [tab.id]: newYaml }))
                 }
-                onApply={() => {
-                  // Handle resource application logic
-                }}
+                onApply={handleApplyYaml}
               />
             </div>
           );

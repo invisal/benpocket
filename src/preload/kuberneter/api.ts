@@ -57,6 +57,18 @@ export interface KuberneterApi {
     resource: string,
     namespace?: string
   ) => Promise<GetResourcesResponse>;
+  getResourceYaml: (
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    resource: string,
+    name: string,
+    namespace?: string
+  ) => Promise<{ yaml?: string; error?: string }>;
+  applyResourceYaml: (
+    yamlContent: string,
+    kubeconfigPath?: string,
+    contextName?: string
+  ) => Promise<{ result?: string; error?: string }>;
   startWatch: (id: string, options: WatchOptions) => Promise<{ success?: boolean; error?: string }>;
   stopWatch: (id: string) => Promise<{ success?: boolean; error?: string }>;
   onWatchEvent: (callback: (event: WatchEvent) => void) => () => void;
@@ -215,6 +227,17 @@ export const kuberneterApi: KuberneterApi = {
       resource,
       namespace
     ),
+  getResourceYaml: (kubeconfigPath, contextName, resource, name, namespace) =>
+    ipcRenderer.invoke(
+      'kuberneter:get-resource-yaml',
+      kubeconfigPath,
+      contextName,
+      resource,
+      name,
+      namespace
+    ),
+  applyResourceYaml: (yamlContent, kubeconfigPath, contextName) =>
+    ipcRenderer.invoke('kuberneter:apply-resource-yaml', yamlContent, kubeconfigPath, contextName),
   startWatch: (id, options) => ipcRenderer.invoke('kuberneter:start-watch', id, options),
   stopWatch: (id) => ipcRenderer.invoke('kuberneter:stop-watch', id),
   onWatchEvent: (callback) => {

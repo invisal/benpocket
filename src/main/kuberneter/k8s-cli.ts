@@ -50,6 +50,52 @@ export function runKubectl(args: string[], kubeconfigPath?: string): Promise<str
   });
 }
 
+/**
+ * Runs a kubectl command with stdin input and optional custom kubeconfig path.
+ */
+export function runKubectlWithInput(
+  args: string[],
+  input: string,
+  kubeconfigPath?: string
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const kubeArgs = kubeconfigPath ? ['--kubeconfig', kubeconfigPath, ...args] : args;
+    const child = spawn('kubectl', kubeArgs, { shell: true });
+
+    let stdout = '';
+    let stderr = '';
+
+    if (child.stdout) {
+      child.stdout.on('data', (chunk) => {
+        stdout += chunk.toString();
+      });
+    }
+
+    if (child.stderr) {
+      child.stderr.on('data', (chunk) => {
+        stderr += chunk.toString();
+      });
+    }
+
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(stderr.trim() || stdout.trim() || `kubectl exited with code ${code}`));
+        return;
+      }
+      resolve(stdout);
+    });
+
+    child.on('error', (err) => {
+      reject(err);
+    });
+
+    if (child.stdin) {
+      child.stdin.write(input);
+      child.stdin.end();
+    }
+  });
+}
+
 export interface K8sContext {
   name: string;
   cluster: string;

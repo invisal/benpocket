@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
-import { Pencil, Trash2, Terminal, FileText, Share2, Box } from 'lucide-react';
+import { Pencil, Trash2, Terminal, FileText, Box } from 'lucide-react';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { Popover } from '@renderer/components/ui/Popover';
 import { useKuberneterStore } from '../../../../store/kuberneter.store';
@@ -121,6 +121,12 @@ export const PodHeaderActions: React.FC<PodHeaderActionsProps> = ({ payload }) =
     }
   };
 
+  const handleEdit = () => {
+    if (name) {
+      useKuberneterStore.getState().openPodEditTab(name, ns, payload?.rawItem);
+    }
+  };
+
   return (
     <Tooltip.Provider delay={200} closeDelay={0}>
       <ContainerActionMenu
@@ -141,23 +147,15 @@ export const PodHeaderActions: React.FC<PodHeaderActionsProps> = ({ payload }) =
       <Tooltip.Root>
         <Tooltip.Trigger
           render={
-            <button className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
-              <Share2 className="size-3.5" />
-            </button>
-          }
-        />
-        <Tooltip.Content side="bottom">Attach / Share</Tooltip.Content>
-      </Tooltip.Root>
-
-      <Tooltip.Root>
-        <Tooltip.Trigger
-          render={
-            <button className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
+            <button
+              onClick={handleEdit}
+              className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+            >
               <Pencil className="size-3.5" />
             </button>
           }
         />
-        <Tooltip.Content side="bottom">Edit</Tooltip.Content>
+        <Tooltip.Content side="bottom">Edit Pod</Tooltip.Content>
       </Tooltip.Root>
 
       <Tooltip.Root>

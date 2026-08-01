@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import * as jsYaml from 'js-yaml';
 import { useLayoutStore } from '@renderer/store/layout.store';
 import type { MetricCategory, MetricsSource, PrometheusProvider } from '../lib/metricsProviders';
 
@@ -31,6 +32,7 @@ export interface KuberneterBottomPanelTab {
   type: 'terminal' | 'create-resource';
   title: string;
   initialCommand?: string;
+  initialYaml?: string;
 }
 
 export const DEFAULT_METRICS_CONFIG: MetricsConfig = {
@@ -76,6 +78,7 @@ interface KuberneterState {
   closeKuberneterBottomPanelTab: (id: string) => void;
   openPodTerminalTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodLogsTab: (podName: string, namespace?: string, containerName?: string) => void;
+  openPodEditTab: (podName: string, namespace?: string, rawItem?: unknown) => Promise<void>;
   openNodeTerminalTab: (nodeName: string) => void;
 
   addKuberneterKubeconfig: (filePath: string) => void;
@@ -195,6 +198,62 @@ export const useKuberneterStore = create<KuberneterState>()(
           type: 'terminal',
           title: tabTitle,
           initialCommand: command
+        };
+
+        set({
+          kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, newTab],
+          kuberneterActiveBottomPanelTabId: newId
+        });
+      },
+
+      openPodEditTab: async (podName, namespace, rawItem) => {
+        if (!podName) return;
+        const state = get();
+        const tabTitle = `Edit: ${podName}`;
+        const existing = state.kuberneterBottomPanelTabs.find(
+          (t) => t.title === tabTitle && t.type === 'create-resource'
+        );
+
+        useLayoutStore.getState().openBottomPanelWithTab('terminal');
+
+        if (existing) {
+          set({ kuberneterActiveBottomPanelTabId: existing.id });
+          return;
+        }
+
+        let yaml = '';
+        try {
+          const activeInstanceId = useLayoutStore.getState().activeInstanceId;
+          const configPath = state.kuberneterInstanceConfigPath[activeInstanceId];
+          const cluster = state.kuberneterInstanceCluster[activeInstanceId];
+          const res = await window.kuberneter.getResourceYaml(
+            configPath,
+            cluster,
+            'pod',
+            podName,
+            namespace
+          );
+          if (res.yaml) {
+            yaml = res.yaml;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch live Pod YAML via IPC, falling back to rawItem', err);
+        }
+
+        if (!yaml && rawItem) {
+          try {
+            yaml = jsYaml.dump(rawItem);
+          } catch {
+            yaml = '';
+          }
+        }
+
+        const newId = `edit-pod-${podName}-${Date.now()}`;
+        const newTab: KuberneterBottomPanelTab = {
+          id: newId,
+          type: 'create-resource',
+          title: tabTitle,
+          initialYaml: yaml
         };
 
         set({

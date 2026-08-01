@@ -1,21 +1,11 @@
 import type React from 'react';
 import { useRef, useEffect } from 'react';
-import {
-  Maximize2,
-  Pencil,
-  Star,
-  Trash2,
-  X,
-  Terminal,
-  Pause,
-  RefreshCw,
-  FileText,
-  Share2
-} from 'lucide-react';
+import { Maximize2, X } from 'lucide-react';
+import { Tooltip } from '../../../../../src/components/ui/Tooltip';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { DetailContent } from './DetailContent';
-import { type IngressClassData } from '../../../types/IngressClassData';
+import { KubeDetailDrawerHeaderActions } from './KubeDetailDrawerHeaderActions';
 
 interface KubeDetailDrawerProps {
   tabId: string;
@@ -192,120 +182,35 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
           {headerTitle}
         </span>
         <div className="flex items-center gap-2 shrink-0">
-          {contentType === 'ingressclasses' && (
-            <button
-              title={`${(payload as IngressClassData).isDefault ? 'Remove default' : 'Set as default'}`}
-              className="text-zinc-400 hover:text-yellow-400 cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-            >
-              {(payload as IngressClassData).isDefault ? (
-                <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
-              ) : (
-                <Star className="size-3.5" />
-              )}
-            </button>
-          )}
-          {(contentType === 'pod' || contentType === 'pods') && (
-            <>
-              <button
-                title="Pod Terminal"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Terminal className="size-3.5" />
-              </button>
-              <button
-                title="Pod Logs"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <FileText className="size-3.5" />
-              </button>
-              <button
-                title="Attach / Share"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Share2 className="size-3.5" />
-              </button>
-              <button
-                title="Edit YAML"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-              <button
-                title="Delete Pod"
-                className="text-zinc-400 hover:text-red-400 cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </>
-          )}
-          {contentType === 'nodes' && (
-            <>
-              <button
-                title="Node Shell"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Terminal className="size-3.5" />
-              </button>
-              <button
-                title="Cordon Node"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Pause className="size-3.5" />
-              </button>
-              <button
-                title="Refresh"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <RefreshCw className="size-3.5" />
-              </button>
-              <button
-                title="Edit"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-              <button
-                title="Delete"
-                className="text-zinc-400 hover:text-red-400 cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </>
-          )}
-          {(contentType === 'ingressclasses' ||
-            contentType === 'clusterrole' ||
-            contentType === 'role' ||
-            contentType === 'clusterrolebinding' ||
-            contentType === 'rolebinding') && (
-            <>
-              <button
-                title="Edit"
-                className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-              <button
-                title="Delete"
-                className="text-zinc-400 hover:text-red-400 cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </>
-          )}
-          <button
-            onClick={handleMaximize}
-            title="Open in new tab"
-            className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-          >
-            <Maximize2 className="size-3.5" />
-          </button>
-          <button
-            onClick={handleClose}
-            title="Close drawer"
-            className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
-          >
-            <X className="size-3.5" />
-          </button>
+          <KubeDetailDrawerHeaderActions contentType={contentType} payload={payload} />
+          <Tooltip.Provider delay={200} closeDelay={0}>
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <button
+                    onClick={handleMaximize}
+                    className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+                  >
+                    <Maximize2 className="size-3.5" />
+                  </button>
+                }
+              />
+              <Tooltip.Content side="bottom">Open in new tab</Tooltip.Content>
+            </Tooltip.Root>
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <button
+                    onClick={handleClose}
+                    className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                }
+              />
+              <Tooltip.Content side="bottom">Close drawer</Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
         </div>
       </div>
 

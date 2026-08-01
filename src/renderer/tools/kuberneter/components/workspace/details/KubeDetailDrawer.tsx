@@ -5,7 +5,7 @@ import { Tooltip } from '../../../../../src/components/ui/Tooltip';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { DetailContent } from './DetailContent';
-import { KubeDetailDrawerHeaderActions } from './KubeDetailDrawerHeaderActions';
+import { DetailHeaderActions } from './DetailHeaderActions';
 
 interface KubeDetailDrawerProps {
   tabId: string;
@@ -182,7 +182,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
           {headerTitle}
         </span>
         <div className="flex items-center gap-2 shrink-0">
-          <KubeDetailDrawerHeaderActions contentType={contentType} payload={payload} />
+          <DetailHeaderActions contentType={contentType} payload={payload} />
           <Tooltip.Provider delay={200} closeDelay={0}>
             <Tooltip.Root>
               <Tooltip.Trigger

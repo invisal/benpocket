@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useLayoutStore } from '@renderer/store/layout.store';
 import type { MetricCategory, MetricsSource, PrometheusProvider } from '../lib/metricsProviders';
 
 export interface RecentConnection {
@@ -25,6 +26,13 @@ export interface MetricsConfig {
   hiddenMetrics: MetricCategory[];
 }
 
+export interface KuberneterBottomPanelTab {
+  id: string;
+  type: 'terminal' | 'create-resource';
+  title: string;
+  initialCommand?: string;
+}
+
 export const DEFAULT_METRICS_CONFIG: MetricsConfig = {
   source: 'auto',
   provider: 'auto',
@@ -48,6 +56,10 @@ interface KuberneterState {
   kuberneterRecentConnections: RecentConnection[];
   kuberneterTabDrawers: Record<string, DrawerState>;
 
+  /** Bottom panel tabs state. */
+  kuberneterBottomPanelTabs: KuberneterBottomPanelTab[];
+  kuberneterActiveBottomPanelTabId: string;
+
   setKuberneterInstanceCluster: (instanceId: string, cluster: string) => void;
   setKuberneterInstanceServer: (instanceId: string, server: string) => void;
   setKuberneterInstanceNamespace: (instanceId: string, ns: string) => void;
@@ -57,6 +69,13 @@ interface KuberneterState {
   setKuberneterMetricsConfig: (contextName: string, config: Partial<MetricsConfig>) => void;
 
   setKuberneterTabDrawerState: (tabId: string, state: Partial<DrawerState>) => void;
+
+  setKuberneterBottomPanelTabs: (tabs: KuberneterBottomPanelTab[]) => void;
+  setKuberneterActiveBottomPanelTabId: (id: string) => void;
+  addKuberneterBottomPanelTab: (tab: KuberneterBottomPanelTab) => void;
+  closeKuberneterBottomPanelTab: (id: string) => void;
+  openPodTerminalTab: (podName: string, namespace?: string) => void;
+  openNodeTerminalTab: (nodeName: string) => void;
 
   addKuberneterKubeconfig: (filePath: string) => void;
   removeKuberneterKubeconfig: (filePath: string) => void;
@@ -70,7 +89,7 @@ interface KuberneterState {
 
 export const useKuberneterStore = create<KuberneterState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       kuberneterInstanceCluster: {},
       kuberneterInstanceServer: {},
       kuberneterInstanceNamespace: {},
@@ -80,6 +99,105 @@ export const useKuberneterStore = create<KuberneterState>()(
       kuberneterMetricsConfig: {},
       kuberneterKubeconfigs: [],
       kuberneterTabDrawers: {},
+
+      kuberneterBottomPanelTabs: [{ id: 'term-default', type: 'terminal', title: 'Terminal' }],
+      kuberneterActiveBottomPanelTabId: 'term-default',
+
+      setKuberneterBottomPanelTabs: (tabs) => set({ kuberneterBottomPanelTabs: tabs }),
+      setKuberneterActiveBottomPanelTabId: (id) => set({ kuberneterActiveBottomPanelTabId: id }),
+
+      addKuberneterBottomPanelTab: (tab) =>
+        set((state) => ({
+          kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, tab],
+          kuberneterActiveBottomPanelTabId: tab.id
+        })),
+
+      closeKuberneterBottomPanelTab: (id) =>
+        set((state) => {
+          const remaining = state.kuberneterBottomPanelTabs.filter((t) => t.id !== id);
+          if (remaining.length === 0) {
+            const defaultTerm: KuberneterBottomPanelTab = {
+              id: `term-${Date.now()}`,
+              type: 'terminal',
+              title: 'Terminal'
+            };
+            return {
+              kuberneterBottomPanelTabs: [defaultTerm],
+              kuberneterActiveBottomPanelTabId: defaultTerm.id
+            };
+          }
+          const nextActiveId =
+            state.kuberneterActiveBottomPanelTabId === id
+              ? remaining[remaining.length - 1].id
+              : state.kuberneterActiveBottomPanelTabId;
+          return {
+            kuberneterBottomPanelTabs: remaining,
+            kuberneterActiveBottomPanelTabId: nextActiveId
+          };
+        }),
+
+      openPodTerminalTab: (podName, namespace) => {
+        if (!podName) return;
+        const state = get();
+        const tabTitle = `Pod: ${podName}`;
+        const existing = state.kuberneterBottomPanelTabs.find(
+          (t) => t.title === tabTitle && t.type === 'terminal'
+        );
+
+        useLayoutStore.getState().openBottomPanelWithTab('terminal');
+
+        if (existing) {
+          set({ kuberneterActiveBottomPanelTabId: existing.id });
+          return;
+        }
+
+        const newId = `term-pod-${podName}-${Date.now()}`;
+        const nsFlag = namespace ? `-n ${namespace} ` : '';
+        const command = `kubectl exec -it ${podName} ${nsFlag}-- sh || kubectl exec -it ${podName} ${nsFlag}-- bash`;
+
+        const newTab: KuberneterBottomPanelTab = {
+          id: newId,
+          type: 'terminal',
+          title: tabTitle,
+          initialCommand: command
+        };
+
+        set({
+          kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, newTab],
+          kuberneterActiveBottomPanelTabId: newId
+        });
+      },
+
+      openNodeTerminalTab: (nodeName) => {
+        if (!nodeName) return;
+        const state = get();
+        const tabTitle = `Node: ${nodeName}`;
+        const existing = state.kuberneterBottomPanelTabs.find(
+          (t) => t.title === tabTitle && t.type === 'terminal'
+        );
+
+        useLayoutStore.getState().openBottomPanelWithTab('terminal');
+
+        if (existing) {
+          set({ kuberneterActiveBottomPanelTabId: existing.id });
+          return;
+        }
+
+        const newId = `term-node-${nodeName}-${Date.now()}`;
+        const command = `kubectl debug node/${nodeName} -it --image=busybox || kubectl node-shell ${nodeName}`;
+
+        const newTab: KuberneterBottomPanelTab = {
+          id: newId,
+          type: 'terminal',
+          title: tabTitle,
+          initialCommand: command
+        };
+
+        set({
+          kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, newTab],
+          kuberneterActiveBottomPanelTabId: newId
+        });
+      },
 
       setKuberneterTabDrawerState: (tabId, state) =>
         set((prev) => {

@@ -14,6 +14,8 @@ interface KuberneterTerminalProps {
   kubeconfigPath?: string;
   /** Whether this terminal's tab is currently visible. */
   isActive: boolean;
+  /** Optional command to execute when terminal launches. */
+  initialCommand?: string;
 }
 
 /**
@@ -25,14 +27,16 @@ export const KuberneterTerminal: React.FC<KuberneterTerminalProps> = ({
   sessionId,
   contextName,
   kubeconfigPath,
-  isActive
+  isActive,
+  initialCommand
 }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const { containerRef, hasExited, search, clearSearch, focus } = useKuberneterTerminal({
     sessionId,
     contextName,
     kubeconfigPath,
-    isActive
+    isActive,
+    initialCommand
   });
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

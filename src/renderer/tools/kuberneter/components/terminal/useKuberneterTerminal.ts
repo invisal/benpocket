@@ -15,6 +15,8 @@ export interface UseKuberneterTerminalParams {
   kubeconfigPath?: string;
   /** When false the terminal is mounted but hidden; defer fit until shown. */
   isActive: boolean;
+  /** Optional command string to execute upon terminal spawn. */
+  initialCommand?: string;
 }
 
 export interface UseKuberneterTerminalResult {
@@ -35,7 +37,8 @@ export function useKuberneterTerminal({
   sessionId,
   contextName,
   kubeconfigPath,
-  isActive
+  isActive,
+  initialCommand
 }: UseKuberneterTerminalParams): UseKuberneterTerminalResult {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -111,6 +114,12 @@ export function useKuberneterTerminal({
           // that "won't accept input" — surface it in the viewport instead.
           term.writeln(`\r\n\x1b[31m[failed to start shell: ${res.error}]\x1b[0m`);
           setHasExited(true);
+        } else if (initialCommand) {
+          setTimeout(() => {
+            if (!disposed) {
+              window.kuberneter.terminalInput(sessionId, `${initialCommand}\r`);
+            }
+          }, 150);
         }
       })
       .catch((err: unknown) => {

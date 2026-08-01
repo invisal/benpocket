@@ -10,6 +10,8 @@ interface KuberneterTerminalViewProps {
   kubeconfigPath?: string;
   /** Whether this tab is currently the visible one. */
   isActive: boolean;
+  /** Optional shell command to run on terminal initialization. */
+  initialCommand?: string;
 }
 
 /**
@@ -21,7 +23,8 @@ export const KuberneterTerminalView: React.FC<KuberneterTerminalViewProps> = ({
   sessionId,
   contextName,
   kubeconfigPath,
-  isActive
+  isActive,
+  initialCommand
 }) => {
   return (
     <KuberneterTerminal
@@ -29,6 +32,7 @@ export const KuberneterTerminalView: React.FC<KuberneterTerminalViewProps> = ({
       contextName={contextName}
       kubeconfigPath={kubeconfigPath}
       isActive={isActive}
+      initialCommand={initialCommand}
     />
   );
 };

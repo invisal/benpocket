@@ -5,7 +5,7 @@ import { useKuberneterStore } from '../../store/kuberneter.store';
 import { KuberneterBottomPanelHeader } from './KuberneterBottomPanelHeader';
 import { KuberneterTerminalView } from './KuberneterTerminalView';
 import { KuberneterCreateResourceView } from './KuberneterCreateResourceView';
-import { type KuberneterBottomPanelTabItem, generateTabId } from './types';
+import { generateTabId } from './types';
 import { cn } from 'cnfast';
 
 export const KuberneterBottomPanel: React.FC = () => {
@@ -17,16 +17,14 @@ export const KuberneterBottomPanel: React.FC = () => {
   const activeCluster = kuberneterInstanceCluster[activeInstanceId] || '';
   const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || 'default';
 
-  // Tabs state - defaults to Terminal tab
-  const [tabs, setTabs] = useState<KuberneterBottomPanelTabItem[]>([
-    { id: 'term-default', type: 'terminal', title: 'Terminal' }
-  ]);
-  const [activeTabId, setActiveTabId] = useState<string>('term-default');
+  const tabs = useKuberneterStore((s) => s.kuberneterBottomPanelTabs);
+  const activeTabId = useKuberneterStore((s) => s.kuberneterActiveBottomPanelTabId);
+  const setActiveTabId = useKuberneterStore((s) => s.setKuberneterActiveBottomPanelTabId);
+  const addTab = useKuberneterStore((s) => s.addKuberneterBottomPanelTab);
+  const closeTab = useKuberneterStore((s) => s.closeKuberneterBottomPanelTab);
 
   // Per-tab YAML state for Create Resource tabs
   const [resourceYamls, setResourceYamls] = useState<Record<string, string>>({});
-
-  //const currentTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
   const handleAddTab = (type: 'terminal' | 'create-resource') => {
     const newId = generateTabId(type);
@@ -34,14 +32,12 @@ export const KuberneterBottomPanel: React.FC = () => {
       type === 'terminal'
         ? `Terminal ${tabs.filter((t) => t.type === 'terminal').length + 1}`
         : 'Create resource';
-    const newTab: KuberneterBottomPanelTabItem = {
+
+    addTab({
       id: newId,
       type,
       title: newTitle
-    };
-
-    setTabs((prev) => [...prev, newTab]);
-    setActiveTabId(newId);
+    });
 
     if (type === 'create-resource') {
       setResourceYamls((prev) => ({ ...prev, [newId]: '' }));
@@ -50,23 +46,7 @@ export const KuberneterBottomPanel: React.FC = () => {
 
   const handleCloseTab = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const remaining = tabs.filter((t) => t.id !== id);
-    if (remaining.length === 0) {
-      // Default to opening a fresh terminal tab if all tabs were closed
-      const newId = generateTabId('terminal');
-      const defaultTerm: KuberneterBottomPanelTabItem = {
-        id: newId,
-        type: 'terminal',
-        title: 'Terminal'
-      };
-      setTabs([defaultTerm]);
-      setActiveTabId(defaultTerm.id);
-      return;
-    }
-    setTabs(remaining);
-    if (activeTabId === id) {
-      setActiveTabId(remaining[remaining.length - 1].id);
-    }
+    closeTab(id);
   };
 
   return (
@@ -104,6 +84,7 @@ export const KuberneterBottomPanel: React.FC = () => {
                   contextName={activeCluster}
                   kubeconfigPath={activeConfigPath}
                   isActive={isActive}
+                  initialCommand={tab.initialCommand}
                 />
               </div>
             );

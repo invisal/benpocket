@@ -6,6 +6,7 @@ import type { ImportedEnvironmentDraft, KeyValuePair } from '../../../../preload
 import { useEnvironmentsStore } from '../store/environments.store';
 import { KeyValueEditor } from './KeyValueEditor';
 import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
+import { nativeSelectClassName } from '../lib/nativeSelectClassName';
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Button } from '@renderer/components/ui/Button';
 
@@ -218,7 +219,7 @@ export const EnvironmentSelector: React.FC = () => {
             <select
               value={activeEnvironmentId ?? ''}
               onChange={(e) => setActiveEnvironmentId(e.target.value || null)}
-              className="bg-surface-2 border border-border rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
+              className={nativeSelectClassName()}
             >
               <option value="">No Environment</option>
               {environments.map((env) => (

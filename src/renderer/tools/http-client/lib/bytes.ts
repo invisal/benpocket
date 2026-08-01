@@ -14,6 +14,13 @@ export function bytesToText(bytes: Uint8Array): string {
   return utf8Decoder.decode(bytes);
 }
 
+/** Formats a byte count as a human-readable B/KB/MB size string. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const BINARY_SNIFF_WINDOW = 512;
 
 /** Heuristic: sniffs the first bytes for NUL bytes or a high ratio of non-printable characters. */

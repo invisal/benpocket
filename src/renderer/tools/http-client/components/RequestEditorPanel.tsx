@@ -10,6 +10,7 @@ import { useCollectionsStore } from '../store/collections.store';
 import { getAutoHeaders } from '../lib/autoHeaders';
 import { authTypeLabel } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
+import { tabClassName } from '../lib/tabClassName';
 import { KeyValueEditor } from './KeyValueEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
@@ -83,44 +84,16 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
       className="flex flex-col gap-3 shrink-0"
     >
       <Tabs.List className="flex gap-4 border-b border-border text-xs select-none">
-        <Tabs.Tab
-          value="params"
-          className={`py-1 border-b -mb-px cursor-pointer transition-colors ${
-            activeTab === 'params'
-              ? 'border-accent text-accent font-semibold'
-              : 'border-transparent text-zinc-555 hover:text-zinc-350'
-          }`}
-        >
+        <Tabs.Tab value="params" className={tabClassName(activeTab === 'params', 'py-1')}>
           Params{activeParamCount > 0 ? ` (${activeParamCount})` : ''}
         </Tabs.Tab>
-        <Tabs.Tab
-          value="headers"
-          className={`py-1 border-b -mb-px cursor-pointer transition-colors ${
-            activeTab === 'headers'
-              ? 'border-accent text-accent font-semibold'
-              : 'border-transparent text-zinc-555 hover:text-zinc-350'
-          }`}
-        >
+        <Tabs.Tab value="headers" className={tabClassName(activeTab === 'headers', 'py-1')}>
           Headers{activeHeaderCount > 0 ? ` (${activeHeaderCount})` : ''}
         </Tabs.Tab>
-        <Tabs.Tab
-          value="auth"
-          className={`py-1 border-b -mb-px cursor-pointer transition-colors ${
-            activeTab === 'auth'
-              ? 'border-accent text-accent font-semibold'
-              : 'border-transparent text-zinc-555 hover:text-zinc-350'
-          }`}
-        >
+        <Tabs.Tab value="auth" className={tabClassName(activeTab === 'auth', 'py-1')}>
           Authorization{auth.type !== 'noauth' ? ` (${authTypeLabel(auth.type)})` : ''}
         </Tabs.Tab>
-        <Tabs.Tab
-          value="body"
-          className={`py-1 border-b -mb-px cursor-pointer transition-colors ${
-            activeTab === 'body'
-              ? 'border-accent text-accent font-semibold'
-              : 'border-transparent text-zinc-555 hover:text-zinc-350'
-          }`}
-        >
+        <Tabs.Tab value="body" className={tabClassName(activeTab === 'body', 'py-1')}>
           Body{bodyType !== 'none' ? ` (${bodyType})` : ''}
         </Tabs.Tab>
       </Tabs.List>

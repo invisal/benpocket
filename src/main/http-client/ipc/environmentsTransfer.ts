@@ -14,14 +14,7 @@ import {
   importPostmanEnvironment,
   isPostmanEnvironmentFile
 } from '../httpClientFormat';
-
-function sameEnvironmentName(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
-function sanitizeFilename(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'environment';
-}
+import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
 /** "login" -> "login (copy)" -> "login (copy 2)" -> ..., skipping whatever name is already taken. */
 function generateCopyName(baseName: string, existingNames: string[]): string {
@@ -46,7 +39,7 @@ export function registerEnvironmentTransferHandlers(): void {
       const win = BrowserWindow.fromWebContents(event.sender);
       const saveOptions = {
         title: 'Export Environment',
-        defaultPath: `${sanitizeFilename(environment.name)}.postman_environment.json`,
+        defaultPath: `${sanitizeFilename(environment.name, 'environment')}.postman_environment.json`,
         filters: [{ name: 'Postman Environment', extensions: ['json'] }]
       };
       const result = win

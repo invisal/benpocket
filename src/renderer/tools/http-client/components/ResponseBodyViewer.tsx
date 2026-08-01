@@ -5,11 +5,11 @@ import { Check, Copy, Eye, FileText, Table } from 'lucide-react';
 import { getPrettyText, getTokens } from '../lib/formatters/index';
 import { RESPONSE_FORMATS, detectFormat, isImageContentType } from '../lib/responseFormat';
 import type { ResponseFormat } from '../lib/responseFormat';
+import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { HexView } from './HexView';
 import { ResponsePreview } from './ResponsePreview';
 import { ResponseTable } from './ResponseTable';
 
-const COPY_FEEDBACK_MS = 1500;
 const BASE64_LINE_LENGTH = 76;
 
 function chunkBase64(base64: string): string {
@@ -43,25 +43,16 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
   const [viewMode, setViewMode] = useState<'formatted' | 'preview' | 'table'>(
     isImageContentType(contentType) ? 'preview' : 'formatted'
   );
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopyFeedback();
 
   const previewEnabled = format === 'html' || isImageContentType(contentType);
   const tableEnabled = format === 'json' || format === 'yaml';
 
   const prettyText = useMemo(() => getPrettyText(format, text), [format, text]);
   const tokens = useMemo(() => getTokens(format, prettyText), [format, prettyText]);
+  const chunkedBase64 = useMemo(() => chunkBase64(bodyBase64), [bodyBase64]);
 
   const copyText = format === 'base64' ? bodyBase64 : prettyText;
-
-  const handleCopy = async (): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(copyText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
-    } catch {
-      // Clipboard API unavailable/denied - nothing else to fall back to.
-    }
-  };
 
   return (
     <div className="flex flex-col gap-1.5 h-full min-h-0">
@@ -124,7 +115,7 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
         </div>
 
         <button
-          onClick={handleCopy}
+          onClick={() => copy(copyText)}
           title="Copy body"
           className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold text-zinc-400 hover:text-foreground bg-surface-3 border border-border-dark rounded cursor-pointer transition-colors"
         >
@@ -147,7 +138,7 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
           <HexView bytes={bytes} />
         ) : format === 'base64' ? (
           <pre className="font-mono text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap break-all select-text">
-            {chunkBase64(bodyBase64)}
+            {chunkedBase64}
           </pre>
         ) : (
           <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap break-all select-text">

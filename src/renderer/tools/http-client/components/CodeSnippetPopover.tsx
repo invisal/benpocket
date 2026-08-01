@@ -5,8 +5,8 @@ import { Check, Code2, Copy } from 'lucide-react';
 import type { HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import { generateSnippet, SNIPPET_LANGUAGES, type SnippetLanguage } from '../lib/codeSnippet';
-
-const COPY_FEEDBACK_MS = 1500;
+import { nativeSelectClassName } from '../lib/nativeSelectClassName';
+import { useCopyFeedback } from '../hooks/useCopyFeedback';
 
 interface CodeSnippetPopoverProps {
   method: HttpMethod;
@@ -26,22 +26,12 @@ export const CodeSnippetPopover: React.FC<CodeSnippetPopoverProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [language, setLanguage] = useState<SnippetLanguage>('curl');
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopyFeedback();
 
   const snippet = useMemo(
     () => generateSnippet(language, { method, url, headers, bodyType, body }),
     [language, method, url, headers, bodyType, body]
   );
-
-  const handleCopy = async (): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
-    } catch {
-      // Clipboard API unavailable/denied - nothing else to fall back to.
-    }
-  };
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -59,7 +49,7 @@ export const CodeSnippetPopover: React.FC<CodeSnippetPopoverProps> = ({
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as SnippetLanguage)}
-                className="bg-surface-2 border border-border rounded px-2 py-1 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
+                className={nativeSelectClassName('py-1')}
               >
                 {SNIPPET_LANGUAGES.map((l) => (
                   <option key={l.value} value={l.value}>
@@ -68,7 +58,7 @@ export const CodeSnippetPopover: React.FC<CodeSnippetPopoverProps> = ({
                 ))}
               </select>
               <button
-                onClick={handleCopy}
+                onClick={() => copy(snippet)}
                 className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold text-zinc-400 hover:text-foreground bg-surface-2 border border-border-dark rounded cursor-pointer transition-colors"
               >
                 {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}

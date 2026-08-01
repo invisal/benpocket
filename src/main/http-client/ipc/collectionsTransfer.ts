@@ -16,18 +16,10 @@ import {
   isLegacyPostmanV1Collection,
   isPostmanCollectionFile
 } from '../httpClientFormat';
+import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
 const SUPPORTED_SCHEMAS_MESSAGE =
   'benpocket supports Postman Collection Format v2.0 and v2.1 (.json exports from Postman).';
-
-function sanitizeFilename(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'collection';
-}
-
-/** Case-insensitive, trimmed match — good enough to pair a collection with "its" environment by name. */
-function sameEnvironmentName(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
 
 /** Adds/updates `incoming` variables into `existing` by key, preserving any variables `existing` already has that aren't in `incoming`. */
 function mergeVariables(existing: KeyValuePair[], incoming: KeyValuePair[]): KeyValuePair[] {
@@ -78,7 +70,7 @@ export function registerCollectionTransferHandlers(): void {
       const win = BrowserWindow.fromWebContents(event.sender);
       const saveOptions = {
         title: 'Export Collection',
-        defaultPath: `${sanitizeFilename(collection.name)}.postman_collection.json`,
+        defaultPath: `${sanitizeFilename(collection.name, 'collection')}.postman_collection.json`,
         filters: [{ name: 'Postman Collection', extensions: ['json'] }]
       };
       const result = win

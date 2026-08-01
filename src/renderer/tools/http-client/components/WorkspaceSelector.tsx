@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { ChevronDown, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useWorkspacesStore } from '../store/workspaces.store';
+import { nativeSelectClassName } from '../lib/nativeSelectClassName';
 
 export const WorkspaceSelector: React.FC = () => {
   const {
@@ -112,7 +113,7 @@ export const WorkspaceSelector: React.FC = () => {
             <select
               value={activeWorkspaceId ?? ''}
               onChange={(e) => setActiveWorkspaceId(e.target.value)}
-              className="bg-surface-2 border border-border rounded px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-accent cursor-pointer"
+              className={nativeSelectClassName()}
             >
               {workspaces.map((ws) => (
                 <option key={ws.id} value={ws.id}>

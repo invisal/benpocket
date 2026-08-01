@@ -1,21 +1,12 @@
 import type { CollectionFolder, SavedRequest } from '../../../../preload/http-client/types';
+import { countRequestsRecursive, isFolderOrDescendant } from '../../../../shared/collection-tree';
 
 interface RequestContainer {
   requests: SavedRequest[];
   folders: CollectionFolder[];
 }
 
-export function countRequestsRecursive(container: RequestContainer): number {
-  return (
-    container.requests.length +
-    container.folders.reduce((sum, f) => sum + countRequestsRecursive(f), 0)
-  );
-}
-
-export function isFolderOrDescendant(folder: CollectionFolder, id: string): boolean {
-  if (folder.id === id) return true;
-  return folder.folders.some((f) => isFolderOrDescendant(f, id));
-}
+export { countRequestsRecursive, isFolderOrDescendant };
 
 /** Collects every folder id in this container's tree, at every depth. */
 export function collectAllFolderIds(container: RequestContainer): string[] {

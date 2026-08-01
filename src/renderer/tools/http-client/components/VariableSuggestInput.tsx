@@ -31,6 +31,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   onChange,
   variables,
   placeholder,
+  className,
   onEnter
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +97,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
         type="text"
         value={value}
         placeholder={placeholder}
+        className={className}
         onChange={(e) => {
           onChange(e.target.value);
           evaluate(e.target);

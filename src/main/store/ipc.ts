@@ -12,6 +12,10 @@ type CreateProfileResult = { ok: true; profile: ProfileDescriptor } | { ok: fals
 
 type SyncResult = { ok: true } | { ok: false; error: string };
 
+type SyncStatusResult =
+  | { ok: true; hasChanges: boolean; latestSeq: number; count: number }
+  | { ok: false; error: string };
+
 const MOCK_SERVER_FILE_FILTERS = [{ name: 'SQLite Database', extensions: ['db'] }];
 
 let manager: ProfileManager | undefined;
@@ -116,6 +120,17 @@ export function registerProfileHandlers(): void {
   // updates after that arrive via the profiles:unpushed-count-changed push.
   ipcMain.handle('profiles:unpushed-count', (): Promise<number> => {
     return getProfileManager().getUnpushedPatchCount();
+  });
+
+  // Backs the status bar popover's "changes available" precheck -- cheap
+  // remote status check, no push/pull, called each time the popover opens.
+  ipcMain.handle('profiles:status', async (): Promise<SyncStatusResult> => {
+    try {
+      const status = await getProfileManager().checkRemoteStatus();
+      return { ok: true, ...status };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Something went wrong.' };
+    }
   });
 
   ipcMain.handle('profiles:sync', async (): Promise<SyncResult> => {

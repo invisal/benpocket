@@ -10,6 +10,7 @@ import type {
   ProfileDescriptor,
   ProfileId,
   ProfileManifest,
+  RemoteSyncStatus,
   SyncProvider
 } from './types';
 
@@ -35,6 +36,9 @@ export interface ProfileManager {
   // the unique docKeys touched by newly pulled remote patches, so callers can
   // tell live consumers (usePersistStore) what to reload.
   sync(): Promise<string[]>;
+
+  /** Cheap precheck against the active profile's remote, without pulling/decrypting anything -- powers the status bar popover's "changes available" display. */
+  checkRemoteStatus(): Promise<RemoteSyncStatus>;
 
   /** Closes every cached profile's OfflineStore -- call on app quit (and between tests). */
   closeAll(): void;
@@ -213,6 +217,11 @@ export function createProfileManager(profilesDir: string): ProfileManager {
       const pulled = await provider.pull(store.getSyncCursor());
       store.applyRemotePatches(pulled);
       return [...new Set(pulled.map((patch) => patch.docKey))];
+    },
+
+    async checkRemoteStatus(): Promise<RemoteSyncStatus> {
+      const { store, provider } = getActiveSession();
+      return provider.status(store.getSyncCursor());
     },
 
     closeAll(): void {

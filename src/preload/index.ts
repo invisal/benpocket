@@ -5,6 +5,7 @@ import { kuberneterApi } from './kuberneter/api';
 import { postmanApi } from './http-client/api';
 import { fileExplorerApi } from './file-explorer/api';
 import { profilesApi } from './store/api';
+import { authApi } from './auth/api';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 // Custom APIs for renderer
@@ -29,6 +30,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('kuberneter', kuberneterApi);
     contextBridge.exposeInMainWorld('fileExplorer', fileExplorerApi);
     contextBridge.exposeInMainWorld('profiles', profilesApi);
+    contextBridge.exposeInMainWorld('auth', authApi);
   } catch (error) {
     console.error(error);
   }
@@ -45,4 +47,6 @@ if (process.contextIsolated) {
   window.fileExplorer = fileExplorerApi;
   // @ts-ignore (define in dts)
   window.profiles = profilesApi;
+  // @ts-ignore (define in dts)
+  window.auth = authApi;
 }

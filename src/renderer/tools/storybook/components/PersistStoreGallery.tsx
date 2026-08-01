@@ -24,6 +24,44 @@ function useYMapEntries(map: Y.Map<string>): [string, string][] {
   return entries;
 }
 
+// Local draft, committed to the Yjs map on blur rather than every keystroke --
+// each keystroke would otherwise append its own patch (see usePersistStore),
+// which is fine for a demo but noisy for exercising the sync engine here.
+// Re-syncs from `text` on external changes (another client editing the same
+// item), but only while not focused, so it doesn't clobber in-progress typing.
+function EditableItemInput({
+  text,
+  onCommit
+}: {
+  text: string;
+  onCommit: (value: string) => void;
+}) {
+  const [value, setValue] = useState(text);
+  const [isFocused, setIsFocused] = useState(false);
+  // Adjusting state during render (not in an effect) to reset the draft when
+  // `text` changes externally -- the react.dev-recommended way to avoid the
+  // extra cascading render an effect-based reset would cause.
+  const [prevText, setPrevText] = useState(text);
+  if (!isFocused && text !== prevText) {
+    setPrevText(text);
+    setValue(text);
+  }
+
+  return (
+    <Input
+      size="sm"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => {
+        setIsFocused(false);
+        if (value !== text) onCommit(value);
+      }}
+      className="flex-1"
+    />
+  );
+}
+
 export function PersistStoreGallery() {
   const { isLoading, doc } = usePersistStore(DOC_KEY, () => new Y.Doc());
   const map = doc.getMap<string>(DOC_KEY);
@@ -66,12 +104,7 @@ export function PersistStoreGallery() {
               key={id}
               className="flex items-center gap-2 rounded-md border border-border bg-surface-2 px-2.5 py-1.5"
             >
-              <Input
-                size="sm"
-                value={text}
-                onChange={(event) => map.set(id, event.target.value)}
-                className="flex-1"
-              />
+              <EditableItemInput text={text} onCommit={(value) => map.set(id, value)} />
               <Button
                 size="sm"
                 variant="ghost"

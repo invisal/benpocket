@@ -35,10 +35,24 @@ export interface SwitchProfileResult {
 
 export type SyncResult = { ok: true } | { ok: false; error: string };
 
-// Only the kinds creatable from the renderer today -- 'remote' needs a DEK
-// (Buffer) and PKCE tokens resolved by an OAuth flow that doesn't exist yet.
+export type SyncStatusResult =
+  | { ok: true; hasChanges: boolean; latestSeq: number; count: number }
+  | { ok: false; error: string };
+
 export type ProfileConfig =
   | { kind: 'local' }
+  | {
+      kind: 'remote';
+      apiBaseUrl: string;
+      provider: 'github';
+      refreshToken: string; // from the GitHub PKCE login flow, see src/preload/auth/api.ts
+      token: string; // short-lived access token from that same flow
+      // Uint8Array, not Buffer -- the renderer has no Node Buffer global.
+      // window.auth.setupMasterPassword/unlockMasterPassword already return
+      // Uint8Array for the same reason; main-side ProfileManager.create()
+      // converts via Buffer.from() once RemoteSyncProvider is implemented.
+      dek: Uint8Array;
+    }
   | {
       kind: 'mock-remote';
       /** Path to an existing mockServerDbFile to share with another

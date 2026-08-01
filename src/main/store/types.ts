@@ -81,9 +81,18 @@ export interface RemotePatch {
   patch: Buffer; // plaintext -- the provider has already decrypted this before returning it
 }
 
+export interface RemoteSyncStatus {
+  hasChanges: boolean; // whether the remote has any patch past sinceSeq
+  latestSeq: number; // the remote's current max seq -- sinceSeq itself if there's nothing newer
+  count: number; // how many patches the remote is ahead by -- 0 when !hasChanges
+}
+
 export interface SyncProvider {
   push(patches: PendingPatch[]): Promise<PushAck[]>;
   pull(sinceSeq: number): Promise<RemotePatch[]>;
+
+  /** Cheap precheck: is there anything newer than sinceSeq on the remote, without downloading/decrypting it. */
+  status(sinceSeq: number): Promise<RemoteSyncStatus>;
 
   /** Closes any resource this provider opened (e.g. MockSyncProvider's own sqlite connection). No-op if it opened nothing. */
   close(): void;

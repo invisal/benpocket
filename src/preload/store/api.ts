@@ -5,7 +5,8 @@ import type {
   ProfileDescriptor,
   ProfileId,
   SwitchProfileResult,
-  SyncResult
+  SyncResult,
+  SyncStatusResult
 } from './types';
 
 export interface ProfilesApi {
@@ -21,6 +22,8 @@ export interface ProfilesApi {
   appendPatch: (key: string, patch: Uint8Array) => Promise<void>;
   /** Count of the active profile's patches not yet pushed -- backs the status bar's sync indicator. */
   getUnpushedCount: () => Promise<number>;
+  /** Cheap remote precheck ({ hasChanges, latestSeq }) for the active profile, without pushing/pulling anything. */
+  checkStatus: () => Promise<SyncStatusResult>;
   sync: () => Promise<SyncResult>;
   /** Live push of the active profile's unpushed count after every appendPatch/sync/switch/delete. Returns an unsubscribe function. */
   onUnpushedCountChanged: (callback: (count: number) => void) => () => void;
@@ -38,6 +41,7 @@ export const profilesApi: ProfilesApi = {
   loadSnapshot: (key) => ipcRenderer.invoke('profiles:load-snapshot', key),
   appendPatch: (key, patch) => ipcRenderer.invoke('profiles:append-patch', key, patch),
   getUnpushedCount: () => ipcRenderer.invoke('profiles:unpushed-count'),
+  checkStatus: () => ipcRenderer.invoke('profiles:status'),
   sync: () => ipcRenderer.invoke('profiles:sync'),
   onUnpushedCountChanged: (callback) => {
     const listener = (_event: IpcRendererEvent, count: number): void => callback(count);

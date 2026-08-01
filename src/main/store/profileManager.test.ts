@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { createProfileManager, type ProfileManager } from './profileManager';
+import type { MockRemoteProfileDescriptor } from './types';
 
 // safeStorage needs a real Electron runtime -- stand in with a reversible
 // no-op so encrypt/decrypt round-trips work the same way in tests.
@@ -161,6 +162,50 @@ describe('appendPatch / loadSnapshot / sync', () => {
     await expect(manager.sync()).resolves.toEqual(['doc']);
     // Nothing new to pull the second time.
     await expect(manager.sync()).resolves.toEqual([]);
+  });
+});
+
+describe('checkRemoteStatus', () => {
+  it('is a no-op ({ hasChanges: false }) for the local profile', async () => {
+    const manager = newManager();
+    manager.ensureDefaultLocalProfile();
+    await expect(manager.checkRemoteStatus()).resolves.toEqual({
+      hasChanges: false,
+      latestSeq: 0,
+      count: 0
+    });
+  });
+
+  it('reflects a mock-remote push made by another device before any sync()', async () => {
+    const manager = newManager();
+    manager.ensureDefaultLocalProfile();
+    const mock = manager.create({ name: 'Mock', config: { kind: 'mock-remote' } });
+    manager.switchProfile(mock.id);
+
+    // A second device sharing the same mock server pushes first.
+    const other = newManager();
+    const otherMock = other.create({
+      name: 'Mock',
+      config: {
+        kind: 'mock-remote',
+        mockServerDbFile: (mock as MockRemoteProfileDescriptor).mockServerDbFile
+      }
+    });
+    other.switchProfile(otherMock.id);
+    await other.appendPatch('doc', Buffer.from('from-other-device'));
+    await other.sync();
+
+    await expect(manager.checkRemoteStatus()).resolves.toEqual({
+      hasChanges: true,
+      latestSeq: 1,
+      count: 1
+    });
+    await manager.sync();
+    await expect(manager.checkRemoteStatus()).resolves.toEqual({
+      hasChanges: false,
+      latestSeq: 1,
+      count: 0
+    });
   });
 });
 

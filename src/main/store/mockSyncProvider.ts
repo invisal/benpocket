@@ -4,6 +4,7 @@ import type {
   PendingPatch,
   PushAck,
   RemotePatch,
+  RemoteSyncStatus,
   SyncProvider
 } from './types';
 
@@ -47,6 +48,13 @@ export function createMockSyncProvider(descriptor: MockRemoteProfileDescriptor):
         remoteSeq: row.seq,
         patch: Buffer.from(row.patch)
       }));
+    },
+
+    async status(sinceSeq: number): Promise<RemoteSyncStatus> {
+      const row = db
+        .prepare('SELECT COUNT(*) AS count, MAX(seq) AS latestSeq FROM patches WHERE seq > ?')
+        .get(sinceSeq) as { count: number; latestSeq: number | null };
+      return { hasChanges: row.count > 0, latestSeq: row.latestSeq ?? sinceSeq, count: row.count };
     },
 
     close(): void {

@@ -36,6 +36,11 @@ describe('createLocalSyncProvider', () => {
     ).toEqual([]);
     expect(await provider.pull(0)).toEqual([]);
   });
+
+  it('status() always reports no changes, echoing sinceSeq back as latestSeq', async () => {
+    const provider = createLocalSyncProvider();
+    expect(await provider.status(5)).toEqual({ hasChanges: false, latestSeq: 5, count: 0 });
+  });
 });
 
 describe('createSyncProvider', () => {
@@ -66,7 +71,7 @@ describe('createSyncProvider', () => {
     expect(await provider.pull(0)).toEqual([]);
   });
 
-  it("constructs a RemoteSyncProvider for kind: 'remote', which throws when used", async () => {
+  it("constructs a RemoteSyncProvider for kind: 'remote' and persists initialConfig into the store", async () => {
     const descriptor: RemoteProfileDescriptor = {
       id: randomUUID(),
       name: 'Remote',
@@ -77,8 +82,23 @@ describe('createSyncProvider', () => {
       apiBaseUrl: 'https://example.com',
       provider: 'github'
     };
-    const provider = createSyncProvider(descriptor, fakeOfflineStore());
-    await expect(provider.push([])).rejects.toThrow('not implemented');
-    await expect(provider.pull(0)).rejects.toThrow('not implemented');
+    const store = fakeOfflineStore();
+    const settings = new Map<string, string>();
+    store.setSetting = (key, value) => settings.set(key, value);
+
+    // Real coverage of push/pull/401-refresh behavior lives in
+    // remoteSyncProvider.test.ts -- this is just a construction/wiring smoke test.
+    const provider = createSyncProvider(descriptor, store, {
+      kind: 'remote',
+      apiBaseUrl: descriptor.apiBaseUrl,
+      provider: 'github',
+      refreshToken: 'refresh-1',
+      token: 'access-1',
+      dek: Buffer.from('dek-bytes')
+    });
+
+    expect(await provider.push([])).toEqual([]);
+    expect(settings.get('remoteSync.accessToken')).toBe('access-1');
+    expect(settings.get('remoteSync.refreshToken')).toBe('refresh-1');
   });
 });

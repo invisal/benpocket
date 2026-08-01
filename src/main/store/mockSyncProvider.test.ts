@@ -54,6 +54,25 @@ describe('pull', () => {
   });
 });
 
+describe('status', () => {
+  it('reports no changes and echoes sinceSeq back on an empty server', async () => {
+    const provider = createMockSyncProvider(descriptor(':memory:'));
+    expect(await provider.status(0)).toEqual({ hasChanges: false, latestSeq: 0, count: 0 });
+  });
+
+  it('reports hasChanges, the max seq, and the ahead-by count for patches past sinceSeq', async () => {
+    const provider = createMockSyncProvider(descriptor(':memory:'));
+    await provider.push([
+      { localId: 1, docKey: 'doc-a', patch: Buffer.from('one'), createdAt: Date.now() },
+      { localId: 2, docKey: 'doc-b', patch: Buffer.from('two'), createdAt: Date.now() }
+    ]);
+
+    expect(await provider.status(0)).toEqual({ hasChanges: true, latestSeq: 2, count: 2 });
+    expect(await provider.status(1)).toEqual({ hasChanges: true, latestSeq: 2, count: 1 });
+    expect(await provider.status(2)).toEqual({ hasChanges: false, latestSeq: 2, count: 0 });
+  });
+});
+
 describe('two devices sharing one mockServerDbFile', () => {
   const sharedPath = join(tmpdir(), `mock-server-${randomUUID()}.db`);
 

@@ -7,6 +7,7 @@ export function createLocalSyncProvider(): SyncProvider {
   return {
     push: async () => [],
     pull: async () => [],
+    status: async (sinceSeq) => ({ hasChanges: false, latestSeq: sinceSeq, count: 0 }),
     close: () => {}
   };
 }
@@ -22,12 +23,7 @@ export function createLocalSyncProvider(): SyncProvider {
  */
 export function createSyncProvider(
   descriptor: ProfileDescriptor,
-  // Unused for now -- kept in the signature because ProfileManager already
-  // calls this with all three (matching PLAN.md), and createRemoteSyncProvider
-  // will need them once it's actually implemented.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   store: OfflineStore,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   initialConfig?: ProfileConfig
 ): SyncProvider {
   switch (descriptor.kind) {
@@ -36,6 +32,10 @@ export function createSyncProvider(
     case 'mock-remote':
       return createMockSyncProvider(descriptor);
     case 'remote':
-      return createRemoteSyncProvider();
+      return createRemoteSyncProvider(
+        descriptor,
+        store,
+        initialConfig?.kind === 'remote' ? initialConfig : undefined
+      );
   }
 }

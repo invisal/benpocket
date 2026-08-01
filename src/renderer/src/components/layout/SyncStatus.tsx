@@ -9,7 +9,17 @@ import { useProfilesStore } from '../../store/profiles.store';
 
 export const SyncStatus: React.FC = () => {
   const { profiles, activeProfileId, error: profileError, deleteProfile } = useProfilesStore();
-  const { unpushedCount, isSyncing, error: syncError, refresh, sync } = useSyncStore();
+  const {
+    unpushedCount,
+    isSyncing,
+    error: syncError,
+    remoteStatus,
+    isCheckingStatus,
+    statusError,
+    refresh,
+    checkStatus,
+    sync
+  } = useSyncStore();
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) ?? null;
 
   // One-time fetch of the current value on mount.
@@ -39,7 +49,13 @@ export const SyncStatus: React.FC = () => {
   };
 
   return (
-    <Popover.Root>
+    <Popover.Root
+      onOpenChange={(open) => {
+        // Cheap remote precheck each time the popover opens, so "N changes
+        // available" reflects reality instead of whatever was last fetched.
+        if (open) void checkStatus();
+      }}
+    >
       <Popover.Trigger
         className={cn(
           'flex h-full items-center gap-1.5 px-2.5 text-xs text-muted-foreground outline-none',
@@ -61,6 +77,16 @@ export const SyncStatus: React.FC = () => {
           Pushes local changes to this profile&apos;s remote and pulls down anything new. A no-op
           for local-only profiles.
         </p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {isCheckingStatus
+            ? 'Checking remote…'
+            : remoteStatus?.hasChanges
+              ? `Remote is ${remoteStatus.count} patch${remoteStatus.count === 1 ? '' : 'es'} ahead.`
+              : remoteStatus
+                ? 'Up to date with remote.'
+                : null}
+        </p>
+        {statusError && <p className="text-[11px] leading-relaxed text-red-400">{statusError}</p>}
         {syncError && <p className="text-[11px] leading-relaxed text-red-400">{syncError}</p>}
         <Button size="sm" onClick={() => void sync()} disabled={isSyncing} className="w-full">
           {isSyncing ? 'Syncing...' : 'Sync now'}

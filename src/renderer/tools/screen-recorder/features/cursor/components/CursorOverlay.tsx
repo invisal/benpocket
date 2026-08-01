@@ -25,6 +25,8 @@ interface CursorOverlayProps {
   currentTimeMs: number;
   /** Rendered on-screen width of the whole stage (background + padding + content), i.e. `stageRef`'s rect -- the same reference frame webcam/annotations already scale against, see REFERENCE_CANVAS_WIDTH. */
   stageWidthPx: number;
+  /** The clip currently under the playhead's own per-segment "Hide mouse cursor" flag (see CutTimeline.tsx's context menu) -- independent of `cursor.visible`, which hides it everywhere instead of just this one clip. */
+  cursorHidden?: boolean;
 }
 
 /** Where the cursor renders when there's no recorded path to follow (see below). */
@@ -49,14 +51,15 @@ export function CursorOverlay({
   rawPath,
   clickPath,
   currentTimeMs,
-  stageWidthPx
+  stageWidthPx,
+  cursorHidden = false
 }: CursorOverlayProps): JSX.Element | null {
   const smoothed = useMemo(
     () => smoothCursorPath(rawPath, cursor.smoothing),
     [rawPath, cursor.smoothing]
   );
 
-  if (!cursor.visible) return null;
+  if (!cursor.visible || cursorHidden) return null;
   const point = rawPath.length > 0 ? sampleCursorPath(smoothed, currentTimeMs) : PREVIEW_POSITION;
   if (!point) return null;
 

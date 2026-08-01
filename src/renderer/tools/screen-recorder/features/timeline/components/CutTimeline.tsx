@@ -2,10 +2,13 @@ import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Clapperboard,
+  Eye,
+  EyeOff,
   Gauge,
   Minus,
   Plus,
   Redo2,
+  RotateCcw,
   Scissors,
   Trash2,
   Undo2,
@@ -168,6 +171,7 @@ export function CutTimeline(): JSX.Element {
   const deleteSegment = useTimelineStore((s) => s.deleteSegment);
   const resetSegmentTrim = useTimelineStore((s) => s.resetSegmentTrim);
   const setSegmentSpeed = useTimelineStore((s) => s.setSegmentSpeed);
+  const setSegmentCursorHidden = useTimelineStore((s) => s.setSegmentCursorHidden);
   const resizeSegmentEdge = useTimelineStore((s) => s.resizeSegmentEdge);
   const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   // Gates the ruler's hover-scrub below -- only toggles on play/pause (not a
@@ -850,18 +854,37 @@ export function CutTimeline(): JSX.Element {
                             </ContextMenu.RadioGroup>
                           </ContextMenu.Content>
                         </ContextMenu.SubmenuRoot>
+                        <ContextMenu.Item
+                          onClick={() => setSegmentCursorHidden(segment.id, !segment.cursorHidden)}
+                        >
+                          <span className="flex items-center gap-2">
+                            {segment.cursorHidden ? (
+                              <EyeOff size={13} className="shrink-0" />
+                            ) : (
+                              <Eye size={13} className="shrink-0" />
+                            )}
+                            {segment.cursorHidden ? 'Show mouse cursor' : 'Hide mouse cursor'}
+                          </span>
+                        </ContextMenu.Item>
                         <ContextMenu.Separator />
                         <ContextMenu.Item
                           onClick={() => resetSegmentTrim(segment.id)}
                           disabled={!segment.trimmed && !hasMergeableCutBoundary(segments, index)}
                         >
-                          Reset trim
+                          <span className="flex items-center gap-2">
+                            <RotateCcw size={13} className="shrink-0" />
+                            Reset trim
+                          </span>
                         </ContextMenu.Item>
                         <ContextMenu.Item
                           onClick={() => deleteSegment(segment.id)}
                           disabled={segments.length <= 1}
+                          className="text-danger data-[highlighted]:text-danger"
                         >
-                          Delete
+                          <span className="flex items-center gap-2">
+                            <Trash2 size={13} className="shrink-0" />
+                            Delete
+                          </span>
                         </ContextMenu.Item>
                       </ContextMenu.Content>
                     </ContextMenu.Root>

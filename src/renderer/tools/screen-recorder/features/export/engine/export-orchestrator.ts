@@ -214,7 +214,12 @@ async function runOnce(
             Math.max(segment.range.endMs + offsetMs, startMs),
             webcamInfo.duration * 1000
           );
-          return { range: { startMs, endMs }, crop: null, speed: segment.speed };
+          return {
+            range: { startMs, endMs },
+            crop: null,
+            speed: segment.speed,
+            cursorHidden: false
+          };
         })
         .filter((segment) => segment.range.endMs > segment.range.startMs);
 
@@ -255,7 +260,8 @@ async function runOnce(
             options.resolution.height,
             sourceAspect,
             smoothedCursorPath,
-            autoZoomFocalPaths
+            autoZoomFocalPaths,
+            segment.cursorHidden
           );
 
           let webcamFrame: VideoFrame | null = null;

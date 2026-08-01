@@ -63,10 +63,11 @@ function resolveCursor(
   smoothedPath: CursorPathPoint[],
   innerRect: InnerRect,
   referenceScale: number,
-  atMs: number
+  atMs: number,
+  cursorHidden: boolean
 ): CursorSceneData | null {
   const { cursor, clickPath } = project;
-  if (!cursor.visible || smoothedPath.length === 0) return null;
+  if (!cursor.visible || cursorHidden || smoothedPath.length === 0) return null;
   const point = sampleCursorPath(smoothedPath, atMs);
   if (!point) return null;
 
@@ -224,7 +225,11 @@ function resolveCaption(project: Project, atMs: number): { text: string } | null
  * of gliding the way Screen Studio's camera does. `sourceAspect` is the
  * recording's (post-crop) aspect ratio -- the caller (export-
  * orchestrator.ts) already derives this once from ffprobe + the first kept
- * segment's crop, same as today's export-manager.ts did.
+ * segment's crop, same as today's export-manager.ts did. `cursorHidden`
+ * comes from the specific `ExportSegment` currently being decoded/rendered
+ * (its own per-clip "Hide mouse cursor" flag, see CutTimeline.tsx) -- the
+ * caller already has it on hand from the same decode callback that supplies
+ * `atMs`, so it's passed straight through rather than re-derived here.
  */
 export function evaluateSceneAtMs(
   project: Project,
@@ -233,7 +238,8 @@ export function evaluateSceneAtMs(
   outputHeight: number,
   sourceAspect: number,
   smoothedCursorPath: CursorPathPoint[],
-  autoZoomFocalPaths: Map<string, CursorPathPoint[]>
+  autoZoomFocalPaths: Map<string, CursorPathPoint[]>,
+  cursorHidden: boolean
 ): SceneDescription {
   const innerRect = computeInnerRect(
     outputWidth,
@@ -257,7 +263,14 @@ export function evaluateSceneAtMs(
     background: resolveBackground(project),
     shadow,
     zoom,
-    cursor: resolveCursor(project, smoothedCursorPath, innerRect, referenceScale, atMs),
+    cursor: resolveCursor(
+      project,
+      smoothedCursorPath,
+      innerRect,
+      referenceScale,
+      atMs,
+      cursorHidden
+    ),
     blurMasks: resolveBlurMasks(project, innerRect, atMs),
     webcam: resolveWebcam(project, referenceScale),
     annotations: resolveAnnotations(project, referenceScale, atMs),

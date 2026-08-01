@@ -132,6 +132,13 @@ export function PreviewStage({
     ? sourceResolution.width / sourceResolution.height
     : undefined;
 
+  // Per-clip "Hide mouse cursor" (see CutTimeline.tsx's context menu) --
+  // independent of the global `cursor.visible` toggle, which CursorOverlay
+  // already handles on its own.
+  const activeSegmentForCursor = segments.find(
+    (s) => zoomTimeMs >= s.range.startMs && zoomTimeMs < s.range.endMs
+  );
+
   const previewScale = stageWidthPx > 0 ? stageWidthPx / REFERENCE_CANVAS_WIDTH : 1;
   const contentBorderRadius = background.cornerRadius * previewScale;
   const contentBoxShadow =
@@ -227,6 +234,7 @@ export function PreviewStage({
                 clickPath={clickPath}
                 currentTimeMs={zoomTimeMs}
                 stageWidthPx={stageWidthPx}
+                cursorHidden={activeSegmentForCursor?.cursorHidden ?? false}
               />
             )}
           </div>

@@ -94,7 +94,12 @@ export function useExportAction(): UseExportActionResult {
           includeAudio: store.includeAudio,
           outputPath,
           sourceVideoPath,
-          segments: segments.map((s) => ({ range: s.range, crop: s.crop, speed: s.speed })),
+          segments: segments.map((s) => ({
+            range: s.range,
+            crop: s.crop,
+            speed: s.speed,
+            cursorHidden: s.cursorHidden
+          })),
           project: buildExportProject(sourceVideoPath, durationMs)
         },
         (p) => {

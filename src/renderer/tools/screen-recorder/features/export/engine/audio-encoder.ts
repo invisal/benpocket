@@ -253,7 +253,8 @@ export class AudioProcessor {
         {
           range: { startMs: 0, endMs: capturedDurationSec * 1000 },
           crop: null,
-          speed: 1
+          speed: 1,
+          cursorHidden: false
         },
         exportCodec,
         startTimestampUs

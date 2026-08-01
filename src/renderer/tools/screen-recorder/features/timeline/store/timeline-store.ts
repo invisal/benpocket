@@ -140,7 +140,9 @@ interface TimelineStoreState {
   setSegmentCrop: (segmentId: string, crop: CropRect | null) => void;
   /** Speed is per-clip: each segment can play back at a different rate. */
   setSegmentSpeed: (segmentId: string, speed: ClipSpeed) => void;
-  /** Kept clips (range + crop + speed) in output order -- this is exactly ExportOptions.segments. */
+  /** Cursor visibility is per-clip: independent of the global `CursorSettings.visible` toggle. */
+  setSegmentCursorHidden: (segmentId: string, cursorHidden: boolean) => void;
+  /** Kept clips (range + crop + speed + cursor visibility) in output order -- this is exactly ExportOptions.segments. */
   getExportSegments: () => ExportSegment[];
   getOutputDurationMs: () => number;
 }
@@ -224,7 +226,8 @@ export const useTimelineStore = create<TimelineStoreState>(
           sourceOffsetMs: 0,
           crop: null,
           trimmed: false,
-          split: false
+          split: false,
+          cursorHidden: false
         };
         set({
           sourceDurationMs: durationMs,
@@ -386,11 +389,20 @@ export const useTimelineStore = create<TimelineStoreState>(
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
       },
 
+      setSegmentCursorHidden: (segmentId, cursorHidden) => {
+        const track = primaryTrack(get().tracks);
+        const segments = track.segments.map((segment) =>
+          segment.id === segmentId ? { ...segment, cursorHidden } : segment
+        );
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
       getExportSegments: () =>
         primaryTrack(get().tracks).segments.map((s) => ({
           range: s.range,
           crop: s.crop,
-          speed: s.speed
+          speed: s.speed,
+          cursorHidden: s.cursorHidden
         })),
 
       getOutputDurationMs: () =>

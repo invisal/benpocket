@@ -117,7 +117,13 @@ export async function exportGif(
             Math.max(segment.range.endMs + offsetMs, startMs),
             webcamInfo.duration * 1000
           );
-          return { range: { startMs, endMs }, crop: null, speed: segment.speed };
+          return {
+            range: { startMs, endMs },
+            crop: null,
+            speed: segment.speed,
+            cursorHidden: false,
+            webcamHidden: false
+          };
         })
         .filter((segment) => segment.range.endMs > segment.range.startMs);
 
@@ -155,7 +161,9 @@ export async function exportGif(
             options.resolution.height,
             sourceAspect,
             smoothedCursorPath,
-            autoZoomFocalPaths
+            autoZoomFocalPaths,
+            segment.cursorHidden,
+            segment.webcamHidden
           );
 
           let webcamFrame: VideoFrame | null = null;

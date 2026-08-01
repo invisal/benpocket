@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useRef } from 'react';
-import { ArrowUpRight, ImagePlus, Trash2, Type } from 'lucide-react';
+import { ArrowUpRight, ImagePlus, Ruler, Timer, Trash2, Type } from 'lucide-react';
 import type { Annotation } from '@screen-recorder/types/project';
 import {
   useAnnotationsStore,
@@ -8,7 +8,7 @@ import {
   MAX_ARROW_THICKNESS
 } from '../store/annotations-store';
 import { TEXT_ANIMATION_PRESETS } from '../presets/text-animation-presets';
-import { Slider } from '../../../components/ui/slider';
+import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
 
@@ -243,19 +243,16 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-muted-foreground">Thickness</span>
-                  <span className="text-[11px] text-muted-foreground">{selected.thickness}px</span>
-                </div>
-                <Slider
-                  value={selected.thickness}
-                  min={MIN_ARROW_THICKNESS}
-                  max={MAX_ARROW_THICKNESS}
-                  step={1}
-                  onChange={(thickness) => updateAnnotation(selected.id, { thickness })}
-                />
-              </div>
+              <SliderRow
+                icon={Ruler}
+                label="Thickness"
+                value={selected.thickness}
+                displayValue={`${selected.thickness}px`}
+                min={MIN_ARROW_THICKNESS}
+                max={MAX_ARROW_THICKNESS}
+                step={1}
+                onChange={(thickness) => updateAnnotation(selected.id, { thickness })}
+              />
             </>
           )}
 
@@ -281,21 +278,16 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium text-muted-foreground">Duration</span>
-              <span className="text-[11px] text-muted-foreground">
-                {(selected.durationMs / 1000).toFixed(1)}s
-              </span>
-            </div>
-            <Slider
-              value={selected.durationMs}
-              min={MIN_DURATION_MS}
-              max={MAX_DURATION_MS}
-              step={100}
-              onChange={(durationMs) => updateAnnotation(selected.id, { durationMs })}
-            />
-          </div>
+          <SliderRow
+            icon={Timer}
+            label="Duration"
+            value={selected.durationMs}
+            displayValue={`${(selected.durationMs / 1000).toFixed(1)}s`}
+            min={MIN_DURATION_MS}
+            max={MAX_DURATION_MS}
+            step={100}
+            onChange={(durationMs) => updateAnnotation(selected.id, { durationMs })}
+          />
         </div>
       )}
     </div>

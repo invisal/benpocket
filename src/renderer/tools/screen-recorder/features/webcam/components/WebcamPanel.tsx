@@ -1,8 +1,8 @@
 import type { JSX } from 'react';
-import { Circle, Square, SquareUser } from 'lucide-react';
+import { Circle, Maximize2, Square, SquareUser } from 'lucide-react';
 import { useAppStore } from '../../../app/app-store';
 import { useWebcamStore } from '../store/webcam-store';
-import { Slider } from '../../../components/ui/slider';
+import { SliderRow } from '../../../components/ui/slider-row';
 import { Switch } from '../../../components/ui/switch';
 import { cn } from '../../../lib/utils';
 
@@ -42,7 +42,7 @@ export function WebcamPanel(): JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between">
-        <span className="text-xs font-medium">Webcam overlay</span>
+        <span className="text-xs font-medium">Show Webcam</span>
         <Switch
           checked={isEnabled}
           onChange={toggleEnabled}
@@ -85,13 +85,16 @@ export function WebcamPanel(): JSX.Element {
           />
         </label>
 
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Size</span>
-            <span className="text-xs text-muted-foreground">{size}px</span>
-          </div>
-          <Slider value={size} min={80} max={360} step={4} onChange={setSize} />
-        </div>
+        <SliderRow
+          icon={Maximize2}
+          label="Size"
+          value={size}
+          displayValue={`${size}px`}
+          min={80}
+          max={360}
+          step={4}
+          onChange={setSize}
+        />
 
         <div className="grid grid-cols-2 gap-2">
           <label className="flex flex-col gap-1.5">

@@ -12,6 +12,7 @@ interface CursorStoreState extends CursorSettings {
   setMotionBlur: (motionBlur: number) => void;
   setClickBounce: (clickBounce: number) => void;
   setClickRippleEnabled: (clickRippleEnabled: boolean) => void;
+  setHandGestureEnabled: (handGestureEnabled: boolean) => void;
 }
 
 export const useCursorStore = create<CursorStoreState>(
@@ -25,7 +26,8 @@ export const useCursorStore = create<CursorStoreState>(
       smoothing: s.smoothing,
       motionBlur: s.motionBlur,
       clickBounce: s.clickBounce,
-      clickRippleEnabled: s.clickRippleEnabled
+      clickRippleEnabled: s.clickRippleEnabled,
+      handGestureEnabled: s.handGestureEnabled
     }),
     (set) => ({
       visible: true,
@@ -36,6 +38,7 @@ export const useCursorStore = create<CursorStoreState>(
       motionBlur: 0,
       clickBounce: 2.5,
       clickRippleEnabled: false,
+      handGestureEnabled: true,
       setVisible: (visible) => set({ visible }),
       setClipToCanvas: (clipToCanvas) => set({ clipToCanvas }),
       setStyle: (style) => set({ style }),
@@ -43,7 +46,8 @@ export const useCursorStore = create<CursorStoreState>(
       setSmoothing: (smoothing) => set({ smoothing }),
       setMotionBlur: (motionBlur) => set({ motionBlur }),
       setClickBounce: (clickBounce) => set({ clickBounce }),
-      setClickRippleEnabled: (clickRippleEnabled) => set({ clickRippleEnabled })
+      setClickRippleEnabled: (clickRippleEnabled) => set({ clickRippleEnabled }),
+      setHandGestureEnabled: (handGestureEnabled) => set({ handGestureEnabled })
     })
   )
 );

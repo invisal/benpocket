@@ -1,13 +1,19 @@
 import type { JSX } from 'react';
 import { useMemo } from 'react';
 import type { CursorSettings, CursorPathPoint } from '@screen-recorder/types/project';
-import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
+import {
+  resolveCursorStyle,
+  CURSOR_SIZE_UNIT_PX,
+  CURSOR_GESTURE_HOTSPOTS,
+  CURSOR_CUSTOM_ICON_HOTSPOTS
+} from '@shared/cursor-styles';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import {
   smoothCursorPath,
   sampleCursorPath,
   resolveClickBounceScale,
-  resolveClickRipple
+  resolveClickRipple,
+  resolveCursorGesture
 } from '../engine/cursor-smoothing-engine';
 import { CursorStyleIcon } from './CursorStyleIcon';
 
@@ -19,6 +25,8 @@ interface CursorOverlayProps {
   currentTimeMs: number;
   /** Rendered on-screen width of the whole stage (background + padding + content), i.e. `stageRef`'s rect -- the same reference frame webcam/annotations already scale against, see REFERENCE_CANVAS_WIDTH. */
   stageWidthPx: number;
+  /** The clip currently under the playhead's own per-segment "Hide mouse cursor" flag (see CutTimeline.tsx's context menu) -- independent of `cursor.visible`, which hides it everywhere instead of just this one clip. */
+  cursorHidden?: boolean;
 }
 
 /** Where the cursor renders when there's no recorded path to follow (see below). */
@@ -43,14 +51,15 @@ export function CursorOverlay({
   rawPath,
   clickPath,
   currentTimeMs,
-  stageWidthPx
+  stageWidthPx,
+  cursorHidden = false
 }: CursorOverlayProps): JSX.Element | null {
   const smoothed = useMemo(
     () => smoothCursorPath(rawPath, cursor.smoothing),
     [rawPath, cursor.smoothing]
   );
 
-  if (!cursor.visible) return null;
+  if (!cursor.visible || cursorHidden) return null;
   const point = rawPath.length > 0 ? sampleCursorPath(smoothed, currentTimeMs) : PREVIEW_POSITION;
   if (!point) return null;
 
@@ -58,6 +67,16 @@ export function CursorOverlay({
   const scale = stageWidthPx / REFERENCE_CANVAS_WIDTH;
   const sizePx = cursor.size * CURSOR_SIZE_UNIT_PX * scale;
   const clickScale = resolveClickBounceScale(clickPath, currentTimeMs, cursor.clickBounce);
+  const gesture =
+    cursor.handGestureEnabled && rawPath.length > 0
+      ? resolveCursorGesture(smoothed, clickPath, currentTimeMs)
+      : 'idle';
+  const hotspot =
+    gesture === 'idle' && preset.customIcon
+      ? CURSOR_CUSTOM_ICON_HOTSPOTS[preset.customIcon]
+      : CURSOR_GESTURE_HOTSPOTS[gesture];
+  const hotspotXPercent = (hotspot.x / 24) * 100;
+  const hotspotYPercent = (hotspot.y / 24) * 100;
   const ripple = cursor.clickRippleEnabled
     ? resolveClickRipple(clickPath, currentTimeMs, cursor.clickBounce)
     : null;
@@ -91,18 +110,25 @@ export function CursorOverlay({
           left: `${point.x * 100}%`,
           top: `${point.y * 100}%`,
           filter: cursor.motionBlur > 0 ? `blur(${cursor.motionBlur * 1.5}px)` : undefined,
-          // The icon's own tip (5,3 of its 24x24 box, see CursorStyleIcon)
-          // sits at 21%/13% of its box, not at the box's (0,0) corner --
-          // the translate pulls that tip onto `point` (the actual recorded
+          // The icon's own hotspot (CURSOR_GESTURE_HOTSPOTS, in its 24x24
+          // box -- the arrow/hand's corner tip, or the fist's topmost
+          // knuckle for a drag) doesn't sit at the box's (0,0) corner -- the
+          // translate pulls that point onto `point` (the actual recorded
           // position) instead of leaving the box's corner there, which was
-          // rendering the arrow visibly offset from the true cursor/click
+          // rendering the glyph visibly offset from the true cursor/click
           // location. `scale` (applied first, around that same origin) then
           // handles the click-bounce squash without disturbing the anchor.
-          transform: `translate(-21%, -13%)${clickScale !== 1 ? ` scale(${clickScale})` : ''}`,
-          transformOrigin: '21% 13%'
+          transform: `translate(-${hotspotXPercent}%, -${hotspotYPercent}%)${clickScale !== 1 ? ` scale(${clickScale})` : ''}`,
+          transformOrigin: `${hotspotXPercent}% ${hotspotYPercent}%`
         }}
       >
-        <CursorStyleIcon fill={preset.fill} stroke={preset.stroke} size={sizePx} />
+        <CursorStyleIcon
+          fill={preset.fill}
+          stroke={preset.stroke}
+          size={sizePx}
+          gesture={gesture}
+          customIcon={preset.customIcon}
+        />
       </div>
     </div>
   );

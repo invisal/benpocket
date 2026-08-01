@@ -1,44 +1,11 @@
 import type { JSX } from 'react';
 import { Maximize2, MousePointerClick, Palette, Waves, Wind } from 'lucide-react';
 import { useCursorStore } from '../store/cursor-store';
-import { Slider } from '../../../components/ui/slider';
+import { SliderRow } from '../../../components/ui/slider-row';
 import { Switch } from '../../../components/ui/switch';
 import { CursorStyleIcon } from './CursorStyleIcon';
 import { CURSOR_STYLE_PRESETS } from '@shared/cursor-styles';
 import { cn } from '../../../lib/utils';
-
-function SliderRow({
-  icon: Icon,
-  label,
-  value,
-  displayValue,
-  min,
-  max,
-  step,
-  onChange
-}: {
-  icon: typeof Maximize2;
-  label: string;
-  value: number;
-  displayValue: string;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
-}): JSX.Element {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Icon size={13} className="text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        </div>
-        <span className="text-xs text-muted-foreground">{displayValue}</span>
-      </div>
-      <Slider value={value} min={min} max={max} step={step} onChange={onChange} />
-    </div>
-  );
-}
 
 export function CursorSettingsPanel(): JSX.Element {
   const {
@@ -50,6 +17,7 @@ export function CursorSettingsPanel(): JSX.Element {
     motionBlur,
     clickBounce,
     clickRippleEnabled,
+    handGestureEnabled,
     setVisible,
     setClipToCanvas,
     setStyle,
@@ -57,7 +25,8 @@ export function CursorSettingsPanel(): JSX.Element {
     setSmoothing,
     setMotionBlur,
     setClickBounce,
-    setClickRippleEnabled
+    setClickRippleEnabled,
+    setHandGestureEnabled
   } = useCursorStore();
 
   return (
@@ -81,6 +50,15 @@ export function CursorSettingsPanel(): JSX.Element {
             label="Show expanding ripple on click"
           />
         </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">Hand Gesture</span>
+          <Switch
+            checked={handGestureEnabled}
+            onChange={setHandGestureEnabled}
+            label="Show a hand icon while hovering or dragging -- off keeps the plain arrow the whole time"
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-2 border-t border-line pt-3">
@@ -101,13 +79,18 @@ export function CursorSettingsPanel(): JSX.Element {
                   : 'border-line hover:border-accent/40'
               )}
             >
-              <CursorStyleIcon fill={preset.fill} stroke={preset.stroke} size={18} />
+              <CursorStyleIcon
+                fill={preset.fill}
+                stroke={preset.stroke}
+                size={18}
+                customIcon={preset.customIcon}
+              />
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-line pt-3">
+      <div className="flex flex-col gap-4 border-t border-line pt-3">
         <SliderRow
           icon={Maximize2}
           label="Size"

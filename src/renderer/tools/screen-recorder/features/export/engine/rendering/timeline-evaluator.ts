@@ -3,7 +3,12 @@ import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
 import { enrichWallpaperPreset } from '../../../background/lib/wave-wallpaper';
 import { findWallpaperImagePreset } from '../../../background/lib/wallpaper-images';
-import { sampleCursorPath, resolveClickBounceScale, resolveClickRipple } from '@shared/cursor-path';
+import {
+  sampleCursorPath,
+  resolveClickBounceScale,
+  resolveClickRipple,
+  resolveCursorGesture
+} from '@shared/cursor-path';
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
 import { resolveZoom } from '@shared/zoom-resolve';
@@ -58,10 +63,11 @@ function resolveCursor(
   smoothedPath: CursorPathPoint[],
   innerRect: InnerRect,
   referenceScale: number,
-  atMs: number
+  atMs: number,
+  cursorHidden: boolean
 ): CursorSceneData | null {
   const { cursor, clickPath } = project;
-  if (!cursor.visible || smoothedPath.length === 0) return null;
+  if (!cursor.visible || cursorHidden || smoothedPath.length === 0) return null;
   const point = sampleCursorPath(smoothedPath, atMs);
   if (!point) return null;
 
@@ -97,6 +103,10 @@ function resolveCursor(
     stroke: preset.stroke,
     clickScale: resolveClickBounceScale(clickPath, atMs, cursor.clickBounce),
     clipToCanvas: cursor.clipToCanvas,
+    gesture: cursor.handGestureEnabled
+      ? resolveCursorGesture(smoothedPath, clickPath, atMs)
+      : 'idle',
+    customIcon: preset.customIcon,
     ghosts,
     // Grows from ~1x to ~4x the icon's own size -- same formula as
     // CursorOverlay.tsx's live-preview ripple, so the export matches.
@@ -110,8 +120,12 @@ function resolveCursor(
   };
 }
 
-function resolveWebcam(project: Project, referenceScale: number): WebcamSceneData | null {
-  if (!project.webcam.enabled) return null;
+function resolveWebcam(
+  project: Project,
+  referenceScale: number,
+  webcamHidden: boolean
+): WebcamSceneData | null {
+  if (!project.webcam.enabled || webcamHidden) return null;
   const { webcam } = project;
   return {
     xPx: webcam.position.x * referenceScale,
@@ -215,7 +229,12 @@ function resolveCaption(project: Project, atMs: number): { text: string } | null
  * of gliding the way Screen Studio's camera does. `sourceAspect` is the
  * recording's (post-crop) aspect ratio -- the caller (export-
  * orchestrator.ts) already derives this once from ffprobe + the first kept
- * segment's crop, same as today's export-manager.ts did.
+ * segment's crop, same as today's export-manager.ts did. `cursorHidden`
+ * comes from the specific `ExportSegment` currently being decoded/rendered
+ * (its own per-clip "Hide mouse cursor" flag, see CutTimeline.tsx) -- the
+ * caller already has it on hand from the same decode callback that supplies
+ * `atMs`, so it's passed straight through rather than re-derived here.
+ * `webcamHidden` is the same idea for that segment's "Hide webcam" flag.
  */
 export function evaluateSceneAtMs(
   project: Project,
@@ -224,7 +243,9 @@ export function evaluateSceneAtMs(
   outputHeight: number,
   sourceAspect: number,
   smoothedCursorPath: CursorPathPoint[],
-  autoZoomFocalPaths: Map<string, CursorPathPoint[]>
+  autoZoomFocalPaths: Map<string, CursorPathPoint[]>,
+  cursorHidden: boolean,
+  webcamHidden: boolean
 ): SceneDescription {
   const innerRect = computeInnerRect(
     outputWidth,
@@ -248,9 +269,16 @@ export function evaluateSceneAtMs(
     background: resolveBackground(project),
     shadow,
     zoom,
-    cursor: resolveCursor(project, smoothedCursorPath, innerRect, referenceScale, atMs),
+    cursor: resolveCursor(
+      project,
+      smoothedCursorPath,
+      innerRect,
+      referenceScale,
+      atMs,
+      cursorHidden
+    ),
     blurMasks: resolveBlurMasks(project, innerRect, atMs),
-    webcam: resolveWebcam(project, referenceScale),
+    webcam: resolveWebcam(project, referenceScale, webcamHidden),
     annotations: resolveAnnotations(project, referenceScale, atMs),
     caption: resolveCaption(project, atMs)
   };

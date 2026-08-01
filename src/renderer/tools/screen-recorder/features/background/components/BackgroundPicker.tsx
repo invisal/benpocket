@@ -1,9 +1,10 @@
 import type { JSX } from 'react';
 import { useRef } from 'react';
+import { Blend, Radius, RotateCw, Squircle } from 'lucide-react';
 import { PHOTO_PRESETS } from '../lib/photo-presets';
 import { WALLPAPER_IMAGE_PRESETS } from '../lib/wallpaper-images';
 import { useBackgroundStore } from '../store/background-store';
-import { Slider } from '../../../components/ui/slider';
+import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
 
@@ -51,13 +52,11 @@ export function BackgroundPicker(): JSX.Element {
     kind,
     value,
     padding,
-    blur,
     cornerRadius,
     shadow,
     setKind,
     setValue,
     setPadding,
-    setBlur,
     setCornerRadius,
     setShadow
   } = useBackgroundStore();
@@ -155,16 +154,16 @@ export function BackgroundPicker(): JSX.Element {
               className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[11px] text-muted-foreground">Angle · {gradient.angleDeg}°</span>
-            <Slider
-              value={gradient.angleDeg}
-              min={0}
-              max={359}
-              step={1}
-              onChange={(angleDeg) => setValue(`${angleDeg}|${gradient.color1}|${gradient.color2}`)}
-            />
-          </div>
+          <SliderRow
+            icon={RotateCw}
+            label="Angle"
+            value={gradient.angleDeg}
+            displayValue={`${gradient.angleDeg}°`}
+            min={0}
+            max={359}
+            step={1}
+            onChange={(angleDeg) => setValue(`${angleDeg}|${gradient.color1}|${gradient.color2}`)}
+          />
         </div>
       )}
 
@@ -225,36 +224,37 @@ export function BackgroundPicker(): JSX.Element {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 border-t border-line pt-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Background blur</span>
-          <span className="text-xs text-muted-foreground">{blur}px</span>
-        </div>
-        <Slider value={blur} min={0} max={20} step={1} onChange={setBlur} />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Padding</span>
-          <span className="text-xs text-muted-foreground">{padding}%</span>
-        </div>
-        <Slider value={padding} min={0} max={30} step={1} onChange={setPadding} />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Corner radius</span>
-          <span className="text-xs text-muted-foreground">{cornerRadius}px</span>
-        </div>
-        <Slider value={cornerRadius} min={0} max={40} step={1} onChange={setCornerRadius} />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Drop shadow</span>
-          <span className="text-xs text-muted-foreground">{shadow}</span>
-        </div>
-        <Slider value={shadow} min={0} max={100} step={1} onChange={setShadow} />
+      <div className="flex flex-col gap-3 border-t border-line pt-3">
+        <SliderRow
+          icon={Squircle}
+          label="Padding"
+          value={padding}
+          displayValue={`${padding}%`}
+          min={0}
+          max={30}
+          step={1}
+          onChange={setPadding}
+        />
+        <SliderRow
+          icon={Radius}
+          label="Corner radius"
+          value={cornerRadius}
+          displayValue={`${cornerRadius}px`}
+          min={0}
+          max={40}
+          step={1}
+          onChange={setCornerRadius}
+        />
+        <SliderRow
+          icon={Blend}
+          label="Drop shadow"
+          value={shadow}
+          displayValue={`${shadow}`}
+          min={0}
+          max={100}
+          step={1}
+          onChange={setShadow}
+        />
       </div>
     </div>
   );

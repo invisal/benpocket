@@ -29,12 +29,6 @@ interface ZoomStoreState {
   mode: 'auto' | 'manual';
   keyframes: ZoomKeyframe[];
   /**
-   * The keyframe (if any) currently waiting for the user to click the
-   * preview stage to set its focal point -- see PreviewStage.tsx's click
-   * handler and ZoomKeyframeEditor's "Set focal point" button.
-   */
-  armedKeyframeId: string | null;
-  /**
    * Which keyframe is focused -- set by clicking a pill in ZoomTrack (which
    * renders independently of the Zoom panel, in CutTimeline) so the panel
    * can highlight and scroll to the matching card, or by clicking a card
@@ -43,11 +37,11 @@ interface ZoomStoreState {
   selectedKeyframeId: string | null;
   setMode: (mode: 'auto' | 'manual') => void;
   /**
-   * Returns the new keyframe's id, so callers can immediately arm
-   * positioning for it. `sourceDurationMs` (the recording's own length)
-   * bounds it against running past the actual footage when there's no
-   * next keyframe to bound it instead -- omit only when that figure
-   * genuinely isn't known yet (see clampToNonOverlapping's own doc).
+   * Returns the new keyframe's id, so callers can immediately select it.
+   * `sourceDurationMs` (the recording's own length) bounds it against
+   * running past the actual footage when there's no next keyframe to bound
+   * it instead -- omit only when that figure genuinely isn't known yet (see
+   * clampToNonOverlapping's own doc).
    */
   addKeyframe: (atMs: number, sourceDurationMs?: number) => string;
   /**
@@ -65,8 +59,6 @@ interface ZoomStoreState {
     patch: Partial<Omit<ZoomKeyframe, 'id'>>,
     sourceDurationMs?: number
   ) => void;
-  armPositioning: (id: string) => void;
-  disarmPositioning: () => void;
   setSelectedKeyframeId: (id: string | null) => void;
   setKeyframes: (keyframes: ZoomKeyframe[]) => void;
 }
@@ -78,7 +70,6 @@ export const useZoomStore = create<ZoomStoreState>(
     (set) => ({
       mode: 'auto',
       keyframes: [],
-      armedKeyframeId: null,
       selectedKeyframeId: null,
       setMode: (mode) => set({ mode }),
       addKeyframe: (atMs, sourceDurationMs) => {
@@ -138,7 +129,6 @@ export const useZoomStore = create<ZoomStoreState>(
       removeKeyframe: (id) =>
         set((state) => ({
           keyframes: state.keyframes.filter((k) => k.id !== id),
-          armedKeyframeId: state.armedKeyframeId === id ? null : state.armedKeyframeId,
           selectedKeyframeId: state.selectedKeyframeId === id ? null : state.selectedKeyframeId
         })),
       updateKeyframe: (id, patch, sourceDurationMs) =>
@@ -161,10 +151,8 @@ export const useZoomStore = create<ZoomStoreState>(
             return { ...k, ...patch, atMs: clamped.atMs, durationMs: clamped.durationMs };
           })
         })),
-      armPositioning: (id) => set({ armedKeyframeId: id }),
-      disarmPositioning: () => set({ armedKeyframeId: null }),
       setSelectedKeyframeId: (selectedKeyframeId) => set({ selectedKeyframeId }),
-      setKeyframes: (keyframes) => set({ keyframes, armedKeyframeId: null })
+      setKeyframes: (keyframes) => set({ keyframes })
     })
   )
 );

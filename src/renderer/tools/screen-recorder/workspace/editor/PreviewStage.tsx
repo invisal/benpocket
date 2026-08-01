@@ -60,9 +60,6 @@ export function PreviewStage({
   const background = useBackgroundStore();
   const exportAspectRatio = useExportStore((s) => s.aspectRatio);
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
-  const armedKeyframeId = useZoomStore((s) => s.armedKeyframeId);
-  const updateKeyframe = useZoomStore((s) => s.updateKeyframe);
-  const disarmPositioning = useZoomStore((s) => s.disarmPositioning);
   const cursor = useCursorStore();
   const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
   const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
@@ -118,19 +115,18 @@ export function PreviewStage({
     [zoomTimeMs, zoomKeyframes, autoZoomFocalPaths]
   );
 
-  function handlePreviewClick(event: React.MouseEvent<HTMLDivElement>): void {
-    if (!armedKeyframeId) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
-    updateKeyframe(armedKeyframeId, { position: { x, y } });
-    disarmPositioning();
-  }
-
   const stageAspectRatio = ASPECT_RATIO_VALUES[exportAspectRatio];
   const sourceAspectRatio = sourceResolution
     ? sourceResolution.width / sourceResolution.height
     : undefined;
+
+  // Per-clip "Hide mouse cursor" / "Hide webcam" (see CutTimeline.tsx's
+  // context menu) -- independent of the global `cursor.visible` /
+  // `webcam.enabled` toggles, which CursorOverlay/WebcamPip already handle
+  // on their own.
+  const activeSegment = segments.find(
+    (s) => zoomTimeMs >= s.range.startMs && zoomTimeMs < s.range.endMs
+  );
 
   const previewScale = stageWidthPx > 0 ? stageWidthPx / REFERENCE_CANVAS_WIDTH : 1;
   const contentBorderRadius = background.cornerRadius * previewScale;
@@ -161,11 +157,7 @@ export function PreviewStage({
         <div className="relative flex flex-1 items-center justify-center">
           <div
             ref={videoWrapperRef}
-            onClick={handlePreviewClick}
-            className={cn(
-              'relative max-h-full max-w-full overflow-hidden',
-              armedKeyframeId && 'cursor-crosshair'
-            )}
+            className="relative max-h-full max-w-full overflow-hidden"
             style={{
               aspectRatio: sourceAspectRatio,
               borderRadius: contentBorderRadius,
@@ -227,11 +219,11 @@ export function PreviewStage({
                 clickPath={clickPath}
                 currentTimeMs={zoomTimeMs}
                 stageWidthPx={stageWidthPx}
+                cursorHidden={activeSegment?.cursorHidden ?? false}
               />
             )}
           </div>
 
-          {!isVideoReady && !videoError && <EditorLoading />}
           {videoError && <VideoErrorOverlay message={videoError} />}
 
           {!cropToolActive && (
@@ -244,9 +236,11 @@ export function PreviewStage({
           webcamVideoRef={webcamVideoRef}
           previewScale={previewScale}
           cropToolActive={cropToolActive}
+          webcamHidden={activeSegment?.webcamHidden ?? false}
         />
 
         <CaptionBar currentTimeMs={zoomTimeMs} />
+        {!isVideoReady && !videoError && <EditorLoading />}
       </div>
     </div>
   );

@@ -5,6 +5,8 @@
  * types here -- is what lets new effects be added without either module
  * needing to know about the other's internals.
  */
+import type { CursorGesture } from '@shared/cursor-path';
+import type { CursorCustomIconId } from '@shared/cursor-styles';
 
 export interface InnerRect {
   x: number;
@@ -61,6 +63,10 @@ export interface CursorSceneData {
   ghosts: CursorGhostSceneData[];
   /** Expanding click-ripple ring, or null when there's no click within its animation window -- see resolveClickRipple in cursor-path.ts. */
   ripple: CursorRippleSceneData | null;
+  /** Which glyph to draw -- see resolveCursorGesture in cursor-path.ts. */
+  gesture: CursorGesture;
+  /** When set and `gesture` is `idle`, draws this fully custom illustration instead of the plain arrow -- see `CursorStylePreset.customIcon`. Ignored for `hover`, which always shows the shared hand icon. */
+  customIcon?: CursorCustomIconId;
 }
 
 export interface WebcamSceneData {

@@ -36,6 +36,7 @@ import { CLIP_ROW_HEIGHT_PX, TIMELINE_SCROLL_PADDING_PX } from '../lib/assign-la
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
 import { useZoomStore, findKeyframeContaining } from '../../zoom/store/zoom-store';
+import { resolveFixedPosition } from '../../zoom/lib/resolve-fixed-position';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
 import { CropTrack } from '../../crop/components/CropTrack';
@@ -204,6 +205,7 @@ export function CutTimeline(): JSX.Element {
   const redo = useHistoryStore((s) => s.redo);
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
+  const updateZoomKeyframe = useZoomStore((s) => s.updateKeyframe);
   const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   // Any "arm a tool, then click the timeline" mode currently active -- both
@@ -214,6 +216,8 @@ export function CutTimeline(): JSX.Element {
   const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
   const panelHeightPx = useAppStore((s) => s.timelinePanelHeight);
   const setPanelHeightPx = useAppStore((s) => s.setTimelinePanelHeight);
+  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
+  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
   // "Hide webcam" only makes sense to offer when this recording actually has
   // a webcam track and the PiP overlay is currently on -- same gate WebcamPip
   // itself uses to decide whether to render at all.
@@ -350,6 +354,17 @@ export function CutTimeline(): JSX.Element {
   // wouldn't add one *here*, it'd silently snap in right after the
   // existing one (clampToNonOverlapping, zoom-store.ts), which isn't what
   // a click on an already-covered stretch should do.
+  //
+  // `addZoomKeyframe` always creates with `position: 'auto-cursor'`, since
+  // that's also the right default for `ZoomKeyframeEditor`'s own "Add
+  // keyframe" button -- but a deliberate click on an exact point of the
+  // timeline (what the ghost preview promises, see ZoomTrack.tsx) reads more
+  // as "zoom in on whatever's here" than "start tracking the mouse for the
+  // next few seconds", so this path immediately follows up with a fixed
+  // position instead, same resolution `ZoomTrack`'s "disable follow cursor"
+  // uses. Reads the just-created keyframe back from the store (rather than
+  // the requested `sourceMs`/default duration) since `addZoomKeyframe`
+  // clamps both against neighboring keyframes.
   const placeZoomKeyframeFromClientX = useCallback(
     (clientX: number) => {
       const el = trackAreaRef.current;
@@ -360,6 +375,12 @@ export function CutTimeline(): JSX.Element {
       if (sourceMs === null) return;
       if (findKeyframeContaining(zoomKeyframes, sourceMs)) return;
       const id = addZoomKeyframe(sourceMs);
+      const created = useZoomStore.getState().keyframes.find((kf) => kf.id === id);
+      if (created) {
+        updateZoomKeyframe(id, {
+          position: resolveFixedPosition(clickPath, cursorPath, created.atMs, created.durationMs)
+        });
+      }
       setSelectedZoomKeyframeId(id);
       setActiveTool('zoom');
     },
@@ -368,6 +389,9 @@ export function CutTimeline(): JSX.Element {
       clampedTotal,
       zoomKeyframes,
       addZoomKeyframe,
+      updateZoomKeyframe,
+      clickPath,
+      cursorPath,
       setSelectedZoomKeyframeId,
       setActiveTool
     ]

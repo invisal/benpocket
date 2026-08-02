@@ -1,6 +1,6 @@
+import type { AppPrefs } from '@shared/app-prefs';
 import { app } from 'electron';
 import Store from 'electron-store';
-import type { AppPrefs } from '@shared/app-prefs';
 
 export type { AppPrefs };
 

@@ -125,8 +125,6 @@ export function HomeMain({}: ToolComponentProps<Props>) {
             }}
           />
         </div>
-        <Toolbar.Button>Some Random</Toolbar.Button>
-        <Toolbar.Button>Some Random</Toolbar.Button>
         <div className="h-full flex-1 bg-diagonal-stripes" />
       </Toolbar.Root>
 

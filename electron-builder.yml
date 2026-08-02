@@ -56,4 +56,4 @@ publish:
   provider: github
   owner: invisal
   repo: benpocket
-  releaseType: release
+  releaseType: prerelease

@@ -2,8 +2,8 @@ import { useRef, useState } from 'react';
 import { useTimelineStore } from '../store/timeline-store';
 
 /**
- * Native HTML5 drag-and-drop reordering for per-segment pill tracks
- * (Speed/Crop) -- each pill mirrors an actual `TimelineSegment` 1:1, so
+ * Native HTML5 drag-and-drop reordering for per-segment pill tracks (e.g.
+ * Speed) -- each pill mirrors an actual `TimelineSegment` 1:1, so
  * "dragging" one means reordering the underlying clip, the same
  * `reorderSegments` action CutTimeline's own row uses. Every segment's slot
  * (pill or empty spacer) needs to be a drag target so dropping anywhere in

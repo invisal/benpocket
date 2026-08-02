@@ -103,6 +103,9 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
   const durationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
+  // No separate global toggle -- the export just skips audio entirely when
+  // every kept clip is muted (see useExportAction.ts), same as this estimate.
+  const includeAudio = segments.some((s) => !s.audioMuted);
 
   const selectedOutputSize = closestByLongEdge(
     OUTPUT_SIZE_CHOICES,
@@ -116,7 +119,7 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
     height: store.resolution.height,
     frameRate: store.frameRate,
     quality: store.quality,
-    includeAudio: store.includeAudio,
+    includeAudio,
     format: store.format
   });
 

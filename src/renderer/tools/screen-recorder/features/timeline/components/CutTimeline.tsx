@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Clapperboard,
   Eye,
@@ -14,9 +15,15 @@ import {
   Undo2,
   Video,
   VideoOff,
+  Volume2,
+  VolumeX,
   ZoomIn
 } from 'lucide-react';
-import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
+import {
+  CLIP_SPEED_OPTIONS,
+  AUDIO_VOLUME_OPTIONS,
+  type TimelineSegment
+} from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { useAppStore } from '../../../app/app-store';
@@ -28,13 +35,13 @@ import {
   hasMergeableCutBoundary,
   outputMsToSourceMs
 } from '../lib/segment-duration';
-import { CLIP_ROW_HEIGHT_PX } from '../lib/assign-lanes';
+import { CLIP_ROW_HEIGHT_PX, TIMELINE_SCROLL_PADDING_PX } from '../lib/assign-lanes';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { useSegmentReorderDrag } from '../lib/use-segment-reorder-drag';
 import { useZoomStore, findKeyframeContaining } from '../../zoom/store/zoom-store';
+import { resolveFixedPosition } from '../../zoom/lib/resolve-fixed-position';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
-import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
 import { AnnotationTrack } from '../../annotations/components/AnnotationTrack';
 import { BlurMaskTrack } from '../../blur-mask/components/BlurMaskTrack';
@@ -192,12 +199,15 @@ export function CutTimeline(): JSX.Element {
   // gets the hovered position as a prop and draws its own ghost preview.
   const isZoomToolActive = useTimelineStore((s) => s.isZoomToolActive);
   const setZoomToolActive = useTimelineStore((s) => s.setZoomToolActive);
+  const setSegmentAudioMuted = useTimelineStore((s) => s.setSegmentAudioMuted);
+  const setSegmentAudioVolume = useTimelineStore((s) => s.setSegmentAudioVolume);
   const canUndo = useHistoryStore((s) => s.past.length > 0);
   const canRedo = useHistoryStore((s) => s.future.length > 0);
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
+  const updateZoomKeyframe = useZoomStore((s) => s.updateKeyframe);
   const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   // Any "arm a tool, then click the timeline" mode currently active -- both
@@ -208,6 +218,8 @@ export function CutTimeline(): JSX.Element {
   const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
   const panelHeightPx = useAppStore((s) => s.timelinePanelHeight);
   const setPanelHeightPx = useAppStore((s) => s.setTimelinePanelHeight);
+  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
+  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
   // "Hide webcam" only makes sense to offer when this recording actually has
   // a webcam track and the PiP overlay is currently on -- same gate WebcamPip
   // itself uses to decide whether to render at all.
@@ -215,6 +227,11 @@ export function CutTimeline(): JSX.Element {
   const webcamEnabled = useWebcamStore((s) => s.enabled);
   const waveformPeaks = useWaveformStore((s) => s.peaks);
   const loadWaveformForUrl = useWaveformStore((s) => s.loadForUrl);
+  // "Mute clip" only makes sense to offer when the recording actually has an
+  // audio track to mute -- decodeWaveformPeaks (waveform-store.ts) fails and
+  // leaves `peaks` null when there's none, so its presence doubles as that
+  // check without a separate probe.
+  const hasAudioTrack = waveformPeaks !== null;
   // Decoded once per recording (cached in the store, keyed by URL) rather
   // than per-clip -- each segment below just slices its own range out of
   // the same peaks array, so re-cutting/reordering never re-decodes audio.
@@ -223,27 +240,14 @@ export function CutTimeline(): JSX.Element {
   }, [previewUrl, loadWaveformForUrl]);
 
   const { dragOverIndex, getDragHandlers } = useSegmentReorderDrag();
-  const { startResize } = useEdgeResize();
+  const {
+    startResize,
+    isResizing: isEdgeResizing,
+    isResizingRef: edgeResizingRef
+  } = useEdgeResize();
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const playheadDraggingRef = useRef(false);
-  // Set for the duration of an edge-resize drag (useEdgeResize tracks its
-  // own drag state internally, via a `window` pointermove/pointerup pair
-  // that don't go through this component, so it doesn't already know when
-  // one is active) -- keeps hover-scrub from also seeking while the user is
-  // mid-resize on a clip's edge.
-  const edgeResizingRef = useRef(false);
-
-  function markEdgeResizeActive(): void {
-    edgeResizingRef.current = true;
-    window.addEventListener(
-      'pointerup',
-      () => {
-        edgeResizingRef.current = false;
-      },
-      { once: true }
-    );
-  }
 
   // A second, gray playhead that tracks the cursor while it's over the
   // ruler and live-seeks the preview video to that position -- scrubbing by
@@ -357,6 +361,17 @@ export function CutTimeline(): JSX.Element {
   // wouldn't add one *here*, it'd silently snap in right after the
   // existing one (clampToNonOverlapping, zoom-store.ts), which isn't what
   // a click on an already-covered stretch should do.
+  //
+  // `addZoomKeyframe` always creates with `position: 'auto-cursor'`, since
+  // that's also the right default for `ZoomKeyframeEditor`'s own "Add
+  // keyframe" button -- but a deliberate click on an exact point of the
+  // timeline (what the ghost preview promises, see ZoomTrack.tsx) reads more
+  // as "zoom in on whatever's here" than "start tracking the mouse for the
+  // next few seconds", so this path immediately follows up with a fixed
+  // position instead, same resolution `ZoomTrack`'s "disable follow cursor"
+  // uses. Reads the just-created keyframe back from the store (rather than
+  // the requested `sourceMs`/default duration) since `addZoomKeyframe`
+  // clamps both against neighboring keyframes.
   const placeZoomKeyframeFromClientX = useCallback(
     (clientX: number) => {
       const el = trackAreaRef.current;
@@ -367,6 +382,12 @@ export function CutTimeline(): JSX.Element {
       if (sourceMs === null) return;
       if (findKeyframeContaining(zoomKeyframes, sourceMs)) return;
       const id = addZoomKeyframe(sourceMs);
+      const created = useZoomStore.getState().keyframes.find((kf) => kf.id === id);
+      if (created) {
+        updateZoomKeyframe(id, {
+          position: resolveFixedPosition(clickPath, cursorPath, created.atMs, created.durationMs)
+        });
+      }
       setSelectedZoomKeyframeId(id);
       setActiveTool('zoom');
     },
@@ -375,6 +396,9 @@ export function CutTimeline(): JSX.Element {
       clampedTotal,
       zoomKeyframes,
       addZoomKeyframe,
+      updateZoomKeyframe,
+      clickPath,
+      cursorPath,
       setSelectedZoomKeyframeId,
       setActiveTool
     ]
@@ -565,15 +589,6 @@ export function CutTimeline(): JSX.Element {
 
             <div className="mx-1 h-4 w-px bg-line" />
 
-            <button
-              onClick={() => selectedSegmentId && deleteSegment(selectedSegmentId)}
-              disabled={!selectedSegmentId}
-              title="Delete selected clip"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2 disabled:opacity-30"
-            >
-              <Trash2 size={13} />
-            </button>
-
             <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
             </span>
@@ -614,8 +629,27 @@ export function CutTimeline(): JSX.Element {
           against `clampedTotal` line up across rows at any zoom level or
           scroll position, and the playhead (last child, absolutely
           positioned) spans the full stack instead of just the ruler.
+          `TIMELINE_SCROLL_PADDING_PX` reserves just enough horizontal room
+          in the scrollable padding box for a `CutMarker` centered exactly on
+          a cut at the very start/end of the timeline (half its `w-9` pin) to
+          render fully -- otherwise the first clip's own head trim clips its
+          marker against this container's edge, since `overflow-auto` only
+          leaves the padding box unclipped, not anything past it. Doesn't
+          affect alignment between rows: it's padding on this *outer* scroll
+          container, not a margin/inset on `trackAreaRef` itself, so every
+          row's own percent-of-`trackAreaRef` math is untouched -- but
+          `Playhead.tsx`'s scroll-into-view effect *does* need to know this
+          exact number, since it translates between `trackAreaRef`-relative
+          and `scrollLeft`-relative coordinates (see that file).
         */}
-        <div ref={scrollContainerRef} className="min-h-0 flex-1 px-1 overflow-auto">
+        <div
+          ref={scrollContainerRef}
+          className="min-h-0 flex-1 overflow-auto"
+          style={{
+            paddingLeft: TIMELINE_SCROLL_PADDING_PX,
+            paddingRight: TIMELINE_SCROLL_PADDING_PX
+          }}
+        >
           <div
             ref={trackAreaRef}
             className="relative flex flex-col gap-1.5"
@@ -699,121 +733,139 @@ export function CutTimeline(): JSX.Element {
                   const hasCutBoundary = index > 0 || gapBeforeMs > MIN_CUT_MARKER_GAP_MS;
                   const dragHandlers = getDragHandlers(index);
                   return (
-                    // ContextMenu.Root doesn't render a DOM node of its own,
-                    // so it's a transparent wrapper around the same element
-                    // structure this used to return directly -- the outer
-                    // element still owns position/interaction only (no
+                    // The outer `motion.div` owns only position (`left`/
+                    // `width`, animated via `layout="position"` so a
+                    // preceding clip's delete/trim ripples this one to its
+                    // new spot instead of teleporting) -- it can't also carry
+                    // the native HTML5 drag-to-reorder handlers below, since
+                    // `motion.div` shadows `onDragStart`/`onDrag`/`onDragEnd`
+                    // for its own (unused here) pan-gesture API, which
+                    // conflicts with `useSegmentReorderDrag`'s native drag
+                    // events. So interaction stays on the plain inner `div`,
+                    // sized to fill it via `inset-0`. ContextMenu.Root
+                    // doesn't render a DOM node of its own, so it's a
+                    // transparent wrapper around the same element structure
+                    // this used to return directly -- the inner element
+                    // still owns position/interaction only (no
                     // `overflow-hidden`), since a trim badge is `absolute
                     // -top-*` from *this* box and must live outside the inner
                     // pill's own `overflow-hidden`, or it'd clip its own badge.
-                    <ContextMenu.Root key={segment.id}>
-                      <ContextMenu.Trigger
-                        render={
-                          <div
-                            {...dragHandlers}
-                            draggable={!isPointerToolActive && dragHandlers.draggable}
-                            onClick={(e) => {
-                              // A tool armed: a click anywhere on a clip
-                              // cuts/places a keyframe at the exact cursor
-                              // position (via the shared whole-track-area
-                              // calculations), rather than selecting --
-                              // which segment was clicked doesn't matter,
-                              // both helpers resolve position on their own.
-                              if (isCutToolActive) {
-                                splitFromClientX(e.clientX);
-                                return;
-                              }
-                              if (isZoomToolActive) {
-                                placeZoomKeyframeFromClientX(e.clientX);
-                                return;
-                              }
-                              setSelectedSegmentId(segment.id);
-                            }}
-                            onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
-                            className={cn(
-                              'group absolute inset-y-0 min-w-12',
-                              isPointerToolActive
-                                ? 'cursor-crosshair'
-                                : 'cursor-grab active:cursor-grabbing'
-                            )}
-                            style={{
-                              left: `calc(${leftPercent}% + ${CLIP_GAP_PX / 2}px)`,
-                              width: `calc(${widthPercent}% - ${CLIP_GAP_PX}px)`
-                            }}
-                          >
+                    <motion.div
+                      key={segment.id}
+                      layout="position"
+                      transition={
+                        isEdgeResizing
+                          ? { duration: 0 }
+                          : { type: 'tween', duration: 0.2, ease: 'easeOut' }
+                      }
+                      className="absolute inset-y-0 min-w-12"
+                      style={{
+                        left: `calc(${leftPercent}% + ${CLIP_GAP_PX / 2}px)`,
+                        width: `calc(${widthPercent}% - ${CLIP_GAP_PX}px)`
+                      }}
+                    >
+                      <ContextMenu.Root>
+                        <ContextMenu.Trigger
+                          render={
                             <div
+                              {...dragHandlers}
+                              draggable={!isPointerToolActive && dragHandlers.draggable}
+                              onClick={(e) => {
+                                // A tool armed: a click anywhere on a clip
+                                // cuts/places a keyframe at the exact cursor
+                                // position (via the shared whole-track-area
+                                // calculations), rather than selecting --
+                                // which segment was clicked doesn't matter,
+                                // both helpers resolve position on their own.
+                                if (isCutToolActive) {
+                                  splitFromClientX(e.clientX);
+                                  return;
+                                }
+                                if (isZoomToolActive) {
+                                  placeZoomKeyframeFromClientX(e.clientX);
+                                  return;
+                                }
+                                setSelectedSegmentId(segment.id);
+                              }}
+                              onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
                               className={cn(
-                                'relative flex h-full items-center justify-center overflow-hidden rounded-xl border border-orange-900/40',
-                                dragOverIndex === index && 'ring-2 ring-accent',
-                                dragOverIndex !== index && isSelected && 'ring-2 ring-accent'
+                                'group absolute inset-0',
+                                isPointerToolActive
+                                  ? 'cursor-crosshair'
+                                  : 'cursor-grab active:cursor-grabbing'
                               )}
                             >
-                              <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-blue-500 via-blue-400 to-blue-400" />
-                              <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/35 via-white/5 to-black/15" />
+                              <div
+                                className={cn(
+                                  'relative flex h-full items-center justify-center overflow-hidden rounded-xl border border-orange-900/40',
+                                  dragOverIndex === index && 'ring-2 ring-accent',
+                                  dragOverIndex !== index && isSelected && 'ring-2 ring-accent'
+                                )}
+                              >
+                                <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-blue-500 via-blue-400 to-blue-400" />
+                                <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white/35 via-white/5 to-black/15" />
 
-                              {waveformPeaks && (
-                                <SegmentWaveform
-                                  segment={segment}
-                                  peaks={waveformPeaks}
-                                  sourceDurationMs={sourceDurationMs}
+                                {waveformPeaks && (
+                                  <SegmentWaveform
+                                    segment={segment}
+                                    peaks={waveformPeaks}
+                                    sourceDurationMs={sourceDurationMs}
+                                  />
+                                )}
+
+                                <div className="pointer-events-none relative flex flex-col items-center gap-0.5 px-2 text-orange-950/70">
+                                  <span className="flex items-center gap-1 truncate text-[10px] font-semibold">
+                                    <Clapperboard size={10} className="shrink-0" />
+                                    Clip
+                                  </span>
+                                  <span className="flex items-center gap-1 truncate text-[10px] text-orange-950/60">
+                                    {formatShortDuration(getSegmentOutputDurationMs(segment))}
+                                    <Gauge size={9} className="shrink-0" />
+                                    {segment.speed}x
+                                  </span>
+                                </div>
+
+                                <div
+                                  onPointerDown={(e) => {
+                                    // A tool armed: leave the pointerdown alone
+                                    // so it bubbles to the wrapper's onClick
+                                    // above and cuts/places there instead of
+                                    // starting a resize. A split clip's range
+                                    // is locked (see `TimelineSegment.split`),
+                                    // so the drag never starts there either.
+                                    if (isPointerToolActive || segment.split) return;
+                                    const width =
+                                      e.currentTarget.parentElement?.getBoundingClientRect()
+                                        .width ?? 0;
+                                    startResizeHandler(segment, 'start', width)(e);
+                                  }}
+                                  title={segment.split ? 'Locked -- this edge is a cut' : undefined}
+                                  className={cn(
+                                    'absolute inset-y-0 left-0 w-1.5 bg-black/10',
+                                    segment.split
+                                      ? 'cursor-default'
+                                      : 'cursor-ew-resize hover:bg-black/25'
+                                  )}
                                 />
-                              )}
-
-                              <div className="pointer-events-none relative flex flex-col items-center gap-0.5 px-2 text-orange-950/70">
-                                <span className="flex items-center gap-1 truncate text-[10px] font-semibold">
-                                  <Clapperboard size={10} className="shrink-0" />
-                                  Clip
-                                </span>
-                                <span className="flex items-center gap-1 truncate text-[10px] text-orange-950/60">
-                                  {formatShortDuration(getSegmentOutputDurationMs(segment))}
-                                  <Gauge size={9} className="shrink-0" />
-                                  {segment.speed}x
-                                </span>
+                                <div
+                                  onPointerDown={(e) => {
+                                    if (isPointerToolActive || segment.split) return;
+                                    const width =
+                                      e.currentTarget.parentElement?.getBoundingClientRect()
+                                        .width ?? 0;
+                                    startResizeHandler(segment, 'end', width)(e);
+                                  }}
+                                  title={segment.split ? 'Locked -- this edge is a cut' : undefined}
+                                  className={cn(
+                                    'absolute inset-y-0 right-0 w-1.5 bg-black/10',
+                                    segment.split
+                                      ? 'cursor-default'
+                                      : 'cursor-ew-resize hover:bg-black/25'
+                                  )}
+                                />
                               </div>
 
-                              <div
-                                onPointerDown={(e) => {
-                                  // A tool armed: leave the pointerdown alone
-                                  // so it bubbles to the wrapper's onClick
-                                  // above and cuts/places there instead of
-                                  // starting a resize. A split clip's range
-                                  // is locked (see `TimelineSegment.split`),
-                                  // so the drag never starts there either.
-                                  if (isPointerToolActive || segment.split) return;
-                                  const width =
-                                    e.currentTarget.parentElement?.getBoundingClientRect().width ??
-                                    0;
-                                  markEdgeResizeActive();
-                                  startResizeHandler(segment, 'start', width)(e);
-                                }}
-                                title={segment.split ? 'Locked -- this edge is a cut' : undefined}
-                                className={cn(
-                                  'absolute inset-y-0 left-0 w-1.5 bg-black/10',
-                                  segment.split
-                                    ? 'cursor-default'
-                                    : 'cursor-ew-resize hover:bg-black/25'
-                                )}
-                              />
-                              <div
-                                onPointerDown={(e) => {
-                                  if (isPointerToolActive || segment.split) return;
-                                  const width =
-                                    e.currentTarget.parentElement?.getBoundingClientRect().width ??
-                                    0;
-                                  markEdgeResizeActive();
-                                  startResizeHandler(segment, 'end', width)(e);
-                                }}
-                                title={segment.split ? 'Locked -- this edge is a cut' : undefined}
-                                className={cn(
-                                  'absolute inset-y-0 right-0 w-1.5 bg-black/10',
-                                  segment.split
-                                    ? 'cursor-default'
-                                    : 'cursor-ew-resize hover:bg-black/25'
-                                )}
-                              />
-                            </div>
-
-                            {/*
+                              {/*
                               Cut marker for the boundary just before this
                               clip -- shown for every split, not just once a
                               trim opens a visible gap, so the marker stays
@@ -829,90 +881,131 @@ export function CutTimeline(): JSX.Element {
                               pairing), including the first clip's own head
                               cut.
                             */}
-                            {hasCutBoundary && (
-                              <CutMarker
-                                durationMs={
-                                  gapBeforeMs > MIN_CUT_MARKER_GAP_MS
-                                    ? gapBeforeMs
-                                    : getSegmentOutputDurationMs(segment)
+                              {hasCutBoundary && (
+                                <CutMarker
+                                  durationMs={
+                                    gapBeforeMs > MIN_CUT_MARKER_GAP_MS
+                                      ? gapBeforeMs
+                                      : getSegmentOutputDurationMs(segment)
+                                  }
+                                  anchorClassName="-translate-x-1/2"
+                                />
+                              )}
+                            </div>
+                          }
+                        />
+                        <ContextMenu.Content>
+                          <ContextMenu.SubmenuRoot>
+                            <ContextMenu.SubmenuTrigger>
+                              <Gauge size={13} className="shrink-0" />
+                              Set speed
+                            </ContextMenu.SubmenuTrigger>
+                            <ContextMenu.Content>
+                              <ContextMenu.RadioGroup
+                                value={segment.speed}
+                                onValueChange={(value) =>
+                                  setSegmentSpeed(segment.id, value as typeof segment.speed)
                                 }
-                                anchorClassName="-translate-x-1/2"
-                              />
-                            )}
-                          </div>
-                        }
-                      />
-                      <ContextMenu.Content>
-                        <ContextMenu.SubmenuRoot>
-                          <ContextMenu.SubmenuTrigger>
-                            <Gauge size={13} className="shrink-0" />
-                            Set speed
-                          </ContextMenu.SubmenuTrigger>
-                          <ContextMenu.Content>
-                            <ContextMenu.RadioGroup
-                              value={segment.speed}
-                              onValueChange={(value) =>
-                                setSegmentSpeed(segment.id, value as typeof segment.speed)
-                              }
-                            >
-                              {CLIP_SPEED_OPTIONS.map((speed) => (
-                                <ContextMenu.RadioItem key={speed} value={speed}>
-                                  {speed}x
-                                </ContextMenu.RadioItem>
-                              ))}
-                            </ContextMenu.RadioGroup>
-                          </ContextMenu.Content>
-                        </ContextMenu.SubmenuRoot>
-                        <ContextMenu.Item
-                          onClick={() => setSegmentCursorHidden(segment.id, !segment.cursorHidden)}
-                        >
-                          <span className="flex items-center gap-2">
-                            {segment.cursorHidden ? (
-                              <EyeOff size={13} className="shrink-0" />
-                            ) : (
-                              <Eye size={13} className="shrink-0" />
-                            )}
-                            {segment.cursorHidden ? 'Show mouse cursor' : 'Hide mouse cursor'}
-                          </span>
-                        </ContextMenu.Item>
-                        {hasWebcamTrack && webcamEnabled && (
+                              >
+                                {CLIP_SPEED_OPTIONS.map((speed) => (
+                                  <ContextMenu.RadioItem key={speed} value={speed}>
+                                    {speed}x
+                                  </ContextMenu.RadioItem>
+                                ))}
+                              </ContextMenu.RadioGroup>
+                            </ContextMenu.Content>
+                          </ContextMenu.SubmenuRoot>
+                          {hasAudioTrack && (
+                            <ContextMenu.SubmenuRoot>
+                              <ContextMenu.SubmenuTrigger>
+                                <Volume2 size={13} className="shrink-0" />
+                                Set volume
+                              </ContextMenu.SubmenuTrigger>
+                              <ContextMenu.Content>
+                                <ContextMenu.RadioGroup
+                                  value={segment.audioVolume}
+                                  onValueChange={(value) =>
+                                    setSegmentAudioVolume(segment.id, value as number)
+                                  }
+                                >
+                                  {AUDIO_VOLUME_OPTIONS.map((volume) => (
+                                    <ContextMenu.RadioItem key={volume} value={volume}>
+                                      {Math.round(volume * 100)}%
+                                    </ContextMenu.RadioItem>
+                                  ))}
+                                </ContextMenu.RadioGroup>
+                              </ContextMenu.Content>
+                            </ContextMenu.SubmenuRoot>
+                          )}
+                          <ContextMenu.Separator />
                           <ContextMenu.Item
                             onClick={() =>
-                              setSegmentWebcamHidden(segment.id, !segment.webcamHidden)
+                              setSegmentCursorHidden(segment.id, !segment.cursorHidden)
                             }
                           >
                             <span className="flex items-center gap-2">
-                              {segment.webcamHidden ? (
-                                <VideoOff size={13} className="shrink-0" />
+                              {segment.cursorHidden ? (
+                                <EyeOff size={13} className="shrink-0" />
                               ) : (
-                                <Video size={13} className="shrink-0" />
+                                <Eye size={13} className="shrink-0" />
                               )}
-                              {segment.webcamHidden ? 'Show webcam' : 'Hide webcam'}
+                              {segment.cursorHidden ? 'Show mouse cursor' : 'Hide mouse cursor'}
                             </span>
                           </ContextMenu.Item>
-                        )}
-                        <ContextMenu.Separator />
-                        <ContextMenu.Item
-                          onClick={() => resetSegmentTrim(segment.id)}
-                          disabled={!segment.trimmed && !hasMergeableCutBoundary(segments, index)}
-                        >
-                          <span className="flex items-center gap-2">
-                            <RotateCcw size={13} className="shrink-0" />
-                            Reset trim
-                          </span>
-                        </ContextMenu.Item>
-                        <ContextMenu.Item
-                          onClick={() => deleteSegment(segment.id)}
-                          disabled={segments.length <= 1}
-                          className="text-danger data-[highlighted]:text-danger"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Trash2 size={13} className="shrink-0" />
-                            Delete
-                          </span>
-                        </ContextMenu.Item>
-                      </ContextMenu.Content>
-                    </ContextMenu.Root>
+                          {hasWebcamTrack && webcamEnabled && (
+                            <ContextMenu.Item
+                              onClick={() =>
+                                setSegmentWebcamHidden(segment.id, !segment.webcamHidden)
+                              }
+                            >
+                              <span className="flex items-center gap-2">
+                                {segment.webcamHidden ? (
+                                  <VideoOff size={13} className="shrink-0" />
+                                ) : (
+                                  <Video size={13} className="shrink-0" />
+                                )}
+                                {segment.webcamHidden ? 'Show webcam' : 'Hide webcam'}
+                              </span>
+                            </ContextMenu.Item>
+                          )}
+                          {hasAudioTrack && (
+                            <ContextMenu.Item
+                              onClick={() => setSegmentAudioMuted(segment.id, !segment.audioMuted)}
+                            >
+                              <span className="flex items-center gap-2">
+                                {segment.audioMuted ? (
+                                  <VolumeX size={13} className="shrink-0" />
+                                ) : (
+                                  <Volume2 size={13} className="shrink-0" />
+                                )}
+                                {segment.audioMuted ? 'Unmute clip' : 'Mute clip'}
+                              </span>
+                            </ContextMenu.Item>
+                          )}
+
+                          <ContextMenu.Separator />
+                          <ContextMenu.Item
+                            onClick={() => resetSegmentTrim(segment.id)}
+                            disabled={!segment.trimmed && !hasMergeableCutBoundary(segments, index)}
+                          >
+                            <span className="flex items-center gap-2">
+                              <RotateCcw size={13} className="shrink-0" />
+                              Reset trim
+                            </span>
+                          </ContextMenu.Item>
+                          <ContextMenu.Item
+                            onClick={() => deleteSegment(segment.id)}
+                            disabled={segments.length <= 1}
+                            className="text-danger data-[highlighted]:text-danger"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Trash2 size={13} className="shrink-0" />
+                              Delete
+                            </span>
+                          </ContextMenu.Item>
+                        </ContextMenu.Content>
+                      </ContextMenu.Root>
+                    </motion.div>
                   );
                 })}
 
@@ -951,7 +1044,6 @@ export function CutTimeline(): JSX.Element {
             <CaptionTrack />
             <AnnotationTrack />
             <BlurMaskTrack />
-            <CropTrack />
 
             <Playhead
               segments={segments}

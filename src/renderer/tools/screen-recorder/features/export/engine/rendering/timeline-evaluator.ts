@@ -228,8 +228,8 @@ function resolveCaption(project: Project, atMs: number): { text: string } | null
  * visible, or auto-zoom visibly snaps/re-centers on every movement instead
  * of gliding the way Screen Studio's camera does. `sourceAspect` is the
  * recording's (post-crop) aspect ratio -- the caller (export-
- * orchestrator.ts) already derives this once from ffprobe + the first kept
- * segment's crop, same as today's export-manager.ts did. `cursorHidden`
+ * orchestrator.ts) already derives this once from ffprobe + the export's
+ * single crop, same as today's export-manager.ts did. `cursorHidden`
  * comes from the specific `ExportSegment` currently being decoded/rendered
  * (its own per-clip "Hide mouse cursor" flag, see CutTimeline.tsx) -- the
  * caller already has it on hand from the same decode callback that supplies

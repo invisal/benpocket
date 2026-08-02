@@ -5,13 +5,13 @@ import { useBackgroundStore } from '../../features/background/store/background-s
 import { backgroundLayerStyle } from '../../features/background/lib/background-css';
 import { useZoomStore } from '../../features/zoom/store/zoom-store';
 import { useCursorStore } from '../../features/cursor/store/cursor-store';
+import { useCropStore } from '../../features/crop/store/crop-store';
 import { useExportStore } from '../../features/export/store/export-store';
 import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
 import { useAppStore } from '../../app/app-store';
-import { CropOverlay } from '../../features/crop/components/CropOverlay';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
 import { AnnotationOverlay } from '../../features/annotations/components/AnnotationOverlay';
 import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOverlay';
@@ -33,8 +33,6 @@ interface PreviewStageProps {
   isPlaying: boolean;
   videoError: string | null;
   currentTimeMs: number;
-  cropToolActive: boolean;
-  selectedSegmentId: string | null;
   sourceResolution: SourceResolution | null;
   onLoadedMetadata: (event: SyntheticEvent<HTMLVideoElement>) => void;
   onPlay: () => void;
@@ -48,8 +46,6 @@ export function PreviewStage({
   previewUrl,
   videoError,
   currentTimeMs,
-  cropToolActive,
-  selectedSegmentId,
   sourceResolution,
   onLoadedMetadata,
   onPlay,
@@ -128,6 +124,42 @@ export function PreviewStage({
     (s) => zoomTimeMs >= s.range.startMs && zoomTimeMs < s.range.endMs
   );
 
+  // Crop (see CropDialog, opened from EditorTransportBar's Crop button) --
+  // a single rect for the whole recording, not per-clip. `croppedAspectRatio`
+  // reshapes the wrapper box itself to the crop's own shape; `videoCropStyle`
+  // then scales+shifts the video via `transform` (not `position`/`width`/
+  // `height`) so the cropped region exactly fills that reshaped box,
+  // `overflow-hidden` on the wrapper clipping the rest.
+  //
+  // This MUST be a `transform`, not absolute positioning + percentage
+  // width/height -- a `<video>` is a replaced element, and its intrinsic
+  // (native pixel) size is what lets `videoWrapperRef`'s own `aspect-ratio`
+  // (which alone is under-specified: no explicit width or height anywhere
+  // in this chain, all the way up to `stageRef`) resolve to a real size at
+  // all. Taking the video out of normal flow via `position: absolute` drops
+  // it from that intrinsic-size contribution entirely, so the wrapper (and
+  // `stageRef` above it, which depends on the wrapper the same way) had
+  // nothing left to size themselves from and collapsed to ~0 -- confirmed
+  // by inspecting computed styles live: wrapper `width/height` read `0px`
+  // the instant `position: absolute` was in play. A `transform` never
+  // affects layout/intrinsic sizing (it's paint-only), so the video keeps
+  // contributing its normal size and this same cascade keeps working.
+  // `object-fit: fill` on top so the video's own aspect-corrective
+  // letterboxing doesn't fight this transform's own (already
+  // aspect-correct, per the math below) scaling.
+  const activeCrop = useCropStore((s) => s.rect);
+  const croppedAspectRatio =
+    activeCrop && sourceResolution
+      ? (activeCrop.width * sourceResolution.width) / (activeCrop.height * sourceResolution.height)
+      : sourceAspectRatio;
+  const videoCropStyle = activeCrop
+    ? {
+        objectFit: 'fill' as const,
+        transformOrigin: 'top left',
+        transform: `scale(${1 / activeCrop.width}, ${1 / activeCrop.height}) translate(${-activeCrop.x * 100}%, ${-activeCrop.y * 100}%)`
+      }
+    : undefined;
+
   const previewScale = stageWidthPx > 0 ? stageWidthPx / REFERENCE_CANVAS_WIDTH : 1;
   const contentBorderRadius = background.cornerRadius * previewScale;
   const contentBoxShadow =
@@ -159,7 +191,7 @@ export function PreviewStage({
             ref={videoWrapperRef}
             className="relative max-h-full max-w-full overflow-hidden"
             style={{
-              aspectRatio: sourceAspectRatio,
+              aspectRatio: croppedAspectRatio,
               borderRadius: contentBorderRadius,
               boxShadow: contentBoxShadow,
               transform: `translate(${zoomShift.x * 100}%, ${zoomShift.y * 100}%) scale(${zoomDepth})`,
@@ -174,6 +206,7 @@ export function PreviewStage({
                 'h-full w-full object-contain',
                 isSlotAActive ? '' : 'absolute inset-0 pointer-events-none opacity-0'
               )}
+              style={videoCropStyle}
               onLoadedMetadata={handleVideoLoadedMetadata}
               onPlay={handleVideoPlay}
               onPause={handleVideoPause}
@@ -188,6 +221,7 @@ export function PreviewStage({
                 'h-full w-full object-contain',
                 !isSlotAActive ? '' : 'absolute inset-0 pointer-events-none opacity-0'
               )}
+              style={videoCropStyle}
               onLoadedMetadata={handleVideoLoadedMetadata}
               onPlay={handleVideoPlay}
               onPause={handleVideoPause}
@@ -195,47 +229,31 @@ export function PreviewStage({
               onError={handleVideoError}
             />
 
-            {cropToolActive && sourceResolution && selectedSegmentId && (
-              <CropOverlay
-                key={selectedSegmentId}
-                segmentId={selectedSegmentId}
-                sourceWidth={sourceResolution.width}
-                sourceHeight={sourceResolution.height}
-              />
-            )}
+            <BlurMaskOverlay
+              currentTimeMs={zoomTimeMs}
+              editable={activeTool === 'blur-mask'}
+              stageWidthPx={stageWidthPx}
+            />
 
-            {!cropToolActive && (
-              <BlurMaskOverlay
-                currentTimeMs={zoomTimeMs}
-                editable={activeTool === 'blur-mask'}
-                stageWidthPx={stageWidthPx}
-              />
-            )}
-
-            {!cropToolActive && (
-              <CursorOverlay
-                cursor={cursor}
-                rawPath={rawCursorPath}
-                clickPath={clickPath}
-                currentTimeMs={zoomTimeMs}
-                stageWidthPx={stageWidthPx}
-                cursorHidden={activeSegment?.cursorHidden ?? false}
-              />
-            )}
+            <CursorOverlay
+              cursor={cursor}
+              rawPath={rawCursorPath}
+              clickPath={clickPath}
+              currentTimeMs={zoomTimeMs}
+              stageWidthPx={stageWidthPx}
+              cursorHidden={activeSegment?.cursorHidden ?? false}
+            />
           </div>
 
           {videoError && <VideoErrorOverlay message={videoError} />}
 
-          {!cropToolActive && (
-            <AnnotationOverlay currentTimeMs={zoomTimeMs} stageWidthPx={stageWidthPx} />
-          )}
+          <AnnotationOverlay currentTimeMs={zoomTimeMs} stageWidthPx={stageWidthPx} />
         </div>
 
         <WebcamPip
           stageRef={stageRef}
           webcamVideoRef={webcamVideoRef}
           previewScale={previewScale}
-          cropToolActive={cropToolActive}
           webcamHidden={activeSegment?.webcamHidden ?? false}
         />
 

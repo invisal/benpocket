@@ -49,7 +49,7 @@ export class ShadowCornerEffect {
         radiusPx
       )
       .fill({ color: 0x000000, alpha: shadow.alpha });
-    this.blurFilter.strength = shadow.blurPx;
+    this.blurFilter.strength = shadow.blurPx * 2;
     this.shadowGraphics.filters = shadow.blurPx > 0 ? [this.blurFilter] : [];
   }
 }

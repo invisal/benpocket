@@ -88,8 +88,32 @@ export function sourceMsToOutputBoundaryMs(
   return totalOutputMs;
 }
 
-export function segmentsOverlapRange(segments: Seg[], startMs: number, endMs: number): boolean {
-  return segments.some((s) => s.range.startMs < endMs && s.range.endMs > startMs);
+/**
+ * Shrinks a `[startMs, endMs)` range (a zoom keyframe, annotation, etc.) to
+ * the portion still covered by `keptSegments` -- e.g. deleting or trimming
+ * the clip under a keyframe's head moves `startMs` forward to where
+ * coverage resumes, instead of leaving the range pointing into a cut-out
+ * gap (unrenderable, but not actually removed). Returns `null` when nothing
+ * in the range is covered anymore.
+ *
+ * Assumes a single edit carves into one contiguous edge (head and/or tail)
+ * rather than splitting the range into disjoint covered pieces -- a
+ * deletion landing in the *middle* of the range, leaving both a covered
+ * head and a covered tail with a gap between, isn't split into two ranges;
+ * it's returned as one spanning both (matching the old all-or-nothing
+ * behavior for that rarer case, rather than the complexity of multi-range
+ * output).
+ */
+export function trimRangeToKeptSegments(
+  segments: Seg[],
+  startMs: number,
+  endMs: number
+): { startMs: number; endMs: number } | null {
+  const covering = segments.filter((s) => s.range.startMs < endMs && s.range.endMs > startMs);
+  if (covering.length === 0) return null;
+  const coveredStart = Math.max(startMs, Math.min(...covering.map((s) => s.range.startMs)));
+  const coveredEnd = Math.min(endMs, Math.max(...covering.map((s) => s.range.endMs)));
+  return coveredEnd > coveredStart ? { startMs: coveredStart, endMs: coveredEnd } : null;
 }
 
 /**

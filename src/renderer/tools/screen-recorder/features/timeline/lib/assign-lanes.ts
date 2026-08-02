@@ -10,6 +10,20 @@ export const LANE_GAP_PX = 4;
  */
 export const CLIP_ROW_HEIGHT_PX = 38;
 
+/**
+ * Horizontal padding on CutTimeline's scroll container -- reserves room in
+ * the scrollable padding box for a `CutMarker` centered exactly on a cut at
+ * the very start/end of the timeline (half its `w-9` pin) to render without
+ * clipping. Lives here (not a plain Tailwind class on the container) so
+ * `Playhead.tsx`'s scroll-into-view math can use the exact same number --
+ * that effect has to account for this padding when translating between
+ * `marker.offsetLeft` (relative to the *unpadded* `trackAreaRef`) and
+ * `scrollLeft` (relative to the *padded* scroll container), or it drifts out
+ * of sync with where the marker can actually go, letting it scroll out of
+ * view before the effect notices.
+ */
+export const TIMELINE_SCROLL_PADDING_PX = 20;
+
 export interface LanePosition {
   leftPercent: number;
   widthPercent: number;

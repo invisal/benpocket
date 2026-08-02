@@ -18,13 +18,18 @@ import { registerEnvironmentTransferHandlers } from './http-client/ipc/environme
 import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
-import { registerTrayHandlers, destroyTray } from './screen-recorder/windows/tray';
+import { createAppTray, destroyTray, setTrayMainWindow } from './tray';
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
+import { registerAppPrefsHandlers } from './ipc/app-prefs-handlers';
+import { applyLoginItemSettings, getAppPrefs } from './store/app-prefs-store';
+
+/** When true, window `close` is allowed to destroy the window (Quit path). */
+let isQuitting = false;
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -43,7 +48,17 @@ function createWindow(): BrowserWindow {
   });
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show();
+    if (!getAppPrefs().startMinimizedToTray) {
+      mainWindow.show();
+    }
+  });
+
+  // Close (X) hides to tray; real quit only via tray Quit / Cmd+Q / app menu.
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -79,6 +94,7 @@ function createWindow(): BrowserWindow {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
+  setTrayMainWindow(mainWindow);
   return mainWindow;
 }
 
@@ -95,6 +111,9 @@ app.whenReady().then(() => {
   applyContentSecurityPolicy();
   // Screen Recorder: macOS 15+ ScreenCaptureKit system picker. No-op elsewhere.
   registerDisplayMediaHandler();
+
+  // Re-apply stored login-item prefs (e.g. after an OS reset of the entry).
+  applyLoginItemSettings();
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -124,6 +143,7 @@ app.whenReady().then(() => {
 
   ipcMain.on('window-close', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
+    // Hits the close handler above → hide to tray unless quitting.
     if (win) win.close();
   });
 
@@ -209,30 +229,35 @@ app.whenReady().then(() => {
   // File Explorer tool: directory listing, native file icons, open-with-default-app
   registerFileExplorerHandlers();
 
-  // Tray icon is created on demand -- see TrayBridge, which registers it
-  // only while the Screen Recorder tool tab is open.
-  registerTrayHandlers(trayIcon);
+  registerAppPrefsHandlers();
 
-  createWindow();
+  const mainWindow = createWindow();
+  const trayIcons = { trayTemplate: trayIcon, appIcon: icon };
+  createAppTray(trayIcons, mainWindow);
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    const existing = BrowserWindow.getAllWindows()[0];
+    if (existing) {
+      if (existing.isMinimized()) existing.restore();
+      existing.show();
+      existing.focus();
+      setTrayMainWindow(existing);
+      return;
+    }
+    createAppTray(trayIcons, createWindow());
   });
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+// Close-to-tray: do not quit when the last window is closed/hidden.
+// Explicit Quit (tray / Cmd+Q) is the only exit path.
 app.on('window-all-closed', () => {
   closeAllWebSocketConnections();
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   destroyTray();
   destroyRecorderToolbar();
   destroySourcePickerOverlay();

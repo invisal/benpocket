@@ -4,7 +4,9 @@ import { SettingsRow } from '../../../components/ui/settings-row';
 
 // TODO: click-to-record key combo UI - listen for keydown, build an
 // accelerator string, validate for conflicts, then persist via
-// screenRecorder.settings.set and re-register in main/shortcuts/global-shortcuts.ts.
+// screenRecorder.settings.set and re-register in
+// main/screen-recorder/shortcuts/global-shortcuts.ts (currently registered
+// once at startup from the stored default).
 export function ShortcutRecorder(): JSX.Element {
   const { bindings } = useShortcutsStore();
 

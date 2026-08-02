@@ -19,6 +19,10 @@ import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
 import { registerTrayHandlers, destroyTray } from './screen-recorder/windows/tray';
+import {
+  registerGlobalShortcuts,
+  unregisterGlobalShortcuts
+} from './screen-recorder/shortcuts/global-shortcuts';
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
@@ -242,7 +246,11 @@ if (gotSingleInstanceLock) {
     // only while the Screen Recorder tool tab is open.
     registerTrayHandlers(trayIcon);
 
-    createWindow();
+    const mainWindow = createWindow();
+
+    // "Launch Recorder" OS-level shortcut -- works even while benpocket is
+    // unfocused, unlike the in-app bindings under features/shortcuts.
+    registerGlobalShortcuts(mainWindow);
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
@@ -263,6 +271,7 @@ if (gotSingleInstanceLock) {
 
   app.on('before-quit', () => {
     closeAllProfileSessions();
+    unregisterGlobalShortcuts();
     destroyTray();
     destroyRecorderToolbar();
     destroySourcePickerOverlay();

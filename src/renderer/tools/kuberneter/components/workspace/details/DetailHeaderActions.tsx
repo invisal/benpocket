@@ -3,6 +3,7 @@ import { PodHeaderActions } from './pod-detail';
 import { NodeHeaderActions } from './NodeHeaderActions';
 import { IngressClassHeaderActions } from './IngressClassHeaderActions';
 import { EditDeleteHeaderActions } from './EditDeleteHeaderActions';
+import { GenericHeaderActions } from './GenericHeaderActions';
 import { type PodData } from '../../../types/PodData';
 import { type NodeData } from '../../../types/NodeData';
 import { type IngressClassData } from '../../../types/IngressClassData';
@@ -32,6 +33,6 @@ export const DetailHeaderActions: React.FC<DetailHeaderActionsProps> = ({
     case 'rolebinding':
       return <EditDeleteHeaderActions />;
     default:
-      return null;
+      return <GenericHeaderActions contentType={contentType} payload={payload} />;
   }
 };

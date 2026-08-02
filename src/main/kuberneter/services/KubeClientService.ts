@@ -146,7 +146,6 @@ export class KubeClientService {
         if (obj.metadata) {
           delete obj.metadata.managedFields;
         }
-        delete obj.status;
 
         const yaml = jsYaml.dump(obj);
         return { yaml };

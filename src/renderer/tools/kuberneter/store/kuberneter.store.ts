@@ -57,6 +57,10 @@ interface KuberneterState {
   kuberneterKubeconfigs: string[];
   kuberneterRecentConnections: RecentConnection[];
   kuberneterTabDrawers: Record<string, DrawerState>;
+  kuberneterInstanceSidebarOpen: Record<string, boolean>;
+
+  toggleKuberneterInstanceSidebar: (instanceId: string) => void;
+  setKuberneterInstanceSidebarOpen: (instanceId: string, isOpen: boolean) => void;
 
   /** Bottom panel tabs state. */
   kuberneterBottomPanelTabs: KuberneterBottomPanelTab[];
@@ -79,6 +83,12 @@ interface KuberneterState {
   openPodTerminalTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodLogsTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodEditTab: (podName: string, namespace?: string, rawItem?: unknown) => Promise<void>;
+  openResourceEditTab: (
+    resource: string,
+    name: string,
+    namespace?: string,
+    rawItem?: unknown
+  ) => Promise<void>;
   openNodeTerminalTab: (nodeName: string) => void;
 
   addKuberneterKubeconfig: (filePath: string) => void;
@@ -102,7 +112,24 @@ export const useKuberneterStore = create<KuberneterState>()(
       kuberneterInstanceRefreshInterval: {},
       kuberneterMetricsConfig: {},
       kuberneterKubeconfigs: [],
+      kuberneterRecentConnections: [],
       kuberneterTabDrawers: {},
+      kuberneterInstanceSidebarOpen: {},
+
+      toggleKuberneterInstanceSidebar: (instanceId) =>
+        set((state) => ({
+          kuberneterInstanceSidebarOpen: {
+            ...state.kuberneterInstanceSidebarOpen,
+            [instanceId]: !(state.kuberneterInstanceSidebarOpen[instanceId] ?? true)
+          }
+        })),
+      setKuberneterInstanceSidebarOpen: (instanceId, isOpen) =>
+        set((state) => ({
+          kuberneterInstanceSidebarOpen: {
+            ...state.kuberneterInstanceSidebarOpen,
+            [instanceId]: isOpen
+          }
+        })),
 
       kuberneterBottomPanelTabs: [{ id: 'term-default', type: 'terminal', title: 'Terminal' }],
       kuberneterActiveBottomPanelTabId: 'term-default',
@@ -206,10 +233,10 @@ export const useKuberneterStore = create<KuberneterState>()(
         });
       },
 
-      openPodEditTab: async (podName, namespace, rawItem) => {
-        if (!podName) return;
+      openResourceEditTab: async (resource, name, namespace, rawItem) => {
+        if (!name) return;
         const state = get();
-        const tabTitle = `Edit: ${podName}`;
+        const tabTitle = `Edit: ${name}`;
         const existing = state.kuberneterBottomPanelTabs.find(
           (t) => t.title === tabTitle && t.type === 'create-resource'
         );
@@ -229,15 +256,15 @@ export const useKuberneterStore = create<KuberneterState>()(
           const res = await window.kuberneter.getResourceYaml(
             configPath,
             cluster,
-            'pod',
-            podName,
+            resource || 'pod',
+            name,
             namespace
           );
           if (res.yaml) {
             yaml = res.yaml;
           }
         } catch (err) {
-          console.warn('Failed to fetch live Pod YAML via IPC, falling back to rawItem', err);
+          console.warn('Failed to fetch live Resource YAML via IPC, falling back to rawItem', err);
         }
 
         if (!yaml && rawItem) {
@@ -248,7 +275,7 @@ export const useKuberneterStore = create<KuberneterState>()(
           }
         }
 
-        const newId = `edit-pod-${podName}-${Date.now()}`;
+        const newId = `edit-${resource}-${name}-${Date.now()}`;
         const newTab: KuberneterBottomPanelTab = {
           id: newId,
           type: 'create-resource',
@@ -260,6 +287,10 @@ export const useKuberneterStore = create<KuberneterState>()(
           kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, newTab],
           kuberneterActiveBottomPanelTabId: newId
         });
+      },
+
+      openPodEditTab: async (podName, namespace, rawItem) => {
+        return get().openResourceEditTab('pod', podName, namespace, rawItem);
       },
 
       openNodeTerminalTab: (nodeName) => {
@@ -308,7 +339,6 @@ export const useKuberneterStore = create<KuberneterState>()(
             }
           };
         }),
-      kuberneterRecentConnections: [],
 
       setKuberneterInstanceCluster: (instanceId, cluster) =>
         set((state) => ({

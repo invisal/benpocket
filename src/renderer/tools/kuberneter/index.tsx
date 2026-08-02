@@ -30,7 +30,9 @@ export function KuberneterMain(props: ToolComponentProps<{ instanceId: string }>
 function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: string }>) {
   const { instanceId } = payload;
   const [sidebarWidth, setSidebarWidth] = useState(240);
-  const [isSidebarOpen] = useState(true);
+  const isSidebarOpen = useKuberneterStore(
+    (s) => s.kuberneterInstanceSidebarOpen[instanceId] ?? true
+  );
   const sidebarRef = useRef<HTMLDivElement | null>(null);
 
   const setActiveInstanceId = useLayoutStore((s) => s.setActiveInstanceId);

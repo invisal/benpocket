@@ -79,6 +79,8 @@ import { type NetworkPolicyData } from '../../../types/NetworkPolicyData';
 import { type ServiceAccountData } from '../../../types/ServiceAccountData';
 import { type PortForwardData } from '../../../types/PortForwardData';
 
+import { GenericKubeDetail } from './GenericKubeDetail';
+
 interface DetailContentProps {
   contentType: string;
   payload: unknown;
@@ -189,10 +191,6 @@ export const DetailContent: React.FC<DetailContentProps> = ({
     case 'helm-release':
       return <HelmReleaseDetail payload={payload as HelmReleaseItem} isTab={isTab} />;
     default:
-      return (
-        <div className="p-4 text-xs text-zinc-500">
-          No detail view implemented for type: {contentType}
-        </div>
-      );
+      return <GenericKubeDetail payload={payload} isTab={isTab} />;
   }
 };

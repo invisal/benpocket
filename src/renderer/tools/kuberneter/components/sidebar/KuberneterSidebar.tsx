@@ -18,8 +18,11 @@ import {
   ShieldCheck,
   Package,
   Boxes,
-  Server
+  Server,
+  Blocks,
+  CopyMinus
 } from 'lucide-react';
+import { Tooltip } from '@renderer/components/ui/Tooltip';
 
 interface SidebarCategory {
   id: string;
@@ -36,7 +39,7 @@ function highlightText(text: string, search: string): React.ReactNode {
     <>
       {parts.map((part, i) =>
         regex.test(part) ? (
-          <mark key={i} className="bg-accent/20 text-accent font-semibold px-0.5 rounded-sm">
+          <mark key={i} className="bg-accent/20 text-inherit px-0.5 rounded-sm">
             {part}
           </mark>
         ) : (
@@ -92,6 +95,57 @@ export const KuberneterSidebar: React.FC = () => {
     fetchNamespaces();
   }, [cluster, configPath, activeInstanceId]);
 
+  const [crdSubItems, setCrdSubItems] = useState<Array<{ id: string; label: string }>>([]);
+
+  useEffect(() => {
+    if (!cluster || !activeInstanceId) return;
+
+    const fetchCrds = async () => {
+      try {
+        const configPathArg = configPath === 'default' ? undefined : configPath;
+        const res = await window.kuberneter.getResources(
+          configPathArg,
+          cluster,
+          'customresourcedefinitions'
+        );
+        if (res && Array.isArray(res.items)) {
+          const items: Array<{ id: string; label: string }> = [];
+          interface CrdSpecItem {
+            spec?: {
+              group?: string;
+              names?: { kind?: string; plural?: string };
+              scope?: string;
+              version?: string;
+              versions?: Array<{ name?: string; storage?: boolean; served?: boolean }>;
+            };
+          }
+          for (const item of res.items as CrdSpecItem[]) {
+            const group = item.spec?.group;
+            const names = item.spec?.names;
+            const scope = item.spec?.scope || 'Namespaced';
+            const versions = item.spec?.versions || [];
+            const storageVersion =
+              versions.find((v) => v.storage || v.served)?.name || item.spec?.version || 'v1';
+
+            if (group && names?.plural && names?.kind) {
+              const id = `crd--${group}--${storageVersion}--${names.plural}--${scope === 'Cluster'}`;
+              items.push({
+                id,
+                label: `${names.kind} (${group})`
+              });
+            }
+          }
+          items.sort((a, b) => a.label.localeCompare(b.label));
+          setCrdSubItems(items);
+        }
+      } catch (err) {
+        console.error('Failed to load CRDs in sidebar:', err);
+      }
+    };
+
+    fetchCrds();
+  }, [cluster, configPath, activeInstanceId]);
+
   const [searchTerm, setSearchTerm] = useState('');
 
   // Track which groups are expanded
@@ -105,22 +159,6 @@ export const KuberneterSidebar: React.FC = () => {
   });
 
   // Sync sidebar selection when active tab changes
-  useEffect(() => {
-    const activeTab = openTabs.find((t) => t.id === activeTabId);
-    if (!activeTab || activeTab.instanceId !== activeInstanceId) return;
-    const tabResource = (activeTab.meta as { resource?: string })?.resource;
-    if (!tabResource || tabResource === activeResource) return;
-    setKuberneterInstanceResource(activeInstanceId, tabResource);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTabId]);
-
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId]
-    }));
-  };
-
   // Static map: which group owns each sub-resource
   const resourceGroupMap: Record<string, string> = {
     'workloads-overview': 'workloads',
@@ -161,13 +199,46 @@ export const KuberneterSidebar: React.FC = () => {
     'helm-releases': 'helm'
   };
 
-  // Derive expanded groups: merge user-toggled state with the group that contains the active resource
-  const activeGroupId = resourceGroupMap[activeResource];
-  const effectiveExpandedGroups = activeGroupId
-    ? { ...expandedGroups, [activeGroupId]: true }
-    : expandedGroups;
+  // Sync sidebar selection & expand group when active tab changes
+  useEffect(() => {
+    const activeTab = openTabs.find((t) => t.id === activeTabId);
+    if (!activeTab || activeTab.instanceId !== activeInstanceId) return;
+    const tabResource = (activeTab.meta as { resource?: string })?.resource;
+    if (!tabResource || tabResource === activeResource) return;
+    const groupId = tabResource.startsWith('crd--') ? 'crds' : resourceGroupMap[tabResource];
+    if (groupId) {
+      requestAnimationFrame(() => {
+        setExpandedGroups((prev) => (prev[groupId] ? prev : { ...prev, [groupId]: true }));
+      });
+    }
+    setKuberneterInstanceResource(activeInstanceId, tabResource);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabId]);
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+
+  const collapseAllGroups = () => {
+    setExpandedGroups({
+      workloads: false,
+      config: false,
+      network: false,
+      storage: false,
+      accessControl: false,
+      helm: false,
+      crds: false
+    });
+  };
 
   const handleSelectResource = (resourceId: string, label: string) => {
+    const groupId = resourceId.startsWith('crd--') ? 'crds' : resourceGroupMap[resourceId];
+    if (groupId) {
+      setExpandedGroups((prev) => ({ ...prev, [groupId]: true }));
+    }
     setKuberneterInstanceResource(activeInstanceId, resourceId);
     openTab({
       id: `kuberneter-k8s-${resourceId}-${activeInstanceId}`,
@@ -267,6 +338,12 @@ export const KuberneterSidebar: React.FC = () => {
         { id: 'bindings', label: 'Role Bindings' }
       ]
     },
+    {
+      id: 'crds',
+      label: 'Custom Resources',
+      icon: Blocks,
+      subItems: crdSubItems
+    },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
@@ -327,14 +404,32 @@ export const KuberneterSidebar: React.FC = () => {
       </div>
 
       {/* 3. Navigation section — remaining height */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 -mr-3 pr-3 pt-2 kuberneter-sidebar-scroll">
-        <span
-          className="text-xs font-bold text-zinc-200 uppercase tracking-wider px-1 mb-1.5 font-sans flex items-center gap-2 truncate"
-          title={cluster}
-        >
-          <Server className="size-4 shrink-0 text-zinc-400" />
-          <span>{cluster}</span>
-        </span>
+      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 pt-2 pr-0.5 kuberneter-sidebar-scroll">
+        <div className="flex items-center justify-between px-1 mb-1.5 min-w-0">
+          <span
+            className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-sans flex items-center gap-2 min-w-0 truncate"
+            title={cluster}
+          >
+            <Server className="size-4 shrink-0 text-zinc-400" />
+            <span className="truncate min-w-0">{cluster}</span>
+          </span>
+
+          <Tooltip.Provider delay={200} closeDelay={0}>
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <button
+                    onClick={collapseAllGroups}
+                    className="text-zinc-500 hover:text-zinc-200 p-0.5 rounded hover:bg-border-dark/40 transition-colors border-none bg-transparent cursor-pointer shrink-0 ml-1"
+                  >
+                    <CopyMinus className="size-3.5" />
+                  </button>
+                }
+              />
+              <Tooltip.Content side="bottom">Collapse All</Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        </div>
 
         {categories
           .map((cat) => {
@@ -355,76 +450,70 @@ export const KuberneterSidebar: React.FC = () => {
 
             const isExpanded = searchTerm
               ? matchingSubs.length > 0 || isMatch(cat.label)
-              : effectiveExpandedGroups[cat.id];
+              : expandedGroups[cat.id];
 
             if (!hasSubs) {
               const isActive = activeResource === cat.id;
-              const isHighlighted = isMatch(cat.label);
               return (
                 <button
                   key={cat.id}
                   onClick={() => handleSelectResource(cat.id, cat.label)}
                   onDoubleClick={() => handleDoubleClickResource(cat.id)}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all ${
+                  title={cat.label}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
                     isActive
                       ? 'bg-border-dark text-white font-semibold'
-                      : isHighlighted
-                        ? 'text-accent font-semibold bg-accent/5'
-                        : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
+                      : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
                   }`}
                 >
                   <Icon className="size-4 shrink-0" />
-                  <span>{highlightText(cat.label, searchTerm)}</span>
+                  <span className="truncate min-w-0">{highlightText(cat.label, searchTerm)}</span>
                 </button>
               );
             }
 
             // Category with Sub-items (collapsible)
             const isSubActive = cat.subItems?.some((sub) => activeResource === sub.id);
-            const isParentHighlighted = isMatch(cat.label);
 
             return (
-              <div key={cat.id} className="flex flex-col">
+              <div key={cat.id} className="flex flex-col min-w-0">
                 <button
                   onClick={() => toggleGroup(cat.id)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all ${
-                    isSubActive
-                      ? 'text-white font-medium'
-                      : isParentHighlighted
-                        ? 'text-accent font-semibold bg-accent/5'
-                        : 'text-zinc-400 hover:text-zinc-200'
+                  title={cat.label}
+                  className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
+                    isSubActive ? 'text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0 truncate">
                     <Icon className="size-4 shrink-0" />
-                    <span>{highlightText(cat.label, searchTerm)}</span>
+                    <span className="truncate min-w-0">{highlightText(cat.label, searchTerm)}</span>
                   </div>
                   {isExpanded ? (
-                    <ChevronDown className="size-3 text-zinc-500" />
+                    <ChevronDown className="size-3 text-zinc-500 shrink-0 ml-1" />
                   ) : (
-                    <ChevronRight className="size-3 text-zinc-500" />
+                    <ChevronRight className="size-3 text-zinc-500 shrink-0 ml-1" />
                   )}
                 </button>
 
                 {isExpanded && (
-                  <div className="flex flex-col pl-6 border-l border-border-dark/40 ml-4.5 mt-0.5 gap-0.5">
+                  <div className="flex flex-col pl-4 border-l border-border-dark/40 ml-4 mt-0.5 gap-0.5 min-w-0">
                     {matchingSubs.map((sub) => {
                       const isActive = activeResource === sub.id;
-                      const isSubHighlighted = isMatch(sub.label);
                       return (
                         <button
                           key={sub.id}
                           onClick={() => handleSelectResource(sub.id, sub.label)}
                           onDoubleClick={() => handleDoubleClickResource(sub.id)}
-                          className={`w-full py-1 px-2.5 rounded text-[11px] text-left cursor-pointer transition-colors ${
+                          title={sub.label}
+                          className={`w-full py-1 px-2 rounded text-[11px] text-left cursor-pointer transition-colors min-w-0 truncate ${
                             isActive
                               ? 'bg-border-dark/60 text-accent font-semibold'
-                              : isSubHighlighted
-                                ? 'text-accent font-semibold bg-accent/5'
-                                : 'text-zinc-500 hover:text-zinc-300'
+                              : 'text-zinc-500 hover:text-zinc-300'
                           }`}
                         >
-                          {highlightText(sub.label, searchTerm)}
+                          <span className="truncate block">
+                            {highlightText(sub.label, searchTerm)}
+                          </span>
                         </button>
                       );
                     })}

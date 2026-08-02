@@ -6,6 +6,12 @@ import { useKuberneterStore } from '../store/kuberneter.store';
 export function useKubeWatch(queryResource: string, enabled: boolean) {
   const queryClient = useQueryClient();
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const activeTabId = useLayoutStore((s) => s.activeTabId);
+  const openTabs = useLayoutStore((s) => s.openTabs);
+
+  const activeResource = useKuberneterStore(
+    (s) => s.kuberneterInstanceResource[activeInstanceId] || ''
+  );
   const kuberneterSelectedCluster = useKuberneterStore(
     (s) => s.kuberneterInstanceCluster[activeInstanceId] || ''
   );
@@ -16,8 +22,21 @@ export function useKubeWatch(queryResource: string, enabled: boolean) {
     (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
 
+  // Check if current tab is active for this tool instance
+  const activeTab = openTabs.find((t) => t.id === activeTabId);
+  const isInstanceActive = activeTab ? activeTab.instanceId === activeInstanceId : true;
+
+  // Watch should ONLY be active when the user is currently viewing this resource
+  const isResourceMatch =
+    !queryResource ||
+    !activeResource ||
+    queryResource.toLowerCase() === activeResource.toLowerCase() ||
+    activeResource.toLowerCase().includes(queryResource.toLowerCase());
+
+  const shouldWatch = enabled && isInstanceActive && isResourceMatch && !!kuberneterSelectedCluster;
+
   useEffect(() => {
-    if (!enabled || !kuberneterSelectedCluster || !queryResource) {
+    if (!shouldWatch || !kuberneterSelectedCluster || !queryResource) {
       return;
     }
 
@@ -34,7 +53,7 @@ export function useKubeWatch(queryResource: string, enabled: boolean) {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const unsubscribe = window.kuberneter.onWatchEvent((event) => {
-      if (event.id === watchId || event.resource === queryResource) {
+      if (event.id === watchId) {
         if (debounceTimer) {
           clearTimeout(debounceTimer);
         }
@@ -61,7 +80,7 @@ export function useKubeWatch(queryResource: string, enabled: boolean) {
       window.kuberneter.stopWatch(watchId);
     };
   }, [
-    enabled,
+    shouldWatch,
     queryResource,
     activeInstanceId,
     kuberneterSelectedCluster,

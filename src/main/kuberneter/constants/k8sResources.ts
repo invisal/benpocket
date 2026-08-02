@@ -357,6 +357,15 @@ export const K8S_RESOURCE_MAP: Record<string, K8sResourceDefinition> = {
     group: 'apis/autoscaling',
     version: 'v2',
     aliases: ['hpa']
+  },
+  customresourcedefinitions: {
+    key: 'customresourcedefinitions',
+    singular: 'customresourcedefinition',
+    displayName: 'CustomResourceDefinitions',
+    group: 'apis/apiextensions.k8s.io',
+    version: 'v1',
+    isClusterScoped: true,
+    aliases: ['crd', 'crds']
   }
 };
 
@@ -364,6 +373,26 @@ export const K8S_RESOURCE_MAP: Record<string, K8sResourceDefinition> = {
  * Returns the resource definition or fallback for custom/CRD resources
  */
 export function getResourceDefinition(resource: string): K8sResourceDefinition {
+  if (resource.startsWith('crd--')) {
+    const parts = resource.split('--');
+    // Format: crd--group--version--plural--isClusterScoped
+    if (parts.length >= 4) {
+      const groupName = parts[1];
+      const version = parts[2];
+      const plural = parts[3];
+      const isClusterScoped = parts[4] === 'true';
+
+      return {
+        key: plural,
+        singular: plural.endsWith('s') ? plural.slice(0, -1) : plural,
+        displayName: plural.charAt(0).toUpperCase() + plural.slice(1),
+        group: groupName === 'core' || groupName === 'api' ? 'api' : `apis/${groupName}`,
+        version,
+        isClusterScoped
+      };
+    }
+  }
+
   const key = resource.toLowerCase();
   if (K8S_RESOURCE_MAP[key]) {
     return K8S_RESOURCE_MAP[key];

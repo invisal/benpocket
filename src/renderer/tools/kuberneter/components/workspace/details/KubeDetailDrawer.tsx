@@ -105,7 +105,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
   };
 
   const resourceName = getResourceName(payload);
-  const prefix = prefixMap[contentType] || contentType;
+  const prefix = prefixMap[contentType] || (payload as { kind?: string })?.kind || contentType;
   const headerTitle = resourceName ? `${prefix}: ${resourceName}` : `${prefix}: Details`;
 
   const handleClose = () => {

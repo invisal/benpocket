@@ -87,9 +87,9 @@ export function BackgroundPicker(): JSX.Element {
               key={tab.id}
               onClick={() => setKind(tab.id)}
               className={cn(
-                'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
+                'flex-1 rounded-md py-1.5 px-1 text-xs font-medium transition-colors',
                 kind === tab.id
-                  ? 'bg-surface-2 text-foreground'
+                  ? 'dark:bg-surface-3 bg-gray-200 text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >

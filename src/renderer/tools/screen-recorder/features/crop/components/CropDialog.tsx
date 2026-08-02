@@ -313,7 +313,7 @@ export function CropDialog({
             <CropIcon size={15} /> Crop
           </Dialog.Title>
 
-          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-2 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg dark:bg-surface-2 bg-gray-100 px-3 py-2">
             <span className="text-[11px] font-medium text-muted-foreground">Size</span>
             <div className="flex items-center gap-1">
               <NumberField

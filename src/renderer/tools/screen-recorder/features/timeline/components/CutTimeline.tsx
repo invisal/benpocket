@@ -39,7 +39,6 @@ import { useZoomStore, findKeyframeContaining } from '../../zoom/store/zoom-stor
 import { resolveFixedPosition } from '../../zoom/lib/resolve-fixed-position';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { ZoomTrack } from '../../zoom/components/ZoomTrack';
-import { CropTrack } from '../../crop/components/CropTrack';
 import { CaptionTrack } from '../../captions/components/CaptionTrack';
 import { AnnotationTrack } from '../../annotations/components/AnnotationTrack';
 import { BlurMaskTrack } from '../../blur-mask/components/BlurMaskTrack';
@@ -1021,7 +1020,6 @@ export function CutTimeline(): JSX.Element {
             <CaptionTrack />
             <AnnotationTrack />
             <BlurMaskTrack />
-            <CropTrack />
 
             <Playhead
               segments={segments}

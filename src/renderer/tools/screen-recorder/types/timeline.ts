@@ -13,8 +13,8 @@ export const CLIP_SPEED_OPTIONS: ClipSpeed[] = [0.5, 1, 1.25, 1.5, 2];
  * Converted to source pixel coordinates at export time once the source's
  * actual width/height are known (see main/export/video-decoder.ts).
  *
- * Lives on `TimelineSegment` (not `Project`) because crop is a per-clip
- * setting: each cut clip can be framed differently.
+ * A single crop applies to the whole recording (see `useCropStore`), not
+ * per-clip -- every kept segment is decoded through the same rect.
  */
 export interface CropRect {
   x: number;
@@ -36,7 +36,6 @@ export interface TimelineSegment {
   originalRange: TimeRange;
   speed: ClipSpeed;
   sourceOffsetMs: number;
-  crop: CropRect | null;
   /**
    * Whether this clip's own in/out point has been manually dragged since it
    * was created (see `resizeSegmentEdge`) -- not set by splitting alone.

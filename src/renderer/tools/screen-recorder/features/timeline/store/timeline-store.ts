@@ -1,10 +1,5 @@
 import { create } from 'zustand';
-import type {
-  ClipSpeed,
-  CropRect,
-  TimelineSegment,
-  TimelineTrack
-} from '@screen-recorder/types/timeline';
+import type { ClipSpeed, TimelineSegment, TimelineTrack } from '@screen-recorder/types/timeline';
 import type { ExportSegment } from '@screen-recorder/types/export';
 import type { EditorTool } from '../../../workspace/editor/editorTools';
 import { withHistory } from '../../history/lib/with-history';
@@ -53,8 +48,8 @@ interface TimelineStoreState {
   sourceDurationMs: number;
   tracks: TimelineTrack[];
   /**
-   * Which clip is selected (drives the crop overlay and the Clip tool
-   * panel). Lives in the store, not component state, so CutTimeline can be
+   * Which clip is selected (drives the Clip tool panel). Lives in the
+   * store, not component state, so CutTimeline can be
    * rendered independently of EditorPage -- e.g. as a full-width strip
    * outside the screen-recorder sidebar/content layout -- while still
    * sharing selection with whatever else needs it.
@@ -144,15 +139,13 @@ interface TimelineStoreState {
   resizeSegmentEdge: (segmentId: string, edge: 'start' | 'end', newSourceMs: number) => void;
   /** Restores a segment's range back to `originalRange` and clears `trimmed`. */
   resetSegmentTrim: (segmentId: string) => void;
-  /** Crop is per-clip: each segment can be framed differently. */
-  setSegmentCrop: (segmentId: string, crop: CropRect | null) => void;
   /** Speed is per-clip: each segment can play back at a different rate. */
   setSegmentSpeed: (segmentId: string, speed: ClipSpeed) => void;
   /** Cursor visibility is per-clip: independent of the global `CursorSettings.visible` toggle. */
   setSegmentCursorHidden: (segmentId: string, cursorHidden: boolean) => void;
   /** Webcam PiP visibility is per-clip: independent of the global `WebcamOptions.enabled` toggle. */
   setSegmentWebcamHidden: (segmentId: string, webcamHidden: boolean) => void;
-  /** Kept clips (range + crop + speed + cursor/webcam visibility) in output order -- this is exactly ExportOptions.segments. */
+  /** Kept clips (range + speed + cursor/webcam visibility) in output order -- this is exactly ExportOptions.segments. */
   getExportSegments: () => ExportSegment[];
   getOutputDurationMs: () => number;
 }
@@ -249,7 +242,6 @@ export const useTimelineStore = create<TimelineStoreState>(
           originalRange: { startMs: 0, endMs: durationMs },
           speed: 1,
           sourceOffsetMs: 0,
-          crop: null,
           trimmed: false,
           split: false,
           cursorHidden: false,
@@ -400,14 +392,6 @@ export const useTimelineStore = create<TimelineStoreState>(
         set({ tracks: replaceTrack(get().tracks, { ...track, segments: nextSegments }) });
       },
 
-      setSegmentCrop: (segmentId, crop) => {
-        const track = primaryTrack(get().tracks);
-        const segments = track.segments.map((segment) =>
-          segment.id === segmentId ? { ...segment, crop } : segment
-        );
-        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
-      },
-
       setSegmentSpeed: (segmentId, speed) => {
         const track = primaryTrack(get().tracks);
         const segments = track.segments.map((segment) =>
@@ -435,7 +419,6 @@ export const useTimelineStore = create<TimelineStoreState>(
       getExportSegments: () =>
         primaryTrack(get().tracks).segments.map((s) => ({
           range: s.range,
-          crop: s.crop,
           speed: s.speed,
           cursorHidden: s.cursorHidden,
           webcamHidden: s.webcamHidden

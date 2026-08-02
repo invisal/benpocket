@@ -9,12 +9,12 @@ export interface PixelCropRect {
 }
 
 /**
- * Converts a normalized (0-1) `TimelineSegment.crop` rect (per-clip, not
- * global) into source pixel coordinates, clamped to the source's actual
- * bounds and rounded to even numbers. Applied as a PixiJS texture `frame`
- * (sub-rect sampling of the full decoded `VideoFrame`) rather than as a
- * decode-time filter -- there's no ffmpeg filter graph in this pipeline, the
- * full native frame is always what WebCodecs decodes.
+ * Converts a normalized (0-1) `ExportOptions.crop` rect (one crop for the
+ * whole recording) into source pixel coordinates, clamped to the source's
+ * actual bounds and rounded to even numbers. Applied as a PixiJS texture
+ * `frame` (sub-rect sampling of the full decoded `VideoFrame`) rather than
+ * as a decode-time filter -- there's no ffmpeg filter graph in this
+ * pipeline, the full native frame is always what WebCodecs decodes.
  */
 export function resolveCropRect(
   crop: CropRect | null,

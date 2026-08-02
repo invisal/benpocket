@@ -33,6 +33,7 @@ import { registerProfileHandlers, closeAllProfileSessions } from './store/ipc';
 import { registerDeepLinkHandler } from './auth/deepLink';
 import { handleGithubDeepLink } from './auth/githubAuth';
 import { registerAuthHandlers } from './auth/ipc';
+import { registerUpdaterHandlers } from './updater/ipc';
 
 // Must run before app.whenReady(): app.requestSingleInstanceLock() has to be
 // called this early for `second-instance` (Windows/Linux deep-link delivery,
@@ -241,6 +242,12 @@ if (gotSingleInstanceLock) {
     // GitHub OAuth login + master-password DEK setup/unlock -- see
     // src/main/store/PLAN3.md.
     registerAuthHandlers();
+
+    // Manual update checking via electron-updater against GitHub Releases --
+    // see src/main/updater/ipc.ts. Runs one check at startup; no polling, no
+    // silent download/install, everything else is gated behind the status
+    // bar's UpdateStatus click.
+    registerUpdaterHandlers();
 
     // Tray icon is created on demand -- see TrayBridge, which registers it
     // only while the Screen Recorder tool tab is open.

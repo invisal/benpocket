@@ -24,7 +24,10 @@
     "build:linux": "electron-vite build && electron-builder --linux",
     "build:native:macos": "cd native/macos-recorder && swift build -c release && cd ../.. && node scripts/package-native-helper.mjs macos",
     "build:native:windows": "cmake -S native/windows-recorder -B native/windows-recorder/build && cmake --build native/windows-recorder/build --config Release && node scripts/package-native-helper.mjs windows",
-    "build:native:linux": "cmake -S native/linux-recorder -B native/linux-recorder/build && cmake --build native/linux-recorder/build && node scripts/package-native-helper.mjs linux"
+    "build:native:linux": "cmake -S native/linux-recorder -B native/linux-recorder/build && cmake --build native/linux-recorder/build && node scripts/package-native-helper.mjs linux",
+    "release:win": "electron-vite build && electron-builder --win --publish always",
+    "release:mac": "electron-vite build && electron-builder --mac --publish always",
+    "release:linux": "electron-vite build && electron-builder --linux --publish always"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",
@@ -46,6 +49,7 @@
     "cnfast": "^0.0.8",
     "echarts": "^6.1.0",
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9",
     "gif.js": "^0.2.0",
     "js-yaml": "^5.2.3",
     "lucide-react": "^1.23.0",

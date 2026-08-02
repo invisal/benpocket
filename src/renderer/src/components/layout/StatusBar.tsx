@@ -1,5 +1,6 @@
 import type React from 'react';
 import { SyncStatus } from './SyncStatus';
+import { UpdateStatus } from './UpdateStatus';
 
 export const StatusBar: React.FC = () => {
   return (
@@ -12,6 +13,7 @@ export const StatusBar: React.FC = () => {
       <div className="h-full flex-1 bg-surface-2 bg-diagonal-stripes" />
 
       <SyncStatus />
+      <UpdateStatus />
     </div>
   );
 };

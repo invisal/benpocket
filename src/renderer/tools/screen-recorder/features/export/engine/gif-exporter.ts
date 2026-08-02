@@ -42,13 +42,9 @@ export async function exportGif(
   try {
     const sourceInfo = await decoder.loadMetadata(sourceFile);
 
-    const firstCropRect = resolveCropRect(
-      options.segments[0]?.crop ?? null,
-      sourceInfo.width,
-      sourceInfo.height
-    );
-    const sourceAspect = firstCropRect
-      ? firstCropRect.width / firstCropRect.height
+    const cropRect = resolveCropRect(options.crop, sourceInfo.width, sourceInfo.height);
+    const sourceAspect = cropRect
+      ? cropRect.width / cropRect.height
       : sourceInfo.width / sourceInfo.height;
 
     const smoothedCursorPath = smoothCursorPath(
@@ -119,10 +115,11 @@ export async function exportGif(
           );
           return {
             range: { startMs, endMs },
-            crop: null,
             speed: segment.speed,
             cursorHidden: false,
-            webcamHidden: false
+            webcamHidden: false,
+            audioMuted: false,
+            audioVolume: 1
           };
         })
         .filter((segment) => segment.range.endMs > segment.range.startMs);
@@ -153,7 +150,6 @@ export async function exportGif(
       async (videoFrame, _exportTimestampUs, sourceTimestampMs, segment) => {
         try {
           if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
-          const cropRect = resolveCropRect(segment.crop, sourceInfo.width, sourceInfo.height);
           const scene = evaluateSceneAtMs(
             options.project,
             sourceTimestampMs,

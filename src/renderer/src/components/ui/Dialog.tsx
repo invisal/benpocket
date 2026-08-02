@@ -28,6 +28,7 @@ const DIALOG_SIZE_CLASSNAMES = {
 
 export function DialogContent({
   className,
+  backdropClassName,
   children,
   showClose = true,
   size = 'default',
@@ -36,10 +37,12 @@ export function DialogContent({
   showClose?: boolean;
   /** `'large'` is for content-heavy modals (e.g. a settings/wizard-style dialog) that would feel cramped at the default width -- still centered, not edge-to-edge. */
   size?: keyof typeof DIALOG_SIZE_CLASSNAMES;
+  /** Extra classes for the backdrop -- e.g. `backdrop-blur-sm` for dialogs that sit over content worth still hinting at (like the crop dialog's video). */
+  backdropClassName?: string;
 }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogBackdrop />
+      <DialogBackdrop className={backdropClassName} />
       <DialogPrimitive.Popup
         className={cn(
           'fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2',

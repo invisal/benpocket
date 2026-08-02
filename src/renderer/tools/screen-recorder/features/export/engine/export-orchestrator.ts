@@ -45,8 +45,8 @@ export function isSourceCopyEligible(
   if (options.project.webcam.enabled && options.project.webcamVideoPath) return false;
   if (options.segments.length !== 1) return false;
 
+  if (options.crop) return false;
   const [segment] = options.segments;
-  if (segment.crop) return false;
   if (segment.speed !== 1) return false;
   if (Math.abs(segment.range.startMs) > SOURCE_COPY_EPSILON_MS) return false;
   if (Math.abs(segment.range.endMs - sourceInfo.durationMs) > SOURCE_COPY_EPSILON_MS) return false;
@@ -145,13 +145,9 @@ async function runOnce(
   try {
     const sourceInfo = await decoder.loadMetadata(sourceFile);
 
-    const firstCropRect = resolveCropRect(
-      options.segments[0]?.crop ?? null,
-      sourceInfo.width,
-      sourceInfo.height
-    );
-    const sourceAspect = firstCropRect
-      ? firstCropRect.width / firstCropRect.height
+    const cropRect = resolveCropRect(options.crop, sourceInfo.width, sourceInfo.height);
+    const sourceAspect = cropRect
+      ? cropRect.width / cropRect.height
       : sourceInfo.width / sourceInfo.height;
 
     const smoothedCursorPath = smoothCursorPath(
@@ -216,10 +212,11 @@ async function runOnce(
           );
           return {
             range: { startMs, endMs },
-            crop: null,
             speed: segment.speed,
             cursorHidden: false,
-            webcamHidden: false
+            webcamHidden: false,
+            audioMuted: false,
+            audioVolume: 1
           };
         })
         .filter((segment) => segment.range.endMs > segment.range.startMs);
@@ -251,8 +248,6 @@ async function runOnce(
         try {
           if (fatalError) throw fatalError;
           if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
-
-          const cropRect = resolveCropRect(segment.crop, sourceInfo.width, sourceInfo.height);
 
           const scene = evaluateSceneAtMs(
             options.project,

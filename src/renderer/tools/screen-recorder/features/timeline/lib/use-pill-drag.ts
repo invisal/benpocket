@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import { beginGesture, endGesture } from '../../history/store/history-store';
 import { outputMsToSourceMs, sourceMsToOutputMs } from './segment-duration';
@@ -34,6 +34,9 @@ export function usePillDrag({ containerRef, segments, totalOutputMs }: UsePillDr
   // right after pointerup) can skip its normal click behavior instead of
   // treating the drag's release as a click too.
   const didDragRef = useRef(false);
+  // Reactive counterpart of `dragRef !== null`, for gating a `motion` layout
+  // transition so a pill doesn't lag its own move-drag.
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleMove = useCallback(
     (event: PointerEvent) => {
@@ -52,6 +55,7 @@ export function usePillDrag({ containerRef, segments, totalOutputMs }: UsePillDr
   const stop = useCallback(() => {
     if (dragRef.current) endGesture();
     dragRef.current = null;
+    setIsDragging(false);
     window.removeEventListener('pointermove', handleMove);
   }, [handleMove]);
 
@@ -69,6 +73,7 @@ export function usePillDrag({ containerRef, segments, totalOutputMs }: UsePillDr
         if (!container) return;
         didDragRef.current = false;
         beginGesture();
+        setIsDragging(true);
         dragRef.current = {
           startClientX: event.clientX,
           startOutputMs: sourceMsToOutputMs(segments, startSourceMs) ?? 0,
@@ -81,5 +86,5 @@ export function usePillDrag({ containerRef, segments, totalOutputMs }: UsePillDr
     [containerRef, segments, handleMove, stop]
   );
 
-  return { startDrag, didDragRef };
+  return { startDrag, didDragRef, isDragging };
 }

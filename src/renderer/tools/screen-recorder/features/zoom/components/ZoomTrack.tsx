@@ -2,7 +2,6 @@ import type { JSX } from 'react';
 import { Mouse, Target, ZoomIn } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS } from '@shared/constants';
-import { sampleCursorPath, type CursorPathPoint } from '@shared/cursor-path';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
@@ -13,16 +12,7 @@ import {
   sourceRangeToOutputPercent
 } from '../../timeline/lib/segment-duration';
 import { useZoomStore, findKeyframeContaining } from '../store/zoom-store';
-
-/** The first real recorded mousedown within a keyframe's own window, if any. */
-function firstClickInWindow(
-  clickPath: CursorPathPoint[],
-  atMs: number,
-  durationMs: number
-): { x: number; y: number } | null {
-  const click = clickPath.find((c) => c.atMs >= atMs && c.atMs <= atMs + durationMs);
-  return click ? { x: click.x, y: click.y } : null;
-}
+import { resolveFixedPosition } from '../lib/resolve-fixed-position';
 
 // Deliberately shorter than `DEFAULT_ZOOM_DURATION_MS` -- this only sizes
 // the ghost preview pill's width, not the real keyframe `addKeyframe`
@@ -67,21 +57,16 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
   const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
   const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
 
-  // Disabling "follow cursor" needs *some* fixed point to land on --
-  // preferably the first real click inside this keyframe's own window
-  // (matches how auto-generated keyframes are seeded from clicks in the
-  // first place, see auto-zoom-engine.ts), falling back to wherever the
-  // cursor actually was at the keyframe's start for a manually-added
-  // keyframe with no click nearby, and only landing on dead-center as a
-  // last resort (a 'window' capture never gets a cursor path at all).
+  // Disabling "follow cursor" needs *some* fixed point to land on -- see
+  // `resolveFixedPosition`'s own doc for the fallback chain.
   function toggleFollowCursor(kf: ZoomKeyframe): void {
     if (kf.position !== 'auto-cursor') {
       updateKeyframe(kf.id, { position: 'auto-cursor' });
       return;
     }
-    const fixed = firstClickInWindow(clickPath, kf.atMs, kf.durationMs) ??
-      sampleCursorPath(cursorPath, kf.atMs) ?? { x: 0.5, y: 0.5 };
-    updateKeyframe(kf.id, { position: fixed });
+    updateKeyframe(kf.id, {
+      position: resolveFixedPosition(clickPath, cursorPath, kf.atMs, kf.durationMs)
+    });
   }
 
   // No ghost over a stretch that already has a keyframe -- a click there
@@ -233,7 +218,7 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
               className="absolute overflow-hidden rounded-md border border-purple-900/40 opacity-50"
               style={{
                 left: `${ghostPercent.leftPercent}%`,
-                width: `${ghostPercent.widthPercent}%`,
+                width: 80,
                 height: CLIP_ROW_HEIGHT_PX
               }}
             >

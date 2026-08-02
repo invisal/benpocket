@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
+import { useCropStore } from '../../crop/store/crop-store';
 import { useExportStore } from '../store/export-store';
 import { buildExportProject } from '../lib/build-export-project';
 import { runExport } from '../engine/export-coordinator';
@@ -46,6 +47,7 @@ export function useExportAction(): UseExportActionResult {
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
+  const crop = useCropStore((s) => s.rect);
   const store = useExportStore();
 
   const [status, setStatus] = useState<ExportStatus>('idle');
@@ -91,15 +93,20 @@ export function useExportAction(): UseExportActionResult {
           resolution: store.resolution,
           frameRate: store.frameRate,
           quality: store.quality,
-          includeAudio: store.includeAudio,
+          // No separate global toggle -- skip audio entirely when every kept
+          // clip is muted, rather than encoding a track that would be
+          // silent from end to end anyway.
+          includeAudio: segments.some((s) => !s.audioMuted),
           outputPath,
           sourceVideoPath,
+          crop,
           segments: segments.map((s) => ({
             range: s.range,
-            crop: s.crop,
             speed: s.speed,
             cursorHidden: s.cursorHidden,
-            webcamHidden: s.webcamHidden
+            webcamHidden: s.webcamHidden,
+            audioMuted: s.audioMuted,
+            audioVolume: s.audioVolume
           })),
           project: buildExportProject(sourceVideoPath, durationMs)
         },

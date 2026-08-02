@@ -1,11 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { cn } from 'cnfast';
 import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-
-type Status = 'loading' | 'configured' | 'empty';
-type GatewayStatus = 'loading' | 'configured' | 'empty';
+import { useCloudflareSettings } from '@renderer/hooks/useCloudflareSettings';
 
 interface ConnectCloudflareDialogProps {
   open: boolean;
@@ -35,63 +33,90 @@ function StatusBadge({ connected }: { connected: boolean }) {
 }
 
 export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflareDialogProps) {
-  const [status, setStatus] = useState<Status>('loading');
+  const {
+    isLoading,
+    fields,
+    configured,
+    hasAccessKeys,
+    gatewayConfigured,
+    setFields,
+    clearCloudflare,
+    clearGateway
+  } = useCloudflareSettings();
+
   const [isEditing, setIsEditing] = useState(false);
-  const [hasAccessKeys, setHasAccessKeys] = useState(false);
   const [accountId, setAccountId] = useState('');
   const [apiToken, setApiToken] = useState('');
   const [accessKeyId, setAccessKeyId] = useState('');
   const [secretAccessKey, setSecretAccessKey] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
-  const [gatewayStatus, setGatewayStatus] = useState<GatewayStatus>('loading');
   const [gatewayId, setGatewayId] = useState('');
   const [gatewayError, setGatewayError] = useState<string | null>(null);
-  const [gatewaySaving, setGatewaySaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    window.fileExplorer.getR2CredentialStatus().then((res) => {
-      setStatus(res.configured ? 'configured' : 'empty');
-      setHasAccessKeys(res.hasAccessKeys);
-      setAccountId(res.configured ? res.accountId : '');
-    });
-    window.fileExplorer.getAiGatewayCredentialStatus().then((res) => {
-      setGatewayStatus(res.configured ? 'configured' : 'empty');
-      setGatewayId(res.gatewayId);
-    });
-  }, [open]);
+  // Resets the drafts to the saved values whenever the dialog opens (or the
+  // initial snapshot finishes hydrating while it's already open) -- adjusted
+  // during render rather than in an effect (react.dev-recommended way to
+  // avoid the extra cascading render an effect-based reset would cause).
+  // Doesn't depend on `fields` itself so a remote change synced in while the
+  // dialog is open can't clobber an in-progress edit.
+  const readyToShow = open && !isLoading;
+  const [prevReadyToShow, setPrevReadyToShow] = useState(readyToShow);
+  if (readyToShow !== prevReadyToShow) {
+    setPrevReadyToShow(readyToShow);
+    if (readyToShow) {
+      setAccountId(configured ? fields.accountId : '');
+      setApiToken('');
+      setAccessKeyId('');
+      setSecretAccessKey('');
+      setError(null);
+      setIsEditing(false);
+      setGatewayId(fields.gatewayId);
+      setGatewayError(null);
+    }
+  }
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handleSave = () => {
     setError(null);
-    const result = await window.fileExplorer.setR2Credential(
-      accountId.trim(),
-      apiToken.trim(),
-      accessKeyId.trim(),
-      secretAccessKey.trim()
-    );
-    setSaving(false);
-    if ('error' in result) {
-      setError(result.error);
+    const trimmedAccountId = accountId.trim();
+    if (!trimmedAccountId) {
+      setError('Account ID is required.');
       return;
     }
-    setStatus('configured');
+
+    // Editing an existing connection never pre-fills the real secret values,
+    // so a blank secret field here means "keep what's already saved" rather
+    // than "clear it" -- only Disconnect clears secrets.
+    const resolvedApiToken = apiToken.trim() || fields.apiToken;
+    if (!resolvedApiToken) {
+      setError('API Token is required.');
+      return;
+    }
+    const resolvedAccessKeyId = accessKeyId.trim() || fields.accessKeyId;
+    const resolvedSecretAccessKey = secretAccessKey.trim() || fields.secretAccessKey;
+
+    // R2 keys are optional together -- either both are set (R2 browsing works)
+    // or both are blank (Cloudflare is still connected, just without R2).
+    if (Boolean(resolvedAccessKeyId) !== Boolean(resolvedSecretAccessKey)) {
+      setError('Provide both R2 access keys, or leave both blank.');
+      return;
+    }
+
+    setFields({
+      accountId: trimmedAccountId,
+      apiToken: resolvedApiToken,
+      accessKeyId: resolvedAccessKeyId,
+      secretAccessKey: resolvedSecretAccessKey
+    });
     setIsEditing(false);
-    setHasAccessKeys(Boolean(accessKeyId.trim() || secretAccessKey.trim()) || hasAccessKeys);
     setApiToken('');
     setAccessKeyId('');
     setSecretAccessKey('');
   };
 
-  const handleClear = async () => {
-    setSaving(true);
-    await window.fileExplorer.clearR2Credential();
-    setSaving(false);
-    setStatus('empty');
+  const handleClear = () => {
+    clearCloudflare();
     setIsEditing(false);
-    setHasAccessKeys(false);
     setAccountId('');
   };
 
@@ -108,27 +133,22 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
     setIsEditing(false);
   };
 
-  const handleGatewaySave = async () => {
-    setGatewaySaving(true);
+  const handleGatewaySave = () => {
     setGatewayError(null);
-    const result = await window.fileExplorer.setAiGatewayCredential(gatewayId.trim(), '');
-    setGatewaySaving(false);
-    if ('error' in result) {
-      setGatewayError(result.error);
+    const trimmedGatewayId = gatewayId.trim();
+    if (!trimmedGatewayId) {
+      setGatewayError('Gateway ID is required.');
       return;
     }
-    setGatewayStatus('configured');
+    setFields({ gatewayId: trimmedGatewayId });
   };
 
-  const handleGatewayClear = async () => {
-    setGatewaySaving(true);
-    await window.fileExplorer.clearAiGatewayCredential();
-    setGatewaySaving(false);
-    setGatewayStatus('empty');
+  const handleGatewayClear = () => {
+    clearGateway();
     setGatewayId('');
   };
 
-  const showCloudflareForm = status === 'empty' || isEditing;
+  const showCloudflareForm = !configured || isEditing;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) setIsEditing(false);
@@ -140,9 +160,9 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
       <Dialog.Content className="max-w-sm">
         <div className="flex items-center justify-between">
           <Dialog.Title>Connect Cloudflare</Dialog.Title>
-          {status !== 'loading' && (
+          {!isLoading && (
             <div className="mr-6">
-              <StatusBadge connected={status === 'configured'} />
+              <StatusBadge connected={configured} />
             </div>
           )}
         </div>
@@ -152,18 +172,13 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
         </Dialog.Description>
 
         <div className="mt-4">
-          {status === 'configured' && !isEditing ? (
+          {isLoading ? null : configured && !isEditing ? (
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={handleEdit}>
                 Edit
               </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => void handleClear()}
-                disabled={saving}
-              >
-                {saving ? 'Clearing…' : 'Disconnect'}
+              <Button variant="destructive" size="sm" onClick={handleClear}>
+                Disconnect
               </Button>
             </div>
           ) : showCloudflareForm ? (
@@ -203,21 +218,11 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
               </Field>
               {error && <p className="text-xs text-red-400">{error}</p>}
               <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void handleSave()}
-                  disabled={saving}
-                >
-                  {saving ? 'Saving…' : 'Save'}
+                <Button variant="primary" size="sm" onClick={handleSave}>
+                  Save
                 </Button>
                 {isEditing && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleCancelEdit}
-                    disabled={saving}
-                  >
+                  <Button variant="secondary" size="sm" onClick={handleCancelEdit}>
                     Cancel
                   </Button>
                 )}
@@ -226,13 +231,11 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
           ) : null}
         </div>
 
-        {status === 'configured' && (
+        {configured && (
           <div className="mt-5 border-t border-border pt-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-text-base">AI Gateway</span>
-              {gatewayStatus !== 'loading' && (
-                <StatusBadge connected={gatewayStatus === 'configured'} />
-              )}
+              <StatusBadge connected={gatewayConfigured} />
             </div>
             <p className="mt-1 text-xs text-text-dim">
               Lets the file explorer&apos;s AI agent chat through your Cloudflare AI Gateway.
@@ -243,22 +246,12 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
               </Field>
               {gatewayError && <p className="text-xs text-red-400">{gatewayError}</p>}
               <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void handleGatewaySave()}
-                  disabled={gatewaySaving}
-                >
-                  {gatewaySaving ? 'Saving…' : 'Save'}
+                <Button variant="primary" size="sm" onClick={handleGatewaySave}>
+                  Save
                 </Button>
-                {gatewayStatus === 'configured' && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => void handleGatewayClear()}
-                    disabled={gatewaySaving}
-                  >
-                    {gatewaySaving ? 'Clearing…' : 'Disconnect'}
+                {gatewayConfigured && (
+                  <Button variant="destructive" size="sm" onClick={handleGatewayClear}>
+                    Disconnect
                   </Button>
                 )}
               </div>

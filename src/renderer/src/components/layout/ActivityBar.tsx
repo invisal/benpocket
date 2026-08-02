@@ -15,6 +15,7 @@ import { ContextMenu } from '../ui/ContextMenu';
 import { ToolDialog } from '../dialog/ToolDialog';
 import { KuberneterActivityContextMenu } from '../../../tools/kuberneter/components/activities-bar/KuberneterActivityContextMenu';
 import { KuberneterActivityIcon } from '../../../tools/kuberneter/components/activities-bar/KuberneterActivityIcon';
+import { ProfileSwitcher } from './ProfileSwitcher';
 
 export const ActivityBar: React.FC = () => {
   const { tabs, activeTabId, selectTab, closeTab } = useToolTabs();
@@ -81,6 +82,8 @@ export const ActivityBar: React.FC = () => {
       </button>
 
       <div className="flex-1 w-full bg-surface-2 bg-diagonal-stripes" />
+
+      <ProfileSwitcher />
 
       <ToolDialog open={isToolDialogOpen} onOpenChange={setIsToolDialogOpen} />
     </div>

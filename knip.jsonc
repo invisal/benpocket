@@ -1,7 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  // Typing entry only — electron-vite plugin auto-detects main/preload/HTML from electron.vite.config.ts
-  "entry": ["src/preload/index.d.ts"],
+  // electron-vite plugin auto-detects main/preload from electron.vite.config.ts, but doesn't
+  // resolve the renderer HTML entries' `/src/main.tsx`-style script paths against each HTML
+  // file's directory, so those need to be listed explicitly (see src/renderer/*.html).
+  "entry": [
+    "src/preload/index.d.ts",
+    "src/renderer/src/main.tsx",
+    "src/renderer/recorder-toolbar.tsx",
+    "src/renderer/region-select.ts",
+    "src/renderer/source-picker-overlay.tsx"
+  ],
   "project": ["src/**/*.{ts,tsx}"],
   // System binaries invoked via spawn/execFile — not npm packages.
   // xclip: Linux X11 clipboard helper.

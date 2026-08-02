@@ -12,5 +12,8 @@ export default defineConfig({
       '@shared': resolve('src/shared'),
       '@screen-recorder': resolve('src/renderer/tools/screen-recorder')
     }
+  },
+  test: {
+    include: ['src/**/*.test.ts']
   }
 });

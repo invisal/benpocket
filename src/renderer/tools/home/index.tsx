@@ -9,16 +9,15 @@ import {
   VideoIcon,
   SwatchBookIcon
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { cn } from 'cnfast';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
 import { ConnectCloudflareDialog } from '@renderer/components/dialog/ConnectCloudflareDialog';
 import { Button } from '@renderer/components/ui/Button';
 import { Toolbar } from '@renderer/components/ui/Toolbar';
+import { useCloudflareSettings } from '@renderer/hooks/useCloudflareSettings';
 
 interface Props {}
-
-type CloudflareStatus = 'loading' | 'configured' | 'empty';
 
 interface ToolEntry {
   id: string;
@@ -30,57 +29,59 @@ interface ToolEntry {
 
 // eslint-disable-next-line no-empty-pattern
 export function HomeMain({}: ToolComponentProps<Props>) {
-  const { openTab } = useToolTabs();
+  const { tabs, selectTab, openTab } = useToolTabs();
   const [query, setQuery] = useState('');
   const [cloudflareDialogOpen, setCloudflareDialogOpen] = useState(false);
-  const [cloudflareStatus, setCloudflareStatus] = useState<CloudflareStatus>('loading');
+  const { isLoading: cloudflareLoading, configured: cloudflareConfigured } =
+    useCloudflareSettings();
 
-  useEffect(() => {
-    window.fileExplorer.getR2CredentialStatus().then((res) => {
-      setCloudflareStatus(res.configured ? 'configured' : 'empty');
-    });
-  }, [cloudflareDialogOpen]);
+  const tools: ToolEntry[] = useMemo(() => {
+    const openOrSelect = (type: string, create: () => void) => {
+      const existing = tabs.find((tab) => tab.type === type);
+      if (existing) selectTab(existing.id);
+      else create();
+    };
 
-  const tools: ToolEntry[] = useMemo(
-    () => [
+    return [
       {
         id: 'file-explorer',
         name: 'File Explorer',
         description: 'Browse files on your computer.',
         icon: <FolderOpen size={20} />,
-        onClick: () => openTab('file-explorer', {})
+        onClick: () => openOrSelect('file-explorer', () => openTab('file-explorer', {}))
       },
       {
         id: 'kuberneter',
         name: 'Kubernetes',
         description: 'Connect to a cluster and manage workloads.',
         icon: <img src={kuberneterIcon} className="size-5" alt="" />,
-        onClick: () => {
-          const instanceId = `kuberneter-${Date.now()}`;
-          useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
-          openTab('kuberneter', { instanceId });
-        }
+        onClick: () =>
+          openOrSelect('kuberneter', () => {
+            const instanceId = `kuberneter-${Date.now()}`;
+            useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
+            openTab('kuberneter', { instanceId });
+          })
       },
       {
         id: 'http-client',
         name: 'HTTP Client',
         description: 'Compose and send API requests.',
         icon: <GlobeIcon size={20} />,
-        onClick: () => openTab('http-client', {})
+        onClick: () => openOrSelect('http-client', () => openTab('http-client', {}))
       },
       {
         id: 'screen-recorder',
         name: 'Screen Recorder',
         description: 'Record and export your screen.',
         icon: <VideoIcon size={20} />,
-        onClick: () => openTab('screen-recorder', {})
+        onClick: () => openOrSelect('screen-recorder', () => openTab('screen-recorder', {}))
       },
       {
         id: 'screen-capture',
         name: 'Screen Capture',
         description: 'Capture a still image from your screen.',
         icon: <CameraIcon size={20} />,
-        onClick: () => openTab('screen-capture', {})
+        onClick: () => openOrSelect('screen-capture', () => openTab('screen-capture', {}))
       },
       ...(import.meta.env.DEV
         ? [
@@ -89,13 +90,12 @@ export function HomeMain({}: ToolComponentProps<Props>) {
               name: 'Storybook',
               description: 'Browse shared UI components and mockup pages.',
               icon: <SwatchBookIcon size={20} />,
-              onClick: () => openTab('storybook', {})
+              onClick: () => openOrSelect('storybook', () => openTab('storybook', {}))
             }
           ]
         : [])
-    ],
-    [openTab]
-  );
+    ];
+  }, [tabs, selectTab, openTab]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -125,8 +125,6 @@ export function HomeMain({}: ToolComponentProps<Props>) {
             }}
           />
         </div>
-        <Toolbar.Button>Some Random</Toolbar.Button>
-        <Toolbar.Button>Some Random</Toolbar.Button>
         <div className="h-full flex-1 bg-diagonal-stripes" />
       </Toolbar.Root>
 
@@ -146,7 +144,11 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         </div>
       </div>
 
-      <CloudflareBanner status={cloudflareStatus} onClick={() => setCloudflareDialogOpen(true)} />
+      <CloudflareBanner
+        isLoading={cloudflareLoading}
+        configured={cloudflareConfigured}
+        onClick={() => setCloudflareDialogOpen(true)}
+      />
 
       <ConnectCloudflareDialog open={cloudflareDialogOpen} onOpenChange={setCloudflareDialogOpen} />
     </div>
@@ -177,7 +179,15 @@ function ToolCard({ tool }: { tool: ToolEntry }) {
   );
 }
 
-function CloudflareBanner({ status, onClick }: { status: CloudflareStatus; onClick: () => void }) {
+function CloudflareBanner({
+  isLoading,
+  configured,
+  onClick
+}: {
+  isLoading: boolean;
+  configured: boolean;
+  onClick: () => void;
+}) {
   return (
     <div className="border-t border-border p-6 flex items-center gap-3">
       <span className="size-10 shrink-0 rounded-lg bg-surface-2 inline-flex items-center justify-center">
@@ -191,7 +201,7 @@ function CloudflareBanner({ status, onClick }: { status: CloudflareStatus; onCli
       </span>
 
       <div className="flex items-center gap-3 shrink-0">
-        {status === 'configured' ? (
+        {isLoading ? null : configured ? (
           <button
             role="button"
             onClick={onClick}
@@ -199,11 +209,11 @@ function CloudflareBanner({ status, onClick }: { status: CloudflareStatus; onCli
           >
             Disconnect
           </button>
-        ) : status === 'empty' ? (
+        ) : (
           <Button onClick={onClick} variant="primary">
             Connect with your Cloudflare
           </Button>
-        ) : null}
+        )}
       </div>
     </div>
   );

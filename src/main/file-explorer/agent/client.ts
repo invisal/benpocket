@@ -1,6 +1,11 @@
-import { getAiGatewayCredential } from '../aiGatewayCredential';
+import { getCloudflareSettings } from '../../store/cloudflareSettings';
 import { AGENT_TOOLS } from './tools';
 import type { AgentMessage, AgentSendResult } from './types';
+
+// Kept in sync with `AGENT_MODELS[0].id` in the file explorer's agent feature
+// (renderer-only, so not importable from the main process) -- used when a
+// gateway is connected without picking a model first (e.g. from the Home dialog).
+const DEFAULT_MODEL = '@cf/moonshotai/kimi-k2.6';
 
 interface OpenAiToolCall {
   id: string;
@@ -47,8 +52,8 @@ function toWireMessage(message: AgentMessage): OpenAiMessage {
  * Cloudflare account/gateway credentials.
  */
 export async function sendChatCompletion(messages: AgentMessage[]): Promise<AgentSendResult> {
-  const credential = getAiGatewayCredential();
-  if (!credential) return { error: 'AI Gateway is not connected.' };
+  const credential = await getCloudflareSettings();
+  if (!credential || !credential.gatewayId) return { error: 'AI Gateway is not connected.' };
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${credential.accountId}/ai/v1/chat/completions`;
 
@@ -61,7 +66,7 @@ export async function sendChatCompletion(messages: AgentMessage[]): Promise<Agen
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: credential.model,
+        model: credential.model || DEFAULT_MODEL,
         messages: messages.map(toWireMessage),
         tools: AGENT_TOOLS.map((tool) => ({
           type: 'function',

@@ -29,52 +29,59 @@ interface ToolEntry {
 
 // eslint-disable-next-line no-empty-pattern
 export function HomeMain({}: ToolComponentProps<Props>) {
-  const { openTab } = useToolTabs();
+  const { tabs, selectTab, openTab } = useToolTabs();
   const [query, setQuery] = useState('');
   const [cloudflareDialogOpen, setCloudflareDialogOpen] = useState(false);
   const { isLoading: cloudflareLoading, configured: cloudflareConfigured } =
     useCloudflareSettings();
 
-  const tools: ToolEntry[] = useMemo(
-    () => [
+  const tools: ToolEntry[] = useMemo(() => {
+    const openOrSelect = (type: string, create: () => void) => {
+      const existing = tabs.find((tab) => tab.type === type);
+      if (existing) selectTab(existing.id);
+      else create();
+    };
+
+    return [
       {
         id: 'file-explorer',
         name: 'File Explorer',
         description: 'Browse files on your computer.',
         icon: <FolderOpen size={20} />,
-        onClick: () => openTab('file-explorer', {})
+        onClick: () => openOrSelect('file-explorer', () => openTab('file-explorer', {}))
       },
       {
         id: 'kuberneter',
         name: 'Kubernetes',
         description: 'Connect to a cluster and manage workloads.',
         icon: <img src={kuberneterIcon} className="size-5" alt="" />,
-        onClick: () => {
-          const instanceId = `kuberneter-${Date.now()}`;
-          useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
-          openTab('kuberneter', { instanceId });
-        }
+        onClick: () =>
+          openOrSelect('kuberneter', () => {
+            const instanceId = `kuberneter-${Date.now()}`;
+            useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
+            openTab('kuberneter', { instanceId });
+          })
       },
       {
         id: 'http-client',
         name: 'HTTP Client',
         description: 'Compose and send API requests.',
         icon: <GlobeIcon size={20} />,
-        onClick: () => openTab('http-client', {})
+        onClick: () => openOrSelect('http-client', () => openTab('http-client', {}))
       },
       {
         id: 'screen-recorder',
         name: 'Screen Recorder',
         description: 'Record and export your screen.',
         icon: <VideoIcon size={20} />,
-        onClick: () => openTab('screen-recorder', {})
+        onClick: () => openOrSelect('screen-recorder', () => openTab('screen-recorder', {}))
       },
       {
         id: 'screen-capture',
         name: 'Screen Capture',
         description: 'Capture a still image from your screen.',
         icon: <CameraIcon size={20} />,
-        onClick: () => openTab('screen-capture', {})
+        onClick: () => openOrSelect('screen-capture', () => openTab('screen-capture', {}))
       },
       ...(import.meta.env.DEV
         ? [
@@ -83,13 +90,12 @@ export function HomeMain({}: ToolComponentProps<Props>) {
               name: 'Storybook',
               description: 'Browse shared UI components and mockup pages.',
               icon: <SwatchBookIcon size={20} />,
-              onClick: () => openTab('storybook', {})
+              onClick: () => openOrSelect('storybook', () => openTab('storybook', {}))
             }
           ]
         : [])
-    ],
-    [openTab]
-  );
+    ];
+  }, [tabs, selectTab, openTab]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

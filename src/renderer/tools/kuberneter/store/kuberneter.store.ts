@@ -57,6 +57,10 @@ interface KuberneterState {
   kuberneterKubeconfigs: string[];
   kuberneterRecentConnections: RecentConnection[];
   kuberneterTabDrawers: Record<string, DrawerState>;
+  kuberneterInstanceSidebarOpen: Record<string, boolean>;
+
+  toggleKuberneterInstanceSidebar: (instanceId: string) => void;
+  setKuberneterInstanceSidebarOpen: (instanceId: string, isOpen: boolean) => void;
 
   /** Bottom panel tabs state. */
   kuberneterBottomPanelTabs: KuberneterBottomPanelTab[];
@@ -108,7 +112,24 @@ export const useKuberneterStore = create<KuberneterState>()(
       kuberneterInstanceRefreshInterval: {},
       kuberneterMetricsConfig: {},
       kuberneterKubeconfigs: [],
+      kuberneterRecentConnections: [],
       kuberneterTabDrawers: {},
+      kuberneterInstanceSidebarOpen: {},
+
+      toggleKuberneterInstanceSidebar: (instanceId) =>
+        set((state) => ({
+          kuberneterInstanceSidebarOpen: {
+            ...state.kuberneterInstanceSidebarOpen,
+            [instanceId]: !(state.kuberneterInstanceSidebarOpen[instanceId] ?? true)
+          }
+        })),
+      setKuberneterInstanceSidebarOpen: (instanceId, isOpen) =>
+        set((state) => ({
+          kuberneterInstanceSidebarOpen: {
+            ...state.kuberneterInstanceSidebarOpen,
+            [instanceId]: isOpen
+          }
+        })),
 
       kuberneterBottomPanelTabs: [{ id: 'term-default', type: 'terminal', title: 'Terminal' }],
       kuberneterActiveBottomPanelTabId: 'term-default',
@@ -318,7 +339,6 @@ export const useKuberneterStore = create<KuberneterState>()(
             }
           };
         }),
-      kuberneterRecentConnections: [],
 
       setKuberneterInstanceCluster: (instanceId, cluster) =>
         set((state) => ({

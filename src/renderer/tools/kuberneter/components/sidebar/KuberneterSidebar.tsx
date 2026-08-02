@@ -39,7 +39,7 @@ function highlightText(text: string, search: string): React.ReactNode {
     <>
       {parts.map((part, i) =>
         regex.test(part) ? (
-          <mark key={i} className="bg-accent/20 text-accent font-semibold px-0.5 rounded-sm">
+          <mark key={i} className="bg-accent/20 text-inherit px-0.5 rounded-sm">
             {part}
           </mark>
         ) : (
@@ -454,7 +454,6 @@ export const KuberneterSidebar: React.FC = () => {
 
             if (!hasSubs) {
               const isActive = activeResource === cat.id;
-              const isHighlighted = isMatch(cat.label);
               return (
                 <button
                   key={cat.id}
@@ -464,9 +463,7 @@ export const KuberneterSidebar: React.FC = () => {
                   className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
                     isActive
                       ? 'bg-border-dark text-white font-semibold'
-                      : isHighlighted
-                        ? 'text-accent font-semibold bg-accent/5'
-                        : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
+                      : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
                   }`}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -477,7 +474,6 @@ export const KuberneterSidebar: React.FC = () => {
 
             // Category with Sub-items (collapsible)
             const isSubActive = cat.subItems?.some((sub) => activeResource === sub.id);
-            const isParentHighlighted = isMatch(cat.label);
 
             return (
               <div key={cat.id} className="flex flex-col min-w-0">
@@ -485,11 +481,7 @@ export const KuberneterSidebar: React.FC = () => {
                   onClick={() => toggleGroup(cat.id)}
                   title={cat.label}
                   className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
-                    isSubActive
-                      ? 'text-white font-medium'
-                      : isParentHighlighted
-                        ? 'text-accent font-semibold bg-accent/5'
-                        : 'text-zinc-400 hover:text-zinc-200'
+                    isSubActive ? 'text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 truncate">
@@ -507,7 +499,6 @@ export const KuberneterSidebar: React.FC = () => {
                   <div className="flex flex-col pl-4 border-l border-border-dark/40 ml-4 mt-0.5 gap-0.5 min-w-0">
                     {matchingSubs.map((sub) => {
                       const isActive = activeResource === sub.id;
-                      const isSubHighlighted = isMatch(sub.label);
                       return (
                         <button
                           key={sub.id}
@@ -517,9 +508,7 @@ export const KuberneterSidebar: React.FC = () => {
                           className={`w-full py-1 px-2 rounded text-[11px] text-left cursor-pointer transition-colors min-w-0 truncate ${
                             isActive
                               ? 'bg-border-dark/60 text-accent font-semibold'
-                              : isSubHighlighted
-                                ? 'text-accent font-semibold bg-accent/5'
-                                : 'text-zinc-500 hover:text-zinc-300'
+                              : 'text-zinc-500 hover:text-zinc-300'
                           }`}
                         >
                           <span className="truncate block">

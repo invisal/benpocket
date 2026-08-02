@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   Package,
   Boxes,
-  Server
+  Server,
+  Blocks
 } from 'lucide-react';
 
 interface SidebarCategory {
@@ -92,6 +93,57 @@ export const KuberneterSidebar: React.FC = () => {
     fetchNamespaces();
   }, [cluster, configPath, activeInstanceId]);
 
+  const [crdSubItems, setCrdSubItems] = useState<Array<{ id: string; label: string }>>([]);
+
+  useEffect(() => {
+    if (!cluster || !activeInstanceId) return;
+
+    const fetchCrds = async () => {
+      try {
+        const configPathArg = configPath === 'default' ? undefined : configPath;
+        const res = await window.kuberneter.getResources(
+          configPathArg,
+          cluster,
+          'customresourcedefinitions'
+        );
+        if (res && Array.isArray(res.items)) {
+          const items: Array<{ id: string; label: string }> = [];
+          interface CrdSpecItem {
+            spec?: {
+              group?: string;
+              names?: { kind?: string; plural?: string };
+              scope?: string;
+              version?: string;
+              versions?: Array<{ name?: string; storage?: boolean; served?: boolean }>;
+            };
+          }
+          for (const item of res.items as CrdSpecItem[]) {
+            const group = item.spec?.group;
+            const names = item.spec?.names;
+            const scope = item.spec?.scope || 'Namespaced';
+            const versions = item.spec?.versions || [];
+            const storageVersion =
+              versions.find((v) => v.storage || v.served)?.name || item.spec?.version || 'v1';
+
+            if (group && names?.plural && names?.kind) {
+              const id = `crd--${group}--${storageVersion}--${names.plural}--${scope === 'Cluster'}`;
+              items.push({
+                id,
+                label: `${names.kind} (${group})`
+              });
+            }
+          }
+          items.sort((a, b) => a.label.localeCompare(b.label));
+          setCrdSubItems(items);
+        }
+      } catch (err) {
+        console.error('Failed to load CRDs in sidebar:', err);
+      }
+    };
+
+    fetchCrds();
+  }, [cluster, configPath, activeInstanceId]);
+
   const [searchTerm, setSearchTerm] = useState('');
 
   // Track which groups are expanded
@@ -162,7 +214,9 @@ export const KuberneterSidebar: React.FC = () => {
   };
 
   // Derive expanded groups: merge user-toggled state with the group that contains the active resource
-  const activeGroupId = resourceGroupMap[activeResource];
+  const activeGroupId = activeResource.startsWith('crd--')
+    ? 'crds'
+    : resourceGroupMap[activeResource];
   const effectiveExpandedGroups = activeGroupId
     ? { ...expandedGroups, [activeGroupId]: true }
     : expandedGroups;
@@ -266,6 +320,12 @@ export const KuberneterSidebar: React.FC = () => {
         { id: 'clusterrolebindings', label: 'Cluster Role Bindings' },
         { id: 'bindings', label: 'Role Bindings' }
       ]
+    },
+    {
+      id: 'crds',
+      label: 'Custom Resources',
+      icon: Blocks,
+      subItems: crdSubItems
     },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];

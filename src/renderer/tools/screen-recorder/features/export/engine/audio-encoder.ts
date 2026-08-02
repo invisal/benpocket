@@ -219,7 +219,14 @@ export class AudioProcessor {
       return startTimestampUs;
     }
 
-    return this.reencodeAndMux(decodedFrames, muxer, exportCodec, startSec, startTimestampUs);
+    return this.reencodeAndMux(
+      decodedFrames,
+      muxer,
+      exportCodec,
+      startSec,
+      startTimestampUs,
+      segment.audioVolume
+    );
   }
 
   /**
@@ -239,7 +246,8 @@ export class AudioProcessor {
     const durationSec = (segment.range.endMs - segment.range.startMs) / 1000 / segment.speed;
     if (durationSec <= 0) return startTimestampUs;
     const silence = this.synthesizeSilence(durationSec, exportCodec);
-    return this.reencodeAndMux([silence], muxer, exportCodec, 0, startTimestampUs);
+    // Volume is irrelevant here -- silence scaled by anything is still silence.
+    return this.reencodeAndMux([silence], muxer, exportCodec, 0, startTimestampUs, 1);
   }
 
   private synthesizeSilence(durationSec: number, exportCodec: ExportAudioCodec): AudioData {
@@ -295,7 +303,11 @@ export class AudioProcessor {
           speed: 1,
           cursorHidden: false,
           webcamHidden: false,
-          audioMuted: false
+          audioMuted: false,
+          // The pitch-preserving capture already played at `segment.speed`,
+          // so `speed` above is reset to 1 for this re-decode -- but volume
+          // wasn't baked into the capture, so it still needs to carry over.
+          audioVolume: segment.audioVolume
         },
         exportCodec,
         startTimestampUs
@@ -506,7 +518,8 @@ export class AudioProcessor {
     muxer: VideoMuxer,
     exportCodec: ExportAudioCodec,
     segmentStartSec: number,
-    startTimestampUs: number
+    startTimestampUs: number,
+    volume: number
   ): Promise<number> {
     const encodedChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[] = [];
     const encoder = new AudioEncoder({
@@ -538,7 +551,8 @@ export class AudioProcessor {
       const adjusted = this.cloneWithTimestamp(
         audioData,
         outputTimestampUs,
-        exportCodec.numberOfChannels
+        exportCodec.numberOfChannels,
+        volume
       );
       audioData.close();
       encoder.encode(adjusted);
@@ -571,43 +585,53 @@ export class AudioProcessor {
     return maxOutputTimestampUs;
   }
 
+  /**
+   * `volume === 1` and matching channel counts is the common case (no
+   * per-clip gain, no downmix) -- a raw byte copy, same as before volume
+   * existed. Anything else (gain applied, and/or a channel count change)
+   * needs real sample access, so it goes through `rescaleAndTimestamp`
+   * instead.
+   */
   private cloneWithTimestamp(
     src: AudioData,
     newTimestamp: number,
-    targetChannels: number
+    targetChannels: number,
+    volume: number
   ): AudioData {
-    if (targetChannels !== src.numberOfChannels) {
-      return this.downmixWithTimestamp(src, newTimestamp, targetChannels);
-    }
-    if (!src.format) throw new Error('AudioData format is required for cloning');
-    const isPlanar = src.format.includes('planar');
-    const numPlanes = isPlanar ? src.numberOfChannels : 1;
+    if (targetChannels === src.numberOfChannels && volume === 1) {
+      if (!src.format) throw new Error('AudioData format is required for cloning');
+      const isPlanar = src.format.includes('planar');
+      const numPlanes = isPlanar ? src.numberOfChannels : 1;
 
-    let totalSize = 0;
-    for (let planeIndex = 0; planeIndex < numPlanes; planeIndex++) {
-      totalSize += src.allocationSize({ planeIndex });
+      let totalSize = 0;
+      for (let planeIndex = 0; planeIndex < numPlanes; planeIndex++) {
+        totalSize += src.allocationSize({ planeIndex });
+      }
+      const buffer = new ArrayBuffer(totalSize);
+      let offset = 0;
+      for (let planeIndex = 0; planeIndex < numPlanes; planeIndex++) {
+        const planeSize = src.allocationSize({ planeIndex });
+        src.copyTo(new Uint8Array(buffer, offset, planeSize), { planeIndex });
+        offset += planeSize;
+      }
+      return new AudioData({
+        format: src.format,
+        sampleRate: src.sampleRate,
+        numberOfFrames: src.numberOfFrames,
+        numberOfChannels: src.numberOfChannels,
+        timestamp: newTimestamp,
+        data: buffer
+      });
     }
-    const buffer = new ArrayBuffer(totalSize);
-    let offset = 0;
-    for (let planeIndex = 0; planeIndex < numPlanes; planeIndex++) {
-      const planeSize = src.allocationSize({ planeIndex });
-      src.copyTo(new Uint8Array(buffer, offset, planeSize), { planeIndex });
-      offset += planeSize;
-    }
-    return new AudioData({
-      format: src.format,
-      sampleRate: src.sampleRate,
-      numberOfFrames: src.numberOfFrames,
-      numberOfChannels: src.numberOfChannels,
-      timestamp: newTimestamp,
-      data: buffer
-    });
+    return this.rescaleAndTimestamp(src, newTimestamp, targetChannels, volume);
   }
 
-  private downmixWithTimestamp(
+  /** Applies `volume` gain and/or a channel-count downmix, whichever apply -- both need the same per-sample float access, so they're one pass instead of two. */
+  private rescaleAndTimestamp(
     src: AudioData,
     newTimestamp: number,
-    targetChannels: number
+    targetChannels: number,
+    volume: number
   ): AudioData {
     const sourceChannels = src.numberOfChannels;
     const frameCount = src.numberOfFrames;
@@ -618,7 +642,15 @@ export class AudioProcessor {
     for (let channel = 0; channel < sourceChannels; channel++) {
       src.copyTo(sourcePlanes[channel], { format: 'f32-planar', planeIndex: channel });
     }
-    const output = downmixPlanarChannels(sourcePlanes, targetChannels);
+    if (volume !== 1) {
+      for (const plane of sourcePlanes) {
+        for (let i = 0; i < plane.length; i++) plane[i] *= volume;
+      }
+    }
+    const output =
+      targetChannels === sourceChannels
+        ? concatPlanar(sourcePlanes)
+        : downmixPlanarChannels(sourcePlanes, targetChannels);
     return new AudioData({
       format: 'f32-planar',
       sampleRate: src.sampleRate,
@@ -638,6 +670,14 @@ function averageChannels(sourcePlanes: Float32Array[], frame: number): number {
   let mixed = 0;
   for (const plane of sourcePlanes) mixed += plane[frame] ?? 0;
   return mixed / Math.max(1, sourcePlanes.length);
+}
+
+/** Concatenates already-same-channel-count planes into one flat `f32-planar` buffer -- the no-downmix-needed counterpart to `downmixPlanarChannels`, for when only gain (not channel count) changed. */
+function concatPlanar(sourcePlanes: Float32Array[]): Float32Array {
+  const frameCount = sourcePlanes[0]?.length ?? 0;
+  const output = new Float32Array(frameCount * sourcePlanes.length);
+  sourcePlanes.forEach((plane, i) => output.set(plane, i * frameCount));
+  return output;
 }
 
 /** Mono/stereo downmix -- ported verbatim from the reference (correct multi-channel-order weighting is fiddly to get right and not worth re-deriving). */

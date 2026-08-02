@@ -266,11 +266,14 @@ export function useDualVideoPlayback({
         const activeSegment = segs.find((s) => s.id === activeSegmentIdRef.current);
         const targetRate = activeSegment?.speed ?? 1;
         if (active.playbackRate !== targetRate) active.playbackRate = targetRate;
-        // Runs every tick (not just at swap points) so a mute toggled via the
-        // clip's own context menu while it's already the one playing takes
-        // effect immediately, not just on the next cut boundary.
+        // Runs every tick (not just at swap points) so a mute/volume change
+        // via the clip's own context menu while it's already the one
+        // playing takes effect immediately, not just on the next cut
+        // boundary.
         const shouldMute = Boolean(activeSegment?.audioMuted);
         if (active.muted !== shouldMute) active.muted = shouldMute;
+        const targetVolume = activeSegment?.audioVolume ?? 1;
+        if (active.volume !== targetVolume) active.volume = targetVolume;
 
         const webcamVideo = webcamVideoRef.current;
         if (webcamVideo && webcamPreviewUrl) {

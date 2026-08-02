@@ -5,7 +5,7 @@ export type ExportFormat = 'mp4' | 'webm' | 'mov' | 'gif';
 export type ExportCodec = 'h264' | 'h265' | 'av1';
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 
-/** One kept clip: its source range, speed, cursor/webcam visibility, and audio mute (all per-clip, not global). */
+/** One kept clip: its source range, speed, cursor/webcam visibility, and audio mute/volume (all per-clip, not global). */
 export interface ExportSegment {
   range: TimeRange;
   speed: ClipSpeed;
@@ -13,6 +13,8 @@ export interface ExportSegment {
   webcamHidden: boolean;
   /** When true, this clip's own stretch of the output audio track is silence -- see `AudioProcessor.processMutedSegment`. */
   audioMuted: boolean;
+  /** Gain applied to this clip's own audio, 0.1-1 -- see `AudioProcessor.reencodeAndMux`. Irrelevant when `audioMuted`. */
+  audioVolume: number;
 }
 
 export interface ExportOptions {

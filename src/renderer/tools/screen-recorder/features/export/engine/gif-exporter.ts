@@ -118,7 +118,8 @@ export async function exportGif(
             speed: segment.speed,
             cursorHidden: false,
             webcamHidden: false,
-            audioMuted: false
+            audioMuted: false,
+            audioVolume: 1
           };
         })
         .filter((segment) => segment.range.endMs > segment.range.startMs);

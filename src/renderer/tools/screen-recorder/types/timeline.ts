@@ -6,6 +6,9 @@ export interface TimeRange {
 export type ClipSpeed = 0.5 | 1 | 1.25 | 1.5 | 2;
 export const CLIP_SPEED_OPTIONS: ClipSpeed[] = [0.5, 1, 1.25, 1.5, 2];
 
+/** 10% steps, matching the "Set volume" context menu's radio options. */
+export const AUDIO_VOLUME_OPTIONS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] as const;
+
 /**
  * Normalized (0-1) crop rect relative to the *source recording's* native
  * pixel dimensions -- not the output/canvas dimensions, which may differ
@@ -58,6 +61,8 @@ export interface TimelineSegment {
   webcamHidden: boolean;
   /** Silences this clip's own duration, in both preview and export. Set via the timeline's per-clip "Mute clip" context menu item -- there's no separate global mute; the export just skips audio entirely if every kept clip ends up muted (see `useExportAction.ts`). */
   audioMuted: boolean;
+  /** Gain applied to this clip's own audio, 0.1-1 (10%-100%) -- independent of `audioMuted`, which is a hard silence rather than a quiet level. Set via the timeline's per-clip "Set volume" context menu item. */
+  audioVolume: number;
 }
 
 export interface TimelineTrack {

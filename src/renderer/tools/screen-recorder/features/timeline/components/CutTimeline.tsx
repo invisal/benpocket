@@ -19,7 +19,11 @@ import {
   VolumeX,
   ZoomIn
 } from 'lucide-react';
-import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
+import {
+  CLIP_SPEED_OPTIONS,
+  AUDIO_VOLUME_OPTIONS,
+  type TimelineSegment
+} from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { useAppStore } from '../../../app/app-store';
@@ -196,6 +200,7 @@ export function CutTimeline(): JSX.Element {
   const isZoomToolActive = useTimelineStore((s) => s.isZoomToolActive);
   const setZoomToolActive = useTimelineStore((s) => s.setZoomToolActive);
   const setSegmentAudioMuted = useTimelineStore((s) => s.setSegmentAudioMuted);
+  const setSegmentAudioVolume = useTimelineStore((s) => s.setSegmentAudioVolume);
   const canUndo = useHistoryStore((s) => s.past.length > 0);
   const canRedo = useHistoryStore((s) => s.future.length > 0);
   const undo = useHistoryStore((s) => s.undo);
@@ -910,6 +915,29 @@ export function CutTimeline(): JSX.Element {
                               </ContextMenu.RadioGroup>
                             </ContextMenu.Content>
                           </ContextMenu.SubmenuRoot>
+                          {hasAudioTrack && (
+                            <ContextMenu.SubmenuRoot>
+                              <ContextMenu.SubmenuTrigger>
+                                <Volume2 size={13} className="shrink-0" />
+                                Set volume
+                              </ContextMenu.SubmenuTrigger>
+                              <ContextMenu.Content>
+                                <ContextMenu.RadioGroup
+                                  value={segment.audioVolume}
+                                  onValueChange={(value) =>
+                                    setSegmentAudioVolume(segment.id, value as number)
+                                  }
+                                >
+                                  {AUDIO_VOLUME_OPTIONS.map((volume) => (
+                                    <ContextMenu.RadioItem key={volume} value={volume}>
+                                      {Math.round(volume * 100)}%
+                                    </ContextMenu.RadioItem>
+                                  ))}
+                                </ContextMenu.RadioGroup>
+                              </ContextMenu.Content>
+                            </ContextMenu.SubmenuRoot>
+                          )}
+                          <ContextMenu.Separator />
                           <ContextMenu.Item
                             onClick={() =>
                               setSegmentCursorHidden(segment.id, !segment.cursorHidden)
@@ -954,6 +982,7 @@ export function CutTimeline(): JSX.Element {
                               </span>
                             </ContextMenu.Item>
                           )}
+
                           <ContextMenu.Separator />
                           <ContextMenu.Item
                             onClick={() => resetSegmentTrim(segment.id)}

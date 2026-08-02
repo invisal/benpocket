@@ -105,7 +105,8 @@ export function useExportAction(): UseExportActionResult {
             speed: s.speed,
             cursorHidden: s.cursorHidden,
             webcamHidden: s.webcamHidden,
-            audioMuted: s.audioMuted
+            audioMuted: s.audioMuted,
+            audioVolume: s.audioVolume
           })),
           project: buildExportProject(sourceVideoPath, durationMs)
         },

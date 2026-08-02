@@ -147,7 +147,9 @@ interface TimelineStoreState {
   setSegmentWebcamHidden: (segmentId: string, webcamHidden: boolean) => void;
   /** Audio mute is per-clip -- there's no separate global mute toggle. */
   setSegmentAudioMuted: (segmentId: string, audioMuted: boolean) => void;
-  /** Kept clips (range + speed + cursor/webcam visibility + audio mute) in output order -- this is exactly ExportOptions.segments. */
+  /** Volume (0.1-1) is per-clip: each segment can play back at a different level. */
+  setSegmentAudioVolume: (segmentId: string, audioVolume: number) => void;
+  /** Kept clips (range + speed + cursor/webcam visibility + audio mute/volume) in output order -- this is exactly ExportOptions.segments. */
   getExportSegments: () => ExportSegment[];
   getOutputDurationMs: () => number;
 }
@@ -248,7 +250,8 @@ export const useTimelineStore = create<TimelineStoreState>(
           split: false,
           cursorHidden: false,
           webcamHidden: false,
-          audioMuted: false
+          audioMuted: false,
+          audioVolume: 1
         };
         set({
           sourceDurationMs: durationMs,
@@ -427,13 +430,22 @@ export const useTimelineStore = create<TimelineStoreState>(
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
       },
 
+      setSegmentAudioVolume: (segmentId, audioVolume) => {
+        const track = primaryTrack(get().tracks);
+        const segments = track.segments.map((segment) =>
+          segment.id === segmentId ? { ...segment, audioVolume } : segment
+        );
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
       getExportSegments: () =>
         primaryTrack(get().tracks).segments.map((s) => ({
           range: s.range,
           speed: s.speed,
           cursorHidden: s.cursorHidden,
           webcamHidden: s.webcamHidden,
-          audioMuted: s.audioMuted
+          audioMuted: s.audioMuted,
+          audioVolume: s.audioVolume
         })),
 
       getOutputDurationMs: () =>

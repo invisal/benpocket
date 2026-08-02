@@ -1,23 +1,11 @@
 import type React from 'react';
-import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout.store';
 import { Monitor, Send, Video } from 'lucide-react';
 import { Button } from '../ui/Button';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
-import type { AppPrefs } from '@shared/app-prefs';
 
 export const HomeTab: React.FC = () => {
   const addActivityInstance = useLayoutStore((s) => s.addActivityInstance);
-  const [prefs, setPrefs] = useState<AppPrefs | null>(null);
-
-  useEffect(() => {
-    void window.api.appPrefs.get().then(setPrefs);
-  }, []);
-
-  const updatePref = async (patch: Partial<AppPrefs>): Promise<void> => {
-    const next = await window.api.appPrefs.set(patch);
-    setPrefs(next);
-  };
 
   const apps = [
     {
@@ -90,40 +78,6 @@ export const HomeTab: React.FC = () => {
           );
         })}
       </div>
-
-      {prefs && (
-        <div className="mt-12 max-w-md space-y-3">
-          <h2 className="font-medium text-sm">Preferences</h2>
-          <label className="flex items-start gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={prefs.launchAtLogin}
-              onChange={(e) => void updatePref({ launchAtLogin: e.target.checked })}
-            />
-            <span>
-              <span className="font-medium">Launch at login</span>
-              <span className="block text-gray-500">
-                Start benpocket automatically when you sign in to your computer.
-              </span>
-            </span>
-          </label>
-          <label className="flex items-start gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={prefs.startMinimizedToTray}
-              onChange={(e) => void updatePref({ startMinimizedToTray: e.target.checked })}
-            />
-            <span>
-              <span className="font-medium">Start minimized to tray</span>
-              <span className="block text-gray-500">
-                Launch into the system tray without showing the main window.
-              </span>
-            </span>
-          </label>
-        </div>
-      )}
 
       <div className="flex gap-2 mt-12">
         <Button variant="primary">Primary</Button>

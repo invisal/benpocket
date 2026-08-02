@@ -26,7 +26,7 @@ import { killActiveNativeRecording } from './screen-recorder/capture/native/reco
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
 import { registerAppPrefsHandlers } from './ipc/app-prefs-handlers';
-import { applyLoginItemSettings, getAppPrefs } from './store/app-prefs-store';
+import { getAppPrefs } from './store/app-prefs-store';
 
 /** When true, window `close` is allowed to destroy the window (Quit path). */
 let isQuitting = false;
@@ -111,9 +111,6 @@ app.whenReady().then(() => {
   applyContentSecurityPolicy();
   // Screen Recorder: macOS 15+ ScreenCaptureKit system picker. No-op elsewhere.
   registerDisplayMediaHandler();
-
-  // Re-apply stored login-item prefs (e.g. after an OS reset of the entry).
-  applyLoginItemSettings();
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

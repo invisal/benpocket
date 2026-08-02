@@ -80,6 +80,68 @@ describe('appendPatch / loadSnapshot', () => {
   });
 });
 
+describe('loadSnapshot auto-compacting unpushed patches', () => {
+  it('folds more than 5 unpushed patches into one row, preserving content', async () => {
+    const store = await freshStore();
+    const patches = makeSequentialPatches([1, 2, 3, 4, 5, 6]);
+    for (const patch of patches) await store.appendPatch('doc', patch);
+
+    expect(store.listUnpushedPatches()).toHaveLength(6);
+
+    const snapshot = await store.loadSnapshot('doc');
+    const replay = new Doc();
+    applyUpdate(replay, snapshot!);
+    expect(replay.getMap('root').get('counter')).toBe(6);
+
+    expect(store.listUnpushedPatches()).toHaveLength(1);
+  });
+
+  it('leaves 5 or fewer unpushed patches alone', async () => {
+    const store = await freshStore();
+    const patches = makeSequentialPatches([1, 2, 3, 4, 5]);
+    for (const patch of patches) await store.appendPatch('doc', patch);
+
+    await store.loadSnapshot('doc');
+
+    expect(store.listUnpushedPatches()).toHaveLength(5);
+  });
+
+  it('never folds confirmed (remote_seq IS NOT NULL) patches', async () => {
+    const store = await freshStore();
+    const patches = makeSequentialPatches([1, 2, 3, 4, 5, 6]);
+    for (const patch of patches) await store.appendPatch('doc', patch);
+    const pending = store.listUnpushedPatches();
+    // Confirm the first 3, leave the other 3 (still > threshold once folded) unpushed.
+    store.markPushed(
+      pending.slice(0, 3).map((patch, index) => ({ localId: patch.localId, remoteSeq: index + 1 }))
+    );
+
+    await store.loadSnapshot('doc');
+
+    // The 3 confirmed rows are untouched -- still 3 separate rows, not folded
+    // into the unpushed group's single row.
+    expect(store.listUnpushedPatches()).toHaveLength(3);
+    const [candidate] = store.listCompactionCandidates();
+    expect(candidate.upToSeq).toBe(3);
+  });
+
+  it('the folded row still counts toward listUnpushedPatches/push()', async () => {
+    const store = await freshStore();
+    const patches = makeSequentialPatches([1, 2, 3, 4, 5, 6]);
+    for (const patch of patches) await store.appendPatch('doc', patch);
+
+    await store.loadSnapshot('doc');
+    const [merged] = store.listUnpushedPatches();
+    store.markPushed([{ localId: merged.localId, remoteSeq: 1 }]);
+
+    expect(store.listUnpushedPatches()).toHaveLength(0);
+    const snapshot = await store.loadSnapshot('doc');
+    const replay = new Doc();
+    applyUpdate(replay, snapshot!);
+    expect(replay.getMap('root').get('counter')).toBe(6);
+  });
+});
+
 describe('open', () => {
   it('is idempotent -- migrations only run once and existing data survives', async () => {
     const store = createOfflineStore(randomUUID(), ':memory:');

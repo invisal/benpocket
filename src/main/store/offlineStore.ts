@@ -117,6 +117,35 @@ function applyCompactStatements(
   ).run(key, upToSeq);
 }
 
+// Past this many unpushed patches piled up for one key, loadSnapshot's
+// mergeUpdates on every load starts doing repeat work over rows that are
+// still just sitting there unsynced -- fold them down to one row instead.
+const UNPUSHED_COMPACT_THRESHOLD = 5;
+
+/**
+ * Replaces `rows` (all unpushed, i.e. remote_seq IS NULL) with a single row
+ * holding their merged content. Purely local bookkeeping -- unlike
+ * applyCompactStatements, there's no server-side baseline to agree on since
+ * these patches were never pushed, so this never touches sync_snapshot and
+ * doesn't need a SyncProvider round trip. The merged row stays unpushed
+ * (remote_seq NULL), so it's still picked up by listUnpushedPatches/push()
+ * same as before, just as one row instead of many.
+ */
+function compactUnpushedStatements(
+  db: DatabaseSync,
+  key: string,
+  rows: { id: number; patch: Uint8Array }[]
+): void {
+  const merged = Buffer.from(mergeUpdates(rows.map((row) => decrypt(row.patch))));
+  const del = db.prepare('DELETE FROM patches WHERE id = ?');
+  for (const row of rows) del.run(row.id);
+  db.prepare('INSERT INTO patches (store_key, patch, created_at) VALUES (?, ?, ?)').run(
+    key,
+    encrypt(merged),
+    Date.now()
+  );
+}
+
 /**
  * `dbPath` is an already-resolved absolute path (or `:memory:`) -- resolving
  * userData/profiles/<id>.db is ProfileManager's job, not this one's, so this
@@ -162,15 +191,27 @@ export function createOfflineStore(profileId: ProfileId, dbPath: string): Offlin
       // snapshot's baseline_seq (applyCompactStatements deletes the rest) --
       // so snapshot + remaining patches always covers the full history.
       const rows = database
-        .prepare('SELECT patch FROM patches WHERE store_key = ? ORDER BY id')
-        .all(key) as {
-        patch: Uint8Array;
-      }[];
+        .prepare('SELECT id, patch, remote_seq FROM patches WHERE store_key = ? ORDER BY id')
+        .all(key) as { id: number; patch: Uint8Array; remote_seq: number | null }[];
       if (!snapshot && rows.length === 0) return null;
 
       const decrypted = rows.map((row) => decrypt(row.patch));
       if (snapshot) decrypted.unshift(decrypt(snapshot.baseline));
-      return decrypted.length === 1 ? decrypted[0] : Buffer.from(mergeUpdates(decrypted));
+      const merged = decrypted.length === 1 ? decrypted[0] : Buffer.from(mergeUpdates(decrypted));
+
+      const unpushed = rows.filter((row) => row.remote_seq === null);
+      if (unpushed.length > UNPUSHED_COMPACT_THRESHOLD) {
+        database.exec('BEGIN');
+        try {
+          compactUnpushedStatements(database, key, unpushed);
+          database.exec('COMMIT');
+        } catch (err) {
+          database.exec('ROLLBACK');
+          throw err;
+        }
+      }
+
+      return merged;
     },
 
     getSetting(key: string): string | undefined {

@@ -127,6 +127,14 @@ export interface OfflineStore {
 
   // Encrypts internally via safeStorage before writing; decrypts on read.
   appendPatch(key: string, patch: Buffer): Promise<void>;
+
+  /** Merges `key`'s baseline (if any) + every patch into one plaintext
+   * snapshot. Side effect: when more than 5 unpushed (remote_seq IS NULL)
+   * patches exist for `key`, they're folded into a single unpushed row first
+   * -- purely local, no SyncProvider round trip, since nothing server-side
+   * needs to agree on it yet (contrast with applyCompact, which only ever
+   * touches remote_seq-confirmed rows because other devices need to learn
+   * about that baseline too). */
   loadSnapshot(key: string): Promise<Buffer | null>;
 
   // Generic, safeStorage-encrypted per-value KV. OfflineStore doesn't know or

@@ -4,6 +4,7 @@ import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useProfilesStore } from '../../store/profiles.store';
+import { useSyncStore } from '../../store/sync.store';
 
 const API_BASE_URL = 'https://benpocket.com';
 
@@ -27,10 +28,11 @@ interface GithubLoginDialogProps {
 
 /**
  * GitHub PKCE login -> master-password create-or-unlock -> creates a
- * `kind: 'remote'` profile. See src/main/store/PLAN3.md for the full flow;
- * RemoteSyncProvider itself is still an unimplemented stub, so the resulting
- * profile's secrets aren't persisted for sync yet -- a known, accepted gap
- * until that lands.
+ * `kind: 'remote'` profile and immediately syncs it, so an existing
+ * account's data (the whole point of "enter your master password to unlock
+ * your synced data" on a second device) shows up right away instead of
+ * staying empty until the user notices and clicks "Sync now". See
+ * src/main/store/PLAN3.md for the full login flow.
  */
 export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOpenChange }) => {
   const createProfile = useProfilesStore((state) => state.createProfile);
@@ -163,6 +165,9 @@ export const GithubLoginDialog: React.FC<GithubLoginDialogProps> = ({ open, onOp
       return;
     }
     close();
+    // Don't block dialog-close on the network round trip -- SyncStatus's
+    // popover already surfaces isSyncing/error state for this same sync().
+    void useSyncStore.getState().sync();
   }
 
   return (

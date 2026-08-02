@@ -56,6 +56,8 @@ export interface TimelineSegment {
   cursorHidden: boolean;
   /** Hides the webcam PiP overlay (in both preview and export) for this clip's own duration -- independent of the global `WebcamOptions.enabled` toggle, which hides it everywhere. Set via the timeline's per-clip "Hide webcam" context menu item. */
   webcamHidden: boolean;
+  /** Silences this clip's own duration, in both preview and export. Set via the timeline's per-clip "Mute clip" context menu item -- there's no separate global mute; the export just skips audio entirely if every kept clip ends up muted (see `useExportAction.ts`). */
+  audioMuted: boolean;
 }
 
 export interface TimelineTrack {

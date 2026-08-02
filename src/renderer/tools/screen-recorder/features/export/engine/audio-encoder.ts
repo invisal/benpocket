@@ -119,7 +119,14 @@ export class AudioProcessor {
     try {
       for (const segment of segments) {
         if (this.cancelled) return;
-        if (segment.speed === 1) {
+        if (segment.audioMuted) {
+          outputTimestampUs = await this.processMutedSegment(
+            segment,
+            muxer,
+            exportCodec,
+            outputTimestampUs
+          );
+        } else if (segment.speed === 1) {
           if (!sourceDemuxer) {
             sourceDemuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
             await sourceDemuxer.load(sourceFile);
@@ -216,6 +223,39 @@ export class AudioProcessor {
   }
 
   /**
+   * A muted clip still needs to occupy its full duration in the output audio
+   * track (silence, not a gap) so later segments' timestamps stay correct --
+   * synthesizes a single zeroed `AudioData` spanning the clip's real-time
+   * output duration (source duration / speed, matching how a speed-changed
+   * clip's *actual* audio would come out shorter/longer) and feeds it through
+   * the same re-encode/mux path as decoded audio.
+   */
+  private async processMutedSegment(
+    segment: ExportSegment,
+    muxer: VideoMuxer,
+    exportCodec: ExportAudioCodec,
+    startTimestampUs: number
+  ): Promise<number> {
+    const durationSec = (segment.range.endMs - segment.range.startMs) / 1000 / segment.speed;
+    if (durationSec <= 0) return startTimestampUs;
+    const silence = this.synthesizeSilence(durationSec, exportCodec);
+    return this.reencodeAndMux([silence], muxer, exportCodec, 0, startTimestampUs);
+  }
+
+  private synthesizeSilence(durationSec: number, exportCodec: ExportAudioCodec): AudioData {
+    const numberOfFrames = Math.max(1, Math.round(durationSec * exportCodec.sampleRate));
+    const data = new Float32Array(numberOfFrames * exportCodec.numberOfChannels);
+    return new AudioData({
+      format: 'f32-planar',
+      sampleRate: exportCodec.sampleRate,
+      numberOfFrames,
+      numberOfChannels: exportCodec.numberOfChannels,
+      timestamp: 0,
+      data: data.buffer
+    });
+  }
+
+  /**
    * Pitch-preserving path for a speed != 1 segment: plays this segment's
    * source time range through a real `<audio>` element at `segment.speed`
    * (`preservesPitch: true`), captures it via `MediaRecorder`, then demuxes
@@ -254,7 +294,8 @@ export class AudioProcessor {
           range: { startMs: 0, endMs: capturedDurationSec * 1000 },
           speed: 1,
           cursorHidden: false,
-          webcamHidden: false
+          webcamHidden: false,
+          audioMuted: false
         },
         exportCodec,
         startTimestampUs

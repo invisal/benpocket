@@ -6,8 +6,6 @@ import {
   Eye,
   EyeOff,
   Gauge,
-  Mic,
-  MicOff,
   Minus,
   Plus,
   Redo2,
@@ -17,6 +15,8 @@ import {
   Undo2,
   Video,
   VideoOff,
+  Volume2,
+  VolumeX,
   ZoomIn
 } from 'lucide-react';
 import { CLIP_SPEED_OPTIONS, type TimelineSegment } from '@screen-recorder/types/timeline';
@@ -25,7 +25,6 @@ import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { useAppStore } from '../../../app/app-store';
 import { useHistoryStore } from '../../history/store/history-store';
 import { useTimelineStore, MIN_TIMELINE_ZOOM, MAX_TIMELINE_ZOOM } from '../store/timeline-store';
-import { useExportStore } from '../../export/store/export-store';
 import { useWaveformStore } from '../store/waveform-store';
 import {
   getSegmentOutputDurationMs,
@@ -196,8 +195,7 @@ export function CutTimeline(): JSX.Element {
   // gets the hovered position as a prop and draws its own ghost preview.
   const isZoomToolActive = useTimelineStore((s) => s.isZoomToolActive);
   const setZoomToolActive = useTimelineStore((s) => s.setZoomToolActive);
-  const includeAudio = useExportStore((s) => s.includeAudio);
-  const setIncludeAudio = useExportStore((s) => s.setIncludeAudio);
+  const setSegmentAudioMuted = useTimelineStore((s) => s.setSegmentAudioMuted);
   const canUndo = useHistoryStore((s) => s.past.length > 0);
   const canRedo = useHistoryStore((s) => s.future.length > 0);
   const undo = useHistoryStore((s) => s.undo);
@@ -224,6 +222,11 @@ export function CutTimeline(): JSX.Element {
   const webcamEnabled = useWebcamStore((s) => s.enabled);
   const waveformPeaks = useWaveformStore((s) => s.peaks);
   const loadWaveformForUrl = useWaveformStore((s) => s.loadForUrl);
+  // "Mute clip" only makes sense to offer when the recording actually has an
+  // audio track to mute -- decodeWaveformPeaks (waveform-store.ts) fails and
+  // leaves `peaks` null when there's none, so its presence doubles as that
+  // check without a separate probe.
+  const hasAudioTrack = waveformPeaks !== null;
   // Decoded once per recording (cached in the store, keyed by URL) rather
   // than per-clip -- each segment below just slices its own range out of
   // the same peaks array, so re-cutting/reordering never re-decodes audio.
@@ -581,28 +584,6 @@ export function CutTimeline(): JSX.Element {
 
             <div className="mx-1 h-4 w-px bg-line" />
 
-            <button
-              onClick={() => selectedSegmentId && deleteSegment(selectedSegmentId)}
-              disabled={!selectedSegmentId}
-              title="Delete selected clip"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2 disabled:opacity-30"
-            >
-              <Trash2 size={13} />
-            </button>
-
-            <div className="mx-1 h-4 w-px bg-line" />
-
-            <button
-              onClick={() => setIncludeAudio(!includeAudio)}
-              title={includeAudio ? 'Audio on -- click to mute' : 'Audio muted -- click to unmute'}
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                includeAudio ? 'hover:bg-surface-2' : 'bg-danger/15 text-danger'
-              )}
-            >
-              {includeAudio ? <Mic size={13} /> : <MicOff size={13} />}
-            </button>
-
             <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
             </span>
@@ -956,6 +937,20 @@ export function CutTimeline(): JSX.Element {
                                   <Video size={13} className="shrink-0" />
                                 )}
                                 {segment.webcamHidden ? 'Show webcam' : 'Hide webcam'}
+                              </span>
+                            </ContextMenu.Item>
+                          )}
+                          {hasAudioTrack && (
+                            <ContextMenu.Item
+                              onClick={() => setSegmentAudioMuted(segment.id, !segment.audioMuted)}
+                            >
+                              <span className="flex items-center gap-2">
+                                {segment.audioMuted ? (
+                                  <VolumeX size={13} className="shrink-0" />
+                                ) : (
+                                  <Volume2 size={13} className="shrink-0" />
+                                )}
+                                {segment.audioMuted ? 'Unmute clip' : 'Mute clip'}
                               </span>
                             </ContextMenu.Item>
                           )}

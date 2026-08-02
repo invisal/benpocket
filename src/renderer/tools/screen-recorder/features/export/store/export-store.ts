@@ -42,7 +42,6 @@ interface ExportStoreState {
   resolution: { width: number; height: number };
   frameRate: number;
   quality: number;
-  includeAudio: boolean;
   /**
    * Mirrors `useExportAction`'s local export status, but lives here so
    * components outside the export popover (e.g. the top-nav route buttons,
@@ -56,7 +55,6 @@ interface ExportStoreState {
   setResolution: (resolution: { width: number; height: number }) => void;
   setFrameRate: (frameRate: number) => void;
   setQuality: (quality: number) => void;
-  setIncludeAudio: (includeAudio: boolean) => void;
   setIsExporting: (isExporting: boolean) => void;
 }
 
@@ -73,7 +71,6 @@ export const useExportStore = create<ExportStoreState>()(
       },
       frameRate: defaultPreset.frameRate,
       quality: defaultPreset.quality,
-      includeAudio: true,
       isExporting: false,
       setPreset: (presetId) => {
         const preset = EXPORT_PRESETS.find((p) => p.id === presetId);
@@ -110,7 +107,6 @@ export const useExportStore = create<ExportStoreState>()(
         })),
       setFrameRate: (frameRate) => set({ frameRate, presetId: 'custom' }),
       setQuality: (quality) => set({ quality, presetId: 'custom' }),
-      setIncludeAudio: (includeAudio) => set({ includeAudio }),
       setIsExporting: (isExporting) => set({ isExporting })
     }),
     {
@@ -126,8 +122,7 @@ export const useExportStore = create<ExportStoreState>()(
         aspectRatio: state.aspectRatio,
         resolution: state.resolution,
         frameRate: state.frameRate,
-        quality: state.quality,
-        includeAudio: state.includeAudio
+        quality: state.quality
       })
     }
   )

@@ -93,7 +93,10 @@ export function useExportAction(): UseExportActionResult {
           resolution: store.resolution,
           frameRate: store.frameRate,
           quality: store.quality,
-          includeAudio: store.includeAudio,
+          // No separate global toggle -- skip audio entirely when every kept
+          // clip is muted, rather than encoding a track that would be
+          // silent from end to end anyway.
+          includeAudio: segments.some((s) => !s.audioMuted),
           outputPath,
           sourceVideoPath,
           crop,
@@ -101,7 +104,8 @@ export function useExportAction(): UseExportActionResult {
             range: s.range,
             speed: s.speed,
             cursorHidden: s.cursorHidden,
-            webcamHidden: s.webcamHidden
+            webcamHidden: s.webcamHidden,
+            audioMuted: s.audioMuted
           })),
           project: buildExportProject(sourceVideoPath, durationMs)
         },

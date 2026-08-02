@@ -13,8 +13,6 @@ interface UseDualVideoPlaybackOptions {
   webcamVideoRef: RefObject<HTMLVideoElement | null>;
   webcamPreviewUrl: string | null;
   webcamOffsetMs: number;
-  /** Mirrors `useExportStore`'s export-time flag onto the live preview too, so muting here also mutes what you actually hear while editing/scrubbing, not just the eventual export. */
-  includeAudio: boolean;
   onPlay: () => void;
   onPause: () => void;
   onError: (message: string) => void;
@@ -44,7 +42,6 @@ export function useDualVideoPlayback({
   webcamVideoRef,
   webcamPreviewUrl,
   webcamOffsetMs,
-  includeAudio,
   onPlay,
   onPause,
   onError,
@@ -107,20 +104,6 @@ export function useDualVideoPlayback({
     if (videoBRef.current) videoBRef.current.muted = true;
   }, []);
 
-  // Read inside `tick()` (a mount-once effect, see below) so a mid-playback
-  // toggle is picked up without needing to restart the rAF loop -- mirrors
-  // `isHoverScrubbingRef` just below for the same reason.
-  const includeAudioRef = useRef(includeAudio);
-  useEffect(() => {
-    includeAudioRef.current = includeAudio;
-    // Only the *active* video should ever be audible -- `standby` stays
-    // muted regardless (it's silently pre-buffering, never meant to be
-    // heard) and picks up this flag itself the next time it becomes active
-    // (see the two `standby.muted = ...` sites in `tick()`).
-    const active = getActiveVideo();
-    if (active) active.muted = !includeAudio;
-  }, [includeAudio]);
-
   const isHoverScrubbingRef = useRef(isHoverScrubbing);
   useEffect(() => {
     isHoverScrubbingRef.current = isHoverScrubbing;
@@ -178,7 +161,11 @@ export function useDualVideoPlayback({
               performance.now() - pendingSwapSinceRef.current > PENDING_SWAP_TIMEOUT_MS;
             if (standbyReady && standby) {
               active.pause();
-              standby.muted = !includeAudioRef.current;
+              // Corrected to the real per-segment mute state a few lines
+              // below, right after `activeSegmentIdRef.current` is updated
+              // to this now-active video's segment -- just needs to start
+              // out silent for the instant in between.
+              standby.muted = true;
               void standby.play();
               activeSlotRef.current = activeSlotRef.current === 'a' ? 'b' : 'a';
               setActiveSlot(activeSlotRef.current);
@@ -218,7 +205,11 @@ export function useDualVideoPlayback({
               standby.readyState >= standby.HAVE_CURRENT_DATA
             ) {
               active.pause();
-              standby.muted = !includeAudioRef.current;
+              // Corrected to the real per-segment mute state a few lines
+              // below, right after `activeSegmentIdRef.current` is updated
+              // to this now-active video's segment -- just needs to start
+              // out silent for the instant in between.
+              standby.muted = true;
               void standby.play();
               activeSlotRef.current = activeSlotRef.current === 'a' ? 'b' : 'a';
               setActiveSlot(activeSlotRef.current);
@@ -275,6 +266,11 @@ export function useDualVideoPlayback({
         const activeSegment = segs.find((s) => s.id === activeSegmentIdRef.current);
         const targetRate = activeSegment?.speed ?? 1;
         if (active.playbackRate !== targetRate) active.playbackRate = targetRate;
+        // Runs every tick (not just at swap points) so a mute toggled via the
+        // clip's own context menu while it's already the one playing takes
+        // effect immediately, not just on the next cut boundary.
+        const shouldMute = Boolean(activeSegment?.audioMuted);
+        if (active.muted !== shouldMute) active.muted = shouldMute;
 
         const webcamVideo = webcamVideoRef.current;
         if (webcamVideo && webcamPreviewUrl) {

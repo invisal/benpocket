@@ -55,7 +55,6 @@ export function PreviewStage({
 }: PreviewStageProps): JSX.Element {
   const background = useBackgroundStore();
   const exportAspectRatio = useExportStore((s) => s.aspectRatio);
-  const includeAudio = useExportStore((s) => s.includeAudio);
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const cursor = useCursorStore();
   const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
@@ -94,7 +93,6 @@ export function PreviewStage({
     webcamVideoRef,
     webcamPreviewUrl,
     webcamOffsetMs,
-    includeAudio,
     onPlay,
     onPause,
     onError,

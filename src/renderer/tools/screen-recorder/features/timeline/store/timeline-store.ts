@@ -145,7 +145,9 @@ interface TimelineStoreState {
   setSegmentCursorHidden: (segmentId: string, cursorHidden: boolean) => void;
   /** Webcam PiP visibility is per-clip: independent of the global `WebcamOptions.enabled` toggle. */
   setSegmentWebcamHidden: (segmentId: string, webcamHidden: boolean) => void;
-  /** Kept clips (range + speed + cursor/webcam visibility) in output order -- this is exactly ExportOptions.segments. */
+  /** Audio mute is per-clip -- there's no separate global mute toggle. */
+  setSegmentAudioMuted: (segmentId: string, audioMuted: boolean) => void;
+  /** Kept clips (range + speed + cursor/webcam visibility + audio mute) in output order -- this is exactly ExportOptions.segments. */
   getExportSegments: () => ExportSegment[];
   getOutputDurationMs: () => number;
 }
@@ -245,7 +247,8 @@ export const useTimelineStore = create<TimelineStoreState>(
           trimmed: false,
           split: false,
           cursorHidden: false,
-          webcamHidden: false
+          webcamHidden: false,
+          audioMuted: false
         };
         set({
           sourceDurationMs: durationMs,
@@ -416,12 +419,21 @@ export const useTimelineStore = create<TimelineStoreState>(
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
       },
 
+      setSegmentAudioMuted: (segmentId, audioMuted) => {
+        const track = primaryTrack(get().tracks);
+        const segments = track.segments.map((segment) =>
+          segment.id === segmentId ? { ...segment, audioMuted } : segment
+        );
+        set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
+      },
+
       getExportSegments: () =>
         primaryTrack(get().tracks).segments.map((s) => ({
           range: s.range,
           speed: s.speed,
           cursorHidden: s.cursorHidden,
-          webcamHidden: s.webcamHidden
+          webcamHidden: s.webcamHidden,
+          audioMuted: s.audioMuted
         })),
 
       getOutputDurationMs: () =>

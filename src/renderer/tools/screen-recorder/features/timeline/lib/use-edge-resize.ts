@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { beginGesture, endGesture } from '../../history/store/history-store';
 
 /**
@@ -19,6 +19,10 @@ export function useEdgeResize(): {
     blockWidthPx: number,
     onResize: (newValueMs: number) => void
   ) => (event: React.PointerEvent) => void;
+  /** Reactive -- for gating a `motion` layout transition so a pill doesn't lag its own edge-resize drag. */
+  isResizing: boolean;
+  /** Same flag as `isResizing`, but synchronous -- for reads inside event handlers, where a ref (not state) is needed to avoid a stale closure. */
+  isResizingRef: RefObject<boolean>;
 } {
   const dragRef = useRef<{
     startClientX: number;
@@ -26,6 +30,8 @@ export function useEdgeResize(): {
     pxPerMs: number;
     onResize: (newValueMs: number) => void;
   } | null>(null);
+  const isResizingRef = useRef(false);
+  const [isResizing, setIsResizing] = useState(false);
 
   const handleMove = useCallback((event: PointerEvent) => {
     const drag = dragRef.current;
@@ -37,6 +43,8 @@ export function useEdgeResize(): {
   const stop = useCallback(() => {
     if (dragRef.current) endGesture();
     dragRef.current = null;
+    isResizingRef.current = false;
+    setIsResizing(false);
     window.removeEventListener('pointermove', handleMove);
   }, [handleMove]);
 
@@ -56,6 +64,8 @@ export function useEdgeResize(): {
         event.preventDefault();
         event.stopPropagation();
         beginGesture();
+        isResizingRef.current = true;
+        setIsResizing(true);
         dragRef.current = {
           startClientX: event.clientX,
           startValueMs,
@@ -68,5 +78,5 @@ export function useEdgeResize(): {
     [handleMove, stop]
   );
 
-  return { startResize };
+  return { startResize, isResizing, isResizingRef };
 }

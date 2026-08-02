@@ -51,6 +51,7 @@
     "lucide-react": "^1.23.0",
     "mediabunny": "^1.50.9",
     "monaco-editor": "^0.56.0",
+    "motion": "^12.43.0",
     "node-pty": "^1.1.0",
     "pixi.js": "^8.19.0",
     "react-markdown": "^10.1.0",

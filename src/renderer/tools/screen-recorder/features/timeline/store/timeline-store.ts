@@ -10,7 +10,7 @@ import type { EditorTool } from '../../../workspace/editor/editorTools';
 import { withHistory } from '../../history/lib/with-history';
 import { beginGesture, endGesture } from '../../history/store/history-store';
 import { useZoomStore } from '../../zoom/store/zoom-store';
-import { getSegmentOutputDurationMs, segmentsOverlapRange } from '../lib/segment-duration';
+import { getSegmentOutputDurationMs, trimRangeToKeptSegments } from '../lib/segment-duration';
 
 export const PRIMARY_VIDEO_TRACK_ID = 'video-1';
 const MIN_SEGMENT_MS = 200;
@@ -107,7 +107,15 @@ interface TimelineStoreState {
    * that effect consumes it.
    */
   skipNextAutoInit: boolean;
-  setPlayhead: (ms: number) => void;
+  /**
+   * Bumped only when `setPlayhead` is called with `isJump: true` -- i.e. a
+   * playback-driven discontinuous jump across a cut boundary, as opposed to
+   * a continuous 60fps playback tick or a manual scrub/seek. `Playhead.tsx`
+   * watches this to know when to glide to the new position instead of
+   * snapping instantly.
+   */
+  playheadJumpToken: number;
+  setPlayhead: (ms: number, isJump?: boolean) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setIsHoverScrubbing: (isHoverScrubbing: boolean) => void;
   setTracks: (tracks: TimelineTrack[]) => void;
@@ -161,11 +169,21 @@ function replaceTrack(tracks: TimelineTrack[], updated: TimelineTrack): Timeline
 
 // Must run before the caller's own `set()`, not after -- otherwise the
 // gesture's recorded "before" snapshot is taken mid-cut instead of pre-cut.
-function pruneOrphanedZoomKeyframes(keptSegments: TimelineSegment[]): void {
-  const { keyframes, removeKeyframe } = useZoomStore.getState();
+// Shrinks each keyframe to whatever portion of it is still covered by
+// `keptSegments` (e.g. a deletion/trim that only ate its head moves `atMs`
+// forward rather than leaving it pointing at a cut-out gap), and only drops
+// it outright once nothing of it is covered anymore.
+function reconcileZoomKeyframesWithSegments(keptSegments: TimelineSegment[]): void {
+  const { keyframes, removeKeyframe, updateKeyframe } = useZoomStore.getState();
   for (const kf of keyframes) {
-    if (!segmentsOverlapRange(keptSegments, kf.atMs, kf.atMs + kf.durationMs)) {
+    const covered = trimRangeToKeptSegments(keptSegments, kf.atMs, kf.atMs + kf.durationMs);
+    if (!covered) {
       removeKeyframe(kf.id);
+    } else if (covered.startMs !== kf.atMs || covered.endMs - covered.startMs !== kf.durationMs) {
+      updateKeyframe(kf.id, {
+        atMs: covered.startMs,
+        durationMs: covered.endMs - covered.startMs
+      });
     }
   }
 }
@@ -176,6 +194,7 @@ export const useTimelineStore = create<TimelineStoreState>(
     (s) => ({ tracks: s.tracks }),
     (set, get) => ({
       playheadMs: 0,
+      playheadJumpToken: 0,
       isPlaying: false,
       isHoverScrubbing: false,
       sourceDurationMs: 0,
@@ -192,7 +211,11 @@ export const useTimelineStore = create<TimelineStoreState>(
       isZoomToolActive: false,
       seekRequestMs: null,
       skipNextAutoInit: false,
-      setPlayhead: (playheadMs) => set({ playheadMs }),
+      setPlayhead: (playheadMs, isJump) =>
+        set((state) => ({
+          playheadMs,
+          playheadJumpToken: isJump ? state.playheadJumpToken + 1 : state.playheadJumpToken
+        })),
       setIsPlaying: (isPlaying) => set({ isPlaying }),
       setIsHoverScrubbing: (isHoverScrubbing) => set({ isHoverScrubbing }),
       setTracks: (tracks) => set({ tracks }),
@@ -287,7 +310,7 @@ export const useTimelineStore = create<TimelineStoreState>(
         if (track.segments.length <= 1) return;
         const segments = track.segments.filter((s) => s.id !== segmentId);
         beginGesture();
-        pruneOrphanedZoomKeyframes(segments);
+        reconcileZoomKeyframesWithSegments(segments);
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
         endGesture();
       },
@@ -330,6 +353,7 @@ export const useTimelineStore = create<TimelineStoreState>(
             trimmed: true
           };
         });
+        reconcileZoomKeyframesWithSegments(segments);
         set({ tracks: replaceTrack(get().tracks, { ...track, segments }) });
       },
 

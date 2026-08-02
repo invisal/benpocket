@@ -39,6 +39,15 @@ export const ASPECT_LABELS: Record<AspectRatio, string> = {
 
 export const PENDING_SWAP_TIMEOUT_MS = 400;
 
+/**
+ * If the active `<video>` reports `!paused` but its `currentTime` hasn't
+ * advanced for this long, the decoder has stalled on a seek target (most
+ * often a hard cut-boundary seek that didn't land near a keyframe) --
+ * `use-dual-video-playback.ts`'s watchdog force-re-seeks to break out of it,
+ * since otherwise there's no other path back to forward progress.
+ */
+export const PLAYBACK_STALL_RECOVERY_MS = 600;
+
 export const TOOL_PANEL_MIN_WIDTH = 220;
 export const TOOL_PANEL_MAX_WIDTH = 420;
 export const EDITOR_TOOL_RAIL_WIDTH_PX = 56;

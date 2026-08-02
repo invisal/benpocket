@@ -9,16 +9,15 @@ import {
   VideoIcon,
   SwatchBookIcon
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { cn } from 'cnfast';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
 import { ConnectCloudflareDialog } from '@renderer/components/dialog/ConnectCloudflareDialog';
 import { Button } from '@renderer/components/ui/Button';
 import { Toolbar } from '@renderer/components/ui/Toolbar';
+import { useCloudflareSettings } from '@renderer/hooks/useCloudflareSettings';
 
 interface Props {}
-
-type CloudflareStatus = 'loading' | 'configured' | 'empty';
 
 interface ToolEntry {
   id: string;
@@ -33,13 +32,8 @@ export function HomeMain({}: ToolComponentProps<Props>) {
   const { openTab } = useToolTabs();
   const [query, setQuery] = useState('');
   const [cloudflareDialogOpen, setCloudflareDialogOpen] = useState(false);
-  const [cloudflareStatus, setCloudflareStatus] = useState<CloudflareStatus>('loading');
-
-  useEffect(() => {
-    window.fileExplorer.getR2CredentialStatus().then((res) => {
-      setCloudflareStatus(res.configured ? 'configured' : 'empty');
-    });
-  }, [cloudflareDialogOpen]);
+  const { isLoading: cloudflareLoading, configured: cloudflareConfigured } =
+    useCloudflareSettings();
 
   const tools: ToolEntry[] = useMemo(
     () => [
@@ -144,7 +138,11 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         </div>
       </div>
 
-      <CloudflareBanner status={cloudflareStatus} onClick={() => setCloudflareDialogOpen(true)} />
+      <CloudflareBanner
+        isLoading={cloudflareLoading}
+        configured={cloudflareConfigured}
+        onClick={() => setCloudflareDialogOpen(true)}
+      />
 
       <ConnectCloudflareDialog open={cloudflareDialogOpen} onOpenChange={setCloudflareDialogOpen} />
     </div>
@@ -175,7 +173,15 @@ function ToolCard({ tool }: { tool: ToolEntry }) {
   );
 }
 
-function CloudflareBanner({ status, onClick }: { status: CloudflareStatus; onClick: () => void }) {
+function CloudflareBanner({
+  isLoading,
+  configured,
+  onClick
+}: {
+  isLoading: boolean;
+  configured: boolean;
+  onClick: () => void;
+}) {
   return (
     <div className="border-t border-border p-6 flex items-center gap-3">
       <span className="size-10 shrink-0 rounded-lg bg-surface-2 inline-flex items-center justify-center">
@@ -189,7 +195,7 @@ function CloudflareBanner({ status, onClick }: { status: CloudflareStatus; onCli
       </span>
 
       <div className="flex items-center gap-3 shrink-0">
-        {status === 'configured' ? (
+        {isLoading ? null : configured ? (
           <button
             role="button"
             onClick={onClick}
@@ -197,11 +203,11 @@ function CloudflareBanner({ status, onClick }: { status: CloudflareStatus; onCli
           >
             Disconnect
           </button>
-        ) : status === 'empty' ? (
+        ) : (
           <Button onClick={onClick} variant="primary">
             Connect with your Cloudflare
           </Button>
-        ) : null}
+        )}
       </div>
     </div>
   );

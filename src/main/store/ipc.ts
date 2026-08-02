@@ -21,7 +21,7 @@ const MOCK_SERVER_FILE_FILTERS = [{ name: 'SQLite Database', extensions: ['db'] 
 let manager: ProfileManager | undefined;
 
 /** Lazily created so tests / other main-process modules can import this file without touching electron's app.getPath. */
-function getProfileManager(): ProfileManager {
+export function getProfileManager(): ProfileManager {
   if (!manager) {
     manager = createProfileManager(join(app.getPath('userData'), 'profiles'));
     manager.ensureDefaultLocalProfile();

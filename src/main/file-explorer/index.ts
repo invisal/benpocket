@@ -10,8 +10,7 @@ import {
 } from './nativeClipboard';
 import { pathExists } from './localFileDriver';
 import { getDriverForLocation } from './driverRegistry';
-import { getR2Credential, registerR2CredentialHandlers } from './r2Credential';
-import { registerAiGatewayCredentialHandlers } from './aiGatewayCredential';
+import { getCloudflareSettings } from '../store/cloudflareSettings';
 import { registerAgentHandlers } from './agent';
 import { listR2Buckets } from './r2FileDriver';
 import { transferEntries } from './crossSchemeTransfer';
@@ -114,10 +113,10 @@ function getLocations(): SidebarItem[] {
   }
 }
 
-function getR2BucketSidebarItems(): SidebarItem[] {
+async function getR2BucketSidebarItems(): Promise<SidebarItem[]> {
   // Only buckets the user explicitly picked (via the bucket selector) show up
   // here -- we never dump the whole account's bucket list into the sidebar.
-  const credential = getR2Credential();
+  const credential = await getCloudflareSettings();
   if (!credential) return [];
 
   return credential.selectedBuckets.map((name) => ({ label: name, path: `r2://${name}/` }));
@@ -158,8 +157,6 @@ async function runCopyOrMove(
 }
 
 export function registerFileExplorerHandlers(): void {
-  registerR2CredentialHandlers();
-  registerAiGatewayCredentialHandlers();
   registerAgentHandlers();
 
   ipcMain.handle('file-explorer:get-home-dir', () => {
@@ -170,7 +167,7 @@ export function registerFileExplorerHandlers(): void {
     return {
       favorites: getFavorites(),
       locations: getLocations(),
-      r2Buckets: getR2BucketSidebarItems()
+      r2Buckets: await getR2BucketSidebarItems()
     };
   });
 

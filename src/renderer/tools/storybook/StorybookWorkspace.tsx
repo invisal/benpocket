@@ -16,8 +16,9 @@ import { ColorTokenGallery } from './components/ColorTokenGallery';
 import { SettingsMockup } from './components/mockups/SettingsMockup';
 import { DataListMockup } from './components/mockups/DataListMockup';
 import { DashboardMockup } from './components/mockups/DashboardMockup';
+import { PersistStoreGallery } from './components/PersistStoreGallery';
 
-type NavGroup = 'Foundations' | 'Components' | 'Mockup pages';
+type NavGroup = 'Foundations' | 'Components' | 'Mockup pages' | 'Persistence';
 
 interface NavItem {
   id: string;
@@ -47,10 +48,16 @@ const NAV_ITEMS: NavItem[] = [
   },
   { id: 'settings-page', label: 'Settings', group: 'Mockup pages', Component: SettingsMockup },
   { id: 'data-list-page', label: 'Team Members', group: 'Mockup pages', Component: DataListMockup },
-  { id: 'dashboard-page', label: 'Dashboard', group: 'Mockup pages', Component: DashboardMockup }
+  { id: 'dashboard-page', label: 'Dashboard', group: 'Mockup pages', Component: DashboardMockup },
+  {
+    id: 'persist-store',
+    label: 'Persist Store',
+    group: 'Persistence',
+    Component: PersistStoreGallery
+  }
 ];
 
-const GROUPS: NavGroup[] = ['Foundations', 'Components', 'Mockup pages'];
+const GROUPS: NavGroup[] = ['Foundations', 'Components', 'Mockup pages', 'Persistence'];
 
 export function StorybookWorkspace() {
   const [activeId, setActiveId] = useState(NAV_ITEMS[0].id);
@@ -58,7 +65,7 @@ export function StorybookWorkspace() {
   const ActiveComponent = active.Component;
 
   return (
-    <div className="flex h-screen w-full bg-surface">
+    <div className="flex h-full w-full bg-surface">
       <nav className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface-2">
         <div className="border-b border-border p-4">
           <div className="text-sm font-medium text-foreground">Storybook</div>

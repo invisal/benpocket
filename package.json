@@ -57,8 +57,10 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "uiohook-napi": "^1.5.5",
+    "vitest": "^4.1.10",
     "web-demuxer": "^4.0.0",
     "ws": "^8.21.0",
+    "yjs": "^13.6.31",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

@@ -25,6 +25,23 @@ import { registerDisplayMediaHandler } from './screen-recorder/security/display-
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
+import { registerProfileHandlers, closeAllProfileSessions } from './store/ipc';
+import { registerDeepLinkHandler } from './auth/deepLink';
+import { handleGithubDeepLink } from './auth/githubAuth';
+import { registerAuthHandlers } from './auth/ipc';
+
+// Must run before app.whenReady(): app.requestSingleInstanceLock() has to be
+// called this early for `second-instance` (Windows/Linux deep-link delivery,
+// see auth/deepLink.ts) to work at all, and `open-url` (macOS) can fire
+// before the app is ready. A second launch (e.g. the OS re-invoking the app
+// to deliver a benpocket:// callback) now gets forwarded to this instance and
+// quits instead of opening a second window.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  registerDeepLinkHandler(handleGithubDeepLink);
+}
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -82,165 +99,179 @@ function createWindow(): BrowserWindow {
   return mainWindow;
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron');
+// Everything below only runs if this process actually won the single-instance
+// lock above -- otherwise app.quit() is already in flight, and registering a
+// window/IPC handlers here would race it into briefly existing anyway.
+if (gotSingleInstanceLock) {
+  // This method will be called when Electron has finished
+  // initialization and is ready to create browser windows.
+  // Some APIs can only be used after this event occurs.
+  app.whenReady().then(() => {
+    // Set app user model id for windows
+    electronApp.setAppUserModelId('com.electron');
 
-  // Replaces index.html's static CSP meta tag: needs to differ between dev
-  // (Vite HMR needs 'unsafe-eval' + a websocket connect-src) and production,
-  // and needs media-src blob: for ScreenRecorder's recording preview.
-  applyContentSecurityPolicy();
-  // Screen Recorder: macOS 15+ ScreenCaptureKit system picker. No-op elsewhere.
-  registerDisplayMediaHandler();
+    // Replaces index.html's static CSP meta tag: needs to differ between dev
+    // (Vite HMR needs 'unsafe-eval' + a websocket connect-src) and production,
+    // and needs media-src blob: for ScreenRecorder's recording preview.
+    applyContentSecurityPolicy();
+    // Screen Recorder: macOS 15+ ScreenCaptureKit system picker. No-op elsewhere.
+    registerDisplayMediaHandler();
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window);
-  });
-
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'));
-
-  ipcMain.on('window-minimize', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.minimize();
-  });
-
-  ipcMain.on('window-maximize', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) {
-      if (win.isMaximized()) {
-        win.unmaximize();
-      } else {
-        win.maximize();
-      }
-    }
-  });
-
-  ipcMain.on('window-close', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.close();
-  });
-
-  ipcMain.handle('open-directory', async (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) return null;
-
-    const result = await dialog.showOpenDialog(win, {
-      properties: ['openDirectory']
+    // Default open or close DevTools by F12 in development
+    // and ignore CommandOrControl + R in production.
+    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window);
     });
 
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
+    // IPC test
+    ipcMain.on('ping', () => console.log('pong'));
 
-    const dirPath = result.filePaths[0];
+    ipcMain.on('window-minimize', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) win.minimize();
+    });
 
-    interface FileTreeNode {
-      name: string;
-      path: string;
-      isDirectory: boolean;
-      children?: FileTreeNode[];
-    }
-
-    async function buildTree(currentPath: string, depth = 0): Promise<FileTreeNode | null> {
-      if (depth > 3) return null; // Prevent deep recursion
-      try {
-        const name = path.basename(currentPath);
-        const stats = await fs.promises.stat(currentPath);
-        if (stats.isDirectory()) {
-          const files = await fs.promises.readdir(currentPath);
-          const children = await Promise.all(
-            files
-              .filter((f) => !f.startsWith('.') && f !== 'node_modules')
-              .map((file) => buildTree(path.join(currentPath, file), depth + 1))
-          );
-          return {
-            name,
-            path: currentPath,
-            isDirectory: true,
-            children: children.filter((child): child is FileTreeNode => child !== null)
-          };
+    ipcMain.on('window-maximize', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) {
+        if (win.isMaximized()) {
+          win.unmaximize();
         } else {
-          return {
-            name,
-            path: currentPath,
-            isDirectory: false
-          };
+          win.maximize();
         }
-      } catch (err) {
-        console.error('Error reading path:', currentPath, err);
+      }
+    });
+
+    ipcMain.on('window-close', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) win.close();
+    });
+
+    ipcMain.handle('open-directory', async (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return null;
+
+      const result = await dialog.showOpenDialog(win, {
+        properties: ['openDirectory']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
         return null;
       }
+
+      const dirPath = result.filePaths[0];
+
+      interface FileTreeNode {
+        name: string;
+        path: string;
+        isDirectory: boolean;
+        children?: FileTreeNode[];
+      }
+
+      async function buildTree(currentPath: string, depth = 0): Promise<FileTreeNode | null> {
+        if (depth > 3) return null; // Prevent deep recursion
+        try {
+          const name = path.basename(currentPath);
+          const stats = await fs.promises.stat(currentPath);
+          if (stats.isDirectory()) {
+            const files = await fs.promises.readdir(currentPath);
+            const children = await Promise.all(
+              files
+                .filter((f) => !f.startsWith('.') && f !== 'node_modules')
+                .map((file) => buildTree(path.join(currentPath, file), depth + 1))
+            );
+            return {
+              name,
+              path: currentPath,
+              isDirectory: true,
+              children: children.filter((child): child is FileTreeNode => child !== null)
+            };
+          } else {
+            return {
+              name,
+              path: currentPath,
+              isDirectory: false
+            };
+          }
+        } catch (err) {
+          console.error('Error reading path:', currentPath, err);
+          return null;
+        }
+      }
+
+      const tree = await buildTree(dirPath);
+      return {
+        path: dirPath,
+        tree
+      };
+    });
+
+    // API testing client (REST + WebSocket) - all networking runs here in the
+    // main process to avoid renderer CORS restrictions and keep sockets alive
+    // across renderer tab switches / reloads.
+    registerHttpHandlers();
+    registerOAuth2Handlers();
+    registerWebSocketHandlers();
+    registerCollectionHandlers();
+    registerCollectionTransferHandlers();
+    registerEnvironmentHandlers();
+    registerEnvironmentTransferHandlers();
+    registerWorkspaceHandlers();
+
+    // Recording capture, project persistence, export, settings, window
+    // controls, screen-recording permissions, and export-path dialogs for the
+    // ScreenRecorder tool (src/main/screen-recorder/ipc/*-handlers.ts).
+    registerScreenRecorderHandlers();
+
+    // Kuberneter contexts selection and live resources query handlers
+    registerKuberneterHandlers();
+
+    // File Explorer tool: directory listing, native file icons, open-with-default-app
+    registerFileExplorerHandlers();
+
+    // Profile state (active profile + list of profiles), backing the activity
+    // bar's profile switcher.
+    registerProfileHandlers();
+
+    // GitHub OAuth login + master-password DEK setup/unlock -- see
+    // src/main/store/PLAN3.md.
+    registerAuthHandlers();
+
+    // Tray icon is created on demand -- see TrayBridge, which registers it
+    // only while the Screen Recorder tool tab is open.
+    registerTrayHandlers(trayIcon);
+
+    createWindow();
+
+    app.on('activate', function () {
+      // On macOS it's common to re-create a window in the app when the
+      // dock icon is clicked and there are no other windows open.
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+
+  // Quit when all windows are closed, except on macOS. There, it's common
+  // for applications and their menu bar to stay active until the user quits
+  // explicitly with Cmd + Q.
+  app.on('window-all-closed', () => {
+    closeAllWebSocketConnections();
+    if (process.platform !== 'darwin') {
+      app.quit();
     }
-
-    const tree = await buildTree(dirPath);
-    return {
-      path: dirPath,
-      tree
-    };
   });
 
-  // API testing client (REST + WebSocket) - all networking runs here in the
-  // main process to avoid renderer CORS restrictions and keep sockets alive
-  // across renderer tab switches / reloads.
-  registerHttpHandlers();
-  registerOAuth2Handlers();
-  registerWebSocketHandlers();
-  registerCollectionHandlers();
-  registerCollectionTransferHandlers();
-  registerEnvironmentHandlers();
-  registerEnvironmentTransferHandlers();
-  registerWorkspaceHandlers();
-
-  // Recording capture, project persistence, export, settings, window
-  // controls, screen-recording permissions, and export-path dialogs for the
-  // ScreenRecorder tool (src/main/screen-recorder/ipc/*-handlers.ts).
-  registerScreenRecorderHandlers();
-
-  // Kuberneter contexts selection and live resources query handlers
-  registerKuberneterHandlers();
-
-  // File Explorer tool: directory listing, native file icons, open-with-default-app
-  registerFileExplorerHandlers();
-
-  // Tray icon is created on demand -- see TrayBridge, which registers it
-  // only while the Screen Recorder tool tab is open.
-  registerTrayHandlers(trayIcon);
-
-  createWindow();
-
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  app.on('before-quit', () => {
+    closeAllProfileSessions();
+    destroyTray();
+    destroyRecorderToolbar();
+    destroySourcePickerOverlay();
+    // Safety net if the renderer never gets to send a normal stop -- kills
+    // any still-running native recording helper subprocess rather than
+    // leaving it (and, on macOS, the OS-level "recording" indicator) behind.
+    killActiveNativeRecording();
   });
-});
-
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  closeAllWebSocketConnections();
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('before-quit', () => {
-  destroyTray();
-  destroyRecorderToolbar();
-  destroySourcePickerOverlay();
-  // Safety net if the renderer never gets to send a normal stop -- kills
-  // any still-running native recording helper subprocess rather than
-  // leaving it (and, on macOS, the OS-level "recording" indicator) behind.
-  killActiveNativeRecording();
-});
+}
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

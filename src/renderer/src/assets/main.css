@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+/* Theme is class-based but inverted from Tailwind's default convention:
+   dark is the unclassed (default) state, and `.light` on <html> switches to
+   light mode (see AppShell.tsx). Wire `dark:` to fire whenever `.light`
+   is absent, so it actually tracks the in-app toggle instead of the OS
+   `prefers-color-scheme` media query. */
+@custom-variant dark (&:where(:not(.light, .light *)));
+
 @theme {
   --color-editor-bg: #1e1e2e; /* Catppuccin Mocha Base */
   --color-sidebar-bg: #181825; /* Catppuccin Mocha Mantle */
@@ -126,6 +133,10 @@
   --color-amber-200: #78350f;
   --color-amber-400: #b45309;
   --color-amber-500: #d97706;
+  /* orange-800's default is a dark rust tuned to stand out on dark surfaces
+     (e.g. SyncStatus's uncommitted-changes segment) -- too close in value to
+     a light background, so lighten it to Tailwind's own orange-200. */
+  --color-orange-800: oklch(90.1% 0.076 70.697);
   /* purple-400's default is a pale lavender meant to pop on dark surfaces
      (e.g. http-client's PATCH method badge) -- too washed out on a white
      background, so darken it to Catppuccin Latte's Mauve. */

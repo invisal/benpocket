@@ -1,7 +1,5 @@
 export type ProfileId = string;
 
-export type ProfileKind = 'local' | 'remote' | 'mock-remote';
-
 interface ProfileDescriptorCommon {
   id: ProfileId;
   name: string;

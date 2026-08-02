@@ -1,7 +1,5 @@
 export type ProfileId = string; // crypto.randomUUID(), same as workspaces.ts's Workspace.id
 
-export type ProfileKind = 'local' | 'remote' | 'mock-remote';
-
 export interface ProfileManifest {
   version: 1;
   activeProfileId: ProfileId;

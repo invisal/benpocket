@@ -1,5 +1,7 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import * as Y from 'yjs';
+import { usePersistStore } from '@renderer/hooks/usePersistStore';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { ActionsPanel } from './ActionsPanel';
@@ -8,6 +10,8 @@ import { ConfigTree } from './ConfigTree';
 import { PasteConfigModal } from './PasteConfigModal';
 import { AlertCircle, Home } from 'lucide-react';
 
+const KUBERNETER_CONFIG_KEY = 'kuberneter/configfile';
+
 export const KuberneterHomeView: React.FC = () => {
   const { activeInstanceId, openTab } = useLayoutStore();
 
@@ -15,6 +19,7 @@ export const KuberneterHomeView: React.FC = () => {
     kuberneterKubeconfigs,
     addKuberneterKubeconfig,
     removeKuberneterKubeconfig,
+    setKuberneterKubeconfigs,
     kuberneterInstanceCluster,
     setKuberneterInstanceCluster,
     setKuberneterInstanceServer,
@@ -26,11 +31,43 @@ export const KuberneterHomeView: React.FC = () => {
     addKuberneterRecentConnection
   } = useKuberneterStore();
 
+  const { isLoading, doc } = usePersistStore(KUBERNETER_CONFIG_KEY, () => new Y.Doc());
+  const map = doc.getMap<string>(KUBERNETER_CONFIG_KEY);
+
   const activeConfigPath = kuberneterInstanceConfigPath[activeInstanceId] || '';
   const activeContext = kuberneterInstanceCluster[activeInstanceId] || '';
 
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Sync Yjs persisted map with local store on mount/update
+  useEffect(() => {
+    if (isLoading) return;
+
+    const syncFromYjs = () => {
+      const cloudPaths = Array.from(map.keys());
+      const currentPaths = useKuberneterStore.getState().kuberneterKubeconfigs;
+
+      if (cloudPaths.length > 0) {
+        if (
+          cloudPaths.length !== currentPaths.length ||
+          cloudPaths.some((path, i) => path !== currentPaths[i])
+        ) {
+          setKuberneterKubeconfigs(cloudPaths);
+        }
+      } else if (currentPaths.length > 0) {
+        doc.transact(() => {
+          for (const path of currentPaths) {
+            map.set(path, path);
+          }
+        });
+      }
+    };
+
+    syncFromYjs();
+    map.observe(syncFromYjs);
+    return () => map.unobserve(syncFromYjs);
+  }, [isLoading, map, doc, setKuberneterKubeconfigs]);
 
   // Trigger loading file from local disk
   const handleAddFile = async () => {
@@ -39,11 +76,22 @@ export const KuberneterHomeView: React.FC = () => {
       const filePath = await window.kuberneter.selectKubeconfigFile();
       if (filePath) {
         addKuberneterKubeconfig(filePath);
+        if (!isLoading) {
+          map.set(filePath, filePath);
+        }
         setKuberneterInstanceConfigPath(activeInstanceId, filePath);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg || 'Failed to select Kubeconfig file.');
+    }
+  };
+
+  // Handler to remove a config file
+  const handleRemoveConfig = (filePath: string) => {
+    removeKuberneterKubeconfig(filePath);
+    if (!isLoading) {
+      map.delete(filePath);
     }
   };
 
@@ -80,6 +128,9 @@ export const KuberneterHomeView: React.FC = () => {
     const res = await window.kuberneter.saveKubeconfig(content, filename);
     if (typeof res === 'string') {
       addKuberneterKubeconfig(res);
+      if (!isLoading) {
+        map.set(res, res);
+      }
       setKuberneterInstanceConfigPath(activeInstanceId, res);
     }
     return res;
@@ -124,7 +175,7 @@ export const KuberneterHomeView: React.FC = () => {
             activeConfigPath={activeConfigPath}
             activeContext={activeContext}
             onConnect={handleConnectContext}
-            onRemoveConfig={removeKuberneterKubeconfig}
+            onRemoveConfig={handleRemoveConfig}
           />
         </div>
       </div>

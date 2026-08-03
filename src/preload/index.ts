@@ -4,6 +4,9 @@ import { screenRecorderApi } from './screen-recorder/api';
 import { kuberneterApi } from './kuberneter/api';
 import { postmanApi } from './http-client/api';
 import { fileExplorerApi } from './file-explorer/api';
+import { profilesApi } from './store/api';
+import { authApi } from './auth/api';
+import { updaterApi } from './updater/api';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 // Custom APIs for renderer
@@ -27,6 +30,9 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('screenRecorder', screenRecorderApi);
     contextBridge.exposeInMainWorld('kuberneter', kuberneterApi);
     contextBridge.exposeInMainWorld('fileExplorer', fileExplorerApi);
+    contextBridge.exposeInMainWorld('profiles', profilesApi);
+    contextBridge.exposeInMainWorld('auth', authApi);
+    contextBridge.exposeInMainWorld('updater', updaterApi);
   } catch (error) {
     console.error(error);
   }
@@ -41,4 +47,10 @@ if (process.contextIsolated) {
   window.kuberneter = kuberneterApi;
   // @ts-ignore (define in dts)
   window.fileExplorer = fileExplorerApi;
+  // @ts-ignore (define in dts)
+  window.profiles = profilesApi;
+  // @ts-ignore (define in dts)
+  window.auth = authApi;
+  // @ts-ignore (define in dts)
+  window.updater = updaterApi;
 }

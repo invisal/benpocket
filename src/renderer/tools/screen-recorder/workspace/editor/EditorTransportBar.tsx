@@ -1,11 +1,13 @@
 import type { JSX } from 'react';
 import { type RefObject } from 'react';
-import { ChevronDown, Crop, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { Crop, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import type { PreviewVideoController } from '@screen-recorder/types/editor';
+import { Select } from '@renderer/components/ui/Select';
 import { useExportStore } from '../../features/export/store/export-store';
 import { cn } from '../../lib/utils';
 import { ASPECT_LABELS } from './editorTools';
+import { Button } from '@renderer/components/ui/Button';
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.max(0, ms) / 1000;
@@ -17,8 +19,9 @@ function formatTime(ms: number): string {
 interface EditorTransportBarProps {
   videoRef: RefObject<PreviewVideoController | null>;
   isPlaying: boolean;
-  cropToolActive: boolean;
-  onToggleCrop: () => void;
+  /** Whether the selected clip already has a crop applied -- highlights the button so it's clear cropping is active for this clip, even with the dialog closed. */
+  hasCrop: boolean;
+  onOpenCrop: () => void;
   /** Current playback position, ms, source-relative -- for the "0:12 / 1:34" readout. */
   currentTimeMs: number;
   /** Full source duration, ms -- 0 before metadata loads (readout just shows "0:00" for the total then). */
@@ -28,8 +31,8 @@ interface EditorTransportBarProps {
 export function EditorTransportBar({
   videoRef,
   isPlaying,
-  cropToolActive,
-  onToggleCrop,
+  hasCrop,
+  onOpenCrop,
   currentTimeMs,
   durationMs
 }: EditorTransportBarProps): JSX.Element {
@@ -45,36 +48,29 @@ export function EditorTransportBar({
 
   return (
     <div className="flex shrink-0 items-center gap-3 px-6 pb-3 text-muted-foreground">
-      <div className="relative">
-        <select
-          value={aspectRatio}
-          onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
-          className="appearance-none rounded-lg border border-line bg-surface py-1.5 pl-3 pr-7 text-xs font-medium text-foreground"
-        >
+      <Select.Root
+        value={aspectRatio}
+        onValueChange={(value) => setAspectRatio(value as AspectRatio)}
+      >
+        <Select.Trigger size="sm">{ASPECT_LABELS[aspectRatio]}</Select.Trigger>
+        <Select.Content>
           {(Object.keys(ASPECT_LABELS) as AspectRatio[]).map((ratio) => (
-            <option key={ratio} value={ratio}>
+            <Select.Item key={ratio} value={ratio}>
               {ASPECT_LABELS[ratio]}
-            </option>
+            </Select.Item>
           ))}
-        </select>
-        <ChevronDown
-          size={12}
-          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
-        />
-      </div>
+        </Select.Content>
+      </Select.Root>
 
-      <button
-        onClick={onToggleCrop}
-        title="Toggle crop tool"
-        className={cn(
-          'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-          cropToolActive
-            ? 'border-accent bg-accent/10 text-accent'
-            : 'border-line text-muted-foreground hover:border-accent/40'
-        )}
+      <Button
+        onClick={onOpenCrop}
+        title="Crop this clip"
+        variant="outline"
+        size="sm"
+        className={cn(hasCrop && 'border-accent bg-accent/10 text-accent')}
       >
         <Crop size={13} /> Crop
-      </button>
+      </Button>
 
       <div className="flex items-center gap-1">
         <button

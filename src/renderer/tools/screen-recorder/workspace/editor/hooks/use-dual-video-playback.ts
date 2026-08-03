@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type RefObject, type SyntheticEvent } from
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
 import type { PreviewVideoController } from '@screen-recorder/types/editor';
 import { mediaErrorMessage } from '../../../lib/media';
-import { PENDING_SWAP_TIMEOUT_MS } from '../editorTools';
+import { PENDING_SWAP_TIMEOUT_MS, PLAYBACK_STALL_RECOVERY_MS } from '../editorTools';
 
 interface UseDualVideoPlaybackOptions {
   videoRef: RefObject<PreviewVideoController | null>;
   segments: TimelineSegment[];
-  setPlayhead: (ms: number) => void;
+  setPlayhead: (ms: number, isJump?: boolean) => void;
   isHoverScrubbing: boolean;
   currentTimeMs: number;
   webcamVideoRef: RefObject<HTMLVideoElement | null>;
@@ -94,6 +94,11 @@ export function useDualVideoPlayback({
   const standbySegmentIdRef = useRef<string | null>(null);
   const pendingSwapTargetIdRef = useRef<string | null>(null);
   const pendingSwapSinceRef = useRef(0);
+  // Tracks the last tick where `sourceMs` actually moved while the active
+  // video reported itself as playing -- lets the tick loop notice a stalled
+  // decoder (see `PLAYBACK_STALL_RECOVERY_MS`) instead of waiting forever on
+  // a `currentTime` that will never advance.
+  const stallWatchRef = useRef({ sourceMs: 0, sinceMs: 0 });
 
   useEffect(() => {
     if (videoBRef.current) videoBRef.current.muted = true;
@@ -113,6 +118,13 @@ export function useDualVideoPlayback({
       if (active) {
         const segs = segmentsRef.current;
         let sourceMs = active.currentTime * 1000;
+        // Only true on ticks where playback actually crossed a cut boundary
+        // this frame (a swap happened, a hard-seek timeout fired, or we
+        // looped back to the start) -- i.e. `sourceMs` is about to jump
+        // discontinuously rather than advance from the real decoded frame.
+        // Threaded into `setPlayhead` so the timeline UI only glides across
+        // real jumps, never during continuous playback or manual scrubs.
+        let jumped = false;
         const currentIndex = segs.findIndex(
           (s) => sourceMs >= s.range.startMs && sourceMs < s.range.endMs
         );
@@ -149,7 +161,11 @@ export function useDualVideoPlayback({
               performance.now() - pendingSwapSinceRef.current > PENDING_SWAP_TIMEOUT_MS;
             if (standbyReady && standby) {
               active.pause();
-              standby.muted = false;
+              // Corrected to the real per-segment mute state a few lines
+              // below, right after `activeSegmentIdRef.current` is updated
+              // to this now-active video's segment -- just needs to start
+              // out silent for the instant in between.
+              standby.muted = true;
               void standby.play();
               activeSlotRef.current = activeSlotRef.current === 'a' ? 'b' : 'a';
               setActiveSlot(activeSlotRef.current);
@@ -157,14 +173,21 @@ export function useDualVideoPlayback({
               activeSegmentIdRef.current = nextSegment.id;
               standbySegmentIdRef.current = null;
               pendingSwapTargetIdRef.current = null;
+              sourceMs = nextSegment.range.startMs;
+              jumped = true;
             } else if (timedOut) {
               active.currentTime = nextSegment.range.startMs / 1000;
               void active.play();
               activeSegmentIdRef.current = nextSegment.id;
               standbySegmentIdRef.current = null;
               pendingSwapTargetIdRef.current = null;
+              sourceMs = nextSegment.range.startMs;
+              jumped = true;
             }
-            sourceMs = nextSegment.range.startMs;
+            // Still waiting on the standby to become ready -- `sourceMs`
+            // stays at the paused `active` video's real (frozen) frame
+            // rather than jumping ahead to the next segment's start, so the
+            // playhead/zoom transform don't get ahead of what's on screen.
           }
         } else if (!active.paused && !active.seeking && segs.length > 0) {
           const prevIndex = segs.findIndex((s) => s.id === activeSegmentIdRef.current);
@@ -182,13 +205,19 @@ export function useDualVideoPlayback({
               standby.readyState >= standby.HAVE_CURRENT_DATA
             ) {
               active.pause();
-              standby.muted = false;
+              // Corrected to the real per-segment mute state a few lines
+              // below, right after `activeSegmentIdRef.current` is updated
+              // to this now-active video's segment -- just needs to start
+              // out silent for the instant in between.
+              standby.muted = true;
               void standby.play();
               activeSlotRef.current = activeSlotRef.current === 'a' ? 'b' : 'a';
               setActiveSlot(activeSlotRef.current);
               active = standby;
               activeSegmentIdRef.current = nextSegment.id;
               standbySegmentIdRef.current = null;
+              sourceMs = nextSegment.range.startMs;
+              jumped = true;
             } else {
               pendingSwapTargetIdRef.current = nextSegment.id;
               pendingSwapSinceRef.current = performance.now();
@@ -200,22 +229,51 @@ export function useDualVideoPlayback({
                 standby.playbackRate = nextSegment.speed;
                 standbySegmentIdRef.current = nextSegment.id;
               }
+              // Standby isn't ready yet -- leave `sourceMs` at the just-paused
+              // `active` video's real overshoot position instead of jumping
+              // ahead, matching the pending-swap branch above.
             }
-            sourceMs = nextSegment.range.startMs;
           } else {
             active.pause();
             active.currentTime = segs[0].range.startMs / 1000;
             activeSegmentIdRef.current = segs[0].id;
             standbySegmentIdRef.current = null;
             sourceMs = segs[0].range.startMs;
+            jumped = true;
           }
         }
 
+        // Stall watchdog: `active.paused === false` only means we *asked* it
+        // to play, not that frames are actually advancing -- a hard seek
+        // that lands off a keyframe can leave the decoder stuck with
+        // `currentTime` frozen forever, which none of the branches above can
+        // detect on their own (they only reason about *whose* video is
+        // active, not whether it's actually decoding). Detect no forward
+        // progress for `PLAYBACK_STALL_RECOVERY_MS` and re-kick the same
+        // video with a fresh seek, which typically un-sticks it.
+        const watch = stallWatchRef.current;
+        if (active.paused || Math.abs(sourceMs - watch.sourceMs) > 1) {
+          watch.sourceMs = sourceMs;
+          watch.sinceMs = performance.now();
+        } else if (performance.now() - watch.sinceMs > PLAYBACK_STALL_RECOVERY_MS) {
+          active.currentTime = sourceMs / 1000;
+          void active.play();
+          watch.sinceMs = performance.now();
+        }
+
         setZoomTimeMs(sourceMs);
-        if (!isHoverScrubbingRef.current) setPlayhead(sourceMs);
+        if (!isHoverScrubbingRef.current) setPlayhead(sourceMs, jumped);
         const activeSegment = segs.find((s) => s.id === activeSegmentIdRef.current);
         const targetRate = activeSegment?.speed ?? 1;
         if (active.playbackRate !== targetRate) active.playbackRate = targetRate;
+        // Runs every tick (not just at swap points) so a mute/volume change
+        // via the clip's own context menu while it's already the one
+        // playing takes effect immediately, not just on the next cut
+        // boundary.
+        const shouldMute = Boolean(activeSegment?.audioMuted);
+        if (active.muted !== shouldMute) active.muted = shouldMute;
+        const targetVolume = activeSegment?.audioVolume ?? 1;
+        if (active.volume !== targetVolume) active.volume = targetVolume;
 
         const webcamVideo = webcamVideoRef.current;
         if (webcamVideo && webcamPreviewUrl) {

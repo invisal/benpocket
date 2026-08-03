@@ -8,7 +8,6 @@ interface WebcamPipProps {
   stageRef: RefObject<HTMLDivElement | null>;
   webcamVideoRef: RefObject<HTMLVideoElement | null>;
   previewScale: number;
-  cropToolActive: boolean;
   /** The clip currently under the playhead's own per-segment "Hide webcam" flag (see CutTimeline.tsx's context menu) -- independent of `webcam.enabled`, which hides it everywhere instead of just this one clip. */
   webcamHidden?: boolean;
 }
@@ -17,7 +16,6 @@ export default function WebcamPip({
   stageRef,
   webcamVideoRef,
   previewScale,
-  cropToolActive,
   webcamHidden = false
 }: WebcamPipProps) {
   const webcam = useWebcamStore();
@@ -28,7 +26,7 @@ export default function WebcamPip({
     setPosition: webcam.setPosition
   });
 
-  if (!webcam.enabled || !webcamPreviewUrl || cropToolActive || webcamHidden) return null;
+  if (!webcam.enabled || !webcamPreviewUrl || webcamHidden) return null;
 
   return (
     <div

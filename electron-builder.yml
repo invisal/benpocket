@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: temp-project
+appId: com.benpocket.app
+productName: benpocket
 directories:
   buildResources: build
 files:
@@ -25,7 +25,7 @@ extraResources:
   - from: native/bin
     to: native/bin
 win:
-  executableName: temp-project
+  executableName: benpocket
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -53,5 +53,7 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: invisal
+  repo: benpocket
+  releaseType: prerelease

@@ -19,17 +19,39 @@ import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
 import { createAppTray, destroyTray, setTrayMainWindow } from './tray';
+import {
+  registerGlobalShortcuts,
+  unregisterGlobalShortcuts
+} from './screen-recorder/shortcuts/global-shortcuts';
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
-// One process only — relaunch from search/icon focuses the tray instance
-// instead of spawning a second tray icon.
-if (!app.requestSingleInstanceLock()) {
+import { registerProfileHandlers, closeAllProfileSessions } from './store/ipc';
+import { registerDeepLinkHandler } from './auth/deepLink';
+import { handleGithubDeepLink } from './auth/githubAuth';
+import { registerAuthHandlers } from './auth/ipc';
+import { registerUpdaterHandlers } from './updater/ipc';
+
+// Must run before app.whenReady(): app.requestSingleInstanceLock() has to be
+// called this early for `second-instance` (Windows/Linux deep-link delivery,
+// see auth/deepLink.ts) to work at all, and `open-url` (macOS) can fire
+// before the app is ready. A second launch (e.g. the OS re-invoking the app
+// to deliver a benpocket:// callback) now gets forwarded to this instance and
+// quits instead of opening a second window.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
   app.quit();
 } else {
+  registerDeepLinkHandler(handleGithubDeepLink);
+}
+
+// Everything below only runs if this process actually won the single-instance
+// lock above -- otherwise app.quit() is already in flight, and registering a
+// window/IPC handlers here would race it into briefly existing anyway.
+if (gotSingleInstanceLock) {
   /** When true, window `close` is allowed to destroy the window (Quit path). */
   let isQuitting = false;
 
@@ -43,6 +65,8 @@ if (!app.requestSingleInstanceLock()) {
     setTrayMainWindow(win);
   }
 
+  // Deep-link handler also listens on `second-instance` for benpocket:// URLs;
+  // this listener focuses the tray instance on any second launch.
   app.on('second-instance', () => {
     focusMainWindow();
   });
@@ -240,9 +264,27 @@ if (!app.requestSingleInstanceLock()) {
     // File Explorer tool: directory listing, native file icons, open-with-default-app
     registerFileExplorerHandlers();
 
+    // Profile state (active profile + list of profiles), backing the activity
+    // bar's profile switcher.
+    registerProfileHandlers();
+
+    // GitHub OAuth login + master-password DEK setup/unlock -- see
+    // src/main/store/PLAN3.md.
+    registerAuthHandlers();
+
+    // Manual update checking via electron-updater against GitHub Releases --
+    // see src/main/updater/ipc.ts. Runs one check at startup; no polling, no
+    // silent download/install, everything else is gated behind the status
+    // bar's UpdateStatus click.
+    registerUpdaterHandlers();
+
     const mainWindow = createWindow();
     const trayIcons = { trayTemplate: trayIcon, appIcon: icon };
     createAppTray(trayIcons, mainWindow);
+
+    // "Launch Recorder" OS-level shortcut -- works even while benpocket is
+    // unfocused, unlike the in-app bindings under features/shortcuts.
+    registerGlobalShortcuts(mainWindow);
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
@@ -263,6 +305,8 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('before-quit', () => {
     isQuitting = true;
+    closeAllProfileSessions();
+    unregisterGlobalShortcuts();
     destroyTray();
     destroyRecorderToolbar();
     destroySourcePickerOverlay();

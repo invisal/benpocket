@@ -62,7 +62,7 @@ async function uploadEntries(
   destDirUri: string,
   onProgress?: OnProgress
 ): Promise<MutationResult> {
-  const client = getS3Client();
+  const client = await getS3Client();
   const { bucket, key: destKey } = parseR2Uri(destDirUri);
   const destPrefix = normalizePrefix(destKey);
 
@@ -148,7 +148,7 @@ interface R2PlanEntry {
 }
 
 async function listObjectsWithSize(
-  client: ReturnType<typeof getS3Client>,
+  client: Awaited<ReturnType<typeof getS3Client>>,
   bucket: string,
   prefix: string
 ): Promise<{ key: string; size: number }[]> {
@@ -166,7 +166,7 @@ async function downloadEntries(
   destDirUri: string,
   onProgress?: OnProgress
 ): Promise<MutationResult> {
-  const client = getS3Client();
+  const client = await getS3Client();
 
   try {
     const plan: R2PlanEntry[] = [];

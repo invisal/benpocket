@@ -15,10 +15,31 @@ import { ContextMenu } from '../ui/ContextMenu';
 import { ToolDialog } from '../dialog/ToolDialog';
 import { KuberneterActivityContextMenu } from '../../../tools/kuberneter/components/activities-bar/KuberneterActivityContextMenu';
 import { KuberneterActivityIcon } from '../../../tools/kuberneter/components/activities-bar/KuberneterActivityIcon';
+import { ProfileSwitcher } from './ProfileSwitcher';
+
+import { useKuberneterStore } from '../../../tools/kuberneter/store/kuberneter.store';
+import { useLayoutStore } from '../../store/layout.store';
 
 export const ActivityBar: React.FC = () => {
   const { tabs, activeTabId, selectTab, closeTab } = useToolTabs();
   const [isToolDialogOpen, setIsToolDialogOpen] = useState(false);
+
+  const handleTabClick = (tab: (typeof tabs)[number]) => {
+    const isAlreadyActive = tab.id === activeTabId;
+    selectTab(tab.id);
+
+    if (tab.type === 'kuberneter') {
+      const payload = tab.payload as { instanceId?: string } | undefined;
+      const instanceId = payload?.instanceId || useLayoutStore.getState().activeInstanceId;
+      if (instanceId && instanceId !== 'home') {
+        if (isAlreadyActive) {
+          useKuberneterStore.getState().toggleKuberneterInstanceSidebar(instanceId);
+        } else {
+          useKuberneterStore.getState().setKuberneterInstanceSidebarOpen(instanceId, true);
+        }
+      }
+    }
+  };
 
   const renderIcon = (tab: (typeof tabs)[number]) => {
     switch (tab.type) {
@@ -58,7 +79,7 @@ export const ActivityBar: React.FC = () => {
                   'size-11 flex items-center justify-center cursor-pointer transition-colors relative',
                   tab.id === activeTabId ? 'bg-blue-300 text-blue-900' : 'hover:bg-surface-2'
                 )}
-                onClick={() => selectTab(tab.id)}
+                onClick={() => handleTabClick(tab)}
               >
                 {renderIcon(tab)}
               </button>
@@ -81,6 +102,8 @@ export const ActivityBar: React.FC = () => {
       </button>
 
       <div className="flex-1 w-full bg-surface-2 bg-diagonal-stripes" />
+
+      <ProfileSwitcher />
 
       <ToolDialog open={isToolDialogOpen} onOpenChange={setIsToolDialogOpen} />
     </div>

@@ -10,6 +10,8 @@ import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
 import { EditorToolPanel } from './EditorToolPanel';
+import { CropDialog } from '../../features/crop/components/CropDialog';
+import { useCropStore } from '../../features/crop/store/crop-store';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import type { PreviewVideoController, SourceResolution } from '@screen-recorder/types/editor';
 import {
@@ -41,10 +43,11 @@ export function EditorPage(): JSX.Element {
   const setIsPlaying = useTimelineStore((s) => s.setIsPlaying);
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
+  const crop = useCropStore((s) => s.rect);
 
   const [duration, setDuration] = useState(0);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
-  const [cropToolActive, setCropToolActive] = useState(false);
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
   const [sourceResolution, setSourceResolution] = useState<SourceResolution | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<PreviewVideoController>(null);
@@ -86,8 +89,6 @@ export function EditorPage(): JSX.Element {
           isPlaying={isPlaying}
           videoError={videoError}
           currentTimeMs={currentTimeMs}
-          cropToolActive={cropToolActive}
-          selectedSegmentId={selectedSegmentId}
           sourceResolution={sourceResolution}
           onLoadedMetadata={handleLoadedMetadata}
           onPlay={() => setIsPlaying(true)}
@@ -96,23 +97,27 @@ export function EditorPage(): JSX.Element {
           onTimeUpdate={setCurrentTimeMs}
         />
 
-        {selectedSegment?.crop && (
-          <p className="shrink-0 px-6 pb-1 text-xs text-muted-foreground">
-            Crop: {Math.round(selectedSegment.crop.width * 100)}% ×{' '}
-            {Math.round(selectedSegment.crop.height * 100)}% of frame for this clip -- applied at
-            export.
-          </p>
-        )}
-
         <EditorTransportBar
           videoRef={videoRef}
           isPlaying={isPlaying}
-          cropToolActive={cropToolActive}
-          onToggleCrop={() => setCropToolActive((v) => !v)}
+          hasCrop={Boolean(crop)}
+          onOpenCrop={() => setIsCropDialogOpen(true)}
           currentTimeMs={currentTimeMs}
           durationMs={duration * 1000}
         />
       </div>
+
+      {sourceResolution && (
+        <CropDialog
+          key={String(isCropDialogOpen)}
+          open={isCropDialogOpen}
+          onOpenChange={setIsCropDialogOpen}
+          sourceWidth={sourceResolution.width}
+          sourceHeight={sourceResolution.height}
+          previewUrl={lastRecording.previewUrl}
+          currentTimeMs={currentTimeMs}
+        />
+      )}
 
       {activeTool ? (
         <ResizablePanel

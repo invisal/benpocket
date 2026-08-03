@@ -1,15 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { cn } from 'cnfast';
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
+import { useCloudflareSettings } from '@renderer/hooks/useCloudflareSettings';
 import { AGENT_MODELS } from '../lib/models';
-
-type Status = 'loading' | 'configured' | 'empty' | 'no-cloudflare';
 
 interface ConnectAiGatewayDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConnected?: () => void;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -21,53 +20,41 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function ConnectAiGatewayDialog({
-  open,
-  onOpenChange,
-  onConnected
-}: ConnectAiGatewayDialogProps) {
-  const [status, setStatus] = useState<Status>('loading');
+export function ConnectAiGatewayDialog({ open, onOpenChange }: ConnectAiGatewayDialogProps) {
+  const { isLoading, fields, configured, gatewayConfigured, setFields, clearGateway } =
+    useCloudflareSettings();
   const [gatewayId, setGatewayId] = useState('');
-  // No field for this in the dialog -- the model is picked from the ChatInput
-  // toolbar instead. Kept here only so `handleSave` has a value to persist on
-  // first connect, before any model has been chosen from the chat.
-  const [model, setModel] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    window.fileExplorer.getAiGatewayCredentialStatus().then((res) => {
-      if (!res.cloudflareConnected) {
-        setStatus('no-cloudflare');
-        return;
-      }
-      setStatus(res.configured ? 'configured' : 'empty');
-      setGatewayId(res.gatewayId);
-      setModel(res.model || (AGENT_MODELS[0]?.id ?? ''));
-    });
-  }, [open]);
+  // Resets the draft to the saved value whenever the dialog opens (or the
+  // initial snapshot finishes hydrating while it's already open) -- adjusted
+  // during render rather than in an effect, same as ConnectCloudflareDialog.
+  const readyToShow = open && !isLoading;
+  const [prevReadyToShow, setPrevReadyToShow] = useState(readyToShow);
+  if (readyToShow !== prevReadyToShow) {
+    setPrevReadyToShow(readyToShow);
+    if (readyToShow) {
+      setGatewayId(fields.gatewayId);
+      setError(null);
+    }
+  }
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handleSave = () => {
     setError(null);
-    const result = await window.fileExplorer.setAiGatewayCredential(gatewayId.trim(), model.trim());
-    setSaving(false);
-    if ('error' in result) {
-      setError(result.error);
+    const trimmedGatewayId = gatewayId.trim();
+    if (!trimmedGatewayId) {
+      setError('Gateway ID is required.');
       return;
     }
-    setStatus('configured');
-    onConnected?.();
+    // No model field in this dialog -- it's picked from the ChatInput toolbar
+    // instead. Falls back to the first model on first connect, before any
+    // model has been chosen from the chat.
+    setFields({ gatewayId: trimmedGatewayId, model: fields.model || (AGENT_MODELS[0]?.id ?? '') });
   };
 
-  const handleClear = async () => {
-    setSaving(true);
-    await window.fileExplorer.clearAiGatewayCredential();
-    setSaving(false);
-    setStatus('empty');
+  const handleClear = () => {
+    clearGateway();
     setGatewayId('');
-    setModel('');
   };
 
   return (
@@ -75,14 +62,16 @@ export function ConnectAiGatewayDialog({
       <Dialog.Content className="max-w-sm">
         <div className="flex items-center justify-between">
           <Dialog.Title>Connect AI Gateway</Dialog.Title>
-          {status === 'configured' && (
-            <span className="text-xs px-2 py-0.5 rounded-full mr-6 bg-emerald-500/15 text-emerald-400">
-              Connected
-            </span>
-          )}
-          {status === 'empty' && (
-            <span className="text-xs px-2 py-0.5 rounded-full mr-6 bg-surface-3 text-muted-foreground">
-              Not connected
+          {!isLoading && configured && (
+            <span
+              className={cn(
+                'text-xs px-2 py-0.5 rounded-full mr-6',
+                gatewayConfigured
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : 'bg-surface-3 text-muted-foreground'
+              )}
+            >
+              {gatewayConfigured ? 'Connected' : 'Not connected'}
             </span>
           )}
         </div>
@@ -93,35 +82,25 @@ export function ConnectAiGatewayDialog({
         </Dialog.Description>
 
         <div className="mt-4">
-          {status === 'no-cloudflare' && (
+          {!isLoading && !configured && (
             <p className="text-xs text-muted-foreground">
               Connect Cloudflare (Account ID + API Token) from the Home tab first, then come back
               here to link a gateway.
             </p>
           )}
-          {(status === 'configured' || status === 'empty') && (
+          {!isLoading && configured && (
             <div className="flex flex-col gap-3">
               <Field label="Gateway ID">
                 <Input size="sm" value={gatewayId} onChange={(e) => setGatewayId(e.target.value)} />
               </Field>
               {error && <p className="text-xs text-red-400">{error}</p>}
               <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void handleSave()}
-                  disabled={saving}
-                >
-                  {saving ? 'Saving…' : 'Save'}
+                <Button variant="primary" size="sm" onClick={handleSave}>
+                  Save
                 </Button>
-                {status === 'configured' && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => void handleClear()}
-                    disabled={saving}
-                  >
-                    {saving ? 'Clearing…' : 'Disconnect'}
+                {gatewayConfigured && (
+                  <Button variant="destructive" size="sm" onClick={handleClear}>
+                    Disconnect
                   </Button>
                 )}
               </div>

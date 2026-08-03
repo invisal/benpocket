@@ -1,24 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import {
-  ChevronLeft,
-  CameraIcon,
-  Folder,
-  FolderOpen,
-  GlobeIcon,
-  Plus,
-  Server,
-  VideoIcon,
-  SwatchBookIcon
-} from 'lucide-react';
+import type { ReactNode } from 'react';
+import { CameraIcon, Folder, GlobeIcon, VideoIcon, SwatchBookIcon } from 'lucide-react';
 import { cn } from 'cnfast';
 import { Dialog } from '../ui/Dialog';
 import { useToolTabs } from '../providers/ToolProvider';
 import { useLayoutStore } from '../../store/layout.store';
-import { useKuberneterStore } from '../../../tools/kuberneter/store/kuberneter.store';
-import { useWorkspacesStore } from '../../../tools/http-client/store/workspaces.store';
 import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
-
-type ToolDialogView = 'tools' | 'kuberneter' | 'http-client';
 
 interface ToolDialogProps {
   open: boolean;
@@ -26,59 +12,20 @@ interface ToolDialogProps {
 }
 
 export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
-  const [view, setView] = useState<ToolDialogView>('tools');
-  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
-  const [draftWorkspaceName, setDraftWorkspaceName] = useState('');
-  const { tabs, selectTab, openTab } = useToolTabs();
-  const kuberneterKubeconfigs = useKuberneterStore((s) => s.kuberneterKubeconfigs);
-  const workspaces = useWorkspacesStore((s) => s.workspaces);
-  const workspacesLoaded = useWorkspacesStore((s) => s.isLoaded);
-  const loadWorkspaces = useWorkspacesStore((s) => s.load);
-  const createWorkspace = useWorkspacesStore((s) => s.createWorkspace);
+  const { openTab } = useToolTabs();
 
-  useEffect(() => {
-    if (open && !workspacesLoaded) loadWorkspaces();
-  }, [open, workspacesLoaded, loadWorkspaces]);
+  const close = () => onOpenChange(false);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setView('tools');
-    onOpenChange(next);
-  };
-
-  const close = () => handleOpenChange(false);
-
-  const handleOpenKubeconfig = (configPath: string) => {
+  const handleOpenKuberneter = () => {
     const instanceId = `kuberneter-${Date.now()}`;
-    useLayoutStore
-      .getState()
-      .addActivityInstance('kuberneter', instanceId, { configPath, cluster: '' });
+    useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
     openTab('kuberneter', { instanceId });
     close();
   };
 
-  const handleAddKubeconfigFile = async () => {
-    const filePath = await window.kuberneter.selectKubeconfigFile();
-    if (filePath) {
-      useKuberneterStore.getState().addKuberneterKubeconfig(filePath);
-      handleOpenKubeconfig(filePath);
-    }
-  };
-
-  const handleOpenWorkspace = (workspaceId: string) => {
-    useWorkspacesStore.getState().setActiveWorkspaceId(workspaceId);
-    const existing = tabs.find((t) => t.type === 'http-client');
-    if (existing) selectTab(existing.id);
-    else openTab('http-client', {});
+  const handleOpenHttpClient = () => {
+    openTab('http-client', {});
     close();
-  };
-
-  const submitNewWorkspace = async () => {
-    const name = draftWorkspaceName.trim();
-    setIsCreatingWorkspace(false);
-    setDraftWorkspaceName('');
-    if (!name) return;
-    const workspace = await createWorkspace(name);
-    handleOpenWorkspace(workspace.id);
   };
 
   const handleOpenScreenRecorder = () => {
@@ -102,142 +49,52 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Content className="max-w-sm">
-        {view === 'tools' && (
-          <>
-            <Dialog.Title>Add Tool</Dialog.Title>
-            <Dialog.Description>Choose a tool to open.</Dialog.Description>
-            <div className="mt-4 space-y-1">
-              <ToolRow
-                icon={<Folder size={18} />}
-                name="File Explorer"
-                description="Browse files on your computer."
-                onClick={handleOpenFileExplorer}
-              />
-              <ToolRow
-                icon={<img src={kuberneterIcon} className="size-5" alt="Kubernetes" />}
-                name="Kubernetes"
-                description="Connect to a cluster and manage workloads."
-                onClick={() => setView('kuberneter')}
-              />
-              <ToolRow
-                icon={<GlobeIcon size={18} />}
-                name="HTTP Client"
-                description="Compose and send API requests."
-                onClick={() => setView('http-client')}
-              />
-              <ToolRow
-                icon={<VideoIcon size={18} />}
-                name="Screen Recorder"
-                description="Record and export your screen."
-                onClick={handleOpenScreenRecorder}
-              />
-              <ToolRow
-                icon={<CameraIcon size={18} />}
-                name="Screen Capture"
-                description="Capture a still image from your screen."
-                onClick={handleOpenScreenCapture}
-              />
-              {import.meta.env.DEV && (
-                <ToolRow
-                  icon={<SwatchBookIcon size={18} />}
-                  name="Storybook"
-                  description="Browse shared UI components and mockup pages."
-                  onClick={handleOpenStorybook}
-                />
-              )}
-            </div>
-          </>
-        )}
-
-        {view === 'kuberneter' && (
-          <>
-            <DialogSubHeader title="Select Kube Config" onBack={() => setView('tools')} />
-            <div className="mt-4 space-y-1">
-              <ToolRow
-                icon={<Server size={18} />}
-                name="Default Config"
-                description="~/.kube/config"
-                onClick={() => handleOpenKubeconfig('default')}
-              />
-              {kuberneterKubeconfigs.map((configPath) => (
-                <ToolRow
-                  key={configPath}
-                  icon={<Server size={18} />}
-                  name={configPath.split(/[/\\]/).pop() || configPath}
-                  description={configPath}
-                  onClick={() => handleOpenKubeconfig(configPath)}
-                />
-              ))}
-              <ToolRow
-                icon={<Plus size={18} />}
-                name="Add Config File..."
-                onClick={handleAddKubeconfigFile}
-              />
-            </div>
-          </>
-        )}
-
-        {view === 'http-client' && (
-          <>
-            <DialogSubHeader title="Select Workspace" onBack={() => setView('tools')} />
-            <div className="mt-4 space-y-1">
-              {workspaces.map((workspace) => (
-                <ToolRow
-                  key={workspace.id}
-                  icon={<FolderOpen size={18} />}
-                  name={workspace.name}
-                  description={new Date(workspace.createdAt).toLocaleDateString()}
-                  onClick={() => handleOpenWorkspace(workspace.id)}
-                />
-              ))}
-              {isCreatingWorkspace ? (
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Workspace name..."
-                  value={draftWorkspaceName}
-                  onChange={(e) => setDraftWorkspaceName(e.target.value)}
-                  onBlur={submitNewWorkspace}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') submitNewWorkspace();
-                    if (e.key === 'Escape') {
-                      setIsCreatingWorkspace(false);
-                      setDraftWorkspaceName('');
-                    }
-                  }}
-                  className="w-full bg-surface-2 border border-accent rounded-md px-2.5 py-2 text-[13px] text-text-base outline-none"
-                />
-              ) : (
-                <ToolRow
-                  icon={<Plus size={18} />}
-                  name="New Workspace..."
-                  onClick={() => {
-                    setIsCreatingWorkspace(true);
-                    setDraftWorkspaceName('');
-                  }}
-                />
-              )}
-            </div>
-          </>
-        )}
+        <Dialog.Title>Add Tool</Dialog.Title>
+        <Dialog.Description>Choose a tool to open.</Dialog.Description>
+        <div className="mt-4 space-y-1">
+          <ToolRow
+            icon={<Folder size={18} />}
+            name="File Explorer"
+            description="Browse files on your computer."
+            onClick={handleOpenFileExplorer}
+          />
+          <ToolRow
+            icon={<img src={kuberneterIcon} className="size-5" alt="Kubernetes" />}
+            name="Kubernetes"
+            description="Connect to a cluster and manage workloads."
+            onClick={handleOpenKuberneter}
+          />
+          <ToolRow
+            icon={<GlobeIcon size={18} />}
+            name="HTTP Client"
+            description="Compose and send API requests."
+            onClick={handleOpenHttpClient}
+          />
+          <ToolRow
+            icon={<VideoIcon size={18} />}
+            name="Screen Recorder"
+            description="Record and export your screen."
+            onClick={handleOpenScreenRecorder}
+          />
+          <ToolRow
+            icon={<CameraIcon size={18} />}
+            name="Screen Capture"
+            description="Capture a still image from your screen."
+            onClick={handleOpenScreenCapture}
+          />
+          {import.meta.env.DEV && (
+            <ToolRow
+              icon={<SwatchBookIcon size={18} />}
+              name="Storybook"
+              description="Browse shared UI components and mockup pages."
+              onClick={handleOpenStorybook}
+            />
+          )}
+        </div>
       </Dialog.Content>
     </Dialog.Root>
-  );
-}
-
-function DialogSubHeader({ title, onBack }: { title: string; onBack: () => void }) {
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={onBack}
-        className="flex size-6 items-center justify-center rounded-sm text-text-dim outline-none hover:bg-border-dark/60 hover:text-text-base"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <Dialog.Title>{title}</Dialog.Title>
-    </div>
   );
 }
 

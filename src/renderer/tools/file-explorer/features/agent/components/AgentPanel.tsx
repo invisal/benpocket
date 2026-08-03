@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Settings2 } from 'lucide-react';
 import { Chat, type ChatPermissionStatus } from '@renderer/components/ui/Chat';
 import { Button } from '@renderer/components/ui/Button';
+import { useCloudflareSettings } from '@renderer/hooks/useCloudflareSettings';
 import type { AgentMessage, AgentToolCall } from '../../../../../../preload/file-explorer/api';
 import { deniedToolMessage, runToolCall, splitToolCalls } from '../lib/agentLoop';
 import { AGENT_MODELS, calculateCost, getModelPricing, type SessionUsage } from '../lib/models';
@@ -39,10 +40,10 @@ function buildSystemPrompt(workingDirectory: string | null): string {
 const EMPTY_USAGE: SessionUsage = { promptTokens: 0, completionTokens: 0, cachedTokens: 0 };
 
 export function AgentPanel({ workingDirectory }: AgentPanelProps) {
-  const [connected, setConnected] = useState<boolean | null>(null);
+  const { isLoading, fields, gatewayConfigured, setFields } = useCloudflareSettings();
+  const connected = isLoading ? null : gatewayConfigured;
+  const modelId = fields.model || null;
   const [connectOpen, setConnectOpen] = useState(false);
-  const [gatewayId, setGatewayId] = useState('');
-  const [modelId, setModelId] = useState<string | null>(null);
   const [usage, setUsage] = useState<SessionUsage>(EMPTY_USAGE);
   // Excludes the system message -- that's derived fresh from `workingDirectoryRef`
   // on every send instead of living in state, so it always reflects panel 1's
@@ -58,17 +59,6 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
   useEffect(() => {
     workingDirectoryRef.current = workingDirectory;
   }, [workingDirectory]);
-
-  // Re-fetches on mount, and again once the settings dialog closes so an
-  // edited gateway/model shows up without remounting the whole panel.
-  useEffect(() => {
-    if (connectOpen) return;
-    window.fileExplorer.getAiGatewayCredentialStatus().then((res) => {
-      setConnected(res.configured);
-      setGatewayId(res.gatewayId);
-      setModelId(res.model || null);
-    });
-  }, [connectOpen]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
@@ -205,9 +195,8 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
     resolvePending(call, deniedToolMessage(call), 'denied');
   }
 
-  async function handleModelChange(nextModelId: string) {
-    setModelId(nextModelId);
-    await window.fileExplorer.setAiGatewayCredential(gatewayId, nextModelId);
+  function handleModelChange(nextModelId: string) {
+    setFields({ model: nextModelId });
   }
 
   async function handleSend() {
@@ -236,11 +225,7 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
             Connect AI Gateway
           </Button>
         </div>
-        <ConnectAiGatewayDialog
-          open={connectOpen}
-          onOpenChange={setConnectOpen}
-          onConnected={() => setConnected(true)}
-        />
+        <ConnectAiGatewayDialog open={connectOpen} onOpenChange={setConnectOpen} />
       </>
     );
   }
@@ -299,17 +284,13 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
           placeholder="Ask the agent…"
           models={AGENT_MODELS}
           modelId={modelId}
-          onModelChange={(id) => void handleModelChange(id)}
+          onModelChange={handleModelChange}
           tokens={sessionTokens > 0 ? sessionTokens : null}
           cost={sessionCost}
         />
       </Chat.Root>
 
-      <ConnectAiGatewayDialog
-        open={connectOpen}
-        onOpenChange={setConnectOpen}
-        onConnected={() => setConnected(true)}
-      />
+      <ConnectAiGatewayDialog open={connectOpen} onOpenChange={setConnectOpen} />
     </div>
   );
 }

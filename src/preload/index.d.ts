@@ -3,6 +3,9 @@ import type { ScreenRecorderApi } from './screen-recorder/api';
 import type { KuberneterApi } from './kuberneter/api';
 import type { PostmanBridge } from './http-client/api';
 import type { FileExplorerApi } from './file-explorer/api';
+import type { ProfilesApi } from './store/api';
+import type { AuthApi } from './auth/api';
+import type { UpdaterApi } from './updater/api';
 
 interface FileTreeNode {
   name: string;
@@ -17,6 +20,9 @@ declare global {
     screenRecorder: ScreenRecorderApi;
     kuberneter: KuberneterApi;
     fileExplorer: FileExplorerApi;
+    profiles: ProfilesApi;
+    auth: AuthApi;
+    updater: UpdaterApi;
     api: {
       platform: string;
       /** Linux Wayland — PipeWire portal picker instead of in-app source grid. */

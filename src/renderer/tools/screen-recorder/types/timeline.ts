@@ -6,6 +6,9 @@ export interface TimeRange {
 export type ClipSpeed = 0.5 | 1 | 1.25 | 1.5 | 2;
 export const CLIP_SPEED_OPTIONS: ClipSpeed[] = [0.5, 1, 1.25, 1.5, 2];
 
+/** 10% steps, matching the "Set volume" context menu's radio options. */
+export const AUDIO_VOLUME_OPTIONS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] as const;
+
 /**
  * Normalized (0-1) crop rect relative to the *source recording's* native
  * pixel dimensions -- not the output/canvas dimensions, which may differ
@@ -13,8 +16,8 @@ export const CLIP_SPEED_OPTIONS: ClipSpeed[] = [0.5, 1, 1.25, 1.5, 2];
  * Converted to source pixel coordinates at export time once the source's
  * actual width/height are known (see main/export/video-decoder.ts).
  *
- * Lives on `TimelineSegment` (not `Project`) because crop is a per-clip
- * setting: each cut clip can be framed differently.
+ * A single crop applies to the whole recording (see `useCropStore`), not
+ * per-clip -- every kept segment is decoded through the same rect.
  */
 export interface CropRect {
   x: number;
@@ -36,7 +39,6 @@ export interface TimelineSegment {
   originalRange: TimeRange;
   speed: ClipSpeed;
   sourceOffsetMs: number;
-  crop: CropRect | null;
   /**
    * Whether this clip's own in/out point has been manually dragged since it
    * was created (see `resizeSegmentEdge`) -- not set by splitting alone.
@@ -57,6 +59,10 @@ export interface TimelineSegment {
   cursorHidden: boolean;
   /** Hides the webcam PiP overlay (in both preview and export) for this clip's own duration -- independent of the global `WebcamOptions.enabled` toggle, which hides it everywhere. Set via the timeline's per-clip "Hide webcam" context menu item. */
   webcamHidden: boolean;
+  /** Silences this clip's own duration, in both preview and export. Set via the timeline's per-clip "Mute clip" context menu item -- there's no separate global mute; the export just skips audio entirely if every kept clip ends up muted (see `useExportAction.ts`). */
+  audioMuted: boolean;
+  /** Gain applied to this clip's own audio, 0.1-1 (10%-100%) -- independent of `audioMuted`, which is a hard silence rather than a quiet level. Set via the timeline's per-clip "Set volume" context menu item. */
+  audioVolume: number;
 }
 
 export interface TimelineTrack {

@@ -23,11 +23,11 @@ import {
   type ReadFileResult,
   type WriteFileResult
 } from './fileDriver';
-import { getR2Credential } from './r2Credential';
+import { getCloudflareSettings } from '../store/cloudflareSettings';
 import { parseLocation } from './location';
 
-export function getS3Client(): S3Client {
-  const credential = getR2Credential();
+export async function getS3Client(): Promise<S3Client> {
+  const credential = await getCloudflareSettings();
   if (!credential) throw new Error('Cloudflare is not connected.');
   if (!credential.accessKeyId || !credential.secretAccessKey) {
     throw new Error('R2 access keys are not configured.');
@@ -45,8 +45,8 @@ export function getS3Client(): S3Client {
   });
 }
 
-function getCloudflareClient(): Cloudflare {
-  const credential = getR2Credential();
+async function getCloudflareClient(): Promise<Cloudflare> {
+  const credential = await getCloudflareSettings();
   if (!credential) throw new Error('Cloudflare is not connected.');
   return new Cloudflare({ apiToken: credential.apiToken });
 }
@@ -169,7 +169,7 @@ async function listDirectory(uri: string, cursor?: string): Promise<ListDirector
   const prefix = normalizePrefix(key);
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     const response = await client.send(
       new ListObjectsV2Command({
         Bucket: bucket,
@@ -227,7 +227,7 @@ async function readFile(uri: string): Promise<ReadFileResult> {
   }
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
     if ((response.ContentLength ?? 0) > MAX_PREVIEW_FILE_BYTES) {
       return { error: 'too-large', maxBytes: MAX_PREVIEW_FILE_BYTES };
@@ -249,7 +249,7 @@ async function readBinaryFile(uri: string): Promise<ReadBinaryFileResult> {
   }
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
     if ((response.ContentLength ?? 0) > MAX_MEDIA_PREVIEW_BYTES) {
       return { error: 'too-large', maxBytes: MAX_MEDIA_PREVIEW_BYTES };
@@ -270,7 +270,7 @@ async function writeFile(uri: string, content: string): Promise<WriteFileResult>
   }
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: content }));
     return { success: true };
   } catch (err) {
@@ -284,7 +284,7 @@ async function deleteEntries(uris: string[]): Promise<MutationResult> {
   const { bucket } = parseR2Uri(uris[0]);
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     const keysToDelete: string[] = [];
     for (const uri of uris) {
       const { key } = parseR2Uri(uri);
@@ -307,7 +307,7 @@ async function copyEntries(sourceUris: string[], destDirUri: string): Promise<Mu
   const destPrefix = normalizePrefix(destKey);
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     for (const sourceUri of sourceUris) {
       const source = parseR2Uri(sourceUri);
       if (source.bucket !== bucket) {
@@ -344,7 +344,7 @@ async function createFile(destDirUri: string, name: string): Promise<CreateResul
   const key = `${normalizePrefix(destKey)}${name}`;
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     if (await objectExists(client, bucket, key)) return { error: 'exists' };
     await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: '' }));
     return { success: true, path: `r2://${bucket}/${key}` };
@@ -361,7 +361,7 @@ async function createFolder(destDirUri: string, name: string): Promise<CreateRes
   const key = `${normalizePrefix(destKey)}${name}/`;
 
   try {
-    const client = getS3Client();
+    const client = await getS3Client();
     if (await objectExists(client, bucket, key)) return { error: 'exists' };
     await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: '' }));
     return { success: true, path: `r2://${bucket}/${key}` };
@@ -400,11 +400,11 @@ export const r2FileDriver: FileDriver = {
 
 /** Bucket-level listing is a Cloudflare REST API call, not part of the S3-compatible object surface. */
 export async function listR2Buckets(): Promise<{ name: string }[] | { error: string }> {
-  const credential = getR2Credential();
+  const credential = await getCloudflareSettings();
   if (!credential) return { error: 'Cloudflare is not connected.' };
 
   try {
-    const client = getCloudflareClient();
+    const client = await getCloudflareClient();
     const response = await client.r2.buckets.list({ account_id: credential.accountId });
     return (response.buckets ?? []).flatMap((bucket) =>
       bucket.name ? [{ name: bucket.name }] : []

@@ -45,6 +45,7 @@ import { ClusterRoleBindings } from './clusterrolebindings/ClusterRoleBindings';
 import { RoleBindings } from './rolebindings/RoleBindings';
 import { PortForwarding } from './portforwarding/PortForwarding';
 import { KuberneterSettings } from './settings/KuberneterSettings';
+import { GenericKubeResourceView } from './GenericKubeResourceView';
 
 export type { ApplicationData } from '../../types/ApplicationData';
 
@@ -213,6 +214,13 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
       {resource === 'nodes' && <Nodes />}
 
       {resource === 'portforwarding' && <PortForwarding />}
+
+      {resource.startsWith('crd--') && (
+        <GenericKubeResourceView
+          resource={resource}
+          kuberneterSelectedNamespace={kuberneterSelectedNamespace}
+        />
+      )}
     </div>
   );
 };

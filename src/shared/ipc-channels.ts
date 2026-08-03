@@ -59,8 +59,6 @@ export const IpcChannels = {
   TrayOpenRecordPicker: 'tray:open-record-picker',
   TraySourceSelected: 'tray:source-selected',
   TrayOpenTool: 'tray:open-tool',
-  GetAppPrefs: 'app-prefs:get',
-  SetAppPrefs: 'app-prefs:set',
   RecorderToolbarOpen: 'recorder-toolbar:open',
   RecorderToolbarCancel: 'recorder-toolbar:cancel',
   RecorderToolbarStart: 'recorder-toolbar:start',

@@ -15,7 +15,6 @@ import kuberneterIcon from '@renderer/assets/kuberneter-icon.svg';
 import { ConnectCloudflareDialog } from '@renderer/components/dialog/ConnectCloudflareDialog';
 import { Button } from '@renderer/components/ui/Button';
 import { Toolbar } from '@renderer/components/ui/Toolbar';
-import type { AppPrefs } from '@shared/app-prefs';
 
 interface Props {}
 
@@ -35,22 +34,12 @@ export function HomeMain({}: ToolComponentProps<Props>) {
   const [query, setQuery] = useState('');
   const [cloudflareDialogOpen, setCloudflareDialogOpen] = useState(false);
   const [cloudflareStatus, setCloudflareStatus] = useState<CloudflareStatus>('loading');
-  const [prefs, setPrefs] = useState<AppPrefs | null>(null);
 
   useEffect(() => {
     window.fileExplorer.getR2CredentialStatus().then((res) => {
       setCloudflareStatus(res.configured ? 'configured' : 'empty');
     });
   }, [cloudflareDialogOpen]);
-
-  useEffect(() => {
-    void window.api.appPrefs.get().then(setPrefs);
-  }, []);
-
-  const updatePref = async (patch: Partial<AppPrefs>): Promise<void> => {
-    const next = await window.api.appPrefs.set(patch);
-    setPrefs(next);
-  };
 
   const tools: ToolEntry[] = useMemo(
     () => [
@@ -141,7 +130,7 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         <div className="h-full flex-1 bg-diagonal-stripes" />
       </Toolbar.Root>
 
-      <div className="p-6 flex-1 bg-surface-2 bg-dotted overflow-y-auto">
+      <div className="p-6 flex-1 bg-surface-2 bg-dotted">
         <div>
           {filtered.length === 0 ? (
             <div className="text-sm text-text-dim border border-dashed border-border rounded-lg py-10 text-center">
@@ -155,26 +144,6 @@ export function HomeMain({}: ToolComponentProps<Props>) {
             </div>
           )}
         </div>
-
-        {prefs && (
-          <div className="mt-10 max-w-md space-y-3">
-            <h2 className="font-medium text-sm text-foreground">Preferences</h2>
-            <label className="flex items-start gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={prefs.startMinimizedToTray}
-                onChange={(e) => void updatePref({ startMinimizedToTray: e.target.checked })}
-              />
-              <span>
-                <span className="font-medium text-foreground">Start minimized to tray</span>
-                <span className="block text-muted-foreground">
-                  Launch into the system tray without showing the main window.
-                </span>
-              </span>
-            </label>
-          </div>
-        )}
       </div>
 
       <CloudflareBanner status={cloudflareStatus} onClick={() => setCloudflareDialogOpen(true)} />

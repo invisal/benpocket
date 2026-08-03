@@ -5,8 +5,6 @@ import { kuberneterApi } from './kuberneter/api';
 import { postmanApi } from './http-client/api';
 import { fileExplorerApi } from './file-explorer/api';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
-import { IpcChannels } from '@shared/ipc-channels';
-import type { AppPrefs } from '@shared/app-prefs';
 
 // Custom APIs for renderer
 const api = {
@@ -16,11 +14,6 @@ const api = {
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
   openDirectory: () => ipcRenderer.invoke('open-directory'),
-  appPrefs: {
-    get: (): Promise<AppPrefs> => ipcRenderer.invoke(IpcChannels.GetAppPrefs),
-    set: (patch: Partial<AppPrefs>): Promise<AppPrefs> =>
-      ipcRenderer.invoke(IpcChannels.SetAppPrefs, patch)
-  },
   ...postmanApi
 };
 

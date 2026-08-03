@@ -3,7 +3,6 @@ import type { ScreenRecorderApi } from './screen-recorder/api';
 import type { KuberneterApi } from './kuberneter/api';
 import type { PostmanBridge } from './http-client/api';
 import type { FileExplorerApi } from './file-explorer/api';
-import type { AppPrefs } from '../shared/app-prefs';
 
 interface FileTreeNode {
   name: string;
@@ -29,10 +28,6 @@ declare global {
         path: string;
         tree: FileTreeNode | null;
       } | null>;
-      appPrefs: {
-        get: () => Promise<AppPrefs>;
-        set: (patch: Partial<AppPrefs>) => Promise<AppPrefs>;
-      };
     } & PostmanBridge;
   }
 }

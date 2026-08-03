@@ -27,7 +27,8 @@
     "build:native:linux": "cmake -S native/linux-recorder -B native/linux-recorder/build && cmake --build native/linux-recorder/build && node scripts/package-native-helper.mjs linux",
     "release:win": "electron-vite build && electron-builder --win --publish always",
     "release:mac": "electron-vite build && electron-builder --mac --publish always",
-    "release:linux": "electron-vite build && electron-builder --linux --publish always"
+    "release:linux": "electron-vite build && electron-builder --linux --publish always",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run knip"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",

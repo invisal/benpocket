@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import * as echarts from 'echarts';
+import * as echarts from '../../../lib/echarts';
+import type { EChartsOption, PieSeriesOption } from '../../../lib/echarts';
 import { cn } from 'cnfast';
 
 interface MetricGaugeProps {
@@ -108,7 +109,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
       ];
     };
 
-    const series: echarts.PieSeriesOption[] = [];
+    const series: PieSeriesOption[] = [];
 
     if (colors.limits && colors.requests) {
       // CPU or Memory: Concentric Rings
@@ -165,7 +166,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
 
     const titleText = unit === '' ? `${Math.round(usage)}` : `${usage.toFixed(1)}${unit}`;
 
-    const option: echarts.EChartsOption = {
+    const option: EChartsOption = {
       title: {
         text: titleText,
         left: 'center',

@@ -89,7 +89,7 @@ jobs:
 
       - name: Release (macOS)
         if: runner.os == 'macOS'
-        timeout-minutes: 20
+        timeout-minutes: 45
         run: npm run release:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

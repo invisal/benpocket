@@ -72,7 +72,7 @@ jobs:
           security unlock-keychain -p "" build.keychain
           security import certificate.p12 -k build.keychain \
             -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: \
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
             -s -k "" build.keychain
 
       - name: Release (Linux)

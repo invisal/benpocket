@@ -52,6 +52,8 @@ linux:
     - rpm
   maintainer: electronjs.org
   category: Utility
+snap:
+  publish: github
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false

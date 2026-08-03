@@ -57,6 +57,8 @@ snap:
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
+electronLanguages:
+  - en-US
 publish:
   provider: github
   owner: invisal

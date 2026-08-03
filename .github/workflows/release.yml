@@ -89,11 +89,10 @@ jobs:
 
       - name: Release (macOS)
         if: runner.os == 'macOS'
-        timeout-minutes: 45
+        timeout-minutes: 30
         run: npm run release:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          DEBUG: electron-builder,electron-osx-sign*,electron-notarize*

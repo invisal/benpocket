@@ -83,10 +83,11 @@ which is the intended behavior.
 
 ## Syncing your changes
 
-App data changes are small binary patches. Each one is encrypted client-side with the
-DEK before being sent, and only decrypted client-side after being received. The backend
-stores and forwards the encrypted blob as-is and assigns it a sequence number for
-ordering, but cannot read it:
+App data changes are small binary patches -- [Yjs](https://docs.yjs.dev/) updates,
+generated client-side as the local CRDT doc changes. Each one is encrypted client-side
+with the DEK before being sent, and only decrypted client-side after being received. The
+backend stores and forwards the encrypted blob as-is and assigns it a sequence number
+for ordering, but cannot read it:
 
 ```
 encrypt(patch):
@@ -121,7 +122,8 @@ sequenceDiagram
 
 Over time a document accumulates a long trail of small patches, and replaying all of
 them just to read the document gets slower as that trail grows. Compaction merges a
-document's patches into one baseline, client-side, and uploads that instead:
+document's patches into one baseline, client-side (via Yjs's `mergeUpdates`), and
+uploads that instead:
 
 ```mermaid
 sequenceDiagram

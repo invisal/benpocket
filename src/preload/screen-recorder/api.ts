@@ -158,10 +158,6 @@ export const screenRecorderApi = {
     getBootedName: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.GetBootedSimulator)
   },
   tray: {
-    /** Creates the tray icon, if it doesn't already exist. */
-    register: (): Promise<void> => ipcRenderer.invoke(IpcChannels.TrayRegister),
-    /** Destroys the tray icon, if one exists. */
-    unregister: (): Promise<void> => ipcRenderer.invoke(IpcChannels.TrayUnregister),
     onOpenRecordPicker: (callback: () => void): (() => void) => {
       const listener = (): void => callback();
       ipcRenderer.on(IpcChannels.TrayOpenRecordPicker, listener);
@@ -171,6 +167,11 @@ export const screenRecorderApi = {
       const listener = (_event: unknown, source: CaptureSource): void => callback(source);
       ipcRenderer.on(IpcChannels.TraySourceSelected, listener);
       return () => ipcRenderer.removeListener(IpcChannels.TraySourceSelected, listener);
+    },
+    onOpenTool: (callback: (tool: string) => void): (() => void) => {
+      const listener = (_event: unknown, tool: string): void => callback(tool);
+      ipcRenderer.on(IpcChannels.TrayOpenTool, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.TrayOpenTool, listener);
     }
   },
   screenshot: {

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { WALLPAPER_PRESETS } from '@shared/wallpaper-presets';
 import { imageUnit, type Rect } from '../lib/flatten';
 import type { BackgroundConfig, CaptureAnnotation, EditorTool } from '../types/editor';
@@ -206,6 +205,10 @@ interface EditorState {
   endGesture: () => void;
   undo: () => void;
   redo: () => void;
+  /** Hydrate portable prefs from the profile persist store (or migration). */
+  applyPersistedPrefs: (prefs: Partial<PersistedEditorPrefs>) => void;
+  /** Snapshot of portable prefs for writing to the profile persist store. */
+  getPersistedPrefs: () => PersistedEditorPrefs;
 }
 
 const HISTORY_CAP = 100;
@@ -270,7 +273,7 @@ const initialState = {
   highlightSnap: true,
   highlightSquareEnds: true,
   toolStyles: defaultToolStyles(),
-  tool: 'select' as EditorTool,
+  tool: 'pen' as EditorTool,
   selectedId: null,
   editingId: null,
   color: EDITOR_COLORS[0],
@@ -281,8 +284,8 @@ const initialState = {
   future: [] as Snapshot[]
 };
 
-/** Prefs written to localStorage — survive app restarts. */
-type PersistedEditorPrefs = {
+/** Prefs synced via usePersistStore (`screen-capture/settings`). */
+export type PersistedEditorPrefs = {
   toolStyles: Record<StyleTool, ToolStyle>;
   penSnapShapes: PenSnapShapes;
   highlightSnap: boolean;
@@ -292,7 +295,9 @@ type PersistedEditorPrefs = {
   cornerRadiusUnits: number;
 };
 
-const PREFS_KEY = 'screen-capture.editor-prefs.v2';
+/** Legacy zustand-persist localStorage key — migrated once into the profile store. */
+export const LEGACY_EDITOR_PREFS_KEY = 'screen-capture.editor-prefs.v2';
+export const LEGACY_HIDE_APP_KEY = 'screen-capture.hide-app';
 
 function sanitizeBackground(value: unknown): BackgroundConfig | null {
   if (value === null) return null;
@@ -336,7 +341,7 @@ function sanitizeToolStyle(value: unknown, fallback: ToolStyle): ToolStyle {
   };
 }
 
-function sanitizePrefs(raw: unknown): Partial<PersistedEditorPrefs> {
+export function sanitizePrefs(raw: unknown): Partial<PersistedEditorPrefs> {
   if (!raw || typeof raw !== 'object') return {};
   const v = raw as Record<string, unknown>;
   const out: Partial<PersistedEditorPrefs> = {};
@@ -468,307 +473,314 @@ function workingIfActiveTool(
 /** Snapshot at beginGesture — module-scope ref, not reactive state. */
 let gestureStart: Snapshot | null = null;
 
-export const useCaptureEditorStore = create<EditorState>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+export const useCaptureEditorStore = create<EditorState>()((set, get) => ({
+  ...initialState,
 
-      init: (imageWidth, imageHeight) =>
-        set((state) => {
-          const unit = imageUnit(imageWidth);
-          return {
-            ...initialState,
-            ...sessionPrefs(state),
-            cornerRadius: state.cornerRadiusUnits * unit,
-            imageWidth,
-            imageHeight,
-            unit
-          };
-        }),
-
-      reset: () =>
-        set((state) => ({
-          ...initialState,
-          ...sessionPrefs(state),
-          // No image yet — px radius is applied again in init().
-          cornerRadius: 0
-        })),
-
-      setTool: (tool) =>
-        set((state) => {
-          if (!isStyleTool(tool)) {
-            return { tool, selectedId: null, editingId: null };
-          }
-          return {
-            tool,
-            selectedId: null,
-            editingId: null,
-            ...workingStyle(state.toolStyles[tool])
-          };
-        }),
-
-      setColor: (color, id) =>
-        set((state) => {
-          const target = state.annotations.find((a) => a.id === (id ?? state.selectedId));
-          const key = styleKeyForWrite(
-            state,
-            id,
-            STYLE_TOOLS.filter((k) => k !== 'blur')
-          );
-          const toolStyles = key
-            ? patchToolStyle(state.toolStyles, key, { color })
-            : state.toolStyles;
-          const working = workingIfActiveTool(
-            state,
-            target && isStyleTool(target.kind) ? target.kind : key,
-            { color }
-          );
-          if (!target || target.kind === 'blur') {
-            return { ...working, toolStyles, ...(target ? { selectedId: target.id } : {}) };
-          }
-          return {
-            ...working,
-            toolStyles,
-            selectedId: target.id,
-            ...pushPast(state),
-            annotations: applyPatch(state.annotations, target.id, { color })
-          };
-        }),
-
-      setStrokeTier: (strokeTier, id) =>
-        set((state) => {
-          const strokeKinds: StyleTool[] = ['rect', 'circle', 'arrow', 'line', 'pen', 'highlight'];
-          const target = state.annotations.find((a) => a.id === (id ?? state.selectedId));
-          const key = styleKeyForWrite(state, id, strokeKinds);
-          const toolStyles = key
-            ? patchToolStyle(state.toolStyles, key, { strokeTier })
-            : state.toolStyles;
-          const working = workingIfActiveTool(
-            state,
-            target && isStyleTool(target.kind) ? target.kind : key,
-            { strokeTier }
-          );
-          if (!target || !strokeKinds.includes(target.kind as StyleTool)) {
-            return {
-              ...working,
-              toolStyles,
-              ...(target ? { selectedId: target.id } : {})
-            };
-          }
-          const widthMult = target.kind === 'highlight' ? HIGHLIGHT_STROKE_MULT : 1;
-          return {
-            ...working,
-            toolStyles,
-            selectedId: target.id,
-            ...pushPast(state),
-            annotations: applyPatch(state.annotations, target.id, {
-              strokeWidth: strokeTier * state.unit * widthMult
-            })
-          };
-        }),
-
-      setFontTier: (fontTier, id) =>
-        set((state) => {
-          const fontKinds: StyleTool[] = ['text', 'chip'];
-          const targetId = id ?? state.selectedId ?? state.editingId;
-          const target = state.annotations.find((a) => a.id === targetId);
-          const key = styleKeyForWrite(state, id, fontKinds);
-          const toolStyles = key
-            ? patchToolStyle(state.toolStyles, key, { fontTier })
-            : state.toolStyles;
-          const working = workingIfActiveTool(
-            state,
-            target && isStyleTool(target.kind) ? target.kind : key,
-            { fontTier }
-          );
-          if (!target || (target.kind !== 'text' && target.kind !== 'chip')) {
-            return {
-              ...working,
-              toolStyles,
-              ...(target ? { selectedId: target.id } : {})
-            };
-          }
-          return {
-            ...working,
-            toolStyles,
-            selectedId: target.id,
-            ...pushPast(state),
-            annotations: applyPatch(state.annotations, target.id, {
-              fontSize: fontTier * state.unit
-            })
-          };
-        }),
-
-      setBlurTier: (blurTier, id) =>
-        set((state) => {
-          const target = state.annotations.find((a) => a.id === (id ?? state.selectedId));
-          const key = styleKeyForWrite(state, id, ['blur']);
-          const toolStyles = key
-            ? patchToolStyle(state.toolStyles, key, { blurTier })
-            : state.toolStyles;
-          const working = workingIfActiveTool(
-            state,
-            target && isStyleTool(target.kind) ? target.kind : key,
-            { blurTier }
-          );
-          if (!target || target.kind !== 'blur') {
-            return {
-              ...working,
-              toolStyles,
-              ...(target ? { selectedId: target.id } : {})
-            };
-          }
-          return {
-            ...working,
-            toolStyles,
-            selectedId: target.id,
-            ...pushPast(state),
-            annotations: applyPatch(state.annotations, target.id, {
-              blurRadius: blurTier * state.unit
-            })
-          };
-        }),
-
-      setCornerRadius: (cornerRadius) =>
-        set((state) => ({
-          cornerRadius,
-          cornerRadiusUnits: Math.round(cornerRadius / state.unit)
-        })),
-
-      setBackground: (background) => set({ background }),
-
-      setWatermark: (watermark) => set({ watermark }),
-
-      setPenSnapShape: (kind, enabled) =>
-        set((state) => {
-          const penSnapShapes = { ...state.penSnapShapes, [kind]: enabled };
-          // Line ↔ arrow are mutually exclusive (same straight-stroke geometry).
-          if (enabled && kind === 'line') penSnapShapes.arrow = false;
-          if (enabled && kind === 'arrow') penSnapShapes.line = false;
-          return { penSnapShapes };
-        }),
-
-      setHighlightSnap: (highlightSnap) => set({ highlightSnap }),
-
-      setHighlightSquareEnds: (highlightSquareEnds) => set({ highlightSquareEnds }),
-
-      setSelectedId: (selectedId) => set({ selectedId }),
-
-      setEditingId: (editingId) => set({ editingId }),
-
-      addAnnotation: (annotation) =>
-        set((state) => ({
-          ...pushPast(state),
-          annotations: [...state.annotations, annotation],
-          selectedId: annotation.id
-        })),
-
-      patchAnnotation: (id, patch) =>
-        set((state) => ({
-          ...pushPast(state),
-          annotations: applyPatch(state.annotations, id, patch)
-        })),
-
-      moveAnnotation: (id, patch) =>
-        set((state) => ({ annotations: applyPatch(state.annotations, id, patch) })),
-
-      moveLayer: (id, toIndex) =>
-        set((state) => {
-          const next = reorderById(state.annotations, id, toIndex);
-          if (next === state.annotations) return state;
-          return { ...pushPast(state), annotations: next, selectedId: id };
-        }),
-
-      removeAnnotation: (id) =>
-        set((state) => ({
-          ...pushPast(state),
-          annotations: state.annotations.filter((a) => a.id !== id),
-          selectedId: state.selectedId === id ? null : state.selectedId,
-          editingId: state.editingId === id ? null : state.editingId
-        })),
-
-      discardAnnotation: (id) =>
-        set((state) => ({
-          annotations: state.annotations.filter((a) => a.id !== id),
-          selectedId: state.selectedId === id ? null : state.selectedId,
-          editingId: state.editingId === id ? null : state.editingId
-        })),
-
-      setCrop: (crop) =>
-        set((state) => ({
-          ...pushPast(state),
-          crop,
-          tool: 'select' as EditorTool,
-          selectedId: null,
-          editingId: null
-        })),
-
-      beginGesture: () => {
-        gestureStart = snapshot(get());
-      },
-
-      endGesture: () => {
-        const start = gestureStart;
-        gestureStart = null;
-        if (!start || start.annotations === get().annotations) return;
-        set((state) => ({
-          past: [...state.past, start].slice(-HISTORY_CAP),
-          future: []
-        }));
-      },
-
-      undo: () =>
-        set((state) => {
-          const previous = state.past.at(-1);
-          if (!previous) return state;
-          return {
-            ...previous,
-            past: state.past.slice(0, -1),
-            future: [...state.future, snapshot(state)],
-            selectedId: null,
-            editingId: null
-          };
-        }),
-
-      redo: () =>
-        set((state) => {
-          const next = state.future.at(-1);
-          if (!next) return state;
-          return {
-            ...next,
-            future: state.future.slice(0, -1),
-            past: [...state.past, snapshot(state)].slice(-HISTORY_CAP),
-            selectedId: null,
-            editingId: null
-          };
-        })
+  init: (imageWidth, imageHeight) =>
+    set((state) => {
+      const unit = imageUnit(imageWidth);
+      const prefs = sessionPrefs(state);
+      return {
+        ...initialState,
+        ...prefs,
+        // Fresh capture always starts on free draw with that tool's styles.
+        tool: 'pen' as EditorTool,
+        ...workingStyle(prefs.toolStyles.pen),
+        cornerRadius: state.cornerRadiusUnits * unit,
+        imageWidth,
+        imageHeight,
+        unit
+      };
     }),
-    {
-      name: PREFS_KEY,
-      partialize: (state): PersistedEditorPrefs => ({
-        toolStyles: state.toolStyles,
-        penSnapShapes: state.penSnapShapes,
-        highlightSnap: state.highlightSnap,
-        highlightSquareEnds: state.highlightSquareEnds,
-        watermark: state.watermark,
-        background: state.background,
-        cornerRadiusUnits: state.cornerRadiusUnits
-      }),
-      merge: (persisted, current) => {
-        const prefs = sanitizePrefs(persisted);
-        const toolStyles = prefs.toolStyles ?? current.toolStyles;
-        const tool = current.tool;
-        const style = isStyleTool(tool) ? toolStyles[tool] : null;
+
+  reset: () =>
+    set((state) => {
+      const prefs = sessionPrefs(state);
+      return {
+        ...initialState,
+        ...prefs,
+        tool: 'pen' as EditorTool,
+        ...workingStyle(prefs.toolStyles.pen),
+        // No image yet — px radius is applied again in init().
+        cornerRadius: 0
+      };
+    }),
+
+  applyPersistedPrefs: (prefs) =>
+    set((state) => {
+      const toolStyles = prefs.toolStyles ?? state.toolStyles;
+      const cornerRadiusUnits = prefs.cornerRadiusUnits ?? state.cornerRadiusUnits;
+      const style = isStyleTool(state.tool) ? toolStyles[state.tool] : null;
+      return {
+        ...state,
+        ...prefs,
+        toolStyles,
+        cornerRadiusUnits,
+        cornerRadius: state.imageWidth > 0 ? cornerRadiusUnits * state.unit : state.cornerRadius,
+        ...(style ? workingStyle(style) : {})
+      };
+    }),
+
+  getPersistedPrefs: () => {
+    const state = get();
+    return {
+      toolStyles: state.toolStyles,
+      penSnapShapes: state.penSnapShapes,
+      highlightSnap: state.highlightSnap,
+      highlightSquareEnds: state.highlightSquareEnds,
+      watermark: state.watermark,
+      background: state.background,
+      cornerRadiusUnits: state.cornerRadiusUnits
+    };
+  },
+
+  setTool: (tool) =>
+    set((state) => {
+      if (!isStyleTool(tool)) {
+        return { tool, selectedId: null, editingId: null };
+      }
+      return {
+        tool,
+        selectedId: null,
+        editingId: null,
+        ...workingStyle(state.toolStyles[tool])
+      };
+    }),
+
+  setColor: (color, id) =>
+    set((state) => {
+      const target = state.annotations.find((a) => a.id === (id ?? state.selectedId));
+      const key = styleKeyForWrite(
+        state,
+        id,
+        STYLE_TOOLS.filter((k) => k !== 'blur')
+      );
+      const toolStyles = key ? patchToolStyle(state.toolStyles, key, { color }) : state.toolStyles;
+      const working = workingIfActiveTool(
+        state,
+        target && isStyleTool(target.kind) ? target.kind : key,
+        { color }
+      );
+      if (!target || target.kind === 'blur') {
+        return { ...working, toolStyles, ...(target ? { selectedId: target.id } : {}) };
+      }
+      return {
+        ...working,
+        toolStyles,
+        selectedId: target.id,
+        ...pushPast(state),
+        annotations: applyPatch(state.annotations, target.id, { color })
+      };
+    }),
+
+  setStrokeTier: (strokeTier, id) =>
+    set((state) => {
+      const strokeKinds: StyleTool[] = ['rect', 'circle', 'arrow', 'line', 'pen', 'highlight'];
+      const target = state.annotations.find((a) => a.id === (id ?? state.selectedId));
+      const key = styleKeyForWrite(state, id, strokeKinds);
+      const toolStyles = key
+        ? patchToolStyle(state.toolStyles, key, { strokeTier })
+        : state.toolStyles;
+      const working = workingIfActiveTool(
+        state,
+        target && isStyleTool(target.kind) ? target.kind : key,
+        { strokeTier }
+      );
+      if (!target || !strokeKinds.includes(target.kind as StyleTool)) {
         return {
-          ...current,
-          ...prefs,
+          ...working,
           toolStyles,
-          ...(style ? workingStyle(style) : {})
+          ...(target ? { selectedId: target.id } : {})
         };
       }
-    }
-  )
-);
+      const widthMult = target.kind === 'highlight' ? HIGHLIGHT_STROKE_MULT : 1;
+      return {
+        ...working,
+        toolStyles,
+        selectedId: target.id,
+        ...pushPast(state),
+        annotations: applyPatch(state.annotations, target.id, {
+          strokeWidth: strokeTier * state.unit * widthMult
+        })
+      };
+    }),
+
+  setFontTier: (fontTier, id) =>
+    set((state) => {
+      const fontKinds: StyleTool[] = ['text', 'chip'];
+      const targetId = id ?? state.selectedId ?? state.editingId;
+      const target = state.annotations.find((a) => a.id === targetId);
+      const key = styleKeyForWrite(state, id, fontKinds);
+      const toolStyles = key
+        ? patchToolStyle(state.toolStyles, key, { fontTier })
+        : state.toolStyles;
+      const working = workingIfActiveTool(
+        state,
+        target && isStyleTool(target.kind) ? target.kind : key,
+        { fontTier }
+      );
+      if (!target || (target.kind !== 'text' && target.kind !== 'chip')) {
+        return {
+          ...working,
+          toolStyles,
+          ...(target ? { selectedId: target.id } : {})
+        };
+      }
+      return {
+        ...working,
+        toolStyles,
+        selectedId: target.id,
+        ...pushPast(state),
+        annotations: applyPatch(state.annotations, target.id, {
+          fontSize: fontTier * state.unit
+        })
+      };
+    }),
+
+  setBlurTier: (blurTier, id) =>
+    set((state) => {
+      const target = state.annotations.find((a) => a.id === (id ?? state.selectedId));
+      const key = styleKeyForWrite(state, id, ['blur']);
+      const toolStyles = key
+        ? patchToolStyle(state.toolStyles, key, { blurTier })
+        : state.toolStyles;
+      const working = workingIfActiveTool(
+        state,
+        target && isStyleTool(target.kind) ? target.kind : key,
+        { blurTier }
+      );
+      if (!target || target.kind !== 'blur') {
+        return {
+          ...working,
+          toolStyles,
+          ...(target ? { selectedId: target.id } : {})
+        };
+      }
+      return {
+        ...working,
+        toolStyles,
+        selectedId: target.id,
+        ...pushPast(state),
+        annotations: applyPatch(state.annotations, target.id, {
+          blurRadius: blurTier * state.unit
+        })
+      };
+    }),
+
+  setCornerRadius: (cornerRadius) =>
+    set((state) => ({
+      cornerRadius,
+      cornerRadiusUnits: Math.round(cornerRadius / state.unit)
+    })),
+
+  setBackground: (background) => set({ background }),
+
+  setWatermark: (watermark) => set({ watermark }),
+
+  setPenSnapShape: (kind, enabled) =>
+    set((state) => {
+      const penSnapShapes = { ...state.penSnapShapes, [kind]: enabled };
+      // Line ↔ arrow are mutually exclusive (same straight-stroke geometry).
+      if (enabled && kind === 'line') penSnapShapes.arrow = false;
+      if (enabled && kind === 'arrow') penSnapShapes.line = false;
+      return { penSnapShapes };
+    }),
+
+  setHighlightSnap: (highlightSnap) => set({ highlightSnap }),
+
+  setHighlightSquareEnds: (highlightSquareEnds) => set({ highlightSquareEnds }),
+
+  setSelectedId: (selectedId) => set({ selectedId }),
+
+  setEditingId: (editingId) => set({ editingId }),
+
+  addAnnotation: (annotation) =>
+    set((state) => ({
+      ...pushPast(state),
+      annotations: [...state.annotations, annotation],
+      selectedId: annotation.id
+    })),
+
+  patchAnnotation: (id, patch) =>
+    set((state) => ({
+      ...pushPast(state),
+      annotations: applyPatch(state.annotations, id, patch)
+    })),
+
+  moveAnnotation: (id, patch) =>
+    set((state) => ({ annotations: applyPatch(state.annotations, id, patch) })),
+
+  moveLayer: (id, toIndex) =>
+    set((state) => {
+      const next = reorderById(state.annotations, id, toIndex);
+      if (next === state.annotations) return state;
+      return { ...pushPast(state), annotations: next, selectedId: id };
+    }),
+
+  removeAnnotation: (id) =>
+    set((state) => ({
+      ...pushPast(state),
+      annotations: state.annotations.filter((a) => a.id !== id),
+      selectedId: state.selectedId === id ? null : state.selectedId,
+      editingId: state.editingId === id ? null : state.editingId
+    })),
+
+  discardAnnotation: (id) =>
+    set((state) => ({
+      annotations: state.annotations.filter((a) => a.id !== id),
+      selectedId: state.selectedId === id ? null : state.selectedId,
+      editingId: state.editingId === id ? null : state.editingId
+    })),
+
+  setCrop: (crop) =>
+    set((state) => ({
+      ...pushPast(state),
+      crop,
+      tool: 'select' as EditorTool,
+      selectedId: null,
+      editingId: null
+    })),
+
+  beginGesture: () => {
+    gestureStart = snapshot(get());
+  },
+
+  endGesture: () => {
+    const start = gestureStart;
+    gestureStart = null;
+    if (!start || start.annotations === get().annotations) return;
+    set((state) => ({
+      past: [...state.past, start].slice(-HISTORY_CAP),
+      future: []
+    }));
+  },
+
+  undo: () =>
+    set((state) => {
+      const previous = state.past.at(-1);
+      if (!previous) return state;
+      return {
+        ...previous,
+        past: state.past.slice(0, -1),
+        future: [...state.future, snapshot(state)],
+        selectedId: null,
+        editingId: null
+      };
+    }),
+
+  redo: () =>
+    set((state) => {
+      const next = state.future.at(-1);
+      if (!next) return state;
+      return {
+        ...next,
+        future: state.future.slice(0, -1),
+        past: [...state.past, snapshot(state)].slice(-HISTORY_CAP),
+        selectedId: null,
+        editingId: null
+      };
+    })
+}));
 
 /** Next auto-increment value for a numbered label badge. */
 export function nextLabelValue(annotations: CaptureAnnotation[]): number {

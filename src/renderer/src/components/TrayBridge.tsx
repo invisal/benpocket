@@ -1,33 +1,16 @@
 import { useEffect } from 'react';
 import { useToolTabs } from './providers/ToolProvider';
 import { openRecorderToolbarFor } from '../../tools/screen-recorder/features/recording/lib/open-recorder-toolbar';
+import { armTrayAutoCapture } from '../../tools/screen-capture/lib/tray-auto-capture';
 
 /**
- * Bridges the main process tray menu to the renderer. Either way, focuses
- * (or opens) the Screen Recorder tab and opens the floating recorder-toolbar
- * so it's always ready to go regardless of what tab/tool was showing
- * before; picking a specific source from the tray's menu (see tray.ts)
- * opens the toolbar for that source directly, otherwise it defaults to the
- * primary screen the same way the toolbar's own Display tab does -- not
- * auto-started from the tray click itself, since kicking off a recording
- * with no on-screen confirmation felt like too easy a way to record
- * something by accident.
- *
- * Also owns the tray icon's lifecycle: it only exists (and only clutters
- * the menu bar) while a Screen Recorder tab is actually open, rather than
- * for the app's whole lifetime regardless of use.
+ * Bridges the main process tray menu to the renderer. "New Recording" focuses
+ * (or opens) the Screen Recorder tab and opens the floating recorder-toolbar.
+ * "Screen Capture" opens/focuses that tool tab; on Linux Wayland it also arms
+ * auto-Capture so the portal source picker opens immediately.
  */
 export function TrayBridge(): null {
   const { tabs, openTab, selectTab } = useToolTabs();
-  const hasRecorderTab = tabs.some((t) => t.type === 'screen-recorder');
-
-  useEffect(() => {
-    if (!hasRecorderTab) return;
-    void window.screenRecorder.tray.register();
-    return () => {
-      void window.screenRecorder.tray.unregister();
-    };
-  }, [hasRecorderTab]);
 
   useEffect(() => {
     function focusRecorderTab(): void {
@@ -37,6 +20,15 @@ export function TrayBridge(): null {
       } else {
         openTab('screen-recorder', {}, { title: 'Screen Recording' });
       }
+    }
+
+    function focusOrOpenScreenCapture(): void {
+      const existing = tabs.find((t) => t.type === 'screen-capture');
+      if (existing) {
+        selectTab(existing.id);
+        return;
+      }
+      openTab('screen-capture', {});
     }
 
     const unsubscribeOpen = window.screenRecorder.tray.onOpenRecordPicker(() => {
@@ -51,9 +43,18 @@ export function TrayBridge(): null {
       void openRecorderToolbarFor(source);
     });
 
+    const unsubscribeTool = window.screenRecorder.tray.onOpenTool((tool) => {
+      if (tool !== 'screen-capture') return;
+      // Arm before openTab — Screen Capture is lazy-loaded; the flag survives
+      // until ScreenCaptureMain mounts and consumes it.
+      if (window.api?.usesOsCapturePicker) armTrayAutoCapture();
+      focusOrOpenScreenCapture();
+    });
+
     return () => {
       unsubscribeOpen();
       unsubscribeSelect();
+      unsubscribeTool();
     };
   }, [tabs, openTab, selectTab]);
 

@@ -93,6 +93,7 @@ interface KuberneterState {
 
   addKuberneterKubeconfig: (filePath: string) => void;
   removeKuberneterKubeconfig: (filePath: string) => void;
+  setKuberneterKubeconfigs: (filePaths: string[]) => void;
   addKuberneterRecentConnection: (contextName: string, configPath: string, server?: string) => void;
 
   initInstance: (
@@ -401,6 +402,8 @@ export const useKuberneterStore = create<KuberneterState>()(
         set((state) => ({
           kuberneterKubeconfigs: state.kuberneterKubeconfigs.filter((p) => p !== filePath)
         })),
+
+      setKuberneterKubeconfigs: (filePaths) => set({ kuberneterKubeconfigs: filePaths }),
 
       addKuberneterRecentConnection: (contextName, configPath, server) =>
         set((state) => {

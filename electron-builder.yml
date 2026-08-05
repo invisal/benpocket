@@ -32,13 +32,16 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
@@ -49,9 +52,13 @@ linux:
     - rpm
   maintainer: electronjs.org
   category: Utility
+snap:
+  publish: github
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
+electronLanguages:
+  - en-US
 publish:
   provider: github
   owner: invisal

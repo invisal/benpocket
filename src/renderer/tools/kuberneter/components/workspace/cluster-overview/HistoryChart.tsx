@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import * as echarts from '../../../lib/echarts';
+import type { EChartsOption } from '../../../lib/echarts';
 import { cn } from 'cnfast';
 
 interface HistoryPoint {
@@ -62,7 +63,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
     const maxMemBound =
       allocatableMem && allocatableMem > 0 ? parseFloat(allocatableMem.toFixed(2)) : undefined;
 
-    const option: echarts.EChartsOption = {
+    const option: EChartsOption = {
       grid: {
         top: '18%',
         left: '5%',

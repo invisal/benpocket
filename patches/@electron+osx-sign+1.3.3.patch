@@ -1,0 +1,20 @@
+diff --git a/node_modules/@electron/osx-sign/dist/cjs/util.js b/node_modules/@electron/osx-sign/dist/cjs/util.js
+index 77e64b5..e63a941 100644
+--- a/node_modules/@electron/osx-sign/dist/cjs/util.js
++++ b/node_modules/@electron/osx-sign/dist/cjs/util.js
+@@ -45,8 +45,14 @@ async function execFileAsync(file, args, options = {}) {
+     if (exports.debugLog.enabled) {
+         (0, exports.debugLog)('Executing...', file, args && Array.isArray(args) ? removePassword(args.join(' ')) : '');
+     }
++    // patch-package: codesign --timestamp can hang indefinitely on CI runners
++    // when Apple's timestamp server stalls instead of erroring, wedging the
++    // whole sequential sign loop with no way for callers' retry logic to ever
++    // trigger (execFile's callback never fires, so the promise never settles).
++    // A timeout here turns that into a normal rejection so retry can work.
++    const execOptions = options.timeout === undefined ? Object.assign({ timeout: 60000 }, options) : options;
+     return new Promise(function (resolve, reject) {
+-        child.execFile(file, args, options, function (err, stdout, stderr) {
++        child.execFile(file, args, execOptions, function (err, stdout, stderr) {
+             if (err) {
+                 (0, exports.debugLog)('Error executing file:', '\n', '> Stdout:', stdout, '\n', '> Stderr:', stderr);
+                 reject(err);

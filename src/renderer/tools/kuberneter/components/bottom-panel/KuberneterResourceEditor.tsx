@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import * as monaco from 'monaco-editor';
+import type * as Monaco from 'monaco-editor';
 import { Save, Check, AlertCircle } from 'lucide-react';
 import { DEFAULT_TEMPLATES } from './types';
 import { useThemeStore } from '@renderer/store/theme.store';
@@ -20,7 +20,8 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
   onApply
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof Monaco | null>(null);
   const [resourceStatus, setResourceStatus] = useState<{ text: string; isError?: boolean } | null>(
     null
   );
@@ -33,36 +34,43 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
     onChangeYamlRef.current = onChangeYaml;
   }, [onChangeYaml]);
 
-  // Initialize Monaco Editor instance directly on containerRef
+  // Lazily load Monaco and initialize the editor instance directly on containerRef
   useEffect(() => {
     if (!containerRef.current || editorRef.current) return;
+    let cancelled = false;
 
-    const initialContent = yaml || initialYaml || '';
-    const instance = monaco.editor.create(containerRef.current, {
-      value: initialContent,
-      language: 'yaml',
-      theme: theme === 'dark' ? 'vs-dark' : 'vs',
-      minimap: { enabled: false },
-      fontSize: 12,
-      fontFamily:
-        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-      scrollBeyondLastLine: false,
-      automaticLayout: true,
-      tabSize: 2,
-      wordWrap: 'on',
-      lineNumbers: 'on',
-      folding: true
-    });
+    import('monaco-editor').then((monaco) => {
+      if (cancelled || !containerRef.current || editorRef.current) return;
+      monacoRef.current = monaco;
 
-    editorRef.current = instance;
+      const initialContent = yaml || initialYaml || '';
+      const instance = monaco.editor.create(containerRef.current, {
+        value: initialContent,
+        language: 'yaml',
+        theme: theme === 'dark' ? 'vs-dark' : 'vs',
+        minimap: { enabled: false },
+        fontSize: 12,
+        fontFamily:
+          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+        scrollBeyondLastLine: false,
+        automaticLayout: true,
+        tabSize: 2,
+        wordWrap: 'on',
+        lineNumbers: 'on',
+        folding: true
+      });
 
-    instance.onDidChangeModelContent(() => {
-      const value = instance.getValue();
-      onChangeYamlRef.current(value);
+      editorRef.current = instance;
+
+      instance.onDidChangeModelContent(() => {
+        const value = instance.getValue();
+        onChangeYamlRef.current(value);
+      });
     });
 
     return () => {
-      instance.dispose();
+      cancelled = true;
+      editorRef.current?.dispose();
       editorRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,7 +88,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
 
   // Update theme dynamically
   useEffect(() => {
-    monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
+    monacoRef.current?.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
   }, [theme]);
 
   const handleApply = async () => {

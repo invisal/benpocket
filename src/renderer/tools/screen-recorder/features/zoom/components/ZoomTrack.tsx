@@ -3,7 +3,7 @@ import { Mouse, Target, ZoomIn } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
-import { useAppStore } from '../../../app/app-store';
+import { useAppStore, EMPTY_CURSOR_PATH } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
@@ -54,8 +54,8 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
   const removeKeyframe = useZoomStore((s) => s.removeKeyframe);
   const selectedKeyframeId = useZoomStore((s) => s.selectedKeyframeId);
   const setSelectedKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
-  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
-  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
+  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
+  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH);
 
   // Disabling "follow cursor" needs *some* fixed point to land on -- see
   // `resolveFixedPosition`'s own doc for the fallback chain.

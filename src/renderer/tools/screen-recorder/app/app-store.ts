@@ -3,6 +3,20 @@ import type { CursorPathPoint } from '@screen-recorder/types/project';
 
 export type ScreenRecorderRoute = 'editor' | 'library' | 'settings';
 
+/**
+ * Shared, referentially-stable fallback for `lastRecording?.cursorPath ?? []`
+ * / `?? []`-style selectors reading off `lastRecording` (now that it can
+ * genuinely be `null` while its consumers are mounted -- see EditorPage.tsx
+ * rendering PreviewStage before a project finishes loading). A literal `[]`
+ * inline in a zustand selector is a *new* array every call, which
+ * `useSyncExternalStore` (what zustand's hooks are built on) never sees as
+ * equal to the previous snapshot -- React re-renders, re-runs the selector,
+ * gets another new `[]`, and loops forever ("Maximum update depth
+ * exceeded"). Using this same reference every time gives it something
+ * stable to compare against instead.
+ */
+export const EMPTY_CURSOR_PATH: CursorPathPoint[] = [];
+
 interface LastRecording {
   previewUrl: string;
   filePath: string | null;
@@ -39,6 +53,16 @@ interface AppStoreState {
   setLastRecording: (recording: LastRecording) => void;
   /** Library's "Remove" action -- just the in-memory/route-level state; the caller is responsible for deleting the underlying file and revoking `previewUrl` first (see LibraryPage.tsx). */
   clearLastRecording: () => void;
+  /**
+   * Set by `useOpenProject` for the duration of a `project:open` +
+   * `applyProjectSnapshot` call -- shared here (not just that hook's own
+   * local state) so EditorPage can show `EditorLoading` for the sidebar's
+   * launch-time auto-resume of the most recent project, instead of the
+   * route only flipping to 'editor' once loading has *already* finished
+   * with nothing visible happening beforehand.
+   */
+  isOpeningProject: boolean;
+  setIsOpeningProject: (isOpeningProject: boolean) => void;
   projectName: string;
   setProjectName: (projectName: string) => void;
   /** Set once a project's first successful save assigns it an id -- reused on subsequent saves so "Save project" overwrites the same file instead of piling up duplicates. */
@@ -68,6 +92,8 @@ export const useAppStore = create<AppStoreState>((set) => ({
   lastRecording: null,
   setLastRecording: (lastRecording) => set({ lastRecording }),
   clearLastRecording: () => set({ lastRecording: null }),
+  isOpeningProject: false,
+  setIsOpeningProject: (isOpeningProject) => set({ isOpeningProject }),
   projectName: 'Untitled Recording',
   setProjectName: (projectName) => set({ projectName }),
   currentProjectId: null,

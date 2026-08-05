@@ -26,7 +26,7 @@ import {
 } from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
-import { useAppStore } from '../../../app/app-store';
+import { useAppStore, EMPTY_CURSOR_PATH } from '../../../app/app-store';
 import { useHistoryStore } from '../../history/store/history-store';
 import { useTimelineStore, MIN_TIMELINE_ZOOM, MAX_TIMELINE_ZOOM } from '../store/timeline-store';
 import { useWaveformStore } from '../store/waveform-store';
@@ -218,8 +218,8 @@ export function CutTimeline(): JSX.Element {
   const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
   const panelHeightPx = useAppStore((s) => s.timelinePanelHeight);
   const setPanelHeightPx = useAppStore((s) => s.setTimelinePanelHeight);
-  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
-  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
+  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
+  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH);
   // "Hide webcam" only makes sense to offer when this recording actually has
   // a webcam track and the PiP overlay is currently on -- same gate WebcamPip
   // itself uses to decide whether to render at all.
@@ -249,6 +249,8 @@ export function CutTimeline(): JSX.Element {
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const playheadDraggingRef = useRef(false);
+  const dragRafIdRef = useRef<number | null>(null);
+  const pendingDragClientXRef = useRef<number | null>(null);
 
   // A second, gray playhead that tracks the cursor while it's over the
   // ruler and live-seeks the preview video to that position -- scrubbing by
@@ -405,16 +407,34 @@ export function CutTimeline(): JSX.Element {
     ]
   );
 
+  // rAF-throttled, not one `requestSeek` per raw `pointermove` -- a fast
+  // drag can fire that event far more often than once per frame, and
+  // `requestSeek` (unlike hover-scrub's `previewSeek`) also writes
+  // `playheadMs`, which re-renders every track/tick/pill subscribed to it
+  // (see Playhead.tsx's own doc on why it's split out for exactly this
+  // reason). Collapsing to the latest clientX per frame cuts that fan-out
+  // down to the screen's actual refresh rate instead of the pointer's.
   const handlePlayheadDragMove = useCallback(
     (event: PointerEvent) => {
       if (!playheadDraggingRef.current) return;
-      seekFromClientX(event.clientX);
+      pendingDragClientXRef.current = event.clientX;
+      if (dragRafIdRef.current !== null) return;
+      dragRafIdRef.current = requestAnimationFrame(() => {
+        dragRafIdRef.current = null;
+        const clientX = pendingDragClientXRef.current;
+        if (clientX !== null) seekFromClientX(clientX);
+      });
     },
     [seekFromClientX]
   );
 
   const stopPlayheadDrag = useCallback(() => {
     playheadDraggingRef.current = false;
+    if (dragRafIdRef.current !== null) {
+      cancelAnimationFrame(dragRafIdRef.current);
+      dragRafIdRef.current = null;
+    }
+    pendingDragClientXRef.current = null;
     window.removeEventListener('pointermove', handlePlayheadDragMove);
   }, [handlePlayheadDragMove]);
 

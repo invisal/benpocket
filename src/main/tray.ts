@@ -6,16 +6,7 @@ import {
   type BrowserWindow,
   type MenuItemConstructorOptions
 } from 'electron';
-import { is } from '@electron-toolkit/utils';
 import { IpcChannels } from '@shared/ipc-channels';
-
-export type TrayToolName =
-  | 'file-explorer'
-  | 'http-client'
-  | 'kuberneter'
-  | 'screen-recorder'
-  | 'screen-capture'
-  | 'storybook';
 
 export interface TrayIcons {
   /** macOS menu-bar template glyph (`*Template.png`). */
@@ -25,10 +16,9 @@ export interface TrayIcons {
 }
 
 /**
- * App-lifetime tray: on macOS/Windows, left-click = recorder menu and
- * right-click = tools menu. On Linux, StatusNotifierItem does not emit
- * `right-click` and `popUpContextMenu` is a no-op — menus only work via
- * `setContextMenu`, so Linux gets one combined native menu instead.
+ * App-lifetime tray with a single menu: New Recording, Screen Capture, Quit.
+ * On Linux, StatusNotifierItem does not emit `right-click` and
+ * `popUpContextMenu` is a no-op — menus only work via `setContextMenu`.
  * Kept as module state because Electron destroys the OS tray icon if the
  * `Tray` instance is garbage collected.
  */
@@ -58,16 +48,7 @@ function sendToMainWindow(channel: string, ...args: unknown[]): void {
   win.webContents.send(channel, ...args);
 }
 
-function openTool(tool: TrayToolName): void {
-  showMainWindow();
-  sendToMainWindow(IpcChannels.TrayOpenTool, tool);
-}
-
-function quitApp(): void {
-  app.quit();
-}
-
-function recordMenuTemplate(): MenuItemConstructorOptions[] {
+function trayMenuTemplate(): MenuItemConstructorOptions[] {
   return [
     {
       label: 'New Recording',
@@ -76,52 +57,16 @@ function recordMenuTemplate(): MenuItemConstructorOptions[] {
       // just flashed the main window before it got minimized.
       click: () => sendToMainWindow(IpcChannels.TrayOpenRecordPicker)
     },
-    { type: 'separator' },
-    { label: 'Quit benpocket', click: quitApp }
-  ];
-}
-
-function toolsMenuTemplate(): MenuItemConstructorOptions[] {
-  const tools: MenuItemConstructorOptions[] = [
-    { label: 'Show benpocket', click: showMainWindow },
-    { type: 'separator' },
-    { label: 'File Explorer', click: () => openTool('file-explorer') },
-    { label: 'HTTP Client', click: () => openTool('http-client') },
-    { label: 'Kuberneter', click: () => openTool('kuberneter') },
-    { label: 'Screen Recorder', click: () => openTool('screen-recorder') },
-    { label: 'Screen Capture', click: () => openTool('screen-capture') }
-  ];
-
-  if (is.dev) {
-    tools.push({ label: 'Storybook', click: () => openTool('storybook') });
-  }
-
-  tools.push({ type: 'separator' }, { label: 'Quit benpocket', click: quitApp });
-  return tools;
-}
-
-/** Single menu for Linux SNI/AppIndicator (left- and right-click both use it). */
-function linuxMenuTemplate(): MenuItemConstructorOptions[] {
-  const items: MenuItemConstructorOptions[] = [
-    { label: 'Show benpocket', click: showMainWindow },
     {
-      label: 'New Recording',
-      click: () => sendToMainWindow(IpcChannels.TrayOpenRecordPicker)
+      label: 'Screen Capture',
+      click: () => {
+        showMainWindow();
+        sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
+      }
     },
     { type: 'separator' },
-    { label: 'File Explorer', click: () => openTool('file-explorer') },
-    { label: 'HTTP Client', click: () => openTool('http-client') },
-    { label: 'Kuberneter', click: () => openTool('kuberneter') },
-    { label: 'Screen Recorder', click: () => openTool('screen-recorder') },
-    { label: 'Screen Capture', click: () => openTool('screen-capture') }
+    { label: 'Quit benpocket', click: () => app.quit() }
   ];
-
-  if (is.dev) {
-    items.push({ label: 'Storybook', click: () => openTool('storybook') });
-  }
-
-  items.push({ type: 'separator' }, { label: 'Quit benpocket', click: quitApp });
-  return items;
 }
 
 function createTrayImage(icons: TrayIcons): Electron.NativeImage {
@@ -149,17 +94,13 @@ export function createAppTray(icons: TrayIcons, mainWindow: BrowserWindow): void
   if (process.platform === 'linux') {
     // Electron: `right-click` and `popUpContextMenu` are macOS/Windows-only.
     // Linux trays only show a menu registered with setContextMenu.
-    tray.setContextMenu(Menu.buildFromTemplate(linuxMenuTemplate()));
-    // Activation (often left-click / double-click depending on DE).
-    tray.on('click', () => {
-      showMainWindow();
-    });
+    tray.setContextMenu(Menu.buildFromTemplate(trayMenuTemplate()));
   } else {
     tray.on('click', () => {
-      tray.popUpContextMenu(Menu.buildFromTemplate(recordMenuTemplate()));
+      tray.popUpContextMenu(Menu.buildFromTemplate(trayMenuTemplate()));
     });
     tray.on('right-click', () => {
-      tray.popUpContextMenu(Menu.buildFromTemplate(toolsMenuTemplate()));
+      tray.popUpContextMenu(Menu.buildFromTemplate(trayMenuTemplate()));
     });
   }
 

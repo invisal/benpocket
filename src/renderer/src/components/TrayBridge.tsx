@@ -1,21 +1,11 @@
 import { useEffect } from 'react';
 import { useToolTabs } from './providers/ToolProvider';
 import { openRecorderToolbarFor } from '../../tools/screen-recorder/features/recording/lib/open-recorder-toolbar';
-import { useLayoutStore } from '../store/layout.store';
-
-type TrayToolName =
-  | 'file-explorer'
-  | 'http-client'
-  | 'kuberneter'
-  | 'screen-recorder'
-  | 'screen-capture'
-  | 'storybook';
 
 /**
- * Bridges the main process tray menu to the renderer. Left-click "New
- * Recording" focuses (or opens) the Screen Recorder tab and opens the
- * floating recorder-toolbar. Right-click tool items show the window and
- * open/focus the matching tool tab.
+ * Bridges the main process tray menu to the renderer. "New Recording" focuses
+ * (or opens) the Screen Recorder tab and opens the floating recorder-toolbar.
+ * "Screen Capture" shows the window and opens/focuses that tool tab.
  */
 export function TrayBridge(): null {
   const { tabs, openTab, selectTab } = useToolTabs();
@@ -28,6 +18,15 @@ export function TrayBridge(): null {
       } else {
         openTab('screen-recorder', {}, { title: 'Screen Recording' });
       }
+    }
+
+    function focusOrOpenScreenCapture(): void {
+      const existing = tabs.find((t) => t.type === 'screen-capture');
+      if (existing) {
+        selectTab(existing.id);
+        return;
+      }
+      openTab('screen-capture', {});
     }
 
     const unsubscribeOpen = window.screenRecorder.tray.onOpenRecordPicker(() => {
@@ -43,7 +42,7 @@ export function TrayBridge(): null {
     });
 
     const unsubscribeTool = window.screenRecorder.tray.onOpenTool((tool) => {
-      openToolFromTray(tool as TrayToolName, { tabs, openTab, selectTab });
+      if (tool === 'screen-capture') focusOrOpenScreenCapture();
     });
 
     return () => {
@@ -54,53 +53,4 @@ export function TrayBridge(): null {
   }, [tabs, openTab, selectTab]);
 
   return null;
-}
-
-function openToolFromTray(
-  tool: TrayToolName,
-  ctx: {
-    tabs: ReturnType<typeof useToolTabs>['tabs'];
-    openTab: ReturnType<typeof useToolTabs>['openTab'];
-    selectTab: ReturnType<typeof useToolTabs>['selectTab'];
-  }
-): void {
-  const { tabs, openTab, selectTab } = ctx;
-
-  const focusOrOpen = (type: TrayToolName, open: () => void): void => {
-    const existing = tabs.find((t) => t.type === type);
-    if (existing) {
-      selectTab(existing.id);
-      return;
-    }
-    open();
-  };
-
-  switch (tool) {
-    case 'file-explorer':
-      focusOrOpen('file-explorer', () => openTab('file-explorer', {}));
-      break;
-    case 'http-client':
-      focusOrOpen('http-client', () => openTab('http-client', {}));
-      break;
-    case 'screen-recorder':
-      focusOrOpen('screen-recorder', () =>
-        openTab('screen-recorder', {}, { title: 'Screen Recording' })
-      );
-      break;
-    case 'screen-capture':
-      focusOrOpen('screen-capture', () => openTab('screen-capture', {}));
-      break;
-    case 'storybook':
-      focusOrOpen('storybook', () => openTab('storybook', {}));
-      break;
-    case 'kuberneter':
-      focusOrOpen('kuberneter', () => {
-        const instanceId = `kuberneter-${Date.now()}`;
-        useLayoutStore
-          .getState()
-          .addActivityInstance('kuberneter', instanceId, { configPath: 'default', cluster: '' });
-        openTab('kuberneter', { instanceId });
-      });
-      break;
-  }
 }

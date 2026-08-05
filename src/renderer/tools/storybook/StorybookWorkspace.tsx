@@ -3,6 +3,7 @@ import { cn } from 'cnfast';
 import { ButtonGallery } from './components/ButtonGallery';
 import { InputGallery } from './components/InputGallery';
 import { SelectGallery } from './components/SelectGallery';
+import { TabGallery } from './components/TabGallery';
 import { DialogGallery } from './components/DialogGallery';
 import { ChatGallery } from './components/ChatGallery';
 import { MenuGallery } from './components/MenuGallery';
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'button', label: 'Button', group: 'Components', Component: ButtonGallery },
   { id: 'input', label: 'Input', group: 'Components', Component: InputGallery },
   { id: 'select', label: 'Select', group: 'Components', Component: SelectGallery },
+  { id: 'tab', label: 'Tab', group: 'Components', Component: TabGallery },
   { id: 'dialog', label: 'Dialog', group: 'Components', Component: DialogGallery },
   { id: 'chat', label: 'Chat', group: 'Components', Component: ChatGallery },
   { id: 'menu', label: 'Menu', group: 'Components', Component: MenuGallery },

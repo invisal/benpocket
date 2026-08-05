@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useState, type ComponentType } from 'react';
-import { Tabs } from '@base-ui/react/tabs';
+import { PillTab } from '@renderer/components/ui/Tabs';
 import { FileText, Globe, Waves, X } from 'lucide-react';
 import { cn } from 'cnfast';
 import type { SavedRequest } from '../../../preload/http-client/types';
@@ -154,7 +154,7 @@ export const HttpClientWorkspace: React.FC = () => {
               ))}
             </div>
 
-            <div className="flex-1 overflow-auto p-4 flex flex-col min-h-0 bg-surface">
+            <div className="flex-1 overflow-auto flex flex-col min-h-0 bg-surface">
               {activeTabId && <HttpClientRequestPanel key={activeTabId} tabId={activeTabId} />}
             </div>
           </>
@@ -367,29 +367,20 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           {saveError}
         </div>
       )}
-      <Tabs.Root
+      <PillTab.Root
         value={client.protocol}
         onValueChange={(value) => client.setProtocol(value as ProtocolTab)}
         className="flex flex-col gap-3 min-h-0 flex-1"
       >
-        <nav className="flex items-center justify-between gap-2 shrink-0 border-b border-border pb-2">
-          <Tabs.List className="flex items-center gap-1">
+        <nav className="flex items-center justify-between gap-2 shrink-0 border-b border-border py-2 px-4">
+          <PillTab.List>
             {PROTOCOL_ITEMS.map(({ value, label, icon: Icon }) => (
-              <Tabs.Tab
-                key={value}
-                value={value}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium cursor-pointer transition-colors',
-                  client.protocol === value
-                    ? 'bg-accent/10 text-accent'
-                    : 'text-zinc-500 hover:bg-surface-2 hover:text-zinc-300'
-                )}
-              >
+              <PillTab.Item key={value} value={value}>
                 <Icon size={13} />
                 {label}
-              </Tabs.Tab>
+              </PillTab.Item>
             ))}
-          </Tabs.List>
+          </PillTab.List>
 
           <div className="flex items-center gap-2">
             <EnvironmentSelector />
@@ -423,7 +414,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           </div>
         </nav>
 
-        <Tabs.Panel value="HTTP" className="flex flex-col gap-3 min-h-0 flex-1">
+        <PillTab.Panel value="HTTP" className="flex flex-col gap-3 min-h-0 flex-1">
           <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">
             <RequestComposer
               method={client.http.state.method}
@@ -487,16 +478,16 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
             min={15}
             max={75}
             unit="%"
-            className="flex flex-col min-h-0 -mx-4 -mb-4"
+            className="flex flex-col min-h-0"
           >
             <ResponseInspector
               response={client.http.state.response}
               isLoading={client.http.state.isLoading}
             />
           </ResizablePanel>
-        </Tabs.Panel>
+        </PillTab.Panel>
 
-        <Tabs.Panel value="WEBSOCKET" className="flex flex-col gap-3 min-h-0 flex-1">
+        <PillTab.Panel value="WEBSOCKET" className="flex flex-col gap-3 min-h-0 flex-1">
           <WebSocketComposer
             url={client.ws.state.url}
             onUrlChange={(url) => {
@@ -512,8 +503,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           />
 
           <WebSocketLog log={client.ws.state.log} onClear={client.ws.clearLog} />
-        </Tabs.Panel>
-      </Tabs.Root>
+        </PillTab.Panel>
+      </PillTab.Root>
     </div>
   );
 };

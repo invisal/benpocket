@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { useToolTabs } from './providers/ToolProvider';
 import { openRecorderToolbarFor } from '../../tools/screen-recorder/features/recording/lib/open-recorder-toolbar';
+import { armTrayAutoCapture } from '../../tools/screen-capture/lib/tray-auto-capture';
 
 /**
  * Bridges the main process tray menu to the renderer. "New Recording" focuses
  * (or opens) the Screen Recorder tab and opens the floating recorder-toolbar.
- * "Screen Capture" shows the window and opens/focuses that tool tab.
+ * "Screen Capture" opens/focuses that tool tab; on Linux Wayland it also arms
+ * auto-Capture so the portal source picker opens immediately.
  */
 export function TrayBridge(): null {
   const { tabs, openTab, selectTab } = useToolTabs();
@@ -42,7 +44,11 @@ export function TrayBridge(): null {
     });
 
     const unsubscribeTool = window.screenRecorder.tray.onOpenTool((tool) => {
-      if (tool === 'screen-capture') focusOrOpenScreenCapture();
+      if (tool !== 'screen-capture') return;
+      // Arm before openTab — Screen Capture is lazy-loaded; the flag survives
+      // until ScreenCaptureMain mounts and consumes it.
+      if (window.api?.usesOsCapturePicker) armTrayAutoCapture();
+      focusOrOpenScreenCapture();
     });
 
     return () => {

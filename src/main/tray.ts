@@ -7,6 +7,7 @@ import {
   type MenuItemConstructorOptions
 } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
+import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 export interface TrayIcons {
   /** macOS menu-bar template glyph (`*Template.png`). */
@@ -60,7 +61,9 @@ function trayMenuTemplate(): MenuItemConstructorOptions[] {
     {
       label: 'Screen Capture',
       click: () => {
-        showMainWindow();
+        // Wayland: don't flash the window — Capture auto-starts the portal
+        // picker and hideApp will restore focus when done.
+        if (!usesOsCapturePicker()) showMainWindow();
         sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
       }
     },

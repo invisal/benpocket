@@ -35,6 +35,7 @@ import {
   type CaptureExportFormat,
   type RegionCaptureStep
 } from './lib/capture-frame';
+import { takeTrayAutoCapture } from './lib/tray-auto-capture';
 
 interface Props {}
 
@@ -263,6 +264,32 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       setPhase('idle');
     }
   };
+
+  const phaseRef = useRef(phase);
+  const runRegionCaptureRef = useRef(runRegionCapture);
+  useEffect(() => {
+    phaseRef.current = phase;
+    runRegionCaptureRef.current = runRegionCapture;
+  });
+
+  // Linux Wayland tray: auto-press Capture (portal picker). Flag survives
+  // lazy-load until mount; onOpenTool covers the tab-already-open path.
+  useEffect(() => {
+    if (!usesOsPicker) return;
+
+    if (takeTrayAutoCapture() && phaseRef.current !== 'capturing') {
+      void runRegionCaptureRef.current();
+    }
+
+    const unsubscribe = window.screenRecorder.tray.onOpenTool((tool) => {
+      if (tool !== 'screen-capture') return;
+      // Clear arm from TrayBridge so a later remount doesn't fire again.
+      takeTrayAutoCapture();
+      if (phaseRef.current === 'capturing') return;
+      void runRegionCaptureRef.current();
+    });
+    return unsubscribe;
+  }, [usesOsPicker]);
 
   const handleSourceDoubleClick = (source: CaptureSource): void => {
     if (loading || phase !== 'idle') return;

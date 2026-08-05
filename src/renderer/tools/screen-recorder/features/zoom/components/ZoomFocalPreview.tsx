@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
 import { beginGesture, endGesture } from '../../history/store/history-store';
-import { useIndependentObjectUrl } from '../../../lib/use-independent-object-url';
 
 interface ZoomFocalPreviewProps {
   /** This keyframe's own timestamp (source ms) -- the mini preview shows this exact frame, not just the recording's first frame, since positioning against a frame from a different moment would be misleading if the screen content moved since then. */
@@ -36,9 +35,7 @@ export function ZoomFocalPreview({
   onPositionChange,
   aspectRatio
 }: ZoomFocalPreviewProps): JSX.Element {
-  const recordingPreviewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
-
-  const previewUrl = useIndependentObjectUrl(recordingPreviewUrl);
+  const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
   const previewSeek = useTimelineStore((s) => s.previewSeek);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
   const videoRef = useRef<HTMLVideoElement>(null);

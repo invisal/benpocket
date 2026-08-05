@@ -1,4 +1,5 @@
 import { app, session } from 'electron';
+import { RECORDING_MEDIA_SCHEME } from '@shared/media-protocol';
 
 // A static <meta http-equiv="Content-Security-Policy"> tag in index.html
 // can't tell dev and production apart, and Vite's dev server / React Fast
@@ -8,14 +9,15 @@ import { app, session } from 'electron';
 //
 // img-src needs 'data:' because capture source thumbnails are data URLs
 // (see main/screen-recorder/capture/screen-source-provider.ts) and Screen Capture preview
-// may use blob: or data: URLs. media-src needs 'blob:' because recorded
-// video preview uses an in-memory Blob URL (see
-// features/recording/engine/capture-engine.ts) rather than writing to disk
-// and reloading from a file:// URL. connect-src also needs 'blob:' for the
-// same URL: <video src> hits media-src, but decoding it for the timeline's
-// waveform (features/timeline/lib/decode-waveform-peaks.ts) does
-// `fetch(previewUrl)` first, which CSP checks against connect-src instead.
-// worker-src needs 'blob:' and 'data:' because the export pipeline's
+// may use blob: or data: URLs. media-src needs the `benpocket-recording:`
+// scheme because recording preview streams straight off disk through it
+// (see security/media-protocol.ts) instead of an in-memory Blob URL --
+// `blob:` stays alongside it for the few things that still do use one (the
+// export pipeline's WASM demuxer input, Library's project thumbnails).
+// connect-src needs the same two: <video src> hits media-src, but decoding
+// the timeline's waveform (features/timeline/lib/decode-waveform-peaks.ts)
+// does `fetch(previewUrl)` first, which CSP checks against connect-src
+// instead. worker-src needs 'blob:' and 'data:' because the export pipeline's
 // `web-demuxer` (features/export/engine/streaming-decoder.ts etc.) spins up
 // its own internal workers two different ways -- its main demux worker via
 // `new Worker(URL.createObjectURL(...))` (blob:) and at least one other via
@@ -31,23 +33,25 @@ import { app, session } from 'electron';
 // an image -- that fetch is checked against connect-src, not img-src.
 export function applyContentSecurityPolicy(): void {
   const isDev = !app.isPackaged;
+  const mediaSrc = `'self' blob: ${RECORDING_MEDIA_SCHEME}:`;
+  const connectSrc = `'self' blob: data: ${RECORDING_MEDIA_SCHEME}:`;
 
   const policy = isDev
     ? [
         "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
         "img-src 'self' data: blob: http: https:",
-        "media-src 'self' blob:",
+        `media-src ${mediaSrc}`,
         "worker-src 'self' blob: data:",
-        "connect-src 'self' blob: data: ws: wss: http://localhost:* https://localhost:*"
+        `connect-src ${connectSrc} ws: wss: http://localhost:* https://localhost:*`
       ].join('; ')
     : [
         "default-src 'self'",
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: http: https:",
-        "media-src 'self' blob:",
+        `media-src ${mediaSrc}`,
         "worker-src 'self' blob: data:",
-        "connect-src 'self' blob: data:"
+        `connect-src ${connectSrc}`
       ].join('; ');
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

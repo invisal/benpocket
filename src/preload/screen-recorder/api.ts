@@ -103,6 +103,9 @@ export const screenRecorderApi = {
     /** Reads a local file's raw bytes for the in-renderer WebCodecs export pipeline (feeding the WASM demuxer) -- unbounded, unlike file-explorer's preview-scoped binary read. */
     readFileBytes: (filePath: string): Promise<ArrayBuffer> =>
       ipcRenderer.invoke(IpcChannels.ExportReadFileBytes, filePath),
+    /** Cheap stat -- see ExportGetFileSize's doc in export-handlers.ts. */
+    getFileSize: (filePath: string): Promise<number> =>
+      ipcRenderer.invoke(IpcChannels.ExportGetFileSize, filePath),
     /** Writes the finished export's bytes to the already-chosen output path (see dialog.showSaveExportPath). */
     writeFileBytes: (filePath: string, data: ArrayBuffer): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.ExportWriteFileBytes, filePath, data),

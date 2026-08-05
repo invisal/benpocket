@@ -49,6 +49,14 @@ const CORNER_CLASSES: Record<Corner, string> = {
 /** Ignore creation drags smaller than this (in image px) — treat as a stray click. */
 const MIN_DRAG_PX = 4;
 
+/** Ctrl/Cmd+wheel zoom relative to fit-to-container (1 = fit). */
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 8;
+
+function clampZoom(zoom: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+}
+
 interface Draft {
   kind: 'rect' | 'circle' | 'blur' | 'arrow' | 'line';
   startX: number;
@@ -167,12 +175,33 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   const watermark = useCaptureEditorStore((s) => s.watermark);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const zoomContentRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [userZoom, setUserZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const [panning, setPanning] = useState(false);
+  const [zoomDataUrl, setZoomDataUrl] = useState(dataUrl);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [penDraft, setPenDraft] = useState<PenDraft | null>(null);
   const [cropRect, setCropRect] = useState<Rect | null>(null);
   const activeDrag = useRef<{ move: (e: PointerEvent) => void; up: () => void } | null>(null);
+  const userZoomRef = useRef(userZoom);
+  const panRef = useRef(pan);
+  const spaceHeldRef = useRef(false);
+  // New capture → back to fit (preview-only; export ignores zoom).
+  if (dataUrl !== zoomDataUrl) {
+    setZoomDataUrl(dataUrl);
+    setUserZoom(1);
+    setPan({ x: 0, y: 0 });
+    userZoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
+  }
+  useEffect(() => {
+    userZoomRef.current = userZoom;
+    panRef.current = pan;
+  });
 
   // The stage shows this viewport of the source image. The crop tool always
   // works on the full image (so an existing crop can be re-adjusted);
@@ -207,9 +236,11 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     : view.width > 0 && containerSize.width > 0
       ? Math.min(containerSize.width / view.width, containerSize.height / view.height, 1)
       : 0;
-  const stageWidth = view.width * fitScale;
-  const stageHeight = view.height * fitScale;
-  const scale = fitScale > 0 ? fitScale : 1;
+  // userZoom is Ctrl/Cmd+wheel multiplier on top of fit-to-container.
+  const scale = (fitScale > 0 ? fitScale : 1) * userZoom;
+  const stageWidth = view.width * scale;
+  const stageHeight = view.height * scale;
+  const displayFrameFit = frameFit * userZoom;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -219,6 +250,115 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     );
     observer.observe(container);
     return () => observer.disconnect();
+  }, []);
+
+  // Photoshop-style: Ctrl/Cmd+wheel zooms toward cursor; wheel pans when zoomed in.
+  // Native listener — React's onWheel is passive and can't preventDefault browser zoom.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onWheel = (event: WheelEvent): void => {
+      const zoomedIn = userZoomRef.current > 1.001;
+
+      if (!(event.ctrlKey || event.metaKey)) {
+        if (!zoomedIn) return;
+        event.preventDefault();
+        const next = {
+          x: panRef.current.x - event.deltaX,
+          y: panRef.current.y - event.deltaY
+        };
+        panRef.current = next;
+        setPan(next);
+        return;
+      }
+
+      event.preventDefault();
+      const prevZoom = userZoomRef.current;
+      const nextZoom = clampZoom(prevZoom * Math.exp(-event.deltaY * 0.0015));
+      if (Math.abs(nextZoom - prevZoom) < 1e-6) return;
+
+      const content = zoomContentRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const centerX = containerRect.width / 2;
+      const centerY = containerRect.height / 2;
+
+      if (!content) {
+        userZoomRef.current = nextZoom;
+        setUserZoom(nextZoom);
+        if (nextZoom <= 1) {
+          panRef.current = { x: 0, y: 0 };
+          setPan({ x: 0, y: 0 });
+        }
+        return;
+      }
+
+      const bounds = content.getBoundingClientRect();
+      const ratio = nextZoom / prevZoom;
+      const relX = bounds.width > 0 ? (event.clientX - bounds.left) / bounds.width : 0.5;
+      const relY = bounds.height > 0 ? (event.clientY - bounds.top) / bounds.height : 0.5;
+      const newW = bounds.width * ratio;
+      const newH = bounds.height * ratio;
+      const newLeft = event.clientX - containerRect.left - relX * newW;
+      const newTop = event.clientY - containerRect.top - relY * newH;
+      const nextPan =
+        nextZoom <= 1
+          ? { x: 0, y: 0 }
+          : {
+              x: newLeft - centerX + newW / 2,
+              y: newTop - centerY + newH / 2
+            };
+
+      userZoomRef.current = nextZoom;
+      panRef.current = nextPan;
+      setUserZoom(nextZoom);
+      setPan(nextPan);
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Space = temporary hand tool (Figma/Photoshop). Skip while typing.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.code !== 'Space') return;
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+      if (event.repeat) return;
+      // Stop Space from "clicking" a focused <button> (e.g. titlebar Close →
+      // hide-to-tray) on keyup. Blur buttons so keyup has nothing to activate.
+      event.preventDefault();
+      if (document.activeElement instanceof HTMLButtonElement) {
+        document.activeElement.blur();
+      }
+      spaceHeldRef.current = true;
+      setSpaceHeld(true);
+    }
+    function onKeyUp(event: KeyboardEvent): void {
+      if (event.code !== 'Space') return;
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+      event.preventDefault();
+      spaceHeldRef.current = false;
+      setSpaceHeld(false);
+    }
+    function clearSpace(): void {
+      spaceHeldRef.current = false;
+      setSpaceHeld(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', clearSpace);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', clearSpace);
+    };
   }, []);
 
   // Delete/Escape/undo/redo shortcuts. Skipped while the inline text input
@@ -281,8 +421,42 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     };
   }
 
+  /** Space+drag or middle-mouse drag — tools do not draw while this runs. */
+  function startPan(event: React.PointerEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const origin = { ...panRef.current };
+    setPanning(true);
+    const move = (e: PointerEvent): void => {
+      const next = {
+        x: origin.x + (e.clientX - startX),
+        y: origin.y + (e.clientY - startY)
+      };
+      panRef.current = next;
+      setPan(next);
+    };
+    const up = (): void => {
+      window.removeEventListener('pointermove', move);
+      activeDrag.current = null;
+      setPanning(false);
+    };
+    activeDrag.current = { move, up };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up, { once: true });
+  }
+
+  function wantsPan(event: React.PointerEvent): boolean {
+    return event.button === 1 || (event.button === 0 && spaceHeldRef.current);
+  }
+
   function startDrag(id: string, onMove: DragMove) {
     return (event: React.PointerEvent): void => {
+      if (wantsPan(event)) {
+        startPan(event);
+        return;
+      }
       if (tool !== 'select' || event.button !== 0) return;
       event.preventDefault();
       event.stopPropagation();
@@ -323,6 +497,10 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   /** Move or resize the pending crop selection (local state, not the store). */
   function startCropAdjust(mode: Corner | 'move') {
     return (event: React.PointerEvent): void => {
+      if (wantsPan(event)) {
+        startPan(event);
+        return;
+      }
       if (event.button !== 0 || !pendingCrop) return;
       event.preventDefault();
       event.stopPropagation();
@@ -371,6 +549,10 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   }
 
   function handleStagePointerDown(event: React.PointerEvent): void {
+    if (wantsPan(event)) {
+      startPan(event);
+      return;
+    }
     if (event.button !== 0) return;
     const s = store.getState();
     const point = toImagePoint(event);
@@ -994,10 +1176,10 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
 
   const sized = stageWidth > 0;
   /** Non-null when the gradient frame is shown around the stage (narrowed refs for JSX below). */
-  const framed = frame && inner && frameFit > 0 && sized ? { frame, inner } : null;
+  const framed = frame && inner && displayFrameFit > 0 && sized ? { frame, inner } : null;
   /** Preview shadow mirrors the export's BACKGROUND_SHADOW, scaled to displayed frame px. */
   const shadowScale = framed
-    ? (framed.frame.width * frameFit) / BACKGROUND_SHADOW.referenceWidth
+    ? (framed.frame.width * displayFrameFit) / BACKGROUND_SHADOW.referenceWidth
     : 0;
 
   /** Positions the full image (and its overlay) so the viewport shows the crop. */
@@ -1060,7 +1242,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
     watermark &&
     (() => {
       const srcWidth = framed?.frame.width ?? view.width;
-      const k = framed ? frameFit : scale;
+      const k = framed ? displayFrameFit : scale;
       const fontSize = Math.max(12, srcWidth * 0.012);
       const margin = Math.max(8, srcWidth * 0.012);
       const m = chipMetrics(fontSize);
@@ -1084,6 +1266,8 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
       );
     })();
 
+  const panCursor = panning ? 'cursor-grabbing' : spaceHeld ? 'cursor-grab' : undefined;
+
   const stage = (
     <div
       ref={stageRef}
@@ -1093,7 +1277,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
       className={cn(
         'relative select-none',
         !sized && 'max-h-full max-w-full',
-        tool !== 'select' && 'cursor-crosshair'
+        panCursor ?? (tool !== 'select' && 'cursor-crosshair')
       )}
       style={{
         width: sized ? stageWidth : undefined,
@@ -1134,45 +1318,54 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   return (
     <div
       ref={containerRef}
-      className="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+      className={cn('flex min-h-0 flex-1 items-center justify-center overflow-hidden', panCursor)}
+      onPointerDown={(event) => {
+        if (wantsPan(event)) startPan(event);
+      }}
+      onAuxClick={(event) => {
+        // Block middle-click paste / autoscroll chrome on Linux.
+        if (event.button === 1) event.preventDefault();
+      }}
     >
-      {framed ? (
-        <div
-          onPointerDown={handleStagePointerDown}
-          className={cn(
-            'relative select-none overflow-hidden',
-            tool !== 'select' && 'cursor-crosshair'
-          )}
-          style={{
-            width: framed.frame.width * frameFit,
-            height: framed.frame.height * frameFit,
-            background: cssGradient(findWallpaperPreset(framed.frame.wallpaper)),
-            // Frame radius is in frame px; frameFit converts to display px.
-            borderRadius: framed.frame.cornerRadius * frameFit
-          }}
-        >
+      <div ref={zoomContentRef} style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+        {framed ? (
           <div
-            className="absolute"
+            onPointerDown={handleStagePointerDown}
+            className={cn(
+              'relative select-none overflow-hidden',
+              panCursor ?? (tool !== 'select' && 'cursor-crosshair')
+            )}
             style={{
-              left: framed.inner.x * frameFit,
-              top: framed.inner.y * frameFit,
-              width: stageWidth,
-              height: stageHeight
+              width: framed.frame.width * displayFrameFit,
+              height: framed.frame.height * displayFrameFit,
+              background: cssGradient(findWallpaperPreset(framed.frame.wallpaper)),
+              // Frame radius is in frame px; displayFrameFit converts to display px.
+              borderRadius: framed.frame.cornerRadius * displayFrameFit
             }}
           >
-            {stage}
-            {/* Overlay as a stage sibling: annotations escape the stage's
+            <div
+              className="absolute"
+              style={{
+                left: framed.inner.x * displayFrameFit,
+                top: framed.inner.y * displayFrameFit,
+                width: stageWidth,
+                height: stageHeight
+              }}
+            >
+              {stage}
+              {/* Overlay as a stage sibling: annotations escape the stage's
                 overflow clip and can sit on the background, matching the
                 export, which draws them onto the frame canvas. */}
-            <div className="absolute" style={shiftedStyle}>
-              {overlayChildren}
+              <div className="absolute" style={shiftedStyle}>
+                {overlayChildren}
+              </div>
             </div>
+            {watermarkLabel}
           </div>
-          {watermarkLabel}
-        </div>
-      ) : (
-        stage
-      )}
+        ) : (
+          stage
+        )}
+      </div>
     </div>
   );
 }

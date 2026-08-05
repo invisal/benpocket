@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # uiohook-napi (global input capture, screen-recorder cursor/click
+      # tracking) has no prebuilt binary for Electron's ABI, so
+      # `electron-builder install-app-deps` (npm's postinstall) falls back to
+      # compiling its libuiohook dependency from source -- which needs these
+      # X11 dev headers on Linux runners (not installed by default).
+      # libxext-dev/libxfixes-dev: native/linux-recorder's own XShm/XFixes
+      # build dependencies.
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxtst-dev libxrandr-dev libxt-dev libxext-dev libxfixes-dev
+
+      - run: npm ci
+
+      - name: Build native recording helper (macOS)
+        if: runner.os == 'macOS'
+        run: npm run build:native:macos
+
+      - name: Build native recording helper (Windows)
+        if: runner.os == 'Windows'
+        run: npm run build:native:windows
+
+      - name: Build native recording helper (Linux)
+        if: runner.os == 'Linux'
+        run: npm run build:native:linux
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # release:<os> (package.json) runs electron-vite build + electron-builder
+      # --<os> --publish always. GH_TOKEN authenticates electron-builder's
+      # github publish provider against this repo's own Actions-issued token
+      # -- works because `permissions: contents: write` above grants it
+      # release-creation/upload rights.
+      - name: Import Apple certificate
+        if: runner.os == 'macOS'
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain \
+            -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "" build.keychain
+
+      - name: Release (Linux)
+        if: runner.os == 'Linux'
+        run: npm run release:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release (Windows)
+        if: runner.os == 'Windows'
+        run: npm run release:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release (macOS)
+        if: runner.os == 'macOS'
+        timeout-minutes: 30
+        run: npm run release:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

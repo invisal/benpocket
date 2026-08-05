@@ -41,6 +41,12 @@ export function useRecordingController(): RecordingController {
   const [liveCounts, setLiveCounts] = useState<LiveCounts | null>(null);
   const captureRef = useRef<CaptureHandle | null>(null);
   const cursorCaptureRef = useRef<CursorCaptureHandle | null>(null);
+  const recordingOptionsRef = useRef<{
+    sourceType: 'screen' | 'window';
+    micEnabled: boolean;
+    systemAudioEnabled: boolean;
+    webcamEnabled: boolean;
+  } | null>(null);
 
   const start = useCallback(async (): Promise<StartResult> => {
     // Read fresh rather than via a reactive subscription -- the focus
@@ -134,6 +140,15 @@ export function useRecordingController(): RecordingController {
           )
         : null;
       if (!cursorCaptureRef.current) setLiveCounts(null);
+      // Snapshot the options this recording actually started with -- `stop()`
+      // reports on them for telemetry, and `audio`/webcam state can drift
+      // between start and stop (e.g. toggled mid-recording in the toolbar).
+      recordingOptionsRef.current = {
+        sourceType: source.type,
+        micEnabled: audio.microphoneEnabled,
+        systemAudioEnabled: audio.systemAudioEnabled,
+        webcamEnabled: useWebcamStore.getState().enabled
+      };
       setIsRecording(true);
       return { ok: true };
     } catch (err) {
@@ -158,6 +173,19 @@ export function useRecordingController(): RecordingController {
     const { video, webcamBlob, webcamStartedAt } = await capture.stop();
     const { blob } = video;
     captureRef.current = null;
+
+    const options = recordingOptionsRef.current;
+    recordingOptionsRef.current = null;
+    if (options) {
+      window.telemetry.send({
+        event: 'screen-recorder:record',
+        durationSec: Math.round((Date.now() - capture.startedAt) / 1000),
+        sourceType: options.sourceType,
+        micEnabled: options.micEnabled,
+        systemAudioEnabled: options.systemAudioEnabled,
+        webcamEnabled: options.webcamEnabled
+      });
+    }
 
     const { cursorPath, clickPath } = (await cursorCaptureRef.current?.stop()) ?? {
       cursorPath: [],

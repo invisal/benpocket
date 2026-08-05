@@ -61,7 +61,16 @@ interface TabsState<TTool extends Tool<string, any>> {
  */
 export function createTabProvider<TTool extends Tool<string, any>>(
   tools: readonly TTool[],
-  options: { storageKey: string; initialTabs?: () => Tab<TTool>[] }
+  options: {
+    storageKey: string;
+    initialTabs?: () => Tab<TTool>[];
+    /** Called the first time a tab of a given `type` becomes the active tab in this
+     * session -- whether via a brand-new tab or switching to an already-open one --
+     * never once per `openTab`/`selectTab` call. Kept as a plain callback rather than
+     * an import so this generic tab-system factory stays decoupled from what a caller
+     * does with the notification (telemetry, in ToolProvider.ts's case). */
+    onTabActivated?: (type: TabType<TTool>) => void;
+  }
 ) {
   const toolsByName = Object.fromEntries(tools.map((tool) => [tool.name, tool])) as Record<
     TabType<TTool>,
@@ -125,6 +134,24 @@ export function createTabProvider<TTool extends Tool<string, any>>(
       }
     )
   );
+
+  // Module-scope (not component state) so it survives remounts and naturally resets
+  // per app launch, matching "once per (tool, session)" -- rehydration from the
+  // persisted `activeTabId` on reload doesn't re-report a tool that was already open
+  // before, only tools that become active for the first time in *this* run.
+  const reportedTypes = new Set<TabType<TTool>>();
+  function reportActiveTab(state: TabsState<TTool>): void {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    if (tab && !reportedTypes.has(tab.type)) {
+      reportedTypes.add(tab.type);
+      options.onTabActivated?.(tab.type);
+    }
+  }
+  // subscribe() only fires on later changes, so the tab that's already active at
+  // creation time (the initial tab, or whatever rehydrated before this line ran)
+  // needs its own explicit check here.
+  reportActiveTab(useTabsStore.getState());
+  useTabsStore.subscribe(reportActiveTab);
 
   function useTabs(): TabsState<TTool> {
     return useTabsStore();

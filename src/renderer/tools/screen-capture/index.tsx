@@ -35,6 +35,8 @@ import {
   type CaptureExportFormat,
   type RegionCaptureStep
 } from './lib/capture-frame';
+import { takeTrayAutoCapture } from './lib/tray-auto-capture';
+import { useScreenCaptureSettings } from './lib/use-screen-capture-settings';
 
 interface Props {}
 
@@ -96,11 +98,59 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [confirmed, setConfirmed] = useState<'copy' | 'save' | null>(null);
   const [busy, setBusy] = useState<'copy' | 'save' | null>(null);
-  const [hideApp, setHideApp] = useState(
-    () => localStorage.getItem('screen-capture.hide-app') !== 'false'
-  );
+  const {
+    isLoading: settingsLoading,
+    fields: settings,
+    setFields: setSettings
+  } = useScreenCaptureSettings();
+  const hideApp = settings.hideApp;
   const confirmTimer = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Prevents zustand→Y echo when applying remote/local hydrate. */
+  const applyingSettingsRef = useRef(false);
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  });
+
+  // Profile persist store → editor zustand prefs.
+  useEffect(() => {
+    if (settingsLoading) return;
+    applyingSettingsRef.current = true;
+    useCaptureEditorStore.getState().applyPersistedPrefs({
+      toolStyles: settings.toolStyles,
+      penSnapShapes: settings.penSnapShapes,
+      highlightSnap: settings.highlightSnap,
+      highlightSquareEnds: settings.highlightSquareEnds,
+      watermark: settings.watermark,
+      background: settings.background,
+      cornerRadiusUnits: settings.cornerRadiusUnits
+    });
+    applyingSettingsRef.current = false;
+  }, [settingsLoading, settings]);
+
+  // Editor zustand prefs → profile persist store.
+  useEffect(() => {
+    if (settingsLoading) return;
+    return useCaptureEditorStore.subscribe((state, previous) => {
+      if (applyingSettingsRef.current) return;
+      if (
+        state.toolStyles === previous.toolStyles &&
+        state.penSnapShapes === previous.penSnapShapes &&
+        state.highlightSnap === previous.highlightSnap &&
+        state.highlightSquareEnds === previous.highlightSquareEnds &&
+        state.watermark === previous.watermark &&
+        state.background === previous.background &&
+        state.cornerRadiusUnits === previous.cornerRadiusUnits
+      ) {
+        return;
+      }
+      setSettings({
+        ...state.getPersistedPrefs(),
+        hideApp: settingsRef.current.hideApp
+      });
+    });
+  }, [settingsLoading, setSettings]);
 
   /** Import a pasted / opened image straight into the editor. Unlike a fresh capture, this does not auto-copy — the image likely came from the clipboard. */
   const openImage = useCallback(async (source: Blob): Promise<void> => {
@@ -117,8 +167,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   }, []);
 
   const toggleHideApp = (next: boolean): void => {
-    setHideApp(next);
-    localStorage.setItem('screen-capture.hide-app', String(next));
+    setSettings({ hideApp: next });
   };
 
   const flashConfirm = (action: 'copy' | 'save'): void => {
@@ -263,6 +312,32 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       setPhase('idle');
     }
   };
+
+  const phaseRef = useRef(phase);
+  const runRegionCaptureRef = useRef(runRegionCapture);
+  useEffect(() => {
+    phaseRef.current = phase;
+    runRegionCaptureRef.current = runRegionCapture;
+  });
+
+  // Linux Wayland tray: auto-press Capture (portal picker). Flag survives
+  // lazy-load until mount; onOpenTool covers the tab-already-open path.
+  useEffect(() => {
+    if (!usesOsPicker) return;
+
+    if (takeTrayAutoCapture() && phaseRef.current !== 'capturing') {
+      void runRegionCaptureRef.current();
+    }
+
+    const unsubscribe = window.screenRecorder.tray.onOpenTool((tool) => {
+      if (tool !== 'screen-capture') return;
+      // Clear arm from TrayBridge so a later remount doesn't fire again.
+      takeTrayAutoCapture();
+      if (phaseRef.current === 'capturing') return;
+      void runRegionCaptureRef.current();
+    });
+    return unsubscribe;
+  }, [usesOsPicker]);
 
   const handleSourceDoubleClick = (source: CaptureSource): void => {
     if (loading || phase !== 'idle') return;

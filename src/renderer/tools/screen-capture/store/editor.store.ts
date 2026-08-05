@@ -270,7 +270,7 @@ const initialState = {
   highlightSnap: true,
   highlightSquareEnds: true,
   toolStyles: defaultToolStyles(),
-  tool: 'select' as EditorTool,
+  tool: 'pen' as EditorTool,
   selectedId: null,
   editingId: null,
   color: EDITOR_COLORS[0],
@@ -476,9 +476,13 @@ export const useCaptureEditorStore = create<EditorState>()(
       init: (imageWidth, imageHeight) =>
         set((state) => {
           const unit = imageUnit(imageWidth);
+          const prefs = sessionPrefs(state);
           return {
             ...initialState,
-            ...sessionPrefs(state),
+            ...prefs,
+            // Fresh capture always starts on free draw with that tool's styles.
+            tool: 'pen' as EditorTool,
+            ...workingStyle(prefs.toolStyles.pen),
             cornerRadius: state.cornerRadiusUnits * unit,
             imageWidth,
             imageHeight,
@@ -487,12 +491,17 @@ export const useCaptureEditorStore = create<EditorState>()(
         }),
 
       reset: () =>
-        set((state) => ({
-          ...initialState,
-          ...sessionPrefs(state),
-          // No image yet — px radius is applied again in init().
-          cornerRadius: 0
-        })),
+        set((state) => {
+          const prefs = sessionPrefs(state);
+          return {
+            ...initialState,
+            ...prefs,
+            tool: 'pen' as EditorTool,
+            ...workingStyle(prefs.toolStyles.pen),
+            // No image yet — px radius is applied again in init().
+            cornerRadius: 0
+          };
+        }),
 
       setTool: (tool) =>
         set((state) => {

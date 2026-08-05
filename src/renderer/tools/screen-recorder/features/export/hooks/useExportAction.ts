@@ -7,6 +7,7 @@ import { useExportStore } from '../store/export-store';
 import { buildExportProject } from '../lib/build-export-project';
 import { runExport } from '../engine/export-coordinator';
 import { isExportCancelled } from '../engine/cancel';
+import { WALLPAPER_IMAGE_PRESETS } from '../../background/lib/wallpaper-images';
 
 export type ExportStatus = 'idle' | 'exporting' | 'error';
 
@@ -85,6 +86,7 @@ export function useExportAction(): UseExportActionResult {
 
     try {
       const durationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
+      const project = buildExportProject(sourceVideoPath, durationMs);
       await runExport(
         {
           format: store.format,
@@ -108,7 +110,7 @@ export function useExportAction(): UseExportActionResult {
             audioMuted: s.audioMuted,
             audioVolume: s.audioVolume
           })),
-          project: buildExportProject(sourceVideoPath, durationMs)
+          project
         },
         (p) => {
           setProgress({ percent: p.percent, stage: p.stage });
@@ -119,6 +121,21 @@ export function useExportAction(): UseExportActionResult {
       if (afterSuccess) await afterSuccess();
       setStatus('idle');
       setProgress(null);
+      window.telemetry.send({
+        event: 'screen-recorder:export',
+        format: store.format,
+        durationSec: Math.round(durationMs / 1000),
+        presetId: store.presetId,
+        clipCount: segments.length,
+        hasAnnotations: project.annotations.length > 0,
+        hasCaptions: project.captions.segments.length > 0,
+        hasBlurMask: project.blurMasks.length > 0,
+        hasZoom: project.zoomKeyframes.length > 0,
+        hasCustomBackground:
+          project.background.kind !== 'wallpaper' ||
+          project.background.value !== WALLPAPER_IMAGE_PRESETS[0].id,
+        hasWebcamOverlay: project.webcam.enabled && project.webcamVideoPath !== null
+      });
     } catch (err) {
       if (isExportCancelled(err)) {
         setStatus('idle');
@@ -127,6 +144,7 @@ export function useExportAction(): UseExportActionResult {
         console.error('[export] failed:', err);
         setStatus('error');
         setError(err instanceof Error ? err.message : String(err));
+        window.telemetry.send({ event: 'screen-recorder:export_failed' });
       }
     } finally {
       abortControllerRef.current = null;

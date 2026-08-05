@@ -80,7 +80,7 @@
     "knip": "^6.26.0",
     "lucide-react": "^1.23.0",
     "mediabunny": "^1.50.9",
-    "monaco-editor": "^0.56.0",
+    "monaco-editor": "^0.53.0",
     "motion": "^12.43.0",
     "patch-package": "^8.0.1",
     "pixi.js": "^8.19.0",

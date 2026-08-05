@@ -18,6 +18,7 @@ import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOve
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { resolveZoom } from '@shared/zoom-resolve';
 import { cn } from '../../lib/utils';
+import { useIndependentObjectUrl } from '../../lib/use-independent-object-url';
 import EditorLoading from './EditorLoading';
 import VideoErrorOverlay from './VideoErrorOverlay';
 import CaptionBar from './CaptionBar';
@@ -101,6 +102,7 @@ export function PreviewStage({
   });
 
   const { stageRef, stageWidthPx } = useStageWidth();
+  const standbyPreviewUrl = useIndependentObjectUrl(previewUrl);
 
   const {
     depth: zoomDepth,
@@ -216,7 +218,7 @@ export function PreviewStage({
             <video
               ref={videoBRef}
               key={`${previewUrl}-b`}
-              src={previewUrl}
+              src={standbyPreviewUrl ?? undefined}
               className={cn(
                 'h-full w-full object-contain',
                 !isSlotAActive ? '' : 'absolute inset-0 pointer-events-none opacity-0'

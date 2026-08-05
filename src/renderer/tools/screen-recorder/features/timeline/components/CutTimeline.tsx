@@ -48,6 +48,7 @@ import { BlurMaskTrack } from '../../blur-mask/components/BlurMaskTrack';
 import { Playhead } from './Playhead';
 import { SegmentWaveform } from './SegmentWaveform';
 import { cn } from '../../../lib/utils';
+import { useIndependentObjectUrl } from '../../../lib/use-independent-object-url';
 
 function formatTime(ms: number): string {
   const totalSeconds = ms / 1000;
@@ -232,12 +233,15 @@ export function CutTimeline(): JSX.Element {
   // leaves `peaks` null when there's none, so its presence doubles as that
   // check without a separate probe.
   const hasAudioTrack = waveformPeaks !== null;
+
+  const waveformSourceUrl = useIndependentObjectUrl(previewUrl);
+
   // Decoded once per recording (cached in the store, keyed by URL) rather
   // than per-clip -- each segment below just slices its own range out of
   // the same peaks array, so re-cutting/reordering never re-decodes audio.
   useEffect(() => {
-    if (previewUrl) loadWaveformForUrl(previewUrl);
-  }, [previewUrl, loadWaveformForUrl]);
+    if (waveformSourceUrl) loadWaveformForUrl(waveformSourceUrl);
+  }, [waveformSourceUrl, loadWaveformForUrl]);
 
   const { dragOverIndex, getDragHandlers } = useSegmentReorderDrag();
   const {

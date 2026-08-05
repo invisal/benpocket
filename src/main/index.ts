@@ -34,6 +34,9 @@ import { registerDeepLinkHandler } from './auth/deepLink';
 import { handleGithubDeepLink } from './auth/githubAuth';
 import { registerAuthHandlers } from './auth/ipc';
 import { registerUpdaterHandlers } from './updater/ipc';
+import { registerTelemetryHandlers } from './telemetry/ipc';
+import { telemetryStore } from './telemetry/telemetry-store';
+import { flushOnQuit, startTelemetrySender } from './telemetry/sender';
 
 // Must run before app.whenReady(): app.requestSingleInstanceLock() has to be
 // called this early for `second-instance` (Windows/Linux deep-link delivery,
@@ -253,6 +256,13 @@ if (gotSingleInstanceLock) {
     // only while the Screen Recorder tool tab is open.
     registerTrayHandlers(trayIcon);
 
+    // Usage tracking (see docs/telemetry.md) -- opt-out, install-scoped, never
+    // carries tool content. registerTelemetryHandlers() exposes window.telemetry;
+    // startTelemetrySender() periodically flushes the local queue to the backend.
+    registerTelemetryHandlers();
+    startTelemetrySender();
+    telemetryStore.enqueue({ event: 'app_opened' });
+
     const mainWindow = createWindow();
 
     // "Launch Recorder" OS-level shortcut -- works even while benpocket is
@@ -286,6 +296,8 @@ if (gotSingleInstanceLock) {
     // any still-running native recording helper subprocess rather than
     // leaving it (and, on macOS, the OS-level "recording" indicator) behind.
     killActiveNativeRecording();
+    // Best-effort, ~2s-bounded final flush -- never blocks shutdown.
+    void flushOnQuit();
   });
 }
 

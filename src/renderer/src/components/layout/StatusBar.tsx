@@ -1,5 +1,6 @@
 import type React from 'react';
 import { SyncStatus } from './SyncStatus';
+import { TelemetryStatus } from './TelemetryStatus';
 import { UpdateStatus } from './UpdateStatus';
 
 export const StatusBar: React.FC = () => {
@@ -13,6 +14,7 @@ export const StatusBar: React.FC = () => {
       <div className="h-full flex-1 bg-surface-2 bg-diagonal-stripes" />
 
       <SyncStatus />
+      <TelemetryStatus />
       <UpdateStatus />
     </div>
   );

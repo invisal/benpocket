@@ -69,6 +69,9 @@ export function useDualVideoPlayback({
       get duration() {
         return getActiveVideo()?.duration ?? 0;
       },
+      get seeking() {
+        return getActiveVideo()?.seeking ?? false;
+      },
       get currentTime() {
         return getActiveVideo()?.currentTime ?? 0;
       },

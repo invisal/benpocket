@@ -10,7 +10,7 @@ import { getSegmentOutputDurationMs, trimRangeToKeptSegments } from '../lib/segm
 export const PRIMARY_VIDEO_TRACK_ID = 'video-1';
 const MIN_SEGMENT_MS = 200;
 export const MIN_TIMELINE_ZOOM = 1;
-export const MAX_TIMELINE_ZOOM = 4;
+export const MAX_TIMELINE_ZOOM = 8;
 // A recording this long (or shorter) is comfortable to cut at 1x -- zoom
 // scales up past that so longer recordings still get enough on-screen
 // resolution per clip to trim/split precisely, instead of always cramming

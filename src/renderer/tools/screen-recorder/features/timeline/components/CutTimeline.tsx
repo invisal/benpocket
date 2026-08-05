@@ -48,6 +48,7 @@ import { BlurMaskTrack } from '../../blur-mask/components/BlurMaskTrack';
 import { Playhead } from './Playhead';
 import { SegmentWaveform } from './SegmentWaveform';
 import { cn } from '../../../lib/utils';
+import { Slider } from '../../../components/ui/slider';
 
 function formatTime(ms: number): string {
   const totalSeconds = ms / 1000;
@@ -623,15 +624,13 @@ export function CutTimeline(): JSX.Element {
             >
               <Minus size={13} />
             </button>
-            <input
-              type="range"
+            <Slider
+              value={zoom}
               min={MIN_TIMELINE_ZOOM}
               max={MAX_TIMELINE_ZOOM}
               step={0.5}
-              value={zoom}
-              onChange={(e) => setTimelineZoom(Number(e.target.value))}
-              title="Timeline zoom"
-              className="w-24 accent-accent"
+              onChange={setTimelineZoom}
+              className="w-24"
             />
             <button
               onClick={() => setTimelineZoom(Math.min(MAX_TIMELINE_ZOOM, zoom + 0.5))}

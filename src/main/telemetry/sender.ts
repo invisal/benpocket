@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import { is } from '@electron-toolkit/utils';
 import { telemetryStore } from './telemetry-store';
 
 // Same Worker deployment sync uses (see benpocket-backend/wrangler.jsonc's PUBLIC_URL),
@@ -9,6 +10,7 @@ const FLUSH_INTERVAL_MS = 45_000;
 const QUIT_FLUSH_TIMEOUT_MS = 2_000;
 
 async function flush(): Promise<void> {
+  if (is.dev) return; // avoid polluting telemetry with dev-mode noise
   if (!telemetryStore.getOptIn()) return; // no network; the queue is already capped by enqueue()
 
   const queue = telemetryStore.getQueue();

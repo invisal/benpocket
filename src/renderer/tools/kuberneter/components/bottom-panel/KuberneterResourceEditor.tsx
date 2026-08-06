@@ -1,6 +1,8 @@
 import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import type * as Monaco from 'monaco-editor';
+import CodeMirror, { EditorView } from '@uiw/react-codemirror';
+import { yaml as yamlLang } from '@codemirror/lang-yaml';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Save, Check, AlertCircle } from 'lucide-react';
 import { DEFAULT_TEMPLATES } from './types';
 import { useThemeStore } from '@renderer/store/theme.store';
@@ -19,9 +21,6 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
   onChangeYaml,
   onApply
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
-  const monacoRef = useRef<typeof Monaco | null>(null);
   const [resourceStatus, setResourceStatus] = useState<{ text: string; isError?: boolean } | null>(
     null
   );
@@ -34,65 +33,15 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
     onChangeYamlRef.current = onChangeYaml;
   }, [onChangeYaml]);
 
-  // Lazily load Monaco and initialize the editor instance directly on containerRef
-  useEffect(() => {
-    if (!containerRef.current || editorRef.current) return;
-    let cancelled = false;
-
-    import('monaco-editor').then((monaco) => {
-      if (cancelled || !containerRef.current || editorRef.current) return;
-      monacoRef.current = monaco;
-
-      const initialContent = yaml || initialYaml || '';
-      const instance = monaco.editor.create(containerRef.current, {
-        value: initialContent,
-        language: 'yaml',
-        theme: theme === 'dark' ? 'vs-dark' : 'vs',
-        minimap: { enabled: false },
-        fontSize: 12,
-        fontFamily:
-          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-        scrollBeyondLastLine: false,
-        automaticLayout: true,
-        tabSize: 2,
-        wordWrap: 'on',
-        lineNumbers: 'on',
-        folding: true
-      });
-
-      editorRef.current = instance;
-
-      instance.onDidChangeModelContent(() => {
-        const value = instance.getValue();
-        onChangeYamlRef.current(value);
-      });
-    });
-
-    return () => {
-      cancelled = true;
-      editorRef.current?.dispose();
-      editorRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Update value if initialYaml changes and editor model is clean
+  // Update value if initialYaml changes and yaml is empty
   useEffect(() => {
     if (initialYaml && (!yaml || !yaml.trim())) {
       onChangeYamlRef.current(initialYaml);
-      if (editorRef.current && editorRef.current.getValue() !== initialYaml) {
-        editorRef.current.setValue(initialYaml);
-      }
     }
   }, [initialYaml, yaml]);
 
-  // Update theme dynamically
-  useEffect(() => {
-    monacoRef.current?.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
-  }, [theme]);
-
   const handleApply = async () => {
-    const content = editorRef.current ? editorRef.current.getValue() : yaml || initialYaml || '';
+    const content = yaml || initialYaml || '';
     if (!content || !content.trim()) {
       setResourceStatus({ text: 'Error: YAML content is empty.', isError: true });
       return;
@@ -118,11 +67,10 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
     const templateContent = DEFAULT_TEMPLATES[templateName];
     if (templateContent) {
       onChangeYaml(templateContent);
-      if (editorRef.current) {
-        editorRef.current.setValue(templateContent);
-      }
     }
   };
+
+  const currentContent = yaml || initialYaml || '';
 
   return (
     <div className="flex-1 flex flex-col min-h-0 font-mono text-[11px]">
@@ -178,11 +126,28 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
         )}
       </div>
 
-      {/* Monaco Editor Container */}
-      <div
-        className={`flex-1 flex min-h-0 relative ${theme === 'dark' ? 'bg-[#1e1e1e]' : 'bg-white'}`}
-      >
-        <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+      {/* CodeMirror Editor Container */}
+      <div className={`flex-1 min-h-0 relative ${theme === 'dark' ? 'bg-[#1e1e1e]' : 'bg-white'}`}>
+        <CodeMirror
+          value={currentContent}
+          height="100%"
+          className="h-full text-xs"
+          theme={theme === 'dark' ? vscodeDark : vscodeLight}
+          extensions={[yamlLang(), EditorView.lineWrapping]}
+          onChange={(value) => onChangeYaml(value)}
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: true,
+            dropCursor: true,
+            allowMultipleSelections: true,
+            indentOnInput: true,
+            bracketMatching: true,
+            closeBrackets: true,
+            autocompletion: true,
+            highlightSelectionMatches: true,
+            tabSize: 2
+          }}
+        />
       </div>
     </div>
   );

@@ -159,6 +159,23 @@ export class KubeClientService {
   }
 
   /**
+   * Sanitizes a Kubernetes manifest for applying by stripping server-managed/read-only fields.
+   */
+  public static sanitizeManifestForApply(spec: KubernetesObject): KubernetesObject {
+    const cleaned = JSON.parse(JSON.stringify(spec)) as KubernetesObject;
+    if (cleaned.metadata) {
+      delete (cleaned.metadata as Record<string, unknown>).resourceVersion;
+      delete (cleaned.metadata as Record<string, unknown>).uid;
+      delete (cleaned.metadata as Record<string, unknown>).creationTimestamp;
+      delete (cleaned.metadata as Record<string, unknown>).generation;
+      delete (cleaned.metadata as Record<string, unknown>).managedFields;
+      delete (cleaned.metadata as Record<string, unknown>).selfLink;
+    }
+    delete (cleaned as Record<string, unknown>).status;
+    return cleaned;
+  }
+
+  /**
    * Applies or updates a resource YAML using Server-Side Apply (SSA) via @kubernetes/client-node.
    * Uses fieldManager 'benPocket' and PatchStrategy.ServerSideApply.
    */
@@ -166,15 +183,17 @@ export class KubeClientService {
     configPath: string | undefined,
     contextName: string | undefined,
     yamlContent: string
-  ): Promise<{ result?: string; error?: string } | null> {
+  ): Promise<{ result?: string; error?: string; yaml?: string } | null> {
     try {
       const kc = KubeConfigService.loadKubeConfig(configPath, contextName);
       const client = KubernetesObjectApi.makeApiClient(kc);
 
-      const spec = jsYaml.load(yamlContent) as KubernetesObject;
-      if (!spec || typeof spec !== 'object' || !spec.apiVersion || !spec.kind) {
+      const rawSpec = jsYaml.load(yamlContent) as KubernetesObject;
+      if (!rawSpec || typeof rawSpec !== 'object' || !rawSpec.apiVersion || !rawSpec.kind) {
         return { error: 'Invalid YAML: missing apiVersion or kind' };
       }
+
+      const spec = this.sanitizeManifestForApply(rawSpec);
 
       try {
         const patchRes = (await client.patch(
@@ -186,7 +205,8 @@ export class KubeClientService {
           PatchStrategy.ServerSideApply
         )) as KubernetesObject;
         const name = patchRes.metadata?.name || spec.metadata?.name || 'resource';
-        return { result: `applied resource ${spec.kind}/${name}` };
+        const updatedYaml = jsYaml.dump(patchRes);
+        return { result: `applied resource ${spec.kind}/${name}`, yaml: updatedYaml };
       } catch (patchErr: unknown) {
         // Fall back to create or replace with fieldManager if Server-Side Apply fails
         try {
@@ -197,7 +217,8 @@ export class KubeClientService {
             'benPocket'
           )) as KubernetesObject;
           const name = createRes.metadata?.name || spec.metadata?.name || 'resource';
-          return { result: `created resource ${spec.kind}/${name}` };
+          const updatedYaml = jsYaml.dump(createRes);
+          return { result: `created resource ${spec.kind}/${name}`, yaml: updatedYaml };
         } catch (err: unknown) {
           const k8sErr = err as {
             statusCode?: number;
@@ -216,7 +237,8 @@ export class KubeClientService {
                 'benPocket'
               )) as KubernetesObject;
               const name = replaceRes.metadata?.name || spec.metadata?.name || 'resource';
-              return { result: `configured resource ${spec.kind}/${name}` };
+              const updatedYaml = jsYaml.dump(replaceRes);
+              return { result: `configured resource ${spec.kind}/${name}`, yaml: updatedYaml };
             } catch (replaceErr: unknown) {
               const rErr = replaceErr as { body?: { message?: string }; message?: string };
               const msg = rErr.body?.message || rErr.message || 'Replace failed';

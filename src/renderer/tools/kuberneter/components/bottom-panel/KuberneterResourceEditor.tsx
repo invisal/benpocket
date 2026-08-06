@@ -12,7 +12,9 @@ interface KuberneterResourceEditorProps {
   initialYaml?: string;
   yaml: string;
   onChangeYaml: (newYaml: string) => void;
-  onApply: (yamlContent: string) => Promise<{ result?: string; error?: string } | void> | void;
+  onApply: (
+    yamlContent: string
+  ) => Promise<{ result?: string; error?: string; yaml?: string } | void> | void;
 }
 
 export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> = ({
@@ -53,6 +55,9 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
       if (res && res.error) {
         setResourceStatus({ text: `Apply failed: ${res.error}`, isError: true });
       } else {
+        if (res && res.yaml) {
+          onChangeYaml(res.yaml);
+        }
         setResourceStatus({ text: 'Resource applied successfully to cluster.', isError: false });
         setTimeout(() => setResourceStatus(null), 4000);
       }

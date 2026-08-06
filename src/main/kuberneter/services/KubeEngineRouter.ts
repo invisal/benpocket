@@ -65,7 +65,7 @@ export class KubeEngineRouter {
     kubeconfigPath: string | undefined,
     contextName: string | undefined,
     yamlContent: string
-  ): Promise<{ result?: string; error?: string }> {
+  ): Promise<{ result?: string; error?: string; yaml?: string }> {
     try {
       const directResult = await KubeClientService.applyResourceYamlDirect(
         kubeconfigPath,

@@ -68,7 +68,7 @@ export interface KuberneterApi {
     yamlContent: string,
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<{ result?: string; error?: string }>;
+  ) => Promise<{ result?: string; error?: string; yaml?: string }>;
   startWatch: (id: string, options: WatchOptions) => Promise<{ success?: boolean; error?: string }>;
   stopWatch: (id: string) => Promise<{ success?: boolean; error?: string }>;
   onWatchEvent: (callback: (event: WatchEvent) => void) => () => void;

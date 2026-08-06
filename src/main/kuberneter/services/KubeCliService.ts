@@ -1,5 +1,6 @@
 import { runKubectl, runKubectlWithInput } from '../k8s-cli';
 import { isClusterScopedResource } from '../constants/k8sResources';
+import * as jsYaml from 'js-yaml';
 
 export class KubeCliService {
   /**
@@ -71,11 +72,31 @@ export class KubeCliService {
     kubeconfigPath: string | undefined,
     contextName: string | undefined,
     yamlContent: string
-  ): Promise<{ result?: string; error?: string }> {
+  ): Promise<{ result?: string; error?: string; yaml?: string }> {
     try {
+      let cleanYaml = yamlContent;
+      try {
+        const doc = jsYaml.load(yamlContent) as Record<string, unknown>;
+        if (doc && typeof doc === 'object') {
+          if (doc.metadata && typeof doc.metadata === 'object') {
+            const meta = doc.metadata as Record<string, unknown>;
+            delete meta.resourceVersion;
+            delete meta.uid;
+            delete meta.creationTimestamp;
+            delete meta.generation;
+            delete meta.managedFields;
+            delete meta.selfLink;
+          }
+          delete doc.status;
+          cleanYaml = jsYaml.dump(doc);
+        }
+      } catch {
+        // If YAML parsing fails, proceed with original content
+      }
+
       const args = ['apply', '--server-side', '--field-manager=benPocket', '-f', '-'];
       if (contextName) args.unshift('--context', contextName);
-      const result = await runKubectlWithInput(args, yamlContent, kubeconfigPath);
+      const result = await runKubectlWithInput(args, cleanYaml, kubeconfigPath);
       return { result };
     } catch (err) {
       return { error: (err as Error).message };

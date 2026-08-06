@@ -52,6 +52,7 @@ linux:
     - rpm
   maintainer: electronjs.org
   category: Utility
+  syncDesktopName: true
 snap:
   publish: github
 appImage:

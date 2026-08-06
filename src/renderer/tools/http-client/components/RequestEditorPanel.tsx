@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import { Tabs } from '@base-ui/react/tabs';
+import { UnderlineTab } from '@renderer/components/ui/Tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
@@ -10,7 +10,6 @@ import { useCollectionsStore } from '../store/collections.store';
 import { getAutoHeaders } from '../lib/autoHeaders';
 import { authTypeLabel } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
-import { tabClassName } from '../lib/tabClassName';
 import { KeyValueEditor } from './KeyValueEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
@@ -78,27 +77,27 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   );
 
   return (
-    <Tabs.Root
+    <UnderlineTab.Root
       value={activeTab}
       onValueChange={(value) => setActiveTab(value as RequestTabValue)}
-      className="flex flex-col gap-3 shrink-0"
     >
-      <Tabs.List className="flex gap-4 border-b border-border text-xs select-none">
-        <Tabs.Tab value="params" className={tabClassName(activeTab === 'params', 'py-1')}>
+      <UnderlineTab.List className="border-border border-b px-4">
+        <UnderlineTab.Item value="params">
           Params{activeParamCount > 0 ? ` (${activeParamCount})` : ''}
-        </Tabs.Tab>
-        <Tabs.Tab value="headers" className={tabClassName(activeTab === 'headers', 'py-1')}>
+        </UnderlineTab.Item>
+        <UnderlineTab.Item value="headers">
           Headers{activeHeaderCount > 0 ? ` (${activeHeaderCount})` : ''}
-        </Tabs.Tab>
-        <Tabs.Tab value="auth" className={tabClassName(activeTab === 'auth', 'py-1')}>
+        </UnderlineTab.Item>
+        <UnderlineTab.Item value="auth">
           Authorization{auth.type !== 'noauth' ? ` (${authTypeLabel(auth.type)})` : ''}
-        </Tabs.Tab>
-        <Tabs.Tab value="body" className={tabClassName(activeTab === 'body', 'py-1')}>
+        </UnderlineTab.Item>
+        <UnderlineTab.Item value="body">
           Body{bodyType !== 'none' ? ` (${bodyType})` : ''}
-        </Tabs.Tab>
-      </Tabs.List>
+        </UnderlineTab.Item>
+        <UnderlineTab.Indicator />
+      </UnderlineTab.List>
 
-      <Tabs.Panel value="params" className="max-h-40 overflow-auto pr-1">
+      <UnderlineTab.Panel value="params" className="max-h-40 overflow-auto p-2">
         <KeyValueEditor
           rows={params}
           onUpdate={onUpdateParam}
@@ -106,9 +105,9 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           keyPlaceholder="Param"
           valuePlaceholder="Value or {{var}}"
         />
-      </Tabs.Panel>
+      </UnderlineTab.Panel>
 
-      <Tabs.Panel value="headers" className="max-h-40 overflow-auto pr-1">
+      <UnderlineTab.Panel value="headers" className="max-h-40 overflow-auto p-2">
         <KeyValueEditor
           rows={headers}
           onUpdate={onUpdateHeader}
@@ -154,13 +153,13 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             )}
           </div>
         )}
-      </Tabs.Panel>
+      </UnderlineTab.Panel>
 
-      <Tabs.Panel value="auth" className="max-h-40 overflow-auto pr-1">
+      <UnderlineTab.Panel value="auth" className="p-2">
         <AuthEditor auth={auth} onChange={onAuthChange} />
-      </Tabs.Panel>
+      </UnderlineTab.Panel>
 
-      <Tabs.Panel value="body" className="flex flex-col gap-2">
+      <UnderlineTab.Panel value="body" className="flex flex-col gap-2 p-2">
         <div className="flex gap-3 text-[11px]">
           {BODY_TYPES.map((bt) => (
             <label
@@ -187,7 +186,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
           />
         )}
-      </Tabs.Panel>
-    </Tabs.Root>
+      </UnderlineTab.Panel>
+    </UnderlineTab.Root>
   );
 };

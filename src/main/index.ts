@@ -18,6 +18,10 @@ import { registerEnvironmentTransferHandlers } from './http-client/ipc/environme
 import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
+import {
+  registerRecordingMediaScheme,
+  registerRecordingMediaHandler
+} from './screen-recorder/security/media-protocol';
 import { createAppTray, destroyTray, setTrayMainWindow } from './tray';
 import {
   registerGlobalShortcuts,
@@ -44,6 +48,9 @@ import { flushOnQuit, startTelemetrySender } from './telemetry/sender';
 // before the app is ready. A second launch (e.g. the OS re-invoking the app
 // to deliver a benpocket:// callback) now gets forwarded to this instance and
 // quits instead of opening a second window.
+// Also must run before app.whenReady() -- see registerRecordingMediaScheme's doc.
+registerRecordingMediaScheme();
+
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
@@ -150,6 +157,7 @@ if (gotSingleInstanceLock) {
     // (Vite HMR needs 'unsafe-eval' + a websocket connect-src) and production,
     // and needs media-src blob: for ScreenRecorder's recording preview.
     applyContentSecurityPolicy();
+    registerRecordingMediaHandler();
     // Screen Recorder: macOS 15+ ScreenCaptureKit system picker. No-op elsewhere.
     registerDisplayMediaHandler();
 

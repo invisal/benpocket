@@ -10,6 +10,23 @@ import { usePillDrag } from '../lib/use-pill-drag';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { cn } from '../../../lib/utils';
 
+/**
+ * Display-only floor so a very short item (e.g. a squeezed-in zoom
+ * keyframe) still reads as a visible, clickable pill -- applied here, after
+ * `assignLanes` has already used the item's *true* width to decide overlap,
+ * so this cosmetic widening never itself causes two non-overlapping items
+ * to be laned apart.
+ *
+ * A fixed pixel value, not a percent of the track's width -- a percent
+ * floor stays exactly as large *relative to its neighbors* no matter how
+ * far the timeline is zoomed in, so two short, closely-packed items stayed
+ * visually stuck together at any zoom level. A pixel floor actually recedes
+ * as the user zooms in: the track's real pixel width grows with zoom, so a
+ * pill's *true* width (also a percent, but now of a wider track) eventually
+ * exceeds this fixed floor and it stops applying.
+ */
+const MIN_PILL_WIDTH_PX = 12;
+
 export interface PillTrackProps<T extends { id: string }> {
   items: T[];
   /** The primary track's kept clips, for source-ms <-> output-ms mapping (see segment-duration.ts). */
@@ -34,41 +51,9 @@ export interface PillTrackProps<T extends { id: string }> {
   isDisabled?: (item: T) => boolean;
   onToggleDisabled?: (item: T) => void;
   onDuplicate?: (item: T) => void;
-  /**
-   * Extra context-menu items specific to one track's own item type (e.g.
-   * ZoomTrack's "Follow Cursor" toggle, which only means anything for a
-   * `ZoomKeyframe` -- Caption/Annotation/BlurMask, which share this same
-   * component, have nothing analogous). Rendered inside the same
-   * `ContextMenu.Content` this component already owns, after Duplicate and
-   * before Delete -- return `ContextMenu.Item`(s) directly, same as this
-   * file's own built-in ones.
-   */
   renderExtraMenuItems?: (item: T) => ReactNode;
 }
 
-/**
- * Shared shape behind ZoomTrack/CaptionTrack: pills for independently timed
- * items (own start + duration, not tied to a clip's position), drawn as
- * absolutely-positioned chips over the ripple/output timeline.
- *
- * Item `startMs`/`durationMs` are authored against the *source* recording's
- * raw timeline (same convention every per-tool track uses), but pills are
- * drawn on the ripple/*output* timeline CutTimeline draws -- mapped via
- * `sourceRangeToOutputPercent`, so this stays correctly positioned even
- * after the recording's been split/trimmed. An item entirely inside a
- * cut-out gap is simply not drawn.
- *
- * Items packed close together in time would otherwise draw on top of each
- * other (they're all absolutely positioned in the same row) -- laid out via
- * `assignLanes` instead, so overlapping ones stack into extra rows and the
- * track grows tall enough to fit them all legibly.
- *
- * Click a pill to select it, drag its body to move it (`usePillDrag`), or
- * drag either edge to trim it (`useEdgeResize`) -- the same "grab an edge"
- * interaction the main clip row has always had. Right-click for a context
- * menu with Delete (`onDelete`), instead of a permanently-competing hover
- * button.
- */
 export function PillTrack<T extends { id: string }>({
   items,
   segments,
@@ -138,7 +123,7 @@ export function PillTrack<T extends { id: string }>({
                       layout="position"
                       transition={layoutTransition}
                       initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      animate={{ opacity: isDisabled?.(item) ? 0.4 : 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.85 }}
                       whileHover={{ scale: 1.03 }}
                       onPointerDown={startDrag(startMs, (newStartMs) => onMove(item, newStartMs))}
@@ -149,12 +134,12 @@ export function PillTrack<T extends { id: string }>({
                       className={cn(
                         'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 active:cursor-grabbing',
                         colorClassName,
-                        isSelected?.(item) && 'ring-2 ring-purple-200',
-                        isDisabled?.(item) && 'opacity-40'
+                        isSelected?.(item) && 'ring-2 ring-purple-200'
                       )}
                       style={{
                         left: `${position.leftPercent}%`,
                         width: `${position.widthPercent}%`,
+                        minWidth: MIN_PILL_WIDTH_PX,
                         top: lane * (laneHeightPx + LANE_GAP_PX),
                         height: laneHeightPx
                       }}
@@ -214,12 +199,18 @@ export function PillTrack<T extends { id: string }>({
                     )}
                     {renderExtraMenuItems?.(item)}
                     {onDelete && (
-                      <ContextMenu.Item onClick={() => onDelete(item)}>
-                        <span className="flex items-center gap-2">
-                          <Trash2 size={14} className="text-text-dim" />
-                          Delete
-                        </span>
-                      </ContextMenu.Item>
+                      <>
+                        <ContextMenu.Separator />
+                        <ContextMenu.Item
+                          onClick={() => onDelete(item)}
+                          className="text-danger data-[highlighted]:text-danger"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Trash2 size={14} className="text-danger" />
+                            Delete
+                          </span>
+                        </ContextMenu.Item>
+                      </>
                     )}
                   </ContextMenu.Content>
                 )}

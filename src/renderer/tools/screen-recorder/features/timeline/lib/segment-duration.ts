@@ -124,6 +124,14 @@ export function trimRangeToKeptSegments(
  * once the recording has been cut, instead of only working in the "nothing
  * cut yet" special case.
  *
+ * `widthPercent` is the *true* width, not clamped to any minimum visible
+ * size -- PillTrack.tsx's `assignLanes` call uses this same value to decide
+ * whether two items actually overlap in time, so inflating it here (a
+ * pill-track-specific display concern -- a very short item still needs to
+ * be wide enough to see/click) would make items that don't really overlap
+ * get pushed into separate lanes anyway. PillTrack applies that minimum
+ * only to the rendered CSS width, after lanes are already decided.
+ *
  * Returns `null` if `startMs` itself falls inside a cut-out gap (the whole
  * thing was cut away).
  */
@@ -140,6 +148,6 @@ export function sourceRangeToOutputPercent(
   const widthMs = Math.max(0, outputEnd - outputStart);
   return {
     leftPercent: (outputStart / totalOutputMs) * 100,
-    widthPercent: Math.max(1.5, (widthMs / totalOutputMs) * 100)
+    widthPercent: (widthMs / totalOutputMs) * 100
   };
 }

@@ -11,7 +11,7 @@ import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
-import { useAppStore } from '../../app/app-store';
+import { useAppStore, EMPTY_CURSOR_PATH } from '../../app/app-store';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
 import { AnnotationOverlay } from '../../features/annotations/components/AnnotationOverlay';
 import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOverlay';
@@ -29,7 +29,8 @@ import { ASPECT_RATIO_VALUES } from './editorTools';
 
 interface PreviewStageProps {
   videoRef: RefObject<PreviewVideoController | null>;
-  previewUrl: string;
+  /** Undefined while a project is still loading (see EditorPage.tsx) -- the loading condition below covers that the same way it already covers metadata not being ready yet. */
+  previewUrl: string | undefined;
   isPlaying: boolean;
   videoError: string | null;
   currentTimeMs: number;
@@ -57,8 +58,8 @@ export function PreviewStage({
   const exportAspectRatio = useExportStore((s) => s.aspectRatio);
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const cursor = useCursorStore();
-  const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? []);
-  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? []);
+  const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH);
+  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
   const webcamPreviewUrl = useAppStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
   const webcamOffsetMs = useAppStore((s) => s.lastRecording?.webcamOffsetMs ?? 0);
   const webcamVideoRef = useRef<HTMLVideoElement>(null);
@@ -202,6 +203,7 @@ export function PreviewStage({
               ref={videoARef}
               key={`${previewUrl}-a`}
               src={previewUrl}
+              preload={isSlotAActive ? 'auto' : 'metadata'}
               className={cn(
                 'h-full w-full object-contain',
                 isSlotAActive ? '' : 'absolute inset-0 pointer-events-none opacity-0'
@@ -217,6 +219,7 @@ export function PreviewStage({
               ref={videoBRef}
               key={`${previewUrl}-b`}
               src={previewUrl}
+              preload={!isSlotAActive ? 'auto' : 'metadata'}
               className={cn(
                 'h-full w-full object-contain',
                 !isSlotAActive ? '' : 'absolute inset-0 pointer-events-none opacity-0'
@@ -258,7 +261,7 @@ export function PreviewStage({
         />
 
         <CaptionBar currentTimeMs={zoomTimeMs} />
-        {!isVideoReady && !videoError && <EditorLoading />}
+        {(!previewUrl || !isVideoReady) && !videoError && <EditorLoading />}
       </div>
     </div>
   );

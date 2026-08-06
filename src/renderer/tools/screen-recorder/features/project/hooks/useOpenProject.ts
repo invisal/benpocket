@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { ProjectSummary } from '@screen-recorder/types/project';
+import { useAppStore } from '../../../app/app-store';
 import { applyProjectSnapshot } from '../lib/apply-project-snapshot';
 
 interface UseOpenProjectResult {
@@ -19,6 +20,12 @@ export function useOpenProject(): UseOpenProjectResult {
   const openProject = useCallback(async (summary: ProjectSummary): Promise<void> => {
     setLoadingProjectId(summary.id);
     setError(null);
+    // Shared (not just this hook's own local state) so EditorPage can show
+    // `EditorLoading` for the duration -- most visibly for the sidebar's
+    // launch-time auto-resume, which used to switch to the editor route
+    // only once loading had *already* finished, with nothing visible
+    // happening anywhere beforehand.
+    useAppStore.getState().setIsOpeningProject(true);
     try {
       const project = await window.screenRecorder.project.open(summary.id);
       if (!project) {
@@ -31,6 +38,7 @@ export function useOpenProject(): UseOpenProjectResult {
       setError('Failed to load the project.');
     } finally {
       setLoadingProjectId(null);
+      useAppStore.getState().setIsOpeningProject(false);
     }
   }, []);
 

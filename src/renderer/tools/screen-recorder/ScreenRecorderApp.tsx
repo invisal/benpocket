@@ -48,10 +48,6 @@ export function ScreenRecorderApp(): JSX.Element {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isQuickSaving, setIsQuickSaving] = useState(false);
 
-  // A project that's already been named once (has a `currentProjectId`) just
-  // re-saves silently in place -- only the *first* save needs the dialog to
-  // ask for a name. Errors surface as a toast rather than a dialog since
-  // there's no form here to show a field-level error in.
   async function handleSaveClick(): Promise<void> {
     if (!currentProjectId) {
       setIsSaveDialogOpen(true);
@@ -142,11 +138,9 @@ export function ScreenRecorderApp(): JSX.Element {
             </div>
           </div>
 
-          {/* Rendered here (not inside EditorPage) so it spans the full app
-            width, isolated from the sidebar above rather than squeezed to
-            the content column's width. Selection/zoom are shared via
-            timeline-store since this is no longer EditorPage's child. */}
-          {route === 'editor' && <CutTimeline />}
+          <Activity mode={route === 'editor' ? 'visible' : 'hidden'}>
+            <CutTimeline />
+          </Activity>
         </div>
       </div>
 

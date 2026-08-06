@@ -1,8 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, dialog, Menu, nativeImage } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { registerHttpHandlers } from './http-client/ipc/http';
 import { registerOAuth2Handlers } from './http-client/ipc/oauth2';
@@ -286,6 +287,33 @@ if (gotSingleInstanceLock) {
     registerTelemetryHandlers();
     startTelemetrySender();
     telemetryStore.enqueue({ event: 'app_opened' });
+
+    if (is.dev) {
+      if (process.platform === 'darwin') {
+        // In production the dock icon comes from the .app bundle; in dev there
+        // is no bundle, so Electron shows the generic Electron icon instead.
+        app.dock?.setIcon(nativeImage.createFromPath(icon));
+      } else if (process.platform === 'linux') {
+        // GNOME/Wayland resolves the panel icon via XDG app_id → .desktop file,
+        // not via BrowserWindow.icon. Install a minimal user-local entry so the
+        // pocket logo appears in the Activities dash during development.
+        const appsDir = path.join(os.homedir(), '.local', 'share', 'applications');
+        fs.mkdirSync(appsDir, { recursive: true });
+        const desktopFile = path.join(appsDir, 'benpocket.desktop');
+        fs.writeFileSync(
+          desktopFile,
+          [
+            '[Desktop Entry]',
+            'Type=Application',
+            'Name=benpocket (dev)',
+            `Icon=${icon}`,
+            'NoDisplay=true',
+            'StartupWMClass=benpocket'
+          ].join('\n') + '\n',
+          'utf-8'
+        );
+      }
+    }
 
     const mainWindow = createWindow();
     createAppTray(icon, mainWindow);

@@ -2,7 +2,6 @@ import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
-import trayIcon from '../../resources/tray-icon-desktopTemplate.png?asset';
 import * as fs from 'fs';
 import * as path from 'path';
 import { registerHttpHandlers } from './http-client/ipc/http';
@@ -289,8 +288,7 @@ if (gotSingleInstanceLock) {
     telemetryStore.enqueue({ event: 'app_opened' });
 
     const mainWindow = createWindow();
-    const trayIcons = { trayTemplate: trayIcon, appIcon: icon };
-    createAppTray(trayIcons, mainWindow);
+    createAppTray(icon, mainWindow);
 
     // "Launch Recorder" OS-level shortcut -- works even while benpocket is
     // unfocused, unlike the in-app bindings under features/shortcuts.
@@ -300,7 +298,7 @@ if (gotSingleInstanceLock) {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
       if (BrowserWindow.getAllWindows().length === 0) {
-        createAppTray(trayIcons, createWindow());
+        createAppTray(icon, createWindow());
         return;
       }
       focusMainWindow();

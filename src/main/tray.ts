@@ -9,13 +9,6 @@ import {
 import { IpcChannels } from '@shared/ipc-channels';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
-export interface TrayIcons {
-  /** macOS menu-bar template glyph (`*Template.png`). */
-  trayTemplate: string;
-  /** Full-color app icon for Linux/Windows status area. */
-  appIcon: string;
-}
-
 /**
  * App-lifetime tray with a single menu: New Recording, Screen Capture, Quit.
  * On Linux, StatusNotifierItem does not emit `right-click` and
@@ -72,26 +65,20 @@ function trayMenuTemplate(): MenuItemConstructorOptions[] {
   ];
 }
 
-function createTrayImage(icons: TrayIcons): Electron.NativeImage {
-  if (process.platform === 'darwin') {
-    const image = nativeImage.createFromPath(icons.trayTemplate).resize({ width: 16, height: 16 });
-    // Monochrome glyph -- let macOS render it as a template image.
-    image.setTemplateImage(true);
-    return image;
-  }
-
-  // Linux/Windows: full-color app icon. Template PNGs look blank/wrong under
-  // StatusNotifierItem on Wayland, and 16px from a 512 source can be muddy —
-  // 32px is the usual panel size.
-  return nativeImage.createFromPath(icons.appIcon).resize({ width: 32, height: 32 });
+function createTrayImage(appIcon: string): Electron.NativeImage {
+  // Full-color app icon everywhere. macOS menu bar is ~22px tall; Linux/Windows
+  // panels are usually bigger and 16px from a 512+ source can look muddy there,
+  // so 32px is used as the usual panel size.
+  const size = process.platform === 'darwin' ? 22 : 32;
+  return nativeImage.createFromPath(appIcon).resize({ width: size, height: size });
 }
 
 /** Creates the persistent tray icon. No-op if one already exists. */
-export function createAppTray(icons: TrayIcons, mainWindow: BrowserWindow): void {
+export function createAppTray(appIcon: string, mainWindow: BrowserWindow): void {
   setTrayMainWindow(mainWindow);
   if (trayInstance) return;
 
-  const tray = new Tray(createTrayImage(icons));
+  const tray = new Tray(createTrayImage(appIcon));
   tray.setToolTip('benpocket');
 
   if (process.platform === 'linux') {

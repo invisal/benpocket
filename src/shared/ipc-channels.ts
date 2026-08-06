@@ -23,6 +23,7 @@ export const IpcChannels = {
   ListProjects: 'project:list',
   DeleteProject: 'project:delete',
   ExportReadFileBytes: 'export:read-file-bytes',
+  ExportGetFileSize: 'export:get-file-size',
   ExportWriteFileBytes: 'export:write-file-bytes',
   ExportGetTempPath: 'export:get-temp-path',
   ExportCopyToClipboard: 'export:copy-to-clipboard',

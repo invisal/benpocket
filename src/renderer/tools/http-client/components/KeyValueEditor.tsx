@@ -31,7 +31,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
     }`;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 p-2">
       <div className="grid grid-cols-[20px_1fr_1fr_24px] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
         <span />
         <span>{keyPlaceholder}</span>

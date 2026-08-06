@@ -10,6 +10,23 @@ import { usePillDrag } from '../lib/use-pill-drag';
 import { useEdgeResize } from '../lib/use-edge-resize';
 import { cn } from '../../../lib/utils';
 
+/**
+ * Display-only floor so a very short item (e.g. a squeezed-in zoom
+ * keyframe) still reads as a visible, clickable pill -- applied here, after
+ * `assignLanes` has already used the item's *true* width to decide overlap,
+ * so this cosmetic widening never itself causes two non-overlapping items
+ * to be laned apart.
+ *
+ * A fixed pixel value, not a percent of the track's width -- a percent
+ * floor stays exactly as large *relative to its neighbors* no matter how
+ * far the timeline is zoomed in, so two short, closely-packed items stayed
+ * visually stuck together at any zoom level. A pixel floor actually recedes
+ * as the user zooms in: the track's real pixel width grows with zoom, so a
+ * pill's *true* width (also a percent, but now of a wider track) eventually
+ * exceeds this fixed floor and it stops applying.
+ */
+const MIN_PILL_WIDTH_PX = 12;
+
 export interface PillTrackProps<T extends { id: string }> {
   items: T[];
   /** The primary track's kept clips, for source-ms <-> output-ms mapping (see segment-duration.ts). */
@@ -106,7 +123,7 @@ export function PillTrack<T extends { id: string }>({
                       layout="position"
                       transition={layoutTransition}
                       initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      animate={{ opacity: isDisabled?.(item) ? 0.4 : 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.85 }}
                       whileHover={{ scale: 1.03 }}
                       onPointerDown={startDrag(startMs, (newStartMs) => onMove(item, newStartMs))}
@@ -117,12 +134,12 @@ export function PillTrack<T extends { id: string }>({
                       className={cn(
                         'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 active:cursor-grabbing',
                         colorClassName,
-                        isSelected?.(item) && 'ring-2 ring-purple-200',
-                        isDisabled?.(item) && 'opacity-40'
+                        isSelected?.(item) && 'ring-2 ring-purple-200'
                       )}
                       style={{
                         left: `${position.leftPercent}%`,
                         width: `${position.widthPercent}%`,
+                        minWidth: MIN_PILL_WIDTH_PX,
                         top: lane * (laneHeightPx + LANE_GAP_PX),
                         height: laneHeightPx
                       }}

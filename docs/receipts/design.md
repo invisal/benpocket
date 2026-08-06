@@ -13,6 +13,7 @@ isn't covered here.
 - `ContextMenu` — right-click menu (`ContextMenu.Root/Trigger/Content/Item/CheckboxItem/RadioItem/GroupLabel/Separator/SubmenuTrigger`).
 - `Menu` — click-to-open dropdown menu (`Menu.Root/Trigger/Content/Item/GroupLabel/Separator`), same visual language as `ContextMenu`.
 - `Select` — dropdown select (`Select.Trigger/Content/Item`), `SelectTrigger` renders as a `Button`.
+- `PillTab` / `UnderlineTab` — tabbed navigation (`Root/List/Item/Panel`), built on `@base-ui/react`. `PillTab` is an accent-tinted pill; `UnderlineTab` pairs its `List` (add a `border-b`) with an `Indicator` that slides under the active `Item`.
 - `Popover` — anchored floating panel (`Popover.Root/Trigger/Content`).
 - `Tooltip` — hover hint (`Tooltip.Provider/Root/Trigger/Content`).
 - `Toolbar` — horizontal action bar (`Toolbar.Root/Button/Link/Input/Label/FreeSpace/Group/Separator`).

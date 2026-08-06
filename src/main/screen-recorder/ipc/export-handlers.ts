@@ -25,6 +25,18 @@ export function registerExportHandlers(): void {
     }
   );
 
+  // A cheap stat, not a full readFileBytes -- for a multi-GB recording,
+  // callers that only need the byte count (e.g. Project/LastRecording's
+  // `sizeBytes`, now that preview no longer reads the whole file into
+  // memory -- see security/media-protocol.ts) shouldn't pay for reading it.
+  ipcMain.handle(
+    IpcChannels.ExportGetFileSize,
+    async (_event, filePath: string): Promise<number> => {
+      const stats = await fs.stat(filePath);
+      return stats.size;
+    }
+  );
+
   ipcMain.handle(
     IpcChannels.ExportWriteFileBytes,
     async (_event, filePath: string, data: ArrayBuffer): Promise<void> => {

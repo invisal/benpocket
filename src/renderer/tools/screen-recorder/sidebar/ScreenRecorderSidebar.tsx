@@ -67,13 +67,23 @@ export const ScreenRecorderSidebar: React.FC = () => {
       if (!hasAutoSelectedRef.current) {
         hasAutoSelectedRef.current = true;
         const [mostRecent] = recent;
-        if (mostRecent && !currentProjectId) void openProject(mostRecent);
+        if (mostRecent && !currentProjectId) {
+          // Switches to the editor route immediately, before `openProject`
+          // has even started its IPC round trip -- EditorPage shows
+          // `EditorLoading` for `isOpeningProject` (set inside
+          // `useOpenProject`) rather than this leaving the user on whatever
+          // screen they launched into with nothing visibly happening until
+          // the whole load -- project JSON read, video file stat, store
+          // hydration -- finishes and the route flips out from under them.
+          setRoute('editor');
+          void openProject(mostRecent);
+        }
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [projectsVersion, currentProjectId, openProject]);
+  }, [projectsVersion, currentProjectId, openProject, setRoute]);
 
   async function handleDeleteProject(project: ProjectSummary): Promise<void> {
     if (!window.confirm(`Delete "${project.name}"? This can't be undone.`)) return;

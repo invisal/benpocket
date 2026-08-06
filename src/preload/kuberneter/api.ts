@@ -51,6 +51,14 @@ export interface KuberneterApi {
   listContexts: (kubeconfigPath?: string) => Promise<ListContextsResponse>;
   selectKubeconfigFile: () => Promise<string | null>;
   saveKubeconfig: (content: string, filename: string) => Promise<string | { error: string }>;
+  readKubeconfigFile: (
+    filePath: string
+  ) => Promise<{ name?: string; content?: string; error?: string }>;
+  syncCloudKubeconfig: (
+    id: string,
+    name: string,
+    content: string
+  ) => Promise<string | { error: string }>;
   getResources: (
     kubeconfigPath: string | undefined,
     contextName: string | undefined,
@@ -219,6 +227,9 @@ export const kuberneterApi: KuberneterApi = {
   selectKubeconfigFile: () => ipcRenderer.invoke('kuberneter:select-kubeconfig-file'),
   saveKubeconfig: (content, filename) =>
     ipcRenderer.invoke('kuberneter:save-kubeconfig', content, filename),
+  readKubeconfigFile: (filePath) => ipcRenderer.invoke('kuberneter:read-kubeconfig-file', filePath),
+  syncCloudKubeconfig: (id, name, content) =>
+    ipcRenderer.invoke('kuberneter:sync-cloud-kubeconfig', id, name, content),
   getResources: (kubeconfigPath, contextName, resource, namespace) =>
     ipcRenderer.invoke(
       'kuberneter:get-resources',

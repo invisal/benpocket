@@ -1,6 +1,6 @@
 import https from 'https';
 import { URL } from 'url';
-import { KubernetesObjectApi, type KubernetesObject } from '@kubernetes/client-node';
+import { KubernetesObjectApi, PatchStrategy, type KubernetesObject } from '@kubernetes/client-node';
 import * as jsYaml from 'js-yaml';
 import { buildKubeApiPath } from '../constants/k8sResources';
 import { KubeConfigService } from './KubeConfigService';
@@ -159,8 +159,8 @@ export class KubeClientService {
   }
 
   /**
-   * Applies or updates a resource YAML directly via @kubernetes/client-node KubernetesObjectApi.
-   * Attempts create first; on 409 conflict, attempts replace.
+   * Applies or updates a resource YAML using Server-Side Apply (SSA) via @kubernetes/client-node.
+   * Uses fieldManager 'benPocket' and PatchStrategy.ServerSideApply.
    */
   public static async applyResourceYamlDirect(
     configPath: string | undefined,
@@ -177,32 +177,57 @@ export class KubeClientService {
       }
 
       try {
-        const createRes = (await client.create(spec)) as KubernetesObject;
-        const name = createRes.metadata?.name || spec.metadata?.name || 'resource';
-        return { result: `created resource ${spec.kind}/${name}` };
-      } catch (err: unknown) {
-        const k8sErr = err as {
-          statusCode?: number;
-          response?: { statusCode?: number };
-          body?: { code?: number; message?: string };
-          message?: string;
-        };
-        const code = k8sErr.statusCode || k8sErr.response?.statusCode || k8sErr.body?.code;
+        const patchRes = (await client.patch(
+          spec,
+          undefined,
+          undefined,
+          'benPocket',
+          true,
+          PatchStrategy.ServerSideApply
+        )) as KubernetesObject;
+        const name = patchRes.metadata?.name || spec.metadata?.name || 'resource';
+        return { result: `applied resource ${spec.kind}/${name}` };
+      } catch (patchErr: unknown) {
+        // Fall back to create or replace with fieldManager if Server-Side Apply fails
+        try {
+          const createRes = (await client.create(
+            spec,
+            undefined,
+            undefined,
+            'benPocket'
+          )) as KubernetesObject;
+          const name = createRes.metadata?.name || spec.metadata?.name || 'resource';
+          return { result: `created resource ${spec.kind}/${name}` };
+        } catch (err: unknown) {
+          const k8sErr = err as {
+            statusCode?: number;
+            response?: { statusCode?: number };
+            body?: { code?: number; message?: string };
+            message?: string;
+          };
+          const code = k8sErr.statusCode || k8sErr.response?.statusCode || k8sErr.body?.code;
 
-        if (code === 409) {
-          try {
-            const replaceRes = (await client.replace(spec)) as KubernetesObject;
-            const name = replaceRes.metadata?.name || spec.metadata?.name || 'resource';
-            return { result: `configured resource ${spec.kind}/${name}` };
-          } catch (replaceErr: unknown) {
-            const rErr = replaceErr as { body?: { message?: string }; message?: string };
-            const msg = rErr.body?.message || rErr.message || 'Replace failed';
-            return { error: msg };
+          if (code === 409) {
+            try {
+              const replaceRes = (await client.replace(
+                spec,
+                undefined,
+                undefined,
+                'benPocket'
+              )) as KubernetesObject;
+              const name = replaceRes.metadata?.name || spec.metadata?.name || 'resource';
+              return { result: `configured resource ${spec.kind}/${name}` };
+            } catch (replaceErr: unknown) {
+              const rErr = replaceErr as { body?: { message?: string }; message?: string };
+              const msg = rErr.body?.message || rErr.message || 'Replace failed';
+              return { error: msg };
+            }
           }
-        }
 
-        const msg = k8sErr.body?.message || k8sErr.message || 'Create failed';
-        return { error: msg };
+          const msg =
+            k8sErr.body?.message || k8sErr.message || (patchErr as Error).message || 'Apply failed';
+          return { error: msg };
+        }
       }
     } catch (err) {
       console.warn('[KubeClientService] applyResourceYamlDirect failed:', err);

@@ -73,7 +73,7 @@ export class KubeCliService {
     yamlContent: string
   ): Promise<{ result?: string; error?: string }> {
     try {
-      const args = ['apply', '-f', '-'];
+      const args = ['apply', '--server-side', '--field-manager=benPocket', '-f', '-'];
       if (contextName) args.unshift('--context', contextName);
       const result = await runKubectlWithInput(args, yamlContent, kubeconfigPath);
       return { result };

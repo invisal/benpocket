@@ -54,6 +54,8 @@ export interface AnnotationBase {
   atMs: number;
   durationMs: number;
   position: { x: number; y: number };
+  /** Off but not deleted -- skipped entirely in both the editor preview and export, same as `ZoomKeyframe.enabled`. */
+  enabled: boolean;
 }
 
 export interface TextAnnotation extends AnnotationBase {

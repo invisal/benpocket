@@ -70,6 +70,8 @@ interface AnnotationsStoreState {
   addTextAnnotation: (atMs: number) => string;
   addArrowAnnotation: (atMs: number) => string;
   addImageAnnotation: (atMs: number, assetPath: string) => string;
+  /** Copies the annotation to right after its own end -- returns the new id, or `null` if the source no longer exists. */
+  duplicateAnnotation: (id: string) => string | null;
   removeAnnotation: (id: string) => void;
   updateAnnotation: (id: string, patch: AnnotationPatch) => void;
   setSelectedAnnotationId: (id: string | null) => void;
@@ -91,12 +93,13 @@ export const useAnnotationsStore = create<AnnotationsStoreState>(
           atMs,
           durationMs: DEFAULT_ANNOTATION_DURATION_MS,
           position: { ...DEFAULT_POSITION },
-          text: 'New text',
+          text: 'Enter text...',
           animationPreset: 'none',
           animationSpeed: DEFAULT_TEXT_ANIMATION_SPEED,
           color: DEFAULT_TEXT_COLOR,
           backgroundColor: DEFAULT_TEXT_BACKGROUND_COLOR,
-          fontSize: DEFAULT_TEXT_FONT_SIZE
+          fontSize: DEFAULT_TEXT_FONT_SIZE,
+          enabled: true
         };
         set((state) => ({
           annotations: [...state.annotations, annotation],
@@ -116,7 +119,8 @@ export const useAnnotationsStore = create<AnnotationsStoreState>(
           to: { x: DEFAULT_POSITION.x + DEFAULT_ARROW_LENGTH, y: DEFAULT_POSITION.y },
           color: DEFAULT_ARROW_COLOR,
           thickness: DEFAULT_ARROW_THICKNESS,
-          style: 'solid'
+          style: 'solid',
+          enabled: true
         };
         set((state) => ({
           annotations: [...state.annotations, annotation],
@@ -134,13 +138,28 @@ export const useAnnotationsStore = create<AnnotationsStoreState>(
           durationMs: DEFAULT_ANNOTATION_DURATION_MS,
           position: { ...DEFAULT_IMAGE_POSITION },
           assetPath,
-          size: { ...DEFAULT_IMAGE_SIZE }
+          size: { ...DEFAULT_IMAGE_SIZE },
+          enabled: true
         };
         set((state) => ({
           annotations: [...state.annotations, annotation],
           selectedAnnotationId: id
         }));
         return id;
+      },
+
+      duplicateAnnotation: (id) => {
+        let newId: string | null = null;
+        set((state) => {
+          const source = state.annotations.find((a) => a.id === id);
+          if (!source) return state;
+          newId = crypto.randomUUID();
+          // Placed right after the source ends -- annotations (unlike zoom
+          // keyframes) have no overlap constraint, so no clamping needed.
+          const duplicate = { ...source, id: newId, atMs: source.atMs + source.durationMs };
+          return { annotations: [...state.annotations, duplicate] };
+        });
+        return newId;
       },
 
       removeAnnotation: (id) =>

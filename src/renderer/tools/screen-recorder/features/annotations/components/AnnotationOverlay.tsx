@@ -22,7 +22,9 @@ interface AnnotationOverlayProps {
 }
 
 function isActive(atMs: number, annotation: Annotation): boolean {
-  return atMs >= annotation.atMs && atMs <= annotation.atMs + annotation.durationMs;
+  return (
+    annotation.enabled && atMs >= annotation.atMs && atMs <= annotation.atMs + annotation.durationMs
+  );
 }
 
 type DragMove = (dxRef: number, dyRef: number) => DragPatch;

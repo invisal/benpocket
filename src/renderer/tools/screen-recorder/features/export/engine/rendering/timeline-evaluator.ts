@@ -174,6 +174,7 @@ function resolveAnnotations(
 ): AnnotationSceneData[] {
   const active: AnnotationSceneData[] = [];
   for (const annotation of project.annotations) {
+    if (!annotation.enabled) continue;
     if (atMs < annotation.atMs || atMs > annotation.atMs + annotation.durationMs) continue;
     const xPx = annotation.position.x * referenceScale;
     const yPx = annotation.position.y * referenceScale;

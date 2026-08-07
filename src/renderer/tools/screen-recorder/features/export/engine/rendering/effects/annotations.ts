@@ -89,7 +89,14 @@ export class AnnotationsEffect {
         const background = new Graphics();
         const text = new Text({
           text: annotation.text,
-          style: { fill: annotation.color, fontFamily: 'sans-serif' }
+          style: { fill: annotation.color, fontFamily: 'sans-serif' },
+          // Left at its default (`null`), Text rasterizes its glyph texture
+          // at the renderer's own resolution -- pinned to 1 in
+          // pixi-scene-renderer.ts so exported pixel dimensions match
+          // width x height exactly, which left text visibly soft. This is
+          // a separate, independent knob: it only controls glyph texture
+          // density, not the final canvas size.
+          resolution: 2
         });
         // Background added first so it draws behind the text.
         this.parent.addChild(background);

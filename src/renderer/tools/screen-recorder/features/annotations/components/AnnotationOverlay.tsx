@@ -2,7 +2,12 @@ import type { JSX } from 'react';
 import { useEffect, useRef } from 'react';
 import type { Annotation } from '@screen-recorder/types/project';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
-import { useAnnotationsStore } from '../store/annotations-store';
+import {
+  useAnnotationsStore,
+  TEXT_BACKGROUND_PADDING_X,
+  TEXT_BACKGROUND_PADDING_Y,
+  TEXT_BACKGROUND_RADIUS
+} from '../store/annotations-store';
 import { resolveTextAnimationPreset } from '../presets/text-animation-presets';
 import { beginGesture, endGesture } from '../../history/store/history-store';
 import { cn } from '../../../lib/utils';
@@ -16,9 +21,6 @@ interface AnnotationOverlayProps {
 function isActive(atMs: number, annotation: Annotation): boolean {
   return atMs >= annotation.atMs && atMs <= annotation.atMs + annotation.durationMs;
 }
-
-/** How long into an annotation's active window the entrance animation plays. */
-const ENTRANCE_WINDOW_MS = 450;
 
 type DragMove = (dxRef: number, dyRef: number) => void;
 
@@ -84,12 +86,26 @@ export function AnnotationOverlay({
     <div className="pointer-events-none absolute inset-0 z-10">
       {active.map((annotation) => {
         const isSelected = selectedAnnotationId === annotation.id;
-        const withinEntrance = currentTimeMs - annotation.atMs <= ENTRANCE_WINDOW_MS;
 
         if (annotation.kind === 'text') {
-          const preset = withinEntrance
-            ? resolveTextAnimationPreset(annotation.animationPreset)
-            : null;
+          const preset = resolveTextAnimationPreset(annotation.animationPreset);
+          const speed = annotation.animationSpeed > 0 ? annotation.animationSpeed : 1;
+          const durationMs = preset.durationMs / speed;
+          const elapsedMs = currentTimeMs - annotation.atMs;
+          const remainingMs = annotation.atMs + annotation.durationMs - currentTimeMs;
+          const withinEntrance = elapsedMs <= durationMs;
+          // Typewriter gets a reverse "clearing" pass near the end of its
+          // active window instead of just vanishing -- only once typing-in
+          // has actually finished, so a short total duration can't flip
+          // straight into clearing before anything typed (see
+          // resolveTextEntrance's matching guard for the export renderer).
+          const isClearing =
+            preset.id === 'typewriter' && elapsedMs >= durationMs && remainingMs <= durationMs;
+          const animationClassName = isClearing
+            ? 'animate-annotation-typewriter-exit'
+            : withinEntrance
+              ? preset.className
+              : null;
           return (
             <div
               key={annotation.id}
@@ -99,15 +115,32 @@ export function AnnotationOverlay({
                 })
               )}
               className={cn(
-                'pointer-events-auto absolute -translate-y-full cursor-grab whitespace-nowrap font-sans font-medium text-white active:cursor-grabbing',
+                'pointer-events-auto absolute -translate-y-full cursor-grab whitespace-nowrap font-sans font-medium active:cursor-grabbing',
                 isSelected && 'rounded outline outline-2 outline-offset-4 outline-accent',
-                preset?.className
+                animationClassName
               )}
               style={{
                 left: annotation.position.x * scale,
                 top: annotation.position.y * scale,
-                fontSize: 28 * scale,
-                textShadow: '0 1px 3px rgba(0,0,0,0.6)'
+                fontSize: annotation.fontSize * scale,
+                color: annotation.color,
+                textShadow: '0 1px 3px rgba(0,0,0,0.6)',
+                // The Tailwind `--animate-*` class bakes in each preset's
+                // *default* (1x) duration -- overridden here so `animationSpeed`
+                // actually speeds up/slows down the CSS animation itself.
+                ...(animationClassName && { animationDuration: `${durationMs}ms` }),
+                // Typewriter's CSS class defaults to a fixed step count --
+                // overridden to one step per character so the reveal (and the
+                // background pill growing along with it) advances smoothly
+                // instead of jumping in a handful of uneven chunks.
+                ...(preset.id === 'typewriter' && {
+                  animationTimingFunction: `steps(${Math.max(1, annotation.text.length)}, end)`
+                }),
+                ...(annotation.backgroundColor && {
+                  backgroundColor: annotation.backgroundColor,
+                  padding: `${TEXT_BACKGROUND_PADDING_Y * scale}px ${TEXT_BACKGROUND_PADDING_X * scale}px`,
+                  borderRadius: TEXT_BACKGROUND_RADIUS * scale
+                })
               }}
             >
               {annotation.text}

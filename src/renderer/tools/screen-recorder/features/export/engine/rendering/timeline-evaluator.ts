@@ -3,6 +3,12 @@ import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
 import { enrichWallpaperPreset } from '../../../background/lib/wave-wallpaper';
 import { findWallpaperImagePreset } from '../../../background/lib/wallpaper-images';
+import { resolveTextEntrance } from '../../../annotations/presets/text-animation-presets';
+import {
+  TEXT_BACKGROUND_PADDING_X,
+  TEXT_BACKGROUND_PADDING_Y,
+  TEXT_BACKGROUND_RADIUS
+} from '../../../annotations/store/annotations-store';
 import {
   sampleCursorPath,
   resolveClickBounceScale,
@@ -173,13 +179,27 @@ function resolveAnnotations(
     const yPx = annotation.position.y * referenceScale;
 
     if (annotation.kind === 'text') {
+      const entrance = resolveTextEntrance(
+        annotation.animationPreset,
+        atMs - annotation.atMs,
+        annotation.animationSpeed,
+        annotation.durationMs,
+        annotation.text
+      );
       active.push({
         kind: 'text',
         id: annotation.id,
         xPx,
-        yPx,
-        text: annotation.text,
-        fontPx: Math.round(28 * referenceScale)
+        yPx: yPx + entrance.offsetY * referenceScale,
+        text: entrance.revealedText,
+        fontPx: Math.round(annotation.fontSize * referenceScale),
+        color: annotation.color,
+        backgroundColor: annotation.backgroundColor,
+        backgroundPaddingXPx: TEXT_BACKGROUND_PADDING_X * referenceScale,
+        backgroundPaddingYPx: TEXT_BACKGROUND_PADDING_Y * referenceScale,
+        backgroundRadiusPx: TEXT_BACKGROUND_RADIUS * referenceScale,
+        alpha: entrance.alpha,
+        scale: entrance.scale
       });
     } else if (annotation.kind === 'arrow') {
       active.push({

@@ -60,6 +60,14 @@ export interface TextAnnotation extends AnnotationBase {
   kind: 'text';
   text: string;
   animationPreset: string;
+  /** Multiplier applied to the entrance/exit animation's own duration -- 1 = normal speed, 2 = twice as fast. */
+  animationSpeed: number;
+  /** CSS hex color for the text fill. */
+  color: string;
+  /** CSS hex color for the pill behind the text, or `null` for no background. */
+  backgroundColor: string | null;
+  /** Font size, in `REFERENCE_CANVAS_WIDTH` units (same convention as position/thickness). */
+  fontSize: number;
 }
 
 export interface ArrowAnnotation extends AnnotationBase {

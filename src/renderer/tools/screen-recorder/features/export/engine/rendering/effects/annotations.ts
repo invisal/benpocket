@@ -4,7 +4,7 @@ import type { AnnotationSceneData } from '../types';
 type ArrowData = Extract<AnnotationSceneData, { kind: 'arrow' }>;
 
 type AnnotationHandle =
-  | { kind: 'text'; text: Text }
+  | { kind: 'text'; text: Text; background: Graphics }
   | { kind: 'arrow'; graphics: Graphics }
   | { kind: 'image'; sprite: Sprite; assetPath: string };
 
@@ -86,18 +86,38 @@ export class AnnotationsEffect {
       let handle = this.handles.get(annotation.id);
       if (!handle || handle.kind !== 'text') {
         if (handle) this.destroyHandle(handle);
+        const background = new Graphics();
         const text = new Text({
           text: annotation.text,
-          style: { fill: '#ffffff', fontFamily: 'sans-serif' }
+          style: { fill: annotation.color, fontFamily: 'sans-serif' }
         });
+        // Background added first so it draws behind the text.
+        this.parent.addChild(background);
         this.parent.addChild(text);
-        handle = { kind: 'text', text };
+        handle = { kind: 'text', text, background };
         this.handles.set(annotation.id, handle);
       }
       handle.text.text = annotation.text;
       handle.text.style.fontSize = annotation.fontPx;
+      handle.text.style.fill = annotation.color;
       handle.text.x = annotation.xPx;
       handle.text.y = annotation.yPx;
+      handle.text.alpha = annotation.alpha;
+      handle.text.scale.set(annotation.scale);
+
+      handle.background.clear();
+      if (annotation.backgroundColor) {
+        handle.background
+          .roundRect(
+            annotation.xPx - annotation.backgroundPaddingXPx,
+            annotation.yPx - annotation.backgroundPaddingYPx,
+            handle.text.width + annotation.backgroundPaddingXPx * 2,
+            handle.text.height + annotation.backgroundPaddingYPx * 2,
+            annotation.backgroundRadiusPx
+          )
+          .fill({ color: annotation.backgroundColor });
+      }
+      handle.background.alpha = annotation.alpha;
       return;
     }
 
@@ -137,6 +157,8 @@ export class AnnotationsEffect {
     if (handle.kind === 'text') {
       this.parent.removeChild(handle.text);
       handle.text.destroy();
+      this.parent.removeChild(handle.background);
+      handle.background.destroy();
     } else if (handle.kind === 'arrow') {
       this.parent.removeChild(handle.graphics);
       handle.graphics.destroy();

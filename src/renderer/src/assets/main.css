@@ -54,6 +54,9 @@
   --animate-annotation-fade-in: annotation-fade-in 0.4s ease-out;
   --animate-annotation-slide-up: annotation-slide-up 0.4s ease-out;
   --animate-annotation-pop-in: annotation-pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-annotation-typewriter: annotation-typewriter 0.9s steps(18, end);
+  --animate-annotation-pulse: annotation-pulse 0.45s ease-out;
+  --animate-annotation-typewriter-exit: annotation-typewriter-exit 0.9s steps(18, end);
 }
 
 @keyframes annotation-fade-in {
@@ -80,6 +83,42 @@
     transform: scale(0.6);
   }
   to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes annotation-typewriter {
+  /* `inset()` percentages resolve against the element's own box, not an
+     ancestor, so this reveals left-to-right regardless of text length --
+     no need to know the string's rendered width up front. */
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+/* Reverse of annotation-typewriter -- plays instead, near the end of the
+   annotation's active window, so a typewriter annotation clears itself
+   (right edge recedes back to nothing) rather than just vanishing. */
+@keyframes annotation-typewriter-exit {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes annotation-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+  100% {
     opacity: 1;
     transform: scale(1);
   }

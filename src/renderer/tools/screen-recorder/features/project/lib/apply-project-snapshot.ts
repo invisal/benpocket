@@ -9,6 +9,7 @@ import { useZoomStore } from '../../zoom/store/zoom-store';
 import { useAnnotationsStore } from '../../annotations/store/annotations-store';
 import { useBlurMaskStore } from '../../blur-mask/store/blur-mask-store';
 import { useCaptionsStore } from '../../captions/store/captions-store';
+import { useCropStore } from '../../crop/store/crop-store';
 import { resetHistory } from '../../history/store/history-store';
 
 /** Points the editor at a project video file in place -- see `toRecordingMediaUrl`'s doc for why this isn't a `readFileBytes` + Blob round trip. */
@@ -46,6 +47,10 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
   useCaptionsStore.setState(project.captions);
   useAnnotationsStore.setState({ annotations: project.annotations, selectedAnnotationId: null });
   useBlurMaskStore.setState({ regions: project.blurMasks, selectedRegionId: null });
+  // `?? null`, not just `project.crop` -- projects saved before `crop` existed
+  // on `Project` have no such key at all, so this also guards against
+  // inheriting a stale crop left over from whatever was open before this one.
+  useCropStore.setState({ rect: project.crop ?? null });
 
   useAppStore.setState({
     projectName: project.name,

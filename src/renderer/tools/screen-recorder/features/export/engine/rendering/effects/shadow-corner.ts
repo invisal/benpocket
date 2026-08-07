@@ -49,7 +49,14 @@ export class ShadowCornerEffect {
         radiusPx
       )
       .fill({ color: 0x000000, alpha: shadow.alpha });
-    this.blurFilter.strength = shadow.blurPx * 2;
+    // `shadow.blurPx` is a CSS-`box-shadow`-style blur *radius* in px (see
+    // timeline-evaluator.ts's `resolveShadow`, mirroring PreviewStage.tsx's
+    // own CSS `box-shadow` string) -- CSS defines that radius as ~2x the
+    // Gaussian's standard deviation. Pixi's `BlurFilter.strength` lines up
+    // with that same standard deviation, not the radius, so it needs
+    // halving here, not passing straight through (confirmed visually: even
+    // 1:1 was still noticeably wider/flatter than the CSS preview's shadow).
+    this.blurFilter.strength = shadow.blurPx / 2;
     this.shadowGraphics.filters = shadow.blurPx > 0 ? [this.blurFilter] : [];
   }
 }

@@ -87,7 +87,14 @@ export class PixiSceneRenderer {
       // silently double the renderer's backing pixel size.
       resolution: 1,
       preference: ['webgl', 'webgpu'],
-      antialias: false,
+      // Every vector-drawn overlay (cursor glyphs, arrow annotations,
+      // background pills, blur-mask shapes, the shadow-corner mask) is pure
+      // `Graphics` polygon fills -- with this off their edges came out
+      // visibly jagged, most noticeable on the custom cursor illustrations
+      // (fine curves approximated by many short straight polygon edges).
+      // Text has its own separate fix, see the `resolution: 2` passed to
+      // `new Text(...)` in effects/annotations.ts and effects/captions.ts.
+      antialias: true,
       backgroundAlpha: 1
     });
     const instance = new PixiSceneRenderer(renderer);

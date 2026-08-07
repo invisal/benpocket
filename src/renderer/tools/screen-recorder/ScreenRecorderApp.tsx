@@ -107,8 +107,8 @@ export function ScreenRecorderApp(): JSX.Element {
           </div>
         </nav>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2">
-          <div className="flex min-h-0 flex-1 gap-1.5">
+        <div className="flex min-h-0 flex-1 flex-col gap-1 dark:gap-1.5 p-1 dark:p-1.5">
+          <div className="flex min-h-0 flex-1 gap-1 dark:gap-1.5">
             <ResizablePanel
               edge="right"
               size={sidebarWidth}

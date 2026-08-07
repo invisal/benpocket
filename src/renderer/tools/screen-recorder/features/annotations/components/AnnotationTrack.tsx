@@ -33,6 +33,7 @@ export function AnnotationTrack(): JSX.Element | null {
   const annotations = useAnnotationsStore((s) => s.annotations);
   const updateAnnotation = useAnnotationsStore((s) => s.updateAnnotation);
   const removeAnnotation = useAnnotationsStore((s) => s.removeAnnotation);
+  const duplicateAnnotation = useAnnotationsStore((s) => s.duplicateAnnotation);
   const selectedAnnotationId = useAnnotationsStore((s) => s.selectedAnnotationId);
   const setSelectedAnnotationId = useAnnotationsStore((s) => s.setSelectedAnnotationId);
 
@@ -89,6 +90,15 @@ export function AnnotationTrack(): JSX.Element | null {
         });
       }}
       onDelete={(a) => removeAnnotation(a.id)}
+      isDisabled={(a) => !a.enabled}
+      onToggleDisabled={(a) => updateAnnotation(a.id, { enabled: !a.enabled })}
+      onDuplicate={(a) => {
+        const newId = duplicateAnnotation(a.id);
+        if (!newId) return;
+        requestSeek(a.atMs + a.durationMs);
+        setActiveTool('annotations');
+        setSelectedAnnotationId(newId);
+      }}
     />
   );
 }

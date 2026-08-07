@@ -6,7 +6,7 @@ import {
   ZoomIn,
   Pencil,
   type LucideIcon,
-  Camera
+  Video
 } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 
@@ -16,7 +16,7 @@ export type EditorTool =
 export const EDITOR_TOOLS: { id: EditorTool; label: string; icon: LucideIcon }[] = [
   { id: 'background', label: 'Background', icon: Palette },
   { id: 'cursor', label: 'Cursor', icon: MousePointer2 },
-  { id: 'webcam', label: 'Webcam', icon: Camera },
+  { id: 'webcam', label: 'Webcam', icon: Video },
   { id: 'annotations', label: 'Annotations', icon: Pencil },
   { id: 'blur-mask', label: 'Blur/Mask', icon: Droplets },
   { id: 'zoom', label: 'Zoom', icon: ZoomIn },

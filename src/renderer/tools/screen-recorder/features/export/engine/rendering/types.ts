@@ -89,7 +89,24 @@ export interface BlurMaskSceneData {
 }
 
 export type AnnotationSceneData =
-  | { kind: 'text'; id: string; xPx: number; yPx: number; text: string; fontPx: number }
+  | {
+      kind: 'text';
+      id: string;
+      xPx: number;
+      yPx: number;
+      text: string;
+      fontPx: number;
+      color: string;
+      /** Pill fill behind the text, or `null` for no background. */
+      backgroundColor: string | null;
+      backgroundPaddingXPx: number;
+      backgroundPaddingYPx: number;
+      backgroundRadiusPx: number;
+      /** Entrance-animation opacity, see `resolveTextEntrance`. */
+      alpha: number;
+      /** Entrance-animation scale, see `resolveTextEntrance`. */
+      scale: number;
+    }
   | {
       kind: 'arrow';
       id: string;
@@ -102,7 +119,17 @@ export type AnnotationSceneData =
       headLengthPx: number;
       dashed: boolean;
     }
-  | { kind: 'image'; id: string; xPx: number; yPx: number; assetPath: string; scale: number };
+  | {
+      kind: 'image';
+      id: string;
+      xPx: number;
+      yPx: number;
+      assetPath: string;
+      /** Natural-size fallback multiplier, used only when `sizePx` is `null`. */
+      scale: number;
+      /** Explicit rendered size (already scaled), or `null` to use the asset's natural size * `scale`. */
+      sizePx: { width: number; height: number } | null;
+    };
 
 export interface CaptionSceneData {
   text: string;

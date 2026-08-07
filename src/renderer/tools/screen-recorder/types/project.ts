@@ -135,6 +135,8 @@ export interface Project {
   annotations: Annotation[];
   blurMasks: BlurMaskRegion[];
   motionBlur: boolean;
+  /** Single crop for the whole recording, or `null` for none -- see `useCropStore`. */
+  crop: CropRect | null;
 }
 
 /** Lightweight listing entry for `project:list` -- just enough to render a picker, without reading every project's full tracks/annotations/paths off disk. */

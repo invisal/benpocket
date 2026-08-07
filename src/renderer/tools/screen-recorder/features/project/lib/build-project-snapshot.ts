@@ -8,6 +8,7 @@ import { useZoomStore } from '../../zoom/store/zoom-store';
 import { useAnnotationsStore } from '../../annotations/store/annotations-store';
 import { useBlurMaskStore } from '../../blur-mask/store/blur-mask-store';
 import { useCaptionsStore } from '../../captions/store/captions-store';
+import { useCropStore } from '../../crop/store/crop-store';
 
 /**
  * Assembles a full `Project` snapshot from the live editor stores for
@@ -27,6 +28,7 @@ export function buildProjectSnapshot(name: string): Project | null {
   const { annotations } = useAnnotationsStore.getState();
   const { regions: blurMasks } = useBlurMaskStore.getState();
   const captionsState = useCaptionsStore.getState();
+  const { rect: crop } = useCropStore.getState();
 
   const now = Date.now();
 
@@ -76,6 +78,7 @@ export function buildProjectSnapshot(name: string): Project | null {
     },
     annotations,
     blurMasks,
-    motionBlur: false
+    motionBlur: false,
+    crop
   };
 }

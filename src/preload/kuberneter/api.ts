@@ -107,16 +107,18 @@ export interface KuberneterApi {
     error?: string;
   }>;
   clearPrometheusCache: (kubeconfigPath?: string, contextName?: string) => Promise<{ ok: boolean }>;
-  helmSearchCharts: (kubeconfigPath?: string) => Promise<HelmChartItem[] | { error: string }>;
+  helmSearchCharts: (
+    kubeconfigPath?: string
+  ) => Promise<HelmChartItem[] | { error: string } | { helmNotFound: true }>;
   helmGetChartVersions: (
     chartName: string,
     kubeconfigPath?: string
-  ) => Promise<HelmChartVersion[] | { error: string }>;
+  ) => Promise<HelmChartVersion[] | { error: string } | { helmNotFound: true }>;
   helmGetChartDetails: (
     chartName: string,
     version?: string,
     kubeconfigPath?: string
-  ) => Promise<HelmChartDetails | { error: string }>;
+  ) => Promise<HelmChartDetails | { error: string } | { helmNotFound: true }>;
   helmInstallChart: (
     releaseName: string,
     chartName: string,
@@ -124,19 +126,19 @@ export interface KuberneterApi {
     namespace: string,
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<{ result?: string; error?: string }>;
+  ) => Promise<{ result?: string; error?: string } | { helmNotFound: true }>;
   helmGetChartIcons: () => Promise<Record<string, string>>;
   helmListReleases: (
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<HelmReleaseItem[] | { error: string }>;
+  ) => Promise<HelmReleaseItem[] | { error: string } | { helmNotFound: true }>;
   helmGetReleaseValues: (
     releaseName: string,
     namespace: string,
     allValues?: boolean,
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<{ values: string } | { error: string }>;
+  ) => Promise<{ values: string } | { error: string } | { helmNotFound: true }>;
   startPortForward: (params: {
     id: string;
     kubeconfigPath?: string;

@@ -134,7 +134,7 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
           selectedVersion,
           kubeconfigPath
         );
-        if (res && !('error' in res)) {
+        if (res && !('error' in res) && !('helmNotFound' in res)) {
           setDetails(res);
         } else {
           setDetails({
@@ -180,8 +180,8 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
         activeCluster
       );
 
-      if (res.error) {
-        setInstallError(res.error);
+      if ('helmNotFound' in res || 'error' in res) {
+        setInstallError(('error' in res ? res.error : undefined) || 'Helm is not installed.');
       } else {
         setInstallSuccess(res.result || 'Chart installed successfully!');
         setShowInstallForm(false);

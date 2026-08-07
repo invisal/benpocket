@@ -1,5 +1,31 @@
 import { spawn } from 'child_process';
 
+/** Cached result of the helm binary probe — null means not yet checked. */
+let helmAvailable: boolean | null = null;
+
+/**
+ * Checks whether the `helm` binary is available on PATH.
+ * Result is cached for the lifetime of the process.
+ */
+export function checkHelmInstalled(): Promise<boolean> {
+  if (helmAvailable !== null) return Promise.resolve(helmAvailable);
+
+  return new Promise((resolve) => {
+    const cmd = process.platform === 'win32' ? 'where' : 'which';
+    const child = spawn(cmd, ['helm'], { shell: true });
+
+    child.on('close', (code) => {
+      helmAvailable = code === 0;
+      resolve(helmAvailable);
+    });
+
+    child.on('error', () => {
+      helmAvailable = false;
+      resolve(false);
+    });
+  });
+}
+
 /**
  * Runs a helm command with arguments and optional custom kubeconfig path and context name.
  */

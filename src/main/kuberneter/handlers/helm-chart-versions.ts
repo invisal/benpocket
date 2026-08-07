@@ -1,11 +1,12 @@
 import { ipcMain } from 'electron';
-import { runHelm } from '../helm-cli';
+import { runHelm, checkHelmInstalled } from '../helm-cli';
 
 export function registerHelmChartVersionsHandler(): void {
   // Get all versions of a Helm chart
   ipcMain.handle(
     'kuberneter:helm-get-chart-versions',
     async (_, chartName: string, kubeconfigPath?: string) => {
+      if (!(await checkHelmInstalled())) return { helmNotFound: true };
       try {
         const stdout = await runHelm(
           ['search', 'repo', chartName, '-l', '-o', 'json'],

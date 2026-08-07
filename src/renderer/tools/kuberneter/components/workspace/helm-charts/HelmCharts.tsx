@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { HelmChartsToolbar } from './HelmChartsToolbar';
 import { HelmChartsTable } from './HelmChartsTable';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { HelmNotInstalled } from '../helm-releases/HelmNotInstalled';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { type HelmChartItem } from '../../../../../../preload/kuberneter/api';
@@ -13,6 +14,7 @@ export const HelmCharts: React.FC = () => {
   const [iconMap, setIconMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [helmNotInstalled, setHelmNotInstalled] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -59,7 +61,9 @@ export const HelmCharts: React.FC = () => {
         window.kuberneter.helmGetChartIcons()
       ]);
 
-      if (chartsRes && 'error' in chartsRes) {
+      if (chartsRes && 'helmNotFound' in chartsRes) {
+        setHelmNotInstalled(true);
+      } else if (chartsRes && 'error' in chartsRes) {
         setErrorMsg(chartsRes.error);
       } else if (Array.isArray(chartsRes)) {
         setCharts(chartsRes);
@@ -168,7 +172,9 @@ export const HelmCharts: React.FC = () => {
         </div>
       )}
 
-      {errorMsg && !isLoading && (
+      {helmNotInstalled && !isLoading && <HelmNotInstalled />}
+
+      {errorMsg && !isLoading && !helmNotInstalled && (
         <div className="shrink-0 flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
           <AlertCircle className="size-4.5 shrink-0 mt-0.5" />
           <div className="font-semibold break-all">
@@ -180,7 +186,7 @@ export const HelmCharts: React.FC = () => {
         </div>
       )}
 
-      {!isLoading && !errorMsg && (
+      {!isLoading && !errorMsg && !helmNotInstalled && (
         <KubeWorkspaceLayout
           header={
             <HelmChartsToolbar

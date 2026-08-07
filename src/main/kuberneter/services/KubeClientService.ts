@@ -76,7 +76,6 @@ export class KubeClientService {
       });
 
       if (response.status === 200) {
-        console.log(`[KubeClientService] Direct API success for ${resource}`);
         const parsed = JSON.parse(response.data);
         return { items: parsed.items || [] };
       }

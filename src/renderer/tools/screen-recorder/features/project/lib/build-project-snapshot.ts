@@ -37,6 +37,7 @@ export function buildProjectSnapshot(name: string): Project | null {
     name,
     createdAt: now,
     updatedAt: now,
+    source: lastRecording.source,
     sourceVideoPath: lastRecording.filePath,
     durationMs: sourceDurationMs,
     tracks,

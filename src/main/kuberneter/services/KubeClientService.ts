@@ -82,7 +82,6 @@ export class KubeClientService {
       }
     } catch (err) {
       console.log(`[KubeClientService] Direct API call failed for ${resource}:`, err);
-      // Return null to signal fallback to KubeCliService (kubectl)
       return null;
     }
 

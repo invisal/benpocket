@@ -1,12 +1,11 @@
 import type { BrowserWindow } from 'electron';
-import type { ChildProcess } from 'child_process';
-import { KubeCliWatchService, type WatchOptions, type WatchEvent } from './KubeCliWatchService';
+import { KubeApiWatchService, type WatchOptions, type WatchEvent } from './KubeApiWatchService';
 
 export type { WatchOptions, WatchEvent };
 
 interface ActiveWatchItem {
   options: WatchOptions;
-  process?: ChildProcess;
+  abort?: () => void;
 }
 
 export class KubeWatchManager {
@@ -15,26 +14,20 @@ export class KubeWatchManager {
   public static startWatch(id: string, options: WatchOptions, window?: BrowserWindow | null): void {
     this.stopWatch(id);
 
-    const child = KubeCliWatchService.startWatchProcess(id, options, (event) => {
+    const { abort } = KubeApiWatchService.startWatch(id, options, (event) => {
       console.log(`[KubeWatchManager] Event emitted: ${event.type} for ${event.resource}`);
       if (window && !window.isDestroyed()) {
         window.webContents.send('kuberneter:watch-event', event);
       }
     });
 
-    this.activeWatches.set(id, { options, process: child });
+    this.activeWatches.set(id, { options, abort });
   }
 
   public static stopWatch(id: string): void {
     const existing = this.activeWatches.get(id);
     if (existing) {
-      if (existing.process && !existing.process.killed) {
-        try {
-          existing.process.kill();
-        } catch {
-          // ignore kill error
-        }
-      }
+      existing.abort?.();
       this.activeWatches.delete(id);
     }
   }

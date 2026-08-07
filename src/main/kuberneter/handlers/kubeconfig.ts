@@ -1,14 +1,14 @@
 import { ipcMain, app, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { listKubeconfigContexts } from '../k8s-cli';
+import { KubeConfigService } from '../services/KubeConfigService';
 
 export function registerKubeconfigHandlers(): void {
   // List contexts of a given kubeconfig path (or default)
   ipcMain.handle('kuberneter:list-contexts', async (_, kubeconfigPath?: string) => {
     try {
       const resolvedPath = kubeconfigPath || undefined;
-      return await listKubeconfigContexts(resolvedPath);
+      return KubeConfigService.listContexts(resolvedPath);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { error: message };

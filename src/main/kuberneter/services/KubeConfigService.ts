@@ -1,5 +1,13 @@
 import { KubeConfig } from '@kubernetes/client-node';
-import type { K8sContext } from '../k8s-cli';
+
+export interface K8sContext {
+  name: string;
+  cluster: string;
+  user: string;
+  namespace?: string;
+  server?: string; // Cluster endpoint URL
+  isActive: boolean;
+}
 
 export class KubeConfigService {
   /**

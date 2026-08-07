@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron';
-import { KubeEngineRouter } from '../services/KubeEngineRouter';
+import { KubeClientService } from '../services/KubeClientService';
 
 export function registerResourcesHandler(): void {
-  // Query live cluster resources through the Hybrid Engine Router
+  // Query live cluster resources via @kubernetes/client-node direct REST API
   ipcMain.handle(
     'kuberneter:get-resources',
     async (
@@ -12,7 +12,16 @@ export function registerResourcesHandler(): void {
       resource: string,
       namespace?: string
     ) => {
-      return KubeEngineRouter.getResources(kubeconfigPath, contextName, resource, namespace);
+      const result = await KubeClientService.getResourcesDirect(
+        kubeconfigPath,
+        contextName,
+        resource,
+        namespace
+      );
+      if (!result) {
+        return { items: [], error: 'Failed to fetch resources from the cluster API server.' };
+      }
+      return result;
     }
   );
 
@@ -26,13 +35,17 @@ export function registerResourcesHandler(): void {
       name: string,
       namespace?: string
     ) => {
-      return KubeEngineRouter.getResourceYaml(
+      const result = await KubeClientService.getResourceYamlDirect(
         kubeconfigPath,
         contextName,
         resource,
         name,
         namespace
       );
+      if (!result) {
+        return { error: 'Failed to fetch resource YAML from the cluster API server.' };
+      }
+      return result;
     }
   );
 
@@ -44,7 +57,15 @@ export function registerResourcesHandler(): void {
       kubeconfigPath: string | undefined,
       contextName: string | undefined
     ) => {
-      return KubeEngineRouter.applyResourceYaml(kubeconfigPath, contextName, yamlContent);
+      const result = await KubeClientService.applyResourceYamlDirect(
+        kubeconfigPath,
+        contextName,
+        yamlContent
+      );
+      if (!result) {
+        return { error: 'Failed to apply resource YAML to the cluster API server.' };
+      }
+      return result;
     }
   );
 }

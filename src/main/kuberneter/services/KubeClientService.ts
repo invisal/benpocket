@@ -2,6 +2,7 @@ import https from 'https';
 import { URL } from 'url';
 import { KubernetesObjectApi, PatchStrategy, type KubernetesObject } from '@kubernetes/client-node';
 import * as jsYaml from 'js-yaml';
+import { normalizeCpuString, normalizeMemoryString } from '../utils/metricsNormalizer';
 import { buildKubeApiPath } from '../constants/k8sResources';
 import { KubeConfigService } from './KubeConfigService';
 
@@ -253,6 +254,126 @@ export class KubeClientService {
       }
     } catch (err) {
       console.warn('[KubeClientService] applyResourceYamlDirect failed:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Direct REST API call for K8s Metrics API (/apis/metrics.k8s.io/v1beta1/...)
+   */
+  public static async getMetricsDirect(
+    configPath?: string,
+    contextName?: string,
+    subPath: string = 'nodes'
+  ): Promise<{ items?: unknown[]; error?: string } | null> {
+    try {
+      const kc = KubeConfigService.loadKubeConfig(configPath, contextName);
+      const cluster = kc.getCurrentCluster();
+
+      if (!cluster || !cluster.server) {
+        return null;
+      }
+
+      const path = `/apis/metrics.k8s.io/v1beta1/${subPath}`;
+      const fullUrl = `${cluster.server.replace(/\/$/, '')}${path}`;
+      const urlObj = new URL(fullUrl);
+
+      const requestOptions: https.RequestOptions = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path: `${urlObj.pathname}${urlObj.search}`,
+        method: 'GET',
+        headers: {
+          Accept: 'application/json'
+        }
+      };
+
+      await kc.applyToHTTPSOptions(requestOptions);
+      if (cluster.skipTLSVerify) {
+        requestOptions.rejectUnauthorized = false;
+      }
+
+      const response = await new Promise<{ status: number; data: string }>((resolve, reject) => {
+        const req = https.request(requestOptions, (res) => {
+          let body = '';
+          res.on('data', (chunk) => (body += chunk));
+          res.on('end', () => resolve({ status: res.statusCode || 500, data: body }));
+        });
+        req.on('error', reject);
+        req.end();
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        const parsed = JSON.parse(response.data) as { items?: unknown[] };
+        const rawItems = parsed.items || [];
+
+        // Normalize metrics directly in getMetricsDirect so all callers receive clean data once
+        if (subPath.includes('nodes')) {
+          const items = rawItems.map((rawItem: unknown) => {
+            const item = (rawItem || {}) as Record<string, unknown>;
+            const meta = item.metadata as { name?: string } | undefined;
+            const usage = item.usage as { cpu?: string; memory?: string } | undefined;
+            return {
+              metadata: { name: meta?.name || 'unknown' },
+              usage: {
+                cpu: normalizeCpuString(usage?.cpu),
+                memory: normalizeMemoryString(usage?.memory)
+              }
+            };
+          });
+          return { items };
+        }
+
+        if (subPath.includes('pods')) {
+          const items = rawItems.map((rawItem: unknown) => {
+            const item = (rawItem || {}) as Record<string, unknown>;
+            const meta = item.metadata as { name?: string; namespace?: string } | undefined;
+            const containers = item.containers as
+              Array<{ usage?: { cpu?: string; memory?: string } }> | undefined;
+
+            let totalCpuNano = 0;
+            let totalMemKi = 0;
+
+            if (Array.isArray(containers)) {
+              for (const c of containers) {
+                const cCpu = c?.usage?.cpu || '0';
+                const cMem = c?.usage?.memory || '0';
+
+                if (cCpu.endsWith('n')) totalCpuNano += parseFloat(cCpu.slice(0, -1)) || 0;
+                else if (cCpu.endsWith('u'))
+                  totalCpuNano += (parseFloat(cCpu.slice(0, -1)) || 0) * 1e3;
+                else if (cCpu.endsWith('m'))
+                  totalCpuNano += (parseFloat(cCpu.slice(0, -1)) || 0) * 1e6;
+                else totalCpuNano += (parseFloat(cCpu) || 0) * 1e9;
+
+                if (cMem.endsWith('Ki')) totalMemKi += parseFloat(cMem.slice(0, -2)) || 0;
+                else if (cMem.endsWith('Mi'))
+                  totalMemKi += (parseFloat(cMem.slice(0, -2)) || 0) * 1024;
+                else if (cMem.endsWith('Gi'))
+                  totalMemKi += (parseFloat(cMem.slice(0, -2)) || 0) * 1024 * 1024;
+                else totalMemKi += (parseFloat(cMem) || 0) / 1024;
+              }
+            }
+
+            return {
+              metadata: {
+                name: meta?.name || 'unknown',
+                namespace: meta?.namespace || 'default'
+              },
+              usage: {
+                cpu: normalizeCpuString(`${totalCpuNano}n`),
+                memory: normalizeMemoryString(`${totalMemKi}Ki`)
+              }
+            };
+          });
+          return { items };
+        }
+
+        return { items: rawItems };
+      }
+      return null;
+    } catch (err) {
+      console.warn('[KubeClientService] getMetricsDirect failed:', err);
       return null;
     }
   }

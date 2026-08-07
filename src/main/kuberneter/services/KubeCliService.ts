@@ -1,5 +1,6 @@
 import { runKubectl, runKubectlWithInput } from '../k8s-cli';
 import { isClusterScopedResource } from '../constants/k8sResources';
+import { normalizeCpuString, normalizeMemoryString } from '../utils/metricsNormalizer';
 import * as jsYaml from 'js-yaml';
 
 export class KubeCliService {
@@ -100,6 +101,104 @@ export class KubeCliService {
       return { result };
     } catch (err) {
       return { error: (err as Error).message };
+    }
+  }
+
+  public static async getTopNodes(
+    kubeconfigPath?: string,
+    contextName?: string
+  ): Promise<{ items?: unknown[]; error?: string }> {
+    try {
+      const args = [];
+      if (contextName) {
+        args.push('--context', contextName);
+      }
+      args.push('top', 'nodes', '--no-headers');
+
+      const stdout = await runKubectl(args, kubeconfigPath);
+      const lines = stdout.trim().split('\n');
+      const items = lines
+        .map((line) => {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('W0') || trimmed.startsWith('Warning:')) return null;
+          const parts = trimmed.split(/\s+/);
+          if (parts.length >= 5) {
+            return {
+              name: parts[0],
+              cpu: normalizeCpuString(parts[1]),
+              cpuPct: parts[2],
+              memory: normalizeMemoryString(parts[3]),
+              memoryPct: parts[4]
+            };
+          } else if (parts.length >= 3) {
+            return {
+              name: parts[0],
+              cpu: normalizeCpuString(parts[1]),
+              cpuPct: 'N/A',
+              memory: normalizeMemoryString(parts[2]),
+              memoryPct: 'N/A'
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      return { items };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { items: [], error: message };
+    }
+  }
+
+  public static async getTopPods(
+    kubeconfigPath?: string,
+    contextName?: string,
+    namespace?: string
+  ): Promise<{ items?: unknown[]; error?: string }> {
+    try {
+      const args = [];
+      if (contextName) {
+        args.push('--context', contextName);
+      }
+      args.push('top', 'pods');
+      if (namespace && namespace !== 'All Namespaces') {
+        args.push('-n', namespace);
+      } else {
+        args.push('-A');
+      }
+      args.push('--no-headers');
+
+      const stdout = await runKubectl(args, kubeconfigPath);
+      const lines = stdout.trim().split('\n');
+      const items = lines
+        .map((line) => {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('W0') || trimmed.startsWith('Warning:')) return null;
+          const parts = trimmed.split(/\s+/);
+          const isAllNamespaces = !namespace || namespace === 'All Namespaces';
+          if (isAllNamespaces && parts.length >= 4) {
+            return {
+              namespace: parts[0],
+              name: parts[1],
+              cpu: normalizeCpuString(parts[2]),
+              memory: normalizeMemoryString(parts[3])
+            };
+          } else if (!isAllNamespaces && parts.length >= 3) {
+            return {
+              namespace: namespace || 'default',
+              name: parts[0],
+              cpu: normalizeCpuString(parts[1]),
+              memory: normalizeMemoryString(parts[2])
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      return { items };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { items: [], error: message };
     }
   }
 }

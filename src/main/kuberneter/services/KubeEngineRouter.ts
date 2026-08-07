@@ -85,4 +85,77 @@ export class KubeEngineRouter {
 
     return KubeCliService.applyResourceYaml(kubeconfigPath, contextName, yamlContent);
   }
+
+  public static async getTopNodes(
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined
+  ): Promise<{ items?: unknown[]; error?: string }> {
+    try {
+      const directResult = await KubeClientService.getMetricsDirect(
+        kubeconfigPath,
+        contextName,
+        'nodes'
+      );
+
+      if (directResult && Array.isArray(directResult.items) && directResult.items.length > 0) {
+        const items = directResult.items.map((rawItem: unknown) => {
+          const item = (rawItem || {}) as {
+            metadata?: { name?: string };
+            usage?: { cpu?: string; memory?: string };
+          };
+
+          return {
+            name: item.metadata?.name || 'unknown',
+            cpu: item.usage?.cpu || '0m',
+            cpuPct: 'N/A',
+            memory: item.usage?.memory || '0Mi',
+            memoryPct: 'N/A'
+          };
+        });
+        return { items };
+      }
+    } catch (err) {
+      console.warn('[KubeEngineRouter] Direct API getTopNodes error, falling back to CLI:', err);
+    }
+
+    return KubeCliService.getTopNodes(kubeconfigPath, contextName);
+  }
+
+  public static async getTopPods(
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    namespace?: string
+  ): Promise<{ items?: unknown[]; error?: string }> {
+    try {
+      const subPath =
+        namespace && namespace !== 'All Namespaces' ? `namespaces/${namespace}/pods` : 'pods';
+      const directResult = await KubeClientService.getMetricsDirect(
+        kubeconfigPath,
+        contextName,
+        subPath
+      );
+
+      if (directResult && Array.isArray(directResult.items) && directResult.items.length > 0) {
+        const items = directResult.items.map((rawItem: unknown) => {
+          const item = (rawItem || {}) as {
+            metadata?: { name?: string; namespace?: string };
+            usage?: { cpu?: string; memory?: string };
+          };
+
+          return {
+            namespace: item.metadata?.namespace || namespace || 'default',
+            name: item.metadata?.name || 'unknown',
+            cpu: item.usage?.cpu || '0m',
+            memory: item.usage?.memory || '0Mi'
+          };
+        });
+
+        return { items };
+      }
+    } catch (err) {
+      console.warn('[KubeEngineRouter] Direct API getTopPods error, falling back to CLI:', err);
+    }
+
+    return KubeCliService.getTopPods(kubeconfigPath, contextName, namespace);
+  }
 }

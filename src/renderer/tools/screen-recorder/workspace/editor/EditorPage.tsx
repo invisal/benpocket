@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../app/app-store';
 import {
   useTimelineStore,
@@ -63,6 +63,15 @@ export function EditorPage(): JSX.Element {
     initializeFromDuration
   });
   useUndoRedoShortcuts({ undo, redo });
+
+  // Imported footage never has recorded cursor/click samples, so the Cursor
+  // tool has nothing real to show or control -- its tab is hidden below.
+  // Steer away from it here too, for whichever project was open (or tab was
+  // selected) right before this one loaded.
+  const isImportedProject = lastRecording?.source === 'imported';
+  useEffect(() => {
+    if (isImportedProject && activeTool === 'cursor') setActiveTool('background');
+  }, [isImportedProject, activeTool, setActiveTool]);
 
   if (!lastRecording && !isOpeningProject) {
     return (
@@ -133,17 +142,23 @@ export function EditorPage(): JSX.Element {
           <EditorToolRail
             active={activeTool}
             onSelect={(tool) => setActiveTool(activeTool === tool ? null : tool)}
+            isImportedProject={isImportedProject}
           />
           <EditorToolPanel
             tool={activeTool}
             currentTimeMs={currentTimeMs}
             sourceResolution={sourceResolution}
             selectedSegment={selectedSegment}
+            isImportedProject={isImportedProject}
           />
         </ResizablePanel>
       ) : (
         <div className="flex shrink-0 overflow-hidden rounded-lg border border-line bg-surface">
-          <EditorToolRail active={activeTool} onSelect={(tool) => setActiveTool(tool)} />
+          <EditorToolRail
+            active={activeTool}
+            onSelect={(tool) => setActiveTool(tool)}
+            isImportedProject={isImportedProject}
+          />
         </div>
       )}
     </div>

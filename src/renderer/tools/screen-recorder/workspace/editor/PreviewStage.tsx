@@ -60,6 +60,7 @@ export function PreviewStage({
   const cursor = useCursorStore();
   const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH);
   const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
+  const isImportedProject = useAppStore((s) => s.lastRecording?.source === 'imported');
   const webcamPreviewUrl = useAppStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
   const webcamOffsetMs = useAppStore((s) => s.lastRecording?.webcamOffsetMs ?? 0);
   const webcamVideoRef = useRef<HTMLVideoElement>(null);
@@ -238,14 +239,16 @@ export function PreviewStage({
               stageWidthPx={stageWidthPx}
             />
 
-            <CursorOverlay
-              cursor={cursor}
-              rawPath={rawCursorPath}
-              clickPath={clickPath}
-              currentTimeMs={zoomTimeMs}
-              stageWidthPx={stageWidthPx}
-              cursorHidden={activeSegment?.cursorHidden ?? false}
-            />
+            {!isImportedProject && (
+              <CursorOverlay
+                cursor={cursor}
+                rawPath={rawCursorPath}
+                clickPath={clickPath}
+                currentTimeMs={zoomTimeMs}
+                stageWidthPx={stageWidthPx}
+                cursorHidden={activeSegment?.cursorHidden ?? false}
+              />
+            )}
           </div>
 
           {videoError && <VideoErrorOverlay message={videoError} />}

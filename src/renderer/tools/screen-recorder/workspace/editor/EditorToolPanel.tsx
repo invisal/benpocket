@@ -16,6 +16,8 @@ interface EditorToolPanelProps {
   currentTimeMs: number;
   sourceResolution: SourceResolution | null;
   selectedSegment: TimelineSegment | null;
+  /** Imported footage has no recorded cursor/click samples, so the Cursor tool has nothing to control -- hide its panel entirely rather than leave it open with no real effect. */
+  isImportedProject: boolean;
 }
 const tools = [
   {
@@ -36,13 +38,15 @@ export function EditorToolPanel({
   tool,
   currentTimeMs,
   sourceResolution,
-  selectedSegment
+  selectedSegment,
+  isImportedProject
 }: EditorToolPanelProps): JSX.Element {
-  const label = tools.find((t) => t.id === tool)?.label ?? '';
+  const visibleTools = isImportedProject ? tools.filter((t) => t.id !== 'cursor') : tools;
+  const label = visibleTools.find((t) => t.id === tool)?.label ?? '';
   return (
     <aside className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto border-l border-line p-3">
       <h2 className="text-sm font-semibold text-foreground">{label}</h2>
-      {tools.map((t) => {
+      {visibleTools.map((t) => {
         const Component = t.component;
         return (
           <Activity key={t.id} mode={t.id === tool ? 'visible' : 'hidden'}>

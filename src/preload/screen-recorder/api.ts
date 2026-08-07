@@ -7,7 +7,7 @@ import type {
 } from '@screen-recorder/types/recording';
 import type { Project, ProjectSummary, CursorPathPoint } from '@screen-recorder/types/project';
 import type { ExportFormat } from '@screen-recorder/types/export';
-import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
+import type { MicrophoneStatus, ScreenRecordingStatus } from '@screen-recorder/types/permissions';
 import type {
   ScreenRect,
   CaptureRegionSelection,
@@ -148,7 +148,11 @@ export const screenRecorderApi = {
     getScreenRecordingStatus: (): Promise<ScreenRecordingStatus> =>
       ipcRenderer.invoke(IpcChannels.GetScreenRecordingStatus),
     openScreenRecordingSettings: (): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.OpenScreenRecordingSettings)
+      ipcRenderer.invoke(IpcChannels.OpenScreenRecordingSettings),
+    getMicrophoneStatus: (): Promise<MicrophoneStatus> =>
+      ipcRenderer.invoke(IpcChannels.GetMicrophoneStatus),
+    openMicrophoneSettings: (): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.OpenMicrophoneSettings)
   },
   dialog: {
     showSaveExportPath: (defaultFileName: string, format: ExportFormat): Promise<string | null> =>

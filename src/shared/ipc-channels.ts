@@ -55,6 +55,8 @@ export const IpcChannels = {
   WindowReportInteractiveRegion: 'window:report-interactive-region',
   GetScreenRecordingStatus: 'permissions:get-screen-recording-status',
   OpenScreenRecordingSettings: 'permissions:open-screen-recording-settings',
+  GetMicrophoneStatus: 'permissions:get-microphone-status',
+  OpenMicrophoneSettings: 'permissions:open-microphone-settings',
   GetBootedSimulator: 'simulator:get-booted',
   RefreshWindowBounds: 'recording:refresh-window-bounds',
   TrayOpenRecordPicker: 'tray:open-record-picker',

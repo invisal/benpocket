@@ -4,6 +4,7 @@ import { AutoZoomToggle } from '../../features/recording/components/AutoZoomTogg
 import { WebcamShapePicker } from '../../features/webcam/components/WebcamShapePicker';
 import { ShortcutRecorder } from '../../features/shortcuts/components/ShortcutRecorder';
 import { ExportPresetPicker } from '../../features/export/components/ExportPresetPicker';
+import { PermissionsSettings } from '../../features/permissions/components/PermissionsSettings';
 import { SettingsGroup, SettingsRow } from '../../components/ui/settings-row';
 
 export function SettingsPage(): JSX.Element {
@@ -17,6 +18,10 @@ export function SettingsPage(): JSX.Element {
       </div>
 
       <div className="flex max-w-xl flex-col gap-8">
+        <SettingsGroup title="Permissions">
+          <PermissionsSettings />
+        </SettingsGroup>
+
         <SettingsGroup title="Recording">
           <AudioSourceToggle />
           <AutoZoomToggle />

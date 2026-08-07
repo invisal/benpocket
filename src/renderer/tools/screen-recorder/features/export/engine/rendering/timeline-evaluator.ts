@@ -221,7 +221,13 @@ function resolveAnnotations(
         xPx,
         yPx,
         assetPath: annotation.assetPath,
-        scale: referenceScale
+        scale: referenceScale,
+        sizePx: annotation.size
+          ? {
+              width: annotation.size.width * referenceScale,
+              height: annotation.size.height * referenceScale
+            }
+          : null
       });
     }
   }

@@ -83,6 +83,8 @@ export interface ArrowAnnotation extends AnnotationBase {
 export interface ImageAnnotation extends AnnotationBase {
   kind: 'image';
   assetPath: string;
+  /** Rendered size, in REFERENCE_CANVAS_WIDTH units -- `null` means "use the image's natural size" (new annotations start with an explicit default instead, see DEFAULT_IMAGE_SIZE; `null` is reachable again via "Reset size"). */
+  size: { width: number; height: number } | null;
 }
 
 export type Annotation = TextAnnotation | ArrowAnnotation | ImageAnnotation;

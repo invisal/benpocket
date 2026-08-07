@@ -156,8 +156,12 @@ export class AnnotationsEffect {
     }
     handle.sprite.x = annotation.xPx;
     handle.sprite.y = annotation.yPx;
-    handle.sprite.width = handle.sprite.texture.width * annotation.scale;
-    handle.sprite.height = handle.sprite.texture.height * annotation.scale;
+    handle.sprite.width = annotation.sizePx
+      ? annotation.sizePx.width
+      : handle.sprite.texture.width * annotation.scale;
+    handle.sprite.height = annotation.sizePx
+      ? annotation.sizePx.height
+      : handle.sprite.texture.height * annotation.scale;
   }
 
   private destroyHandle(handle: AnnotationHandle): void {

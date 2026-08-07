@@ -35,6 +35,19 @@ export const DEFAULT_TEXT_ANIMATION_SPEED = 1;
 export const MIN_TEXT_ANIMATION_SPEED = 0.5;
 export const MAX_TEXT_ANIMATION_SPEED = 2;
 
+// Floor on either dimension while dragging an image annotation's resize handles.
+export const MIN_IMAGE_ANNOTATION_SIZE = 24;
+export const DEFAULT_IMAGE_SIZE = { width: 320, height: 240 };
+// REFERENCE_CANVAS_WIDTH has no fixed height counterpart -- the actual stage
+// aspect ratio is a per-project setting this store has no access to (same
+// reason DEFAULT_POSITION above isn't a true center either) -- so this
+// assumes a typical 16:9 stage, close enough for "roughly centered."
+const TYPICAL_REFERENCE_HEIGHT = (REFERENCE_CANVAS_WIDTH * 9) / 16;
+const DEFAULT_IMAGE_POSITION = {
+  x: REFERENCE_CANVAS_WIDTH / 2 - DEFAULT_IMAGE_SIZE.width / 2,
+  y: TYPICAL_REFERENCE_HEIGHT / 2 - DEFAULT_IMAGE_SIZE.height / 2
+};
+
 type AnnotationPatch = Partial<Omit<AnnotationBase, 'id'>> &
   Partial<
     Pick<
@@ -43,7 +56,7 @@ type AnnotationPatch = Partial<Omit<AnnotationBase, 'id'>> &
     >
   > &
   Partial<Pick<ArrowAnnotation, 'to' | 'color' | 'thickness' | 'style'>> &
-  Partial<Pick<ImageAnnotation, 'assetPath'>>;
+  Partial<Pick<ImageAnnotation, 'assetPath' | 'size'>>;
 
 interface AnnotationsStoreState {
   annotations: Annotation[];
@@ -119,8 +132,9 @@ export const useAnnotationsStore = create<AnnotationsStoreState>(
           kind: 'image',
           atMs,
           durationMs: DEFAULT_ANNOTATION_DURATION_MS,
-          position: { ...DEFAULT_POSITION },
-          assetPath
+          position: { ...DEFAULT_IMAGE_POSITION },
+          assetPath,
+          size: { ...DEFAULT_IMAGE_SIZE }
         };
         set((state) => ({
           annotations: [...state.annotations, annotation],

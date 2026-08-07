@@ -119,7 +119,17 @@ export type AnnotationSceneData =
       headLengthPx: number;
       dashed: boolean;
     }
-  | { kind: 'image'; id: string; xPx: number; yPx: number; assetPath: string; scale: number };
+  | {
+      kind: 'image';
+      id: string;
+      xPx: number;
+      yPx: number;
+      assetPath: string;
+      /** Natural-size fallback multiplier, used only when `sizePx` is `null`. */
+      scale: number;
+      /** Explicit rendered size (already scaled), or `null` to use the asset's natural size * `scale`. */
+      sizePx: { width: number; height: number } | null;
+    };
 
 export interface CaptionSceneData {
   text: string;

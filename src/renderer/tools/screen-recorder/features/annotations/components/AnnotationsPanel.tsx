@@ -95,6 +95,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
             <ImageAnnotationEditor
               annotation={selected}
               onReplaceClick={() => fileInputRef.current?.click()}
+              onUpdate={(patch) => updateAnnotation(selected.id, patch)}
             />
           )}
         </div>

@@ -5,11 +5,13 @@ import { Button } from '@renderer/components/ui/Button';
 interface ImageAnnotationEditorProps {
   annotation: ImageAnnotation;
   onReplaceClick: () => void;
+  onUpdate: (patch: Partial<ImageAnnotation>) => void;
 }
 
 export function ImageAnnotationEditor({
   annotation,
-  onReplaceClick
+  onReplaceClick,
+  onUpdate
 }: ImageAnnotationEditorProps): JSX.Element {
   return (
     <div className="flex flex-col gap-2">
@@ -19,6 +21,11 @@ export function ImageAnnotationEditor({
       <Button variant="secondary" onClick={onReplaceClick} className="text-xs">
         Replace image…
       </Button>
+      {annotation.size && (
+        <Button variant="secondary" onClick={() => onUpdate({ size: null })} className="text-xs">
+          Reset size
+        </Button>
+      )}
     </div>
   );
 }

@@ -80,8 +80,9 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
     <UnderlineTab.Root
       value={activeTab}
       onValueChange={(value) => setActiveTab(value as RequestTabValue)}
+      className="flex flex-col min-h-0 flex-1"
     >
-      <UnderlineTab.List className="border-border border-b px-4">
+      <UnderlineTab.List className="border-border border-b px-4 shrink-0">
         <UnderlineTab.Item value="params">
           Params{activeParamCount > 0 ? ` (${activeParamCount})` : ''}
         </UnderlineTab.Item>
@@ -97,7 +98,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         <UnderlineTab.Indicator />
       </UnderlineTab.List>
 
-      <UnderlineTab.Panel value="params" className="max-h-40 overflow-auto p-2">
+      <UnderlineTab.Panel value="params" className="flex-1 min-h-0 overflow-auto p-2">
         <KeyValueEditor
           rows={params}
           onUpdate={onUpdateParam}
@@ -107,7 +108,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         />
       </UnderlineTab.Panel>
 
-      <UnderlineTab.Panel value="headers" className="max-h-40 overflow-auto p-2">
+      <UnderlineTab.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-2">
         <KeyValueEditor
           rows={headers}
           onUpdate={onUpdateHeader}
@@ -155,12 +156,15 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         )}
       </UnderlineTab.Panel>
 
-      <UnderlineTab.Panel value="auth" className="p-2">
+      <UnderlineTab.Panel value="auth" className="flex-1 min-h-0 overflow-auto p-2">
         <AuthEditor auth={auth} onChange={onAuthChange} />
       </UnderlineTab.Panel>
 
-      <UnderlineTab.Panel value="body" className="flex flex-col gap-2 p-2">
-        <div className="flex gap-3 text-[11px]">
+      <UnderlineTab.Panel
+        value="body"
+        className="flex-1 min-h-0 flex flex-col gap-2 p-2 overflow-auto"
+      >
+        <div className="flex gap-3 text-[11px] shrink-0">
           {BODY_TYPES.map((bt) => (
             <label
               key={bt.value}

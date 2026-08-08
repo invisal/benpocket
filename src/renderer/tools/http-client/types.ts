@@ -2,6 +2,7 @@ import type {
   HttpAuth,
   HttpBodyType,
   HttpMethod,
+  HttpResponsePayload,
   RequestProtocol
 } from '../../../preload/http-client/types';
 import type { KeyValueRow } from './lib/keyValueRows';
@@ -29,4 +30,7 @@ export interface PostmanTabSeed {
   /** For an unsaved tab opened via "new request in folder": where Save should target by default. */
   defaultCollectionId?: string;
   defaultFolderId?: string | null;
+  /** Set when this tab was opened from a saved example: preloads the response without sending, and identifies which example is active (for sidebar highlighting). Deliberately not bound via `savedCollectionId`/`savedRequestId` - editing an example view and Ctrl+S should save as a new request, not silently overwrite the parent. */
+  response?: HttpResponsePayload;
+  savedExampleId?: string;
 }

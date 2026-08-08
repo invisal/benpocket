@@ -17,6 +17,7 @@ import { ResponseInspector } from './components/ResponseInspector';
 import { WebSocketComposer } from './components/WebSocketComposer';
 import { WebSocketLog } from './components/WebSocketLog';
 import { SaveRequestPopover } from './components/SaveRequestPopover';
+import { SaveExamplePopover } from './components/SaveExamplePopover';
 import { EnvironmentSelector } from './components/EnvironmentSelector';
 import { CodeSnippetPopover } from './components/CodeSnippetPopover';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
@@ -250,7 +251,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
           >
             <FileText size={12} className={isActive ? 'text-accent' : 'text-zinc-600'} />
             <span className={cn('truncate max-w-30', isPreview && 'italic')}>{tab.title}</span>
-            {!tab.meta?.savedRequestId && (
+            {!tab.meta?.savedRequestId && !tab.meta?.savedExampleId && (
               <span
                 title="Not saved to a collection"
                 className="size-1.5 rounded-full bg-amber-500 shrink-0"
@@ -393,6 +394,18 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 body={client.http.state.body}
               />
             )}
+            {client.protocol === 'HTTP' && (
+              <SaveExamplePopover
+                binding={client.binding}
+                response={client.http.state.response}
+                method={client.http.state.method}
+                url={client.http.state.url}
+                headers={client.http.state.headers}
+                params={client.http.state.params}
+                bodyType={client.http.state.bodyType}
+                body={client.http.state.body}
+              />
+            )}
             <SaveRequestPopover
               tabTitle={tab?.title ?? 'New API Request'}
               protocol={client.protocol}
@@ -415,7 +428,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         </nav>
 
         <PillTab.Panel value="HTTP" className="flex flex-col gap-3 min-h-0 flex-1">
-          <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
             <RequestComposer
               method={client.http.state.method}
               onMethodChange={(method) => {

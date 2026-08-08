@@ -4,6 +4,7 @@ import type {
   ExportCollectionResult,
   HttpAuth,
   ImportCollectionResult,
+  SavedExample,
   SavedRequest
 } from '../../../../preload/http-client/types';
 import { assertOk } from '../lib/ipcResult';
@@ -23,6 +24,14 @@ interface CollectionsState {
   ) => Promise<void>;
   renameRequest: (collectionId: string, requestId: string, name: string) => Promise<void>;
   deleteRequest: (collectionId: string, requestId: string) => Promise<void>;
+  saveExample: (collectionId: string, requestId: string, example: SavedExample) => Promise<void>;
+  renameExample: (
+    collectionId: string,
+    requestId: string,
+    exampleId: string,
+    name: string
+  ) => Promise<void>;
+  deleteExample: (collectionId: string, requestId: string, exampleId: string) => Promise<void>;
   createFolder: (
     collectionId: string,
     parentFolderId: string | null,
@@ -92,6 +101,23 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
 
   deleteRequest: async (collectionId, requestId) => {
     assertOk(await window.api.collections.deleteRequest({ collectionId, requestId }));
+    await get().load();
+  },
+
+  saveExample: async (collectionId, requestId, example) => {
+    assertOk(await window.api.collections.saveExample({ collectionId, requestId, example }));
+    await get().load();
+  },
+
+  renameExample: async (collectionId, requestId, exampleId, name) => {
+    assertOk(
+      await window.api.collections.renameExample({ collectionId, requestId, exampleId, name })
+    );
+    await get().load();
+  },
+
+  deleteExample: async (collectionId, requestId, exampleId) => {
+    assertOk(await window.api.collections.deleteExample({ collectionId, requestId, exampleId }));
     await get().load();
   },
 

@@ -82,7 +82,7 @@ function createDefaultHttpState(tabId: string): HttpState {
     bodyType: seed?.bodyType ?? 'none',
     body: seed?.body ?? '',
     isLoading: false,
-    response: null
+    response: seed?.response ?? null
   };
 }
 

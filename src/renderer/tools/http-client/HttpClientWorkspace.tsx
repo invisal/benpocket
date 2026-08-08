@@ -237,8 +237,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                   disabled:
                     client.ws.state.status === 'CONNECTING' ||
                     (client.ws.state.status !== 'CONNECTED' && !client.ws.state.url.trim()),
-                  className:
-                    client.ws.state.status === 'CONNECTED' ? 'text-red-500' : 'text-blue-500'
+                  className: client.ws.state.status === 'CONNECTED' ? 'text-danger' : 'text-accent'
                 }
               : {
                   label: client.http.state.isLoading ? 'Sending...' : 'Send',

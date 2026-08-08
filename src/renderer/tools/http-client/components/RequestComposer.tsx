@@ -49,7 +49,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
 
   return (
     <div className="flex gap-2 shrink-0 px-3 py-0">
-      <div className="flex border border-border h-9 rounded flex-1 bg-gray-50">
+      <div className="flex border border-border h-9 rounded flex-1 bg-surface-2">
         <Menu.Root>
           <Menu.Trigger className="text-xs min-w-24 justify-between font-medium px-3 h-full flex items-center gap-1 border-r border-border cursor-pointer">
             <span>{selectedLabel}</span>
@@ -82,7 +82,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
           onClick={action.onClick}
           disabled={action.disabled}
           title={action.label}
-          className={`px-3 text-xs flex gap-1 items-center justify-center font-medium disabled:opacity-50 ${action.className ?? 'text-blue-500'}`}
+          className={`px-3 text-xs flex gap-1 items-center justify-center font-medium disabled:opacity-50 ${action.className ?? 'text-accent'}`}
         >
           {action.icon}
           <span>{action.label}</span>

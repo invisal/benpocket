@@ -1,10 +1,11 @@
 {
   "name": "benpocket",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "benpocket, a personal multi-purpose desktop toolkit (Swiss Army knife) combining small tools.",
   "main": "./out/main/index.js",
   "author": "https://benpocket.com",
   "homepage": "https://benpocket.com",
+  "desktopName": "benpocket.desktop",
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",

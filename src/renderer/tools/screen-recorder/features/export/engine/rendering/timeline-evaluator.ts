@@ -3,6 +3,12 @@ import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { findWallpaperPreset } from '@shared/wallpaper-presets';
 import { enrichWallpaperPreset } from '../../../background/lib/wave-wallpaper';
 import { findWallpaperImagePreset } from '../../../background/lib/wallpaper-images';
+import { resolveTextEntrance } from '../../../annotations/presets/text-animation-presets';
+import {
+  TEXT_BACKGROUND_PADDING_X,
+  TEXT_BACKGROUND_PADDING_Y,
+  TEXT_BACKGROUND_RADIUS
+} from '../../../annotations/store/annotations-store';
 import {
   sampleCursorPath,
   resolveClickBounceScale,
@@ -67,7 +73,11 @@ function resolveCursor(
   cursorHidden: boolean
 ): CursorSceneData | null {
   const { cursor, clickPath } = project;
-  if (!cursor.visible || cursorHidden || smoothedPath.length === 0) return null;
+  // Imported footage has no recorded cursor/click samples -- `smoothedPath`
+  // is already always empty for it, but check `source` explicitly too
+  // rather than relying only on that being incidentally true.
+  if (project.source === 'imported' || !cursor.visible || cursorHidden || smoothedPath.length === 0)
+    return null;
   const point = sampleCursorPath(smoothedPath, atMs);
   if (!point) return null;
 
@@ -168,18 +178,33 @@ function resolveAnnotations(
 ): AnnotationSceneData[] {
   const active: AnnotationSceneData[] = [];
   for (const annotation of project.annotations) {
+    if (!annotation.enabled) continue;
     if (atMs < annotation.atMs || atMs > annotation.atMs + annotation.durationMs) continue;
     const xPx = annotation.position.x * referenceScale;
     const yPx = annotation.position.y * referenceScale;
 
     if (annotation.kind === 'text') {
+      const entrance = resolveTextEntrance(
+        annotation.animationPreset,
+        atMs - annotation.atMs,
+        annotation.animationSpeed,
+        annotation.durationMs,
+        annotation.text
+      );
       active.push({
         kind: 'text',
         id: annotation.id,
         xPx,
-        yPx,
-        text: annotation.text,
-        fontPx: Math.round(28 * referenceScale)
+        yPx: yPx + entrance.offsetY * referenceScale,
+        text: entrance.revealedText,
+        fontPx: Math.round(annotation.fontSize * referenceScale),
+        color: annotation.color,
+        backgroundColor: annotation.backgroundColor,
+        backgroundPaddingXPx: TEXT_BACKGROUND_PADDING_X * referenceScale,
+        backgroundPaddingYPx: TEXT_BACKGROUND_PADDING_Y * referenceScale,
+        backgroundRadiusPx: TEXT_BACKGROUND_RADIUS * referenceScale,
+        alpha: entrance.alpha,
+        scale: entrance.scale
       });
     } else if (annotation.kind === 'arrow') {
       active.push({
@@ -201,7 +226,13 @@ function resolveAnnotations(
         xPx,
         yPx,
         assetPath: annotation.assetPath,
-        scale: referenceScale
+        scale: referenceScale,
+        sizePx: annotation.size
+          ? {
+              width: annotation.size.width * referenceScale,
+              height: annotation.size.height * referenceScale
+            }
+          : null
       });
     }
   }

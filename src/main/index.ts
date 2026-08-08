@@ -1,9 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, dialog, Menu, nativeImage } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
-import trayIcon from '../../resources/tray-icon-desktopTemplate.png?asset';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { registerHttpHandlers } from './http-client/ipc/http';
 import { registerOAuth2Handlers } from './http-client/ipc/oauth2';
@@ -18,6 +18,10 @@ import { registerEnvironmentTransferHandlers } from './http-client/ipc/environme
 import { registerWorkspaceHandlers } from './http-client/ipc/workspaces';
 import { registerIpcHandlers as registerScreenRecorderHandlers } from './screen-recorder/ipc/register-handlers';
 import { applyContentSecurityPolicy } from './screen-recorder/security/content-security-policy';
+import {
+  registerRecordingMediaScheme,
+  registerRecordingMediaHandler
+} from './screen-recorder/security/media-protocol';
 import { createAppTray, destroyTray, setTrayMainWindow } from './tray';
 import {
   registerGlobalShortcuts,
@@ -44,6 +48,9 @@ import { flushOnQuit, startTelemetrySender } from './telemetry/sender';
 // before the app is ready. A second launch (e.g. the OS re-invoking the app
 // to deliver a benpocket:// callback) now gets forwarded to this instance and
 // quits instead of opening a second window.
+// Also must run before app.whenReady() -- see registerRecordingMediaScheme's doc.
+registerRecordingMediaScheme();
+
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
@@ -150,6 +157,7 @@ if (gotSingleInstanceLock) {
     // (Vite HMR needs 'unsafe-eval' + a websocket connect-src) and production,
     // and needs media-src blob: for ScreenRecorder's recording preview.
     applyContentSecurityPolicy();
+    registerRecordingMediaHandler();
     // Screen Recorder: macOS 15+ ScreenCaptureKit system picker. No-op elsewhere.
     registerDisplayMediaHandler();
 
@@ -288,9 +296,35 @@ if (gotSingleInstanceLock) {
     startTelemetrySender();
     telemetryStore.enqueue({ event: 'app_opened' });
 
+    if (is.dev) {
+      if (process.platform === 'darwin') {
+        // In production the dock icon comes from the .app bundle; in dev there
+        // is no bundle, so Electron shows the generic Electron icon instead.
+        app.dock?.setIcon(nativeImage.createFromPath(icon));
+      } else if (process.platform === 'linux') {
+        // GNOME/Wayland resolves the panel icon via XDG app_id → .desktop file,
+        // not via BrowserWindow.icon. Install a minimal user-local entry so the
+        // pocket logo appears in the Activities dash during development.
+        const appsDir = path.join(os.homedir(), '.local', 'share', 'applications');
+        fs.mkdirSync(appsDir, { recursive: true });
+        const desktopFile = path.join(appsDir, 'benpocket.desktop');
+        fs.writeFileSync(
+          desktopFile,
+          [
+            '[Desktop Entry]',
+            'Type=Application',
+            'Name=benpocket (dev)',
+            `Icon=${icon}`,
+            'NoDisplay=true',
+            'StartupWMClass=benpocket'
+          ].join('\n') + '\n',
+          'utf-8'
+        );
+      }
+    }
+
     const mainWindow = createWindow();
-    const trayIcons = { trayTemplate: trayIcon, appIcon: icon };
-    createAppTray(trayIcons, mainWindow);
+    createAppTray(icon, mainWindow);
 
     // "Launch Recorder" OS-level shortcut -- works even while benpocket is
     // unfocused, unlike the in-app bindings under features/shortcuts.
@@ -300,7 +334,7 @@ if (gotSingleInstanceLock) {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
       if (BrowserWindow.getAllWindows().length === 0) {
-        createAppTray(trayIcons, createWindow());
+        createAppTray(icon, createWindow());
         return;
       }
       focusMainWindow();

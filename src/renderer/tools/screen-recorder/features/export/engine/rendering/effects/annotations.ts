@@ -4,7 +4,7 @@ import type { AnnotationSceneData } from '../types';
 type ArrowData = Extract<AnnotationSceneData, { kind: 'arrow' }>;
 
 type AnnotationHandle =
-  | { kind: 'text'; text: Text }
+  | { kind: 'text'; text: Text; background: Graphics }
   | { kind: 'arrow'; graphics: Graphics }
   | { kind: 'image'; sprite: Sprite; assetPath: string };
 
@@ -86,18 +86,45 @@ export class AnnotationsEffect {
       let handle = this.handles.get(annotation.id);
       if (!handle || handle.kind !== 'text') {
         if (handle) this.destroyHandle(handle);
+        const background = new Graphics();
         const text = new Text({
           text: annotation.text,
-          style: { fill: '#ffffff', fontFamily: 'sans-serif' }
+          style: { fill: annotation.color, fontFamily: 'sans-serif' },
+          // Left at its default (`null`), Text rasterizes its glyph texture
+          // at the renderer's own resolution -- pinned to 1 in
+          // pixi-scene-renderer.ts so exported pixel dimensions match
+          // width x height exactly, which left text visibly soft. This is
+          // a separate, independent knob: it only controls glyph texture
+          // density, not the final canvas size.
+          resolution: 2
         });
+        // Background added first so it draws behind the text.
+        this.parent.addChild(background);
         this.parent.addChild(text);
-        handle = { kind: 'text', text };
+        handle = { kind: 'text', text, background };
         this.handles.set(annotation.id, handle);
       }
       handle.text.text = annotation.text;
       handle.text.style.fontSize = annotation.fontPx;
+      handle.text.style.fill = annotation.color;
       handle.text.x = annotation.xPx;
       handle.text.y = annotation.yPx;
+      handle.text.alpha = annotation.alpha;
+      handle.text.scale.set(annotation.scale);
+
+      handle.background.clear();
+      if (annotation.backgroundColor) {
+        handle.background
+          .roundRect(
+            annotation.xPx - annotation.backgroundPaddingXPx,
+            annotation.yPx - annotation.backgroundPaddingYPx,
+            handle.text.width + annotation.backgroundPaddingXPx * 2,
+            handle.text.height + annotation.backgroundPaddingYPx * 2,
+            annotation.backgroundRadiusPx
+          )
+          .fill({ color: annotation.backgroundColor });
+      }
+      handle.background.alpha = annotation.alpha;
       return;
     }
 
@@ -129,14 +156,20 @@ export class AnnotationsEffect {
     }
     handle.sprite.x = annotation.xPx;
     handle.sprite.y = annotation.yPx;
-    handle.sprite.width = handle.sprite.texture.width * annotation.scale;
-    handle.sprite.height = handle.sprite.texture.height * annotation.scale;
+    handle.sprite.width = annotation.sizePx
+      ? annotation.sizePx.width
+      : handle.sprite.texture.width * annotation.scale;
+    handle.sprite.height = annotation.sizePx
+      ? annotation.sizePx.height
+      : handle.sprite.texture.height * annotation.scale;
   }
 
   private destroyHandle(handle: AnnotationHandle): void {
     if (handle.kind === 'text') {
       this.parent.removeChild(handle.text);
       handle.text.destroy();
+      this.parent.removeChild(handle.background);
+      handle.background.destroy();
     } else if (handle.kind === 'arrow') {
       this.parent.removeChild(handle.graphics);
       handle.graphics.destroy();

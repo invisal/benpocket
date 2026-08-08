@@ -8,6 +8,7 @@ import { Select } from '@renderer/components/ui/Select';
 import { useCropStore } from '../store/crop-store';
 import { beginGesture, endGesture } from '../../history/store/history-store';
 import { cn } from '../../../lib/utils';
+import { useIndependentObjectUrl } from '../../../lib/use-independent-object-url';
 
 type CropAspectId = 'free' | '16:9' | '9:16' | '1:1' | '4:3';
 
@@ -117,6 +118,8 @@ export function CropDialog({
   previewUrl,
   currentTimeMs
 }: CropDialogProps): JSX.Element {
+  const draftPreviewUrl = useIndependentObjectUrl(open ? previewUrl : null);
+
   const crop = useCropStore((s) => s.rect);
   const setCrop = useCropStore((s) => s.setCrop);
   const [draftRect, setDraftRect] = useState<CropRect>(crop ?? DEFAULT_RECT);
@@ -371,7 +374,7 @@ export function CropDialog({
           >
             <video
               ref={videoRef}
-              src={previewUrl}
+              src={draftPreviewUrl ?? undefined}
               muted
               playsInline
               className="pointer-events-none h-full w-full object-contain"

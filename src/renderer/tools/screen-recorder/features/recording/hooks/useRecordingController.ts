@@ -8,6 +8,7 @@ import { useZoomStore } from '../../zoom/store/zoom-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useCursorStore } from '../../cursor/store/cursor-store';
 import { parseWindowSourceId } from '@shared/window-source-id';
+import { toRecordingMediaUrl } from '@shared/media-protocol';
 
 export interface LiveCounts {
   cursorCount: number;
@@ -200,7 +201,6 @@ export function useRecordingController(): RecordingController {
     const zoomStore = useZoomStore.getState();
     zoomStore.setKeyframes(zoomStore.mode === 'auto' ? generateAutoZoomKeyframes(clickPath) : []);
 
-    const previewUrl = URL.createObjectURL(blob);
     const extension = fileExtensionForBlob(blob);
     const timestamp = Date.now();
     const fileName = `recording-${timestamp}.${extension}`;
@@ -218,11 +218,15 @@ export function useRecordingController(): RecordingController {
         console.error('[useRecordingController] failed to save recording to disk:', err);
       }
     }
+    // Points the editor at the saved file in place rather than an in-memory
+    // Blob URL -- see `toRecordingMediaUrl`'s doc. Only falls back to a Blob
+    // URL if the save above actually failed, so there's still *something*
+    // to preview for this session even though nothing was written to disk.
+    const previewUrl = filePath ? toRecordingMediaUrl(filePath) : URL.createObjectURL(blob);
 
     let webcamPreviewUrl: string | null = null;
     let webcamFilePath: string | null = null;
     if (webcamBlob) {
-      webcamPreviewUrl = URL.createObjectURL(webcamBlob);
       const webcamFileName = `recording-${timestamp}-webcam.${fileExtensionForBlob(webcamBlob)}`;
       try {
         const webcamArrayBuffer = await webcamBlob.arrayBuffer();
@@ -233,6 +237,9 @@ export function useRecordingController(): RecordingController {
       } catch (err) {
         console.error('[useRecordingController] failed to save webcam recording to disk:', err);
       }
+      webcamPreviewUrl = webcamFilePath
+        ? toRecordingMediaUrl(webcamFilePath)
+        : URL.createObjectURL(webcamBlob);
     }
 
     setLastRecording({
@@ -244,8 +251,14 @@ export function useRecordingController(): RecordingController {
       clickPath,
       webcamPreviewUrl,
       webcamFilePath,
-      webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0
+      webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0,
+      source: 'recorded'
     });
+    // A fresh recording is a new, unsaved project -- clear whatever project
+    // was open before "Return to Recorder" was clicked, same as
+    // import-video.ts does for imports, so "Save" can't silently overwrite
+    // it instead of creating a new one.
+    useAppStore.setState({ currentProjectId: null, projectName: 'Untitled Recording' });
     setRoute('editor');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

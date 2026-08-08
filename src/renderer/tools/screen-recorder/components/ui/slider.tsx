@@ -36,6 +36,7 @@ export function Slider({ value, min, max, step, onChange, className }: SliderPro
     beginGesture();
     window.addEventListener('pointerup', endDragGesture, { once: true });
   }
+  const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
 
   return (
     <input
@@ -47,9 +48,12 @@ export function Slider({ value, min, max, step, onChange, className }: SliderPro
       onChange={(e) => onChange(Number(e.target.value))}
       onPointerDown={handlePointerDown}
       className={cn(
-        'h-1 w-full cursor-pointer appearance-none rounded-full bg-surface-3 accent-accent',
+        'h-1 w-full cursor-pointer appearance-none rounded-full accent-accent',
         className
       )}
+      style={{
+        background: `linear-gradient(to right, var(--color-accent) ${percent}%, var(--color-surface-3) ${percent}%)`
+      }}
     />
   );
 }

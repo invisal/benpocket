@@ -54,12 +54,22 @@ export interface AnnotationBase {
   atMs: number;
   durationMs: number;
   position: { x: number; y: number };
+  /** Off but not deleted -- skipped entirely in both the editor preview and export, same as `ZoomKeyframe.enabled`. */
+  enabled: boolean;
 }
 
 export interface TextAnnotation extends AnnotationBase {
   kind: 'text';
   text: string;
   animationPreset: string;
+  /** Multiplier applied to the entrance/exit animation's own duration -- 1 = normal speed, 2 = twice as fast. */
+  animationSpeed: number;
+  /** CSS hex color for the text fill. */
+  color: string;
+  /** CSS hex color for the pill behind the text, or `null` for no background. */
+  backgroundColor: string | null;
+  /** Font size, in `REFERENCE_CANVAS_WIDTH` units (same convention as position/thickness). */
+  fontSize: number;
 }
 
 export interface ArrowAnnotation extends AnnotationBase {
@@ -75,6 +85,8 @@ export interface ArrowAnnotation extends AnnotationBase {
 export interface ImageAnnotation extends AnnotationBase {
   kind: 'image';
   assetPath: string;
+  /** Rendered size, in REFERENCE_CANVAS_WIDTH units -- `null` means "use the image's natural size" (new annotations start with an explicit default instead, see DEFAULT_IMAGE_SIZE; `null` is reachable again via "Reset size"). */
+  size: { width: number; height: number } | null;
 }
 
 export type Annotation = TextAnnotation | ArrowAnnotation | ImageAnnotation;
@@ -104,6 +116,8 @@ export interface Project {
   name: string;
   createdAt: number;
   updatedAt: number;
+  /** Which flow produced this project -- 'recorded' projects own their video files (deleting the project deletes them too); 'imported' projects merely reference a file the user owns elsewhere on disk, which delete must never touch. */
+  source: 'recorded' | 'imported';
   sourceVideoPath: string;
   durationMs: number;
   tracks: TimelineTrack[];
@@ -123,6 +137,8 @@ export interface Project {
   annotations: Annotation[];
   blurMasks: BlurMaskRegion[];
   motionBlur: boolean;
+  /** Single crop for the whole recording, or `null` for none -- see `useCropStore`. */
+  crop: CropRect | null;
 }
 
 /** Lightweight listing entry for `project:list` -- just enough to render a picker, without reading every project's full tracks/annotations/paths off disk. */
@@ -133,4 +149,5 @@ export interface ProjectSummary {
   updatedAt: number;
   durationMs: number;
   sourceVideoPath: string;
+  source: 'recorded' | 'imported';
 }

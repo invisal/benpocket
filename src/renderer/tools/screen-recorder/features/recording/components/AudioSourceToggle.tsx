@@ -2,13 +2,7 @@ import type { JSX } from 'react';
 import { useRecordingStore } from '../store/recording-store';
 import { Switch } from '../../../components/ui/switch';
 import { SettingsRow } from '../../../components/ui/settings-row';
-
-// Best-effort platform sniff purely for the UI caveat below -- system audio
-// loopback via getUserMedia({ audio: { mandatory: { chromeMediaSource:
-// 'desktop' } } }) only reliably captures anything on Windows/Linux. On
-// macOS it typically records silence without a virtual audio driver; see
-// main/capture/system-audio-capture.ts.
-const isLikelyMac = navigator.userAgent.includes('Mac');
+import { isLikelyMac } from '../../../lib/platform';
 
 // TODO: microphone device select dropdown (enumerateDevices, filter kind
 // 'audioinput')
@@ -28,6 +22,11 @@ export function AudioSourceToggle(): JSX.Element {
       <SettingsRow
         title="System audio"
         description={
+          // System audio loopback via getUserMedia({ audio: { mandatory: {
+          // chromeMediaSource: 'desktop' } } }) only reliably captures
+          // anything on Windows/Linux -- on macOS it typically records
+          // silence without a virtual audio driver; see
+          // main/capture/system-audio-capture.ts.
           audio.systemAudioEnabled && isLikelyMac
             ? 'Unreliable on macOS without a virtual audio driver -- this may record silence.'
             : 'Record audio playing on your computer.'

@@ -7,7 +7,7 @@ import type {
 } from '@screen-recorder/types/recording';
 import type { Project, ProjectSummary, CursorPathPoint } from '@screen-recorder/types/project';
 import type { ExportFormat } from '@screen-recorder/types/export';
-import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
+import type { MicrophoneStatus, ScreenRecordingStatus } from '@screen-recorder/types/permissions';
 import type {
   ScreenRect,
   CaptureRegionSelection,
@@ -103,6 +103,9 @@ export const screenRecorderApi = {
     /** Reads a local file's raw bytes for the in-renderer WebCodecs export pipeline (feeding the WASM demuxer) -- unbounded, unlike file-explorer's preview-scoped binary read. */
     readFileBytes: (filePath: string): Promise<ArrayBuffer> =>
       ipcRenderer.invoke(IpcChannels.ExportReadFileBytes, filePath),
+    /** Cheap stat -- see ExportGetFileSize's doc in export-handlers.ts. */
+    getFileSize: (filePath: string): Promise<number> =>
+      ipcRenderer.invoke(IpcChannels.ExportGetFileSize, filePath),
     /** Writes the finished export's bytes to the already-chosen output path (see dialog.showSaveExportPath). */
     writeFileBytes: (filePath: string, data: ArrayBuffer): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.ExportWriteFileBytes, filePath, data),
@@ -145,7 +148,11 @@ export const screenRecorderApi = {
     getScreenRecordingStatus: (): Promise<ScreenRecordingStatus> =>
       ipcRenderer.invoke(IpcChannels.GetScreenRecordingStatus),
     openScreenRecordingSettings: (): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.OpenScreenRecordingSettings)
+      ipcRenderer.invoke(IpcChannels.OpenScreenRecordingSettings),
+    getMicrophoneStatus: (): Promise<MicrophoneStatus> =>
+      ipcRenderer.invoke(IpcChannels.GetMicrophoneStatus),
+    openMicrophoneSettings: (): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.OpenMicrophoneSettings)
   },
   dialog: {
     showSaveExportPath: (defaultFileName: string, format: ExportFormat): Promise<string | null> =>
@@ -158,10 +165,6 @@ export const screenRecorderApi = {
     getBootedName: (): Promise<string | null> => ipcRenderer.invoke(IpcChannels.GetBootedSimulator)
   },
   tray: {
-    /** Creates the tray icon, if it doesn't already exist. */
-    register: (): Promise<void> => ipcRenderer.invoke(IpcChannels.TrayRegister),
-    /** Destroys the tray icon, if one exists. */
-    unregister: (): Promise<void> => ipcRenderer.invoke(IpcChannels.TrayUnregister),
     onOpenRecordPicker: (callback: () => void): (() => void) => {
       const listener = (): void => callback();
       ipcRenderer.on(IpcChannels.TrayOpenRecordPicker, listener);
@@ -171,6 +174,11 @@ export const screenRecorderApi = {
       const listener = (_event: unknown, source: CaptureSource): void => callback(source);
       ipcRenderer.on(IpcChannels.TraySourceSelected, listener);
       return () => ipcRenderer.removeListener(IpcChannels.TraySourceSelected, listener);
+    },
+    onOpenTool: (callback: (tool: string) => void): (() => void) => {
+      const listener = (_event: unknown, tool: string): void => callback(tool);
+      ipcRenderer.on(IpcChannels.TrayOpenTool, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.TrayOpenTool, listener);
     }
   },
   screenshot: {

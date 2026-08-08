@@ -10,8 +10,11 @@ import { useCaptionsStore } from '../../captions/store/captions-store';
 
 /**
  * Assembles a `Project` snapshot from the live editor stores at export time.
- * There is no persisted Project object today (project:open/save are stubs),
- * so this is the only place the shared Project shape gets populated.
+ * `crop` is deliberately left `null` here -- `useExportAction.ts` reads
+ * `useCropStore` directly and passes it as its own top-level argument to
+ * `runExport`, alongside (not inside) this `Project`, since the export
+ * pipeline needs it before rendering starts, not as part of the timeline
+ * content this snapshot otherwise describes.
  */
 export function buildExportProject(sourceVideoPath: string, durationMs: number): Project {
   const { projectName, lastRecording } = useAppStore.getState();
@@ -30,6 +33,7 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
     name: projectName,
     createdAt: now,
     updatedAt: now,
+    source: lastRecording?.source ?? 'recorded',
     sourceVideoPath,
     durationMs,
     tracks: [],
@@ -71,6 +75,7 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
     },
     annotations,
     blurMasks,
-    motionBlur: false
+    motionBlur: false,
+    crop: null
   };
 }

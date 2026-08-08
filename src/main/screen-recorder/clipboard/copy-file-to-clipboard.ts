@@ -24,7 +24,13 @@ function escapeAppleScriptString(value: string): string {
 }
 
 async function writeMac(filePath: string): Promise<void> {
-  const script = `set the clipboard to {POSIX file "${escapeAppleScriptString(filePath)}"}`;
+  // No `{...}` list-wrapping around `POSIX file` -- that puts a `list` class
+  // on the clipboard (an AppleScript list containing one file), which Finder
+  // and other apps don't recognize as a pasteable file at all. The bare
+  // form's clipboard class is `furl` (file URL), which is what actually
+  // pastes as the real file -- verified directly with `osascript -e
+  // 'clipboard info'` after each form.
+  const script = `set the clipboard to POSIX file "${escapeAppleScriptString(filePath)}"`;
   await execFileAsync('osascript', ['-e', script]);
 }
 

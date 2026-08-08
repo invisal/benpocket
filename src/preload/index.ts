@@ -7,6 +7,7 @@ import { fileExplorerApi } from './file-explorer/api';
 import { profilesApi } from './store/api';
 import { authApi } from './auth/api';
 import { updaterApi } from './updater/api';
+import { telemetryApi } from './telemetry/api';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 // Custom APIs for renderer
@@ -33,6 +34,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('profiles', profilesApi);
     contextBridge.exposeInMainWorld('auth', authApi);
     contextBridge.exposeInMainWorld('updater', updaterApi);
+    contextBridge.exposeInMainWorld('telemetry', telemetryApi);
   } catch (error) {
     console.error(error);
   }
@@ -53,4 +55,6 @@ if (process.contextIsolated) {
   window.auth = authApi;
   // @ts-ignore (define in dts)
   window.updater = updaterApi;
+  // @ts-ignore (define in dts)
+  window.telemetry = telemetryApi;
 }

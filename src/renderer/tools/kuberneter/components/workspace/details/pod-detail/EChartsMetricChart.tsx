@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import * as echarts from '../../../../lib/echarts';
+import type { EChartsOption } from '../../../../lib/echarts';
 
 export interface ChartSeries {
   name: string;
@@ -40,7 +41,7 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
       computedStyle.getPropertyValue('--color-muted-foreground').trim() || '#a1a1aa';
     const gridLineColor = computedStyle.getPropertyValue('--color-border').trim() || '#27272a';
 
-    const option: echarts.EChartsOption = {
+    const option: EChartsOption = {
       backgroundColor: 'transparent',
       title: title
         ? {

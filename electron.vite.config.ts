@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { version } from './package.json';
 
 export default defineConfig({
@@ -11,7 +12,8 @@ export default defineConfig({
         '@shared': resolve('src/shared'),
         '@screen-recorder': resolve('src/renderer/tools/screen-recorder')
       }
-    }
+    },
+    plugins: [visualizer({ filename: 'stats-main.html', template: 'treemap', gzipSize: true })]
   },
   preload: {
     resolve: {
@@ -19,7 +21,8 @@ export default defineConfig({
         '@shared': resolve('src/shared'),
         '@screen-recorder': resolve('src/renderer/tools/screen-recorder')
       }
-    }
+    },
+    plugins: [visualizer({ filename: 'stats-preload.html', template: 'treemap', gzipSize: true })]
   },
   renderer: {
     resolve: {
@@ -37,6 +40,21 @@ export default defineConfig({
           recorderToolbar: resolve('src/renderer/recorder-toolbar.html'),
           recordingRegionFrame: resolve('src/renderer/recording-region-frame.html'),
           sourcePickerOverlay: resolve('src/renderer/source-picker-overlay.html')
+        },
+        output: {
+          chunkFileNames: (chunk) => {
+            const ids = [chunk.facadeModuleId, ...chunk.moduleIds].filter(
+              (id): id is string => id !== null
+            );
+            const toolNames = new Set(
+              ids
+                .map((id) => id.match(/[\\/]tools[\\/]([^\\/]+)[\\/]/)?.[1])
+                .filter((name): name is string => name !== undefined)
+            );
+            return toolNames.size === 1
+              ? `assets/tool-${[...toolNames][0]}-[hash].js`
+              : 'assets/[name]-[hash].js';
+          }
         }
       }
     },
@@ -59,6 +77,10 @@ export default defineConfig({
     define: {
       __APP_VERSION__: JSON.stringify(version)
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [
+      react(),
+      tailwindcss(),
+      visualizer({ filename: 'stats-renderer.html', template: 'treemap', gzipSize: true })
+    ]
   }
 });

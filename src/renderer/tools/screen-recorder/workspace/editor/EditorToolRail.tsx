@@ -6,14 +6,21 @@ import { EDITOR_TOOLS, type EditorTool } from './editorTools';
 interface EditorToolRailProps {
   active: EditorTool | null;
   onSelect: (tool: EditorTool) => void;
+  /** Imported footage has no recorded cursor/click samples, so the Cursor tool has nothing to control -- hide its tab entirely rather than leave it open with no real effect. */
+  isImportedProject: boolean;
 }
 
 /** No background/rounding of its own -- shares one bg-surface card with `EditorToolPanel` (see EditorPage.tsx), separated from it by a single border line rather than a gap. */
-export function EditorToolRail({ active, onSelect }: EditorToolRailProps): JSX.Element {
+export function EditorToolRail({
+  active,
+  onSelect,
+  isImportedProject
+}: EditorToolRailProps): JSX.Element {
+  const tools = isImportedProject ? EDITOR_TOOLS.filter((t) => t.id !== 'cursor') : EDITOR_TOOLS;
   return (
     <Tooltip.Provider delay={200} closeDelay={0}>
       <nav className="flex w-11 shrink-0 flex-col items-center gap-0.5 py-3">
-        {EDITOR_TOOLS.map((tool) => {
+        {tools.map((tool) => {
           const Icon = tool.icon;
           const isActive = active === tool.id;
           return (

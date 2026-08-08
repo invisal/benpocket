@@ -3,7 +3,7 @@ import { Clapperboard, Copy, Download, Maximize2, SlidersHorizontal, Timer, X } 
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Select } from '@renderer/components/ui/Select';
 import { Button } from '@renderer/components/ui/Button';
-import { Tabs } from '@renderer/components/ui/Tabs';
+import { UnderlineTab } from '@renderer/components/ui/Tabs';
 import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { useExportStore } from '../store/export-store';
@@ -147,7 +147,7 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
       <Dialog.Content size="large" showClose={!isExporting}>
         <div className="grid grid-cols-2 gap-6">
           <Field icon={<Clapperboard size={13} />} label="Export as">
-            <Tabs.Root
+            <UnderlineTab.Root
               value={store.format}
               onValueChange={(value) => {
                 const format = value as 'mp4' | 'gif';
@@ -155,14 +155,19 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
                 if (format === 'mp4') store.setCodec('h264');
               }}
             >
-              <Tabs.List>
+              <UnderlineTab.List className="border-b border-border-dark">
                 {FORMAT_CHOICES.map((choice) => (
-                  <Tabs.Tab key={choice.format} value={choice.format} disabled={isExporting}>
+                  <UnderlineTab.Item
+                    key={choice.format}
+                    value={choice.format}
+                    disabled={isExporting}
+                  >
                     {choice.label}
-                  </Tabs.Tab>
+                  </UnderlineTab.Item>
                 ))}
-              </Tabs.List>
-            </Tabs.Root>
+                <UnderlineTab.Indicator />
+              </UnderlineTab.List>
+            </UnderlineTab.Root>
           </Field>
 
           <Field icon={<Timer size={13} />} label="Frame rate">
@@ -206,21 +211,22 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
           </Field>
 
           <Field icon={<SlidersHorizontal size={13} />} label="Quality (Compression level)">
-            <Tabs.Root
+            <UnderlineTab.Root
               value={selectedQuality.label}
               onValueChange={(value) => {
                 const choice = QUALITY_CHOICES.find((c) => c.label === value);
                 if (choice) store.setQuality(choice.quality);
               }}
             >
-              <Tabs.List>
+              <UnderlineTab.List className="border-b border-border-dark">
                 {QUALITY_CHOICES.map((choice) => (
-                  <Tabs.Tab key={choice.label} value={choice.label} disabled={isExporting}>
+                  <UnderlineTab.Item key={choice.label} value={choice.label} disabled={isExporting}>
                     {choice.label}
-                  </Tabs.Tab>
+                  </UnderlineTab.Item>
                 ))}
-              </Tabs.List>
-            </Tabs.Root>
+                <UnderlineTab.Indicator />
+              </UnderlineTab.List>
+            </UnderlineTab.Root>
             <p className="mt-1.5 text-xs text-muted-foreground">{selectedQuality.description}</p>
           </Field>
         </div>

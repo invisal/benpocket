@@ -43,6 +43,8 @@ export const TitleBar: React.FC = () => {
         <div className="flex items-center h-full mr-1 gap-0.5">
           {/* Theme Toggle */}
           <button
+            type="button"
+            tabIndex={-1}
             onClick={toggleTheme}
             title="Toggle Light/Dark Theme"
             className="w-8 h-6.5 rounded hover:bg-border-dark flex items-center justify-center transition-colors cursor-pointer border-none bg-transparent text-zinc-500 hover:text-zinc-200"
@@ -55,18 +57,24 @@ export const TitleBar: React.FC = () => {
         {!isMac && (
           <div className="flex items-center h-full border-l border-border-dark/60 pl-1">
             <button
+              type="button"
+              tabIndex={-1}
               onClick={handleMinimize}
               className="w-11 h-8 hover:bg-border-dark flex items-center justify-center transition-colors text-zinc-500 hover:text-zinc-200"
             >
               <Minus size={14} />
             </button>
             <button
+              type="button"
+              tabIndex={-1}
               onClick={handleMaximize}
               className="w-11 h-8 hover:bg-border-dark flex items-center justify-center transition-colors text-zinc-500 hover:text-zinc-200"
             >
               {isMaximized ? <Copy size={11} /> : <Square size={11} />}
             </button>
             <button
+              type="button"
+              tabIndex={-1}
               onClick={handleClose}
               className="w-11 h-8 hover:bg-red-500/90 flex items-center justify-center transition-colors text-zinc-500 hover:text-[#fff]"
             >

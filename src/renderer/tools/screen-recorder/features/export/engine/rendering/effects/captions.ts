@@ -11,7 +11,10 @@ export class CaptionEffect {
   private readonly background = new Graphics();
   private readonly text = new Text({
     text: '',
-    style: { fill: '#ffffff', fontFamily: 'sans-serif', align: 'center' }
+    style: { fill: '#ffffff', fontFamily: 'sans-serif', align: 'center' },
+    // See the matching comment in effects/annotations.ts -- without this,
+    // Text rasterizes at the renderer's pinned resolution:1 and looks soft.
+    resolution: 2
   });
 
   constructor(parent: Container) {

@@ -36,7 +36,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
   const variables = useActiveEnvironmentVariables();
 
   return (
-    <div className="flex gap-2 shrink-0">
+    <div className="flex gap-2 shrink-0 px-4 py-0">
       <Select.Root value={method} onValueChange={(value) => onMethodChange(value as HttpMethod)}>
         <Select.Trigger>
           <Select.Value />

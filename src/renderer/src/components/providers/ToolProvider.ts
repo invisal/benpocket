@@ -7,7 +7,8 @@ function createInitialTabs() {
 
 const tools = createTabProvider(allTools, {
   storageKey: 'craftbox-tool-tabs',
-  initialTabs: createInitialTabs
+  initialTabs: createInitialTabs,
+  onTabActivated: (tool) => window.telemetry.send({ event: 'tool_opened', tool })
 });
 
 export const useToolTabs = tools.useTabs;

@@ -6,6 +6,7 @@ import type { FileExplorerApi } from './file-explorer/api';
 import type { ProfilesApi } from './store/api';
 import type { AuthApi } from './auth/api';
 import type { UpdaterApi } from './updater/api';
+import type { TelemetryApi } from './telemetry/api';
 
 interface FileTreeNode {
   name: string;
@@ -23,6 +24,7 @@ declare global {
     profiles: ProfilesApi;
     auth: AuthApi;
     updater: UpdaterApi;
+    telemetry: TelemetryApi;
     api: {
       platform: string;
       /** Linux Wayland — PipeWire portal picker instead of in-app source grid. */

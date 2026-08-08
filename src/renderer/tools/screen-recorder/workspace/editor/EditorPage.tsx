@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../app/app-store';
 import {
   useTimelineStore,
@@ -26,6 +26,7 @@ import { useUndoRedoShortcuts } from './hooks/use-undo-redo-shortcuts';
 
 export function EditorPage(): JSX.Element {
   const lastRecording = useAppStore((state) => state.lastRecording);
+  const isOpeningProject = useAppStore((state) => state.isOpeningProject);
   const toolPanelWidth = useAppStore((state) => state.toolPanelWidth);
   const setToolPanelWidth = useAppStore((state) => state.setToolPanelWidth);
 
@@ -63,7 +64,16 @@ export function EditorPage(): JSX.Element {
   });
   useUndoRedoShortcuts({ undo, redo });
 
-  if (!lastRecording) {
+  // Imported footage never has recorded cursor/click samples, so the Cursor
+  // tool has nothing real to show or control -- its tab is hidden below.
+  // Steer away from it here too, for whichever project was open (or tab was
+  // selected) right before this one loaded.
+  const isImportedProject = lastRecording?.source === 'imported';
+  useEffect(() => {
+    if (isImportedProject && activeTool === 'cursor') setActiveTool('background');
+  }, [isImportedProject, activeTool, setActiveTool]);
+
+  if (!lastRecording && !isOpeningProject) {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
         <p className="text-sm text-muted-foreground">
@@ -80,12 +90,12 @@ export function EditorPage(): JSX.Element {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 gap-1.5">
+    <div className="flex min-h-0 flex-1 gap-1 dark:gap-1.5">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface">
         <PreviewStage
-          key={lastRecording.previewUrl}
+          key={lastRecording?.previewUrl}
           videoRef={videoRef}
-          previewUrl={lastRecording.previewUrl}
+          previewUrl={lastRecording?.previewUrl}
           isPlaying={isPlaying}
           videoError={videoError}
           currentTimeMs={currentTimeMs}
@@ -107,7 +117,7 @@ export function EditorPage(): JSX.Element {
         />
       </div>
 
-      {sourceResolution && (
+      {sourceResolution && lastRecording && (
         <CropDialog
           key={String(isCropDialogOpen)}
           open={isCropDialogOpen}
@@ -132,17 +142,23 @@ export function EditorPage(): JSX.Element {
           <EditorToolRail
             active={activeTool}
             onSelect={(tool) => setActiveTool(activeTool === tool ? null : tool)}
+            isImportedProject={isImportedProject}
           />
           <EditorToolPanel
             tool={activeTool}
             currentTimeMs={currentTimeMs}
             sourceResolution={sourceResolution}
             selectedSegment={selectedSegment}
+            isImportedProject={isImportedProject}
           />
         </ResizablePanel>
       ) : (
         <div className="flex shrink-0 overflow-hidden rounded-lg border border-line bg-surface">
-          <EditorToolRail active={activeTool} onSelect={(tool) => setActiveTool(tool)} />
+          <EditorToolRail
+            active={activeTool}
+            onSelect={(tool) => setActiveTool(tool)}
+            isImportedProject={isImportedProject}
+          />
         </div>
       )}
     </div>

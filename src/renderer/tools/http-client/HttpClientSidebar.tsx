@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
+import { cn } from 'cnfast';
 import {
   ChevronDown,
   ChevronLeft,
@@ -20,16 +21,19 @@ import {
   Waves,
   X
 } from 'lucide-react';
-import { usePostmanTabsStore } from './store/tabs.store';
+import { usePostmanTabsStore, type PostmanTab } from './store/tabs.store';
 import { useCollectionsStore } from './store/collections.store';
 import { useEnvironmentsStore } from './store/environments.store';
 import { disposeApiClientTab } from './hooks/useApiClient';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
+import { EnvironmentSelector } from './components/EnvironmentSelector';
 import { AuthorizationDialog } from './components/AuthorizationDialog';
+import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import type {
   Collection,
   CollectionFolder,
   HttpAuth,
+  HttpMethod,
   SavedRequest
 } from '../../../preload/http-client/types';
 import type { PostmanTabSeed } from './types';
@@ -107,8 +111,167 @@ const RequestMethodBadge: React.FC<{ request: SavedRequest }> = ({ request }) =>
   );
 };
 
+/** Method/protocol badge for an open tab, mirroring `RequestMethodBadge` but reading off the tab's seed data. */
+const TabMethodBadge: React.FC<{ tab: PostmanTab }> = ({ tab }) => {
+  if (tab.meta?.protocol === 'WEBSOCKET') {
+    return (
+      <span
+        title="WebSocket request"
+        className={`flex items-center justify-center px-1 py-0.5 rounded shrink-0 ${methodBadgeClass('WEBSOCKET')}`}
+      >
+        <Waves size={9} strokeWidth={3} />
+      </span>
+    );
+  }
+  const method: HttpMethod = tab.meta?.method ?? 'GET';
+  return (
+    <span
+      className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(method)}`}
+    >
+      {method}
+    </span>
+  );
+};
+
+interface OpenTabItemProps {
+  tab: PostmanTab;
+  isActive: boolean;
+  /** Shown in italic and reused by the next preview-mode open, Postman/VS Code-style. */
+  isPreview: boolean;
+  canCloseOthers: boolean;
+  onActivate: () => void;
+  onClose: () => void;
+  onCloseOthers: () => void;
+  onCloseAll: () => void;
+  onRename: (title: string) => void;
+  /** Promotes this tab out of preview mode into a permanent one. */
+  onPin: () => void;
+}
+
+const OpenTabItem: React.FC<OpenTabItemProps> = ({
+  tab,
+  isActive,
+  isPreview,
+  canCloseOthers,
+  onActivate,
+  onClose,
+  onCloseOthers,
+  onCloseAll,
+  onRename,
+  onPin
+}) => {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(tab.title);
+
+  const startRenaming = (): void => {
+    onPin();
+    setDraftTitle(tab.title);
+    setIsRenaming(true);
+  };
+
+  const commitRename = (): void => {
+    setIsRenaming(false);
+    const trimmed = draftTitle.trim();
+    if (trimmed && trimmed !== tab.title) onRename(trimmed);
+  };
+
+  if (isRenaming) {
+    return (
+      <div className="flex items-center gap-2 p-1.5 rounded border border-accent bg-surface-3">
+        <TabMethodBadge tab={tab} />
+        <input
+          type="text"
+          autoFocus
+          value={draftTitle}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename();
+            if (e.key === 'Escape') {
+              setDraftTitle(tab.title);
+              setIsRenaming(false);
+            }
+          }}
+          className="flex-1 bg-transparent text-xs text-zinc-200 focus:outline-none min-w-0"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger
+        render={
+          <div
+            onClick={onActivate}
+            onDoubleClick={startRenaming}
+            title={
+              isPreview
+                ? 'Preview tab · double-click to keep open, or edit the request'
+                : 'Double-click to rename · Right-click for more options'
+            }
+            className={cn(
+              'flex items-center gap-2 p-1.5 rounded text-xs cursor-pointer border transition-all group',
+              isActive
+                ? 'bg-accent/10 border-accent/60'
+                : 'bg-surface-3/40 border-transparent hover:border-border-dark'
+            )}
+          >
+            <TabMethodBadge tab={tab} />
+            <span
+              className={cn(
+                'flex-1 truncate',
+                isActive ? 'text-foreground' : 'text-zinc-300 group-hover:text-foreground',
+                isPreview && 'italic'
+              )}
+            >
+              {tab.title}
+            </span>
+            {!tab.meta?.savedRequestId && (
+              <span
+                title="Not saved to a collection"
+                className="size-1.5 rounded-full bg-amber-500 shrink-0"
+              />
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              title="Close tab"
+              className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-555 opacity-0 group-hover:opacity-100 hover:text-foreground shrink-0"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        }
+      />
+      <ContextMenu.Content>
+        {isPreview && <ContextMenu.Item onClick={onPin}>Keep Tab Open</ContextMenu.Item>}
+        <ContextMenu.Item onClick={startRenaming}>Rename</ContextMenu.Item>
+        <ContextMenu.Separator />
+        <ContextMenu.Item onClick={onClose}>Close</ContextMenu.Item>
+        <ContextMenu.Item onClick={onCloseOthers} disabled={!canCloseOthers}>
+          Close Others
+        </ContextMenu.Item>
+        <ContextMenu.Item onClick={onCloseAll}>Close All</ContextMenu.Item>
+      </ContextMenu.Content>
+    </ContextMenu.Root>
+  );
+};
+
 export const HttpClientSidebar: React.FC = () => {
-  const { tabs, activeTabId, openTab, openNewRequestTab } = usePostmanTabsStore();
+  const {
+    tabs,
+    activeTabId,
+    previewTabId,
+    openTab,
+    openNewRequestTab,
+    setActiveTabId,
+    closeTab,
+    renameTab,
+    pinTab
+  } = usePostmanTabsStore();
   const {
     collections,
     isLoaded,
@@ -301,6 +464,21 @@ export const HttpClientSidebar: React.FC = () => {
     setStatusMessage({ type: 'error', text });
   };
 
+  const handleCloseTab = (id: string): void => {
+    closeTab(id);
+    disposeApiClientTab(id);
+  };
+
+  const handleCloseOtherTabs = (keepId: string): void => {
+    for (const t of tabs) {
+      if (t.id !== keepId) handleCloseTab(t.id);
+    }
+  };
+
+  const handleCloseAllTabs = (): void => {
+    for (const t of tabs) handleCloseTab(t.id);
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -321,6 +499,33 @@ export const HttpClientSidebar: React.FC = () => {
         <Send size={12} className="text-zinc-500" />
         <span>New Request</span>
       </button>
+
+      <EnvironmentSelector />
+
+      {tabs.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-[10px] font-semibold text-zinc-500">OPEN TABS</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {tabs.map((tab) => (
+              <OpenTabItem
+                key={tab.id}
+                tab={tab}
+                isActive={tab.id === activeTabId}
+                isPreview={tab.id === previewTabId}
+                canCloseOthers={tabs.length > 1}
+                onActivate={() => setActiveTabId(tab.id)}
+                onClose={() => handleCloseTab(tab.id)}
+                onCloseOthers={() => handleCloseOtherTabs(tab.id)}
+                onCloseAll={handleCloseAllTabs}
+                onRename={(title) => renameTab(tab.id, title)}
+                onPin={() => pinTab(tab.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between mt-2">

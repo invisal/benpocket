@@ -46,7 +46,11 @@ export function applyContentSecurityPolicy(): void {
       ].join('; ')
     : [
         "default-src 'self'",
-        "script-src 'self'",
+        // 'wasm-unsafe-eval' is required for WebAssembly.instantiate()
+        // (the export pipeline's WASM demuxer/encoder) -- 'unsafe-eval'
+        // isn't granted here, and script-src falling back to default-src
+        // doesn't cover it either.
+        "script-src 'self' 'wasm-unsafe-eval'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: http: https:",
         `media-src ${mediaSrc}`,

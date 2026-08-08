@@ -116,6 +116,8 @@ export interface Project {
   name: string;
   createdAt: number;
   updatedAt: number;
+  /** Which flow produced this project -- 'recorded' projects own their video files (deleting the project deletes them too); 'imported' projects merely reference a file the user owns elsewhere on disk, which delete must never touch. */
+  source: 'recorded' | 'imported';
   sourceVideoPath: string;
   durationMs: number;
   tracks: TimelineTrack[];
@@ -147,4 +149,5 @@ export interface ProjectSummary {
   updatedAt: number;
   durationMs: number;
   sourceVideoPath: string;
+  source: 'recorded' | 'imported';
 }

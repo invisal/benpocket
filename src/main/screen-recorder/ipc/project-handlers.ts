@@ -55,7 +55,13 @@ export function registerProjectHandlers(): void {
               createdAt: project.createdAt,
               updatedAt: project.updatedAt,
               durationMs: project.durationMs,
-              sourceVideoPath: project.sourceVideoPath
+              sourceVideoPath: project.sourceVideoPath,
+              // Legacy project JSONs predate this field -- default to
+              // 'imported' (not 'recorded') since we can't tell which flow
+              // actually produced them, and DeleteProject only cascades to
+              // the video files for 'recorded' projects. Defaulting the
+              // other way risks deleting a file the app never owned.
+              source: project.source ?? 'imported'
             };
           } catch {
             return null;
@@ -69,8 +75,40 @@ export function registerProjectHandlers(): void {
   });
 
   ipcMain.handle(IpcChannels.DeleteProject, async (_event, projectId: string): Promise<boolean> => {
+    const filePath = join(projectsDir(), `${projectId}.json`);
     try {
-      await fs.unlink(join(projectsDir(), `${projectId}.json`));
+      // Read the project before unlinking its JSON -- only a 'recorded'
+      // project's video files are owned by the app (written into
+      // ~/Movies/ScreenRecorder by the recorder itself); an 'imported'
+      // project merely references a file the user picked from elsewhere on
+      // disk, which must never be deleted here.
+      let project: Project | null = null;
+      try {
+        const raw = await fs.readFile(filePath, 'utf-8');
+        project = JSON.parse(raw) as Project;
+      } catch {
+        project = null;
+      }
+
+      await fs.unlink(filePath);
+
+      if (project?.source === 'recorded') {
+        const clipPaths = [project.sourceVideoPath, project.webcamVideoPath].filter(
+          (path): path is string => !!path
+        );
+        await Promise.all(
+          clipPaths.map(async (clipPath) => {
+            try {
+              await fs.unlink(clipPath);
+            } catch (err) {
+              if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+                console.error('[project] failed to delete clip file:', clipPath, err);
+              }
+            }
+          })
+        );
+      }
+
       return true;
     } catch (err) {
       console.error('[project] failed to delete project:', err);

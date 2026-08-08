@@ -73,7 +73,11 @@ function resolveCursor(
   cursorHidden: boolean
 ): CursorSceneData | null {
   const { cursor, clickPath } = project;
-  if (!cursor.visible || cursorHidden || smoothedPath.length === 0) return null;
+  // Imported footage has no recorded cursor/click samples -- `smoothedPath`
+  // is already always empty for it, but check `source` explicitly too
+  // rather than relying only on that being incidentally true.
+  if (project.source === 'imported' || !cursor.visible || cursorHidden || smoothedPath.length === 0)
+    return null;
   const point = sampleCursorPath(smoothedPath, atMs);
   if (!point) return null;
 

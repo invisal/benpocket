@@ -32,6 +32,8 @@ interface LastRecording {
   webcamFilePath: string | null;
   /** `webcamStartedAt - startedAt` from capture-engine.ts's `StopResult` -- the webcam recorder's `MediaRecorder` starts a moment after the main one, so this is added to a main-timeline `atMs` to find the corresponding moment in the webcam file. */
   webcamOffsetMs: number;
+  /** Which flow produced this session -- carried into `Project.source` on save, see project.ts. */
+  source: 'recorded' | 'imported';
 }
 
 interface AppStoreState {

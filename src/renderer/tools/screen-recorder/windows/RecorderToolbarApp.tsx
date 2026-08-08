@@ -27,6 +27,7 @@ import type {
   RecorderToolbarRecordingResult
 } from '@shared/recorder-toolbar';
 import { pickDefaultCaptureSource } from '../features/recording/lib/pick-default-capture-source';
+import { isLikelyMac } from '../lib/platform';
 
 const TABS: { type: CaptureTargetType; label: string; icon: typeof Monitor }[] = [
   { type: 'screen', label: 'Display', icon: Monitor },
@@ -48,6 +49,14 @@ function parseInit(): RecorderToolbarOpenPayload | null {
   } catch {
     return null;
   }
+}
+
+// Only the native ScreenCaptureKit path throws a distinct, catchable error
+// for this (see main.swift's HelperError.permissionDenied) -- the legacy
+// getUserMedia/desktopCapturer path just silently records solid-black frames
+// instead, so there's nothing to detect there.
+function isPermissionError(message: string): boolean {
+  return /permission/i.test(message);
 }
 
 function formatElapsed(totalSeconds: number): string {
@@ -743,7 +752,19 @@ export function RecorderToolbarApp(): JSX.Element | null {
         </button>
       </div>
 
-      {error && <p className="text-center text-xs text-red-400">{error}</p>}
+      {error && (
+        <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-zinc-900/95 px-4 py-2.5 text-center shadow-2xl backdrop-blur">
+          <p className="text-xs text-red-400">{error}</p>
+          {isLikelyMac && isPermissionError(error) && (
+            <button
+              onClick={() => window.screenRecorder.permissions.openScreenRecordingSettings()}
+              className="text-[11px] font-medium text-accent underline-offset-2 hover:underline"
+            >
+              Open System Settings, then fully quit and reopen benpocket
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

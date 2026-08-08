@@ -1,5 +1,5 @@
 import { shell, systemPreferences } from 'electron';
-import type { ScreenRecordingStatus } from '@screen-recorder/types/permissions';
+import type { MicrophoneStatus, ScreenRecordingStatus } from '@screen-recorder/types/permissions';
 
 // Screen Recording permission is a macOS-only gate (System Settings ->
 // Privacy & Security -> Screen Recording). Without it, desktopCapturer still
@@ -20,5 +20,22 @@ export function openScreenRecordingSettings(): void {
   if (process.platform !== 'darwin') return;
   void shell.openExternal(
     'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+  );
+}
+
+/** Same macOS-only gate as getScreenRecordingStatus, for the "Mic" toggle's narration audio. */
+export function getMicrophoneStatus(): MicrophoneStatus {
+  if (process.platform !== 'darwin') return 'granted';
+  try {
+    return systemPreferences.getMediaAccessStatus('microphone') as MicrophoneStatus;
+  } catch {
+    return 'unknown';
+  }
+}
+
+export function openMicrophoneSettings(): void {
+  if (process.platform !== 'darwin') return;
+  void shell.openExternal(
+    'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'
   );
 }

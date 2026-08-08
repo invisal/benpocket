@@ -33,6 +33,7 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
     name: projectName,
     createdAt: now,
     updatedAt: now,
+    source: lastRecording?.source ?? 'recorded',
     sourceVideoPath,
     durationMs,
     tracks: [],

@@ -64,7 +64,10 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
       clickPath: project.clickPath,
       webcamPreviewUrl: webcam?.url ?? null,
       webcamFilePath: project.webcamVideoPath,
-      webcamOffsetMs: project.webcamOffsetMs
+      webcamOffsetMs: project.webcamOffsetMs,
+      // Legacy project JSONs predate this field -- see project-handlers.ts's
+      // `ListProjects` for why the missing case defaults to 'imported'.
+      source: project.source ?? 'imported'
     }
   });
 

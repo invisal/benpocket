@@ -125,16 +125,18 @@ export function PillTrack<T extends { id: string }>({
                       initial={{ opacity: 0, scale: 0.85 }}
                       animate={{ opacity: isDisabled?.(item) ? 0.4 : 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.85 }}
-                      whileHover={{ scale: 1.03 }}
+                      whileHover={{ opacity: isDisabled?.(item) ? 0.4 : 0.85 }}
                       onPointerDown={startDrag(startMs, (newStartMs) => onMove(item, newStartMs))}
                       onClick={() => {
                         if (!didDragRef.current) onSelect(item);
                       }}
                       title={getTitle(item)}
                       className={cn(
-                        'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 active:cursor-grabbing',
+                        'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 transition-shadow duration-150 ease-out active:cursor-grabbing',
                         colorClassName,
-                        isSelected?.(item) && 'ring-2 ring-purple-200'
+                        isSelected?.(item)
+                          ? 'ring-2 ring-purple-200'
+                          : 'hover:ring-2 hover:ring-white/50'
                       )}
                       style={{
                         left: `${position.leftPercent}%`,

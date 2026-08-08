@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import {
   ArrowDownUp,
   Clapperboard,
@@ -14,6 +14,7 @@ import { useToastStore } from '../app/toast-store';
 import { useExportStore } from '../features/export/store/export-store';
 import { useOpenProject } from '../features/project/hooks/useOpenProject';
 import { importVideoFile } from '../features/project/lib/import-video';
+import { groupProjectsBySource } from '../features/project/lib/group-projects-by-source';
 import { formatTimeAgo } from '../lib/format';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
@@ -61,12 +62,15 @@ export const ScreenRecorderSidebar: React.FC = () => {
     let cancelled = false;
     void window.screenRecorder.project.list().then((list) => {
       if (cancelled) return;
-      const recent = list.slice(0, MAX_RECENT_PROJECTS);
-      setRecentProjects(recent);
+      // Kept unsliced (unlike each rendered section below, which caps
+      // independently at MAX_RECENT_PROJECTS) so `list[0]` here is always
+      // the single most-recently-updated project across both sources, for
+      // auto-resume.
+      setRecentProjects(list);
 
       if (!hasAutoSelectedRef.current) {
         hasAutoSelectedRef.current = true;
-        const [mostRecent] = recent;
+        const [mostRecent] = list;
         if (mostRecent && !currentProjectId) {
           // Switches to the editor route immediately, before `openProject`
           // has even started its IPC round trip -- EditorPage shows
@@ -102,6 +106,46 @@ export const ScreenRecorderSidebar: React.FC = () => {
       setIsImporting(false);
     }
   }
+
+  function renderProjectRow(project: ProjectSummary): JSX.Element {
+    const isActive = project.id === currentProjectId;
+    return (
+      <ContextMenu.Root key={project.id}>
+        <ContextMenu.Trigger
+          render={
+            <button
+              onClick={() => void openProject(project)}
+              disabled={loadingProjectId !== null}
+              className={cn(
+                'flex items-center gap-2 rounded-lg border p-1.5 text-left transition-colors disabled:opacity-50',
+                isActive ? 'border-accent bg-accent/10' : 'border-transparent hover:bg-surface-2'
+              )}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-3">
+                <Film size={14} className="text-muted-foreground" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs">{project.name}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">
+                  {loadingProjectId === project.id ? 'Loading…' : formatTimeAgo(project.createdAt)}
+                </span>
+              </span>
+            </button>
+          }
+        />
+        <ContextMenu.Content>
+          <ContextMenu.Item onClick={() => void openProject(project)}>Open</ContextMenu.Item>
+          <ContextMenu.Separator />
+          <ContextMenu.Item onClick={() => void handleDeleteProject(project)}>
+            Delete
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu.Root>
+    );
+  }
+
+  const { recorded: recordedProjects, imported: importedProjects } =
+    groupProjectsBySource(recentProjects);
 
   return (
     <div className="flex h-full w-full">
@@ -165,53 +209,27 @@ export const ScreenRecorderSidebar: React.FC = () => {
         </div>
 
         {recentProjects.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Your last 5 saved projects will show up here.
+          <p className="px-2.5 text-xs text-muted-foreground">
+            Your last {MAX_RECENT_PROJECTS} saved projects will show up here.
           </p>
         ) : (
-          <div className="flex flex-col gap-1 px-2.5">
-            {recentProjects.map((project) => {
-              const isActive = project.id === currentProjectId;
-              return (
-                <ContextMenu.Root key={project.id}>
-                  <ContextMenu.Trigger
-                    render={
-                      <button
-                        onClick={() => void openProject(project)}
-                        disabled={loadingProjectId !== null}
-                        className={cn(
-                          'flex items-center gap-2 rounded-lg border p-1.5 text-left transition-colors disabled:opacity-50',
-                          isActive
-                            ? 'border-accent bg-accent/10'
-                            : 'border-transparent hover:bg-surface-2'
-                        )}
-                      >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-3">
-                          <Film size={14} className="text-muted-foreground" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs">{project.name}</span>
-                          <span className="block truncate text-[10px] text-muted-foreground">
-                            {loadingProjectId === project.id
-                              ? 'Loading…'
-                              : formatTimeAgo(project.createdAt)}
-                          </span>
-                        </span>
-                      </button>
-                    }
-                  />
-                  <ContextMenu.Content>
-                    <ContextMenu.Item onClick={() => void openProject(project)}>
-                      Open
-                    </ContextMenu.Item>
-                    <ContextMenu.Separator />
-                    <ContextMenu.Item onClick={() => void handleDeleteProject(project)}>
-                      Delete
-                    </ContextMenu.Item>
-                  </ContextMenu.Content>
-                </ContextMenu.Root>
-              );
-            })}
+          <div className="flex flex-col gap-3">
+            {recordedProjects.length > 0 && (
+              <div className="flex flex-col gap-1 px-2.5">
+                <span className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Recorded
+                </span>
+                {recordedProjects.slice(0, MAX_RECENT_PROJECTS).map(renderProjectRow)}
+              </div>
+            )}
+            {importedProjects.length > 0 && (
+              <div className="flex flex-col gap-1 px-2.5">
+                <span className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Imported
+                </span>
+                {importedProjects.slice(0, MAX_RECENT_PROJECTS).map(renderProjectRow)}
+              </div>
+            )}
           </div>
         )}
       </div>

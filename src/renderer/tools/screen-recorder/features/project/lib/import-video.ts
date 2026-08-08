@@ -37,7 +37,8 @@ export async function importVideoFile(): Promise<boolean> {
       clickPath: [],
       webcamPreviewUrl: null,
       webcamFilePath: null,
-      webcamOffsetMs: 0
+      webcamOffsetMs: 0,
+      source: 'imported'
     }
   });
   useAppStore.getState().setRoute('editor');

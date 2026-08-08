@@ -251,8 +251,14 @@ export function useRecordingController(): RecordingController {
       clickPath,
       webcamPreviewUrl,
       webcamFilePath,
-      webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0
+      webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0,
+      source: 'recorded'
     });
+    // A fresh recording is a new, unsaved project -- clear whatever project
+    // was open before "Return to Recorder" was clicked, same as
+    // import-video.ts does for imports, so "Save" can't silently overwrite
+    // it instead of creating a new one.
+    useAppStore.setState({ currentProjectId: null, projectName: 'Untitled Recording' });
     setRoute('editor');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

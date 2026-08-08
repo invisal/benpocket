@@ -68,7 +68,7 @@ Renderer code talks to the main process through `window.screenRecorder` (exposed
 | `export.*`                | `export/export-manager.ts` → `frame-compositor.ts` / `video-encoder.ts` / `video-decoder.ts` (ffmpeg-backed)                    |
 | `settings.*`              | `store/settings-store.ts` (electron-store; pinned to `^8.x` — v9+ is ESM-only and breaks under electron-vite's CJS main bundle) |
 | `window.*`                | TitleBar minimize/maximize/close (`ipc/window-handlers.ts`); `hide`/`restore` added for Screen Capture only                     |
-| `permissions.*`           | `permissions/screen-recording-permission.ts` (macOS screen-recording permission check)                                          |
+| `permissions.*`           | `permissions/permissions.ts` (macOS screen-recording/mic/camera/accessibility/automation permission checks)                     |
 | `dialog.*`                | `ipc/dialog-handlers.ts` (native save-file dialog for export)                                                                   |
 | `screenshot.*`            | **Screen Capture tool only** — PNG capture, clipboard, save, region overlay, Wayland portal pick (see `tools/screen-capture/`)  |
 | `regionSelect.*`          | **Screen Capture tool only** — IPC from the `region-select.html` overlay entry                                                  |

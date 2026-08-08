@@ -38,6 +38,9 @@ export type ReadBinaryFileResponse =
 
 export type WriteFileContentResponse = { success: true } | { error: string };
 
+export type WriteBinaryFileResponse =
+  { success: true } | { error: 'unsupported-extension' } | { error: string };
+
 export type ClipboardMode = 'copy' | 'cut';
 export type ClipboardFiles = { paths: string[]; mode: ClipboardMode };
 
@@ -88,6 +91,7 @@ export interface FileExplorerApi {
   readFileContent: (filePath: string) => Promise<ReadFileContentResponse>;
   readFileBinary: (filePath: string) => Promise<ReadBinaryFileResponse>;
   writeFileContent: (filePath: string, content: string) => Promise<WriteFileContentResponse>;
+  writeFileBinary: (filePath: string, data: Uint8Array) => Promise<WriteBinaryFileResponse>;
   deleteEntries: (paths: string[]) => Promise<{ success: true } | { error: string }>;
   copyEntries: (
     sourcePaths: string[],
@@ -129,6 +133,8 @@ export const fileExplorerApi: FileExplorerApi = {
   readFileBinary: (filePath) => ipcRenderer.invoke('file-explorer:read-file-binary', filePath),
   writeFileContent: (filePath, content) =>
     ipcRenderer.invoke('file-explorer:write-file-content', filePath, content),
+  writeFileBinary: (filePath, data) =>
+    ipcRenderer.invoke('file-explorer:write-file-binary', filePath, data),
   deleteEntries: (paths) => ipcRenderer.invoke('file-explorer:delete-entries', paths),
   copyEntries: (sourcePaths, destDir) =>
     ipcRenderer.invoke('file-explorer:copy-entries', sourcePaths, destDir),

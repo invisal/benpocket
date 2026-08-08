@@ -22,6 +22,7 @@ import {
   type MutationResult,
   type ReadBinaryFileResult,
   type ReadFileResult,
+  type WriteBinaryFileResult,
   type WriteFileResult
 } from './fileDriver';
 
@@ -226,6 +227,13 @@ export function registerFileExplorerHandlers(): void {
     'file-explorer:write-file-content',
     async (_, uri: string, content: string): Promise<WriteFileResult> => {
       return getDriverForLocation(uri).writeFile(uri, content);
+    }
+  );
+
+  ipcMain.handle(
+    'file-explorer:write-file-binary',
+    async (_, uri: string, data: Uint8Array): Promise<WriteBinaryFileResult> => {
+      return getDriverForLocation(uri).writeBinaryFile(uri, data);
     }
   );
 

@@ -3,6 +3,7 @@ import type { ScreenRecorderApi } from './screen-recorder/api';
 import type { KuberneterApi } from './kuberneter/api';
 import type { PostmanBridge } from './http-client/api';
 import type { FileExplorerApi } from './file-explorer/api';
+import type { ImageEditorApi } from './image-editor/api';
 import type { ProfilesApi } from './store/api';
 import type { AuthApi } from './auth/api';
 import type { UpdaterApi } from './updater/api';
@@ -21,6 +22,7 @@ declare global {
     screenRecorder: ScreenRecorderApi;
     kuberneter: KuberneterApi;
     fileExplorer: FileExplorerApi;
+    imageEditor: ImageEditorApi;
     profiles: ProfilesApi;
     auth: AuthApi;
     updater: UpdaterApi;

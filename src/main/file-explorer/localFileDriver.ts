@@ -14,6 +14,7 @@ import {
   type MutationResult,
   type ReadBinaryFileResult,
   type ReadFileResult,
+  type WriteBinaryFileResult,
   type WriteFileResult
 } from './fileDriver';
 
@@ -140,6 +141,24 @@ export const localFileDriver: FileDriver = {
       if (stats.isDirectory()) return { error: 'Cannot write to a folder' };
 
       await fs.promises.writeFile(uri, content, 'utf-8');
+      return { success: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: message };
+    }
+  },
+
+  async writeBinaryFile(uri, data): Promise<WriteBinaryFileResult> {
+    const extension = path.extname(uri).replace(/^\./, '').toLowerCase();
+    if (!MEDIA_EXTENSIONS[extension]) {
+      return { error: 'unsupported-extension' };
+    }
+
+    try {
+      const stats = await fs.promises.stat(uri);
+      if (stats.isDirectory()) return { error: 'Cannot write to a folder' };
+
+      await fs.promises.writeFile(uri, data);
       return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

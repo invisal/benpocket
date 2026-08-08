@@ -33,6 +33,7 @@ import { registerDisplayMediaHandler } from './screen-recorder/security/display-
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
 import { registerFileExplorerHandlers } from './file-explorer';
+import { registerImageEditorHandlers } from './image-editor';
 import { registerProfileHandlers, closeAllProfileSessions } from './store/ipc';
 import { registerDeepLinkHandler } from './auth/deepLink';
 import { handleGithubDeepLink } from './auth/githubAuth';
@@ -274,6 +275,10 @@ if (gotSingleInstanceLock) {
 
     // File Explorer tool: directory listing, native file icons, open-with-default-app
     registerFileExplorerHandlers();
+
+    // Image editor's resize/encode -- runs through sharp (libvips) in the main process since it's
+    // a native module the sandboxed renderer can't load directly.
+    registerImageEditorHandlers();
 
     // Profile state (active profile + list of profiles), backing the activity
     // bar's profile switcher.

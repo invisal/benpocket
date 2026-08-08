@@ -27,6 +27,7 @@ import type {
   RecorderToolbarRecordingResult
 } from '@shared/recorder-toolbar';
 import { pickDefaultCaptureSource } from '../features/recording/lib/pick-default-capture-source';
+import { isLikelyMac } from '../lib/platform';
 
 const TABS: { type: CaptureTargetType; label: string; icon: typeof Monitor }[] = [
   { type: 'screen', label: 'Display', icon: Monitor },
@@ -754,7 +755,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
       {error && (
         <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-zinc-900/95 px-4 py-2.5 text-center shadow-2xl backdrop-blur">
           <p className="text-xs text-red-400">{error}</p>
-          {isPermissionError(error) && (
+          {isLikelyMac && isPermissionError(error) && (
             <button
               onClick={() => window.screenRecorder.permissions.openScreenRecordingSettings()}
               className="text-[11px] font-medium text-accent underline-offset-2 hover:underline"

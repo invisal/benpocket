@@ -6,6 +6,7 @@ import { ShortcutRecorder } from '../../features/shortcuts/components/ShortcutRe
 import { ExportPresetPicker } from '../../features/export/components/ExportPresetPicker';
 import { PermissionsSettings } from '../../features/permissions/components/PermissionsSettings';
 import { SettingsGroup, SettingsRow } from '../../components/ui/settings-row';
+import { isLikelyMac } from '../../lib/platform';
 
 export function SettingsPage(): JSX.Element {
   return (
@@ -18,9 +19,13 @@ export function SettingsPage(): JSX.Element {
       </div>
 
       <div className="flex max-w-xl flex-col gap-8">
-        <SettingsGroup title="Permissions">
-          <PermissionsSettings />
-        </SettingsGroup>
+        {/* macOS-only: Windows/Linux have no equivalent TCC-style screen/mic
+            permission gate for this app to surface. */}
+        {isLikelyMac && (
+          <SettingsGroup title="Permissions">
+            <PermissionsSettings />
+          </SettingsGroup>
+        )}
 
         <SettingsGroup title="Recording">
           <AudioSourceToggle />

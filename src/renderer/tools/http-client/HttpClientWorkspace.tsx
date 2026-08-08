@@ -21,6 +21,8 @@ import { EnvironmentSelector } from './components/EnvironmentSelector';
 import { CodeSnippetPopover } from './components/CodeSnippetPopover';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
+import { Toolbar } from '@renderer/components/ui/Toolbar';
+import { Button } from '@renderer/components/ui/Button';
 
 const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
 const DEFAULT_RESPONSE_PANEL_HEIGHT = 40;
@@ -136,7 +138,7 @@ export const HttpClientWorkspace: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="flex h-9 bg-surface-2 border-b border-border-dark overflow-x-auto select-none shrink-0 scrollbar-none">
+            {/* <div className="flex h-9 bg-surface-2 border-b border-border-dark overflow-x-auto select-none shrink-0 scrollbar-none">
               {tabs.map((tab) => (
                 <TabBarItem
                   key={tab.id}
@@ -152,7 +154,7 @@ export const HttpClientWorkspace: React.FC = () => {
                   onPin={() => pinTab(tab.id)}
                 />
               ))}
-            </div>
+            </div> */}
 
             <div className="flex-1 overflow-auto flex flex-col min-h-0 bg-surface">
               {activeTabId && <HttpClientRequestPanel key={activeTabId} tabId={activeTabId} />}
@@ -361,18 +363,31 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   }, [client, tab]);
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-h-0">
+    <div className="flex-1 flex flex-col min-h-0">
       {saveError && (
         <div className="shrink-0 rounded px-2 py-1.5 text-[10px] leading-snug border bg-red-500/10 border-red-500/20 text-red-400">
           {saveError}
         </div>
       )}
+
+      <div className="text-xs px-4 pb-3 pt-3 flex justify-between items-center">
+        <div className="flex gap-1.5">
+          <span className="text-gray-500">Colleciton Name</span>
+          <span>/</span>
+          <span className="font-medium">Unnamed Request</span>
+        </div>
+        <div className="space-x-2">
+          <Button>Code</Button>
+          <Button variant="primary">Save</Button>
+        </div>
+      </div>
+
       <PillTab.Root
         value={client.protocol}
         onValueChange={(value) => client.setProtocol(value as ProtocolTab)}
         className="flex flex-col gap-3 min-h-0 flex-1"
       >
-        <nav className="flex items-center justify-between gap-2 shrink-0 border-b border-border py-2 px-4">
+        {/* <nav className="flex items-center justify-between gap-2 shrink-0 py-2 px-4">
           <PillTab.List>
             {PROTOCOL_ITEMS.map(({ value, label, icon: Icon }) => (
               <PillTab.Item key={value} value={value}>
@@ -412,7 +427,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
               }}
             />
           </div>
-        </nav>
+        </nav> */}
 
         <PillTab.Panel value="HTTP" className="flex flex-col gap-3 min-h-0 flex-1">
           <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">

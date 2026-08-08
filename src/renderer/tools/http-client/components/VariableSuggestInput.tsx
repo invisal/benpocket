@@ -91,8 +91,8 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   };
 
   return (
-    <div className="relative">
-      <Input
+    <div className="relative h-full">
+      <input
         ref={inputRef}
         type="text"
         value={value}

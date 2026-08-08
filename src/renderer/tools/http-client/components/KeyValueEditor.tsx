@@ -1,14 +1,5 @@
 import type React from 'react';
-import {
-  CheckCircle,
-  CheckCircleIcon,
-  CheckIcon,
-  CheckSquare,
-  CheckSquareIcon,
-  CircleDot,
-  CircleDotIcon,
-  Trash2
-} from 'lucide-react';
+import { CircleDotIcon, Trash2 } from 'lucide-react';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { KeySuggestInput } from './KeySuggestInput';

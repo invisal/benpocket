@@ -3,7 +3,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { KeyValuePair } from '../../../../preload/http-client/types';
 import { findOpenToken, insertVariable, type OpenToken } from '../lib/variableToken';
-import { Input } from '@renderer/components/ui/Input';
 
 interface VariableSuggestInputProps {
   value: string;

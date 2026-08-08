@@ -34,7 +34,7 @@ const ContainerActionMenu: React.FC<ContainerActionMenuProps> = ({
           render={
             <button
               onClick={() => onSelect(containers[0]?.name)}
-              className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
             >
               <Icon className="size-3.5" />
             </button>
@@ -52,7 +52,7 @@ const ContainerActionMenu: React.FC<ContainerActionMenuProps> = ({
           render={
             <Popover.Trigger
               render={
-                <button className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
+                <button className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
                   <Icon className="size-3.5" />
                 </button>
               }
@@ -77,7 +77,7 @@ const ContainerActionMenu: React.FC<ContainerActionMenuProps> = ({
                 onSelect(undefined);
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-white hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
+              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
             >
               <Box className="size-3 text-accent shrink-0" />
               <span className="truncate">All containers</span>
@@ -90,7 +90,7 @@ const ContainerActionMenu: React.FC<ContainerActionMenuProps> = ({
                 onSelect(c.name);
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-white hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
+              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
             >
               <Box className="size-3 text-zinc-400 shrink-0" />
               <span className="truncate">{c.name}</span>
@@ -149,7 +149,7 @@ export const PodHeaderActions: React.FC<PodHeaderActionsProps> = ({ payload }) =
           render={
             <button
               onClick={handleEdit}
-              className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
             >
               <Pencil className="size-3.5" />
             </button>

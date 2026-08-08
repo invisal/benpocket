@@ -300,7 +300,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
                             onContextMenu={(e) => handleContextMenu(e, ctx, configPath)}
                             className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded text-left cursor-pointer transition-colors ${
                               isConnected
-                                ? 'bg-accent/10 text-white font-semibold'
+                                ? 'bg-accent/10 text-strong font-semibold'
                                 : 'text-zinc-400 hover:bg-surface-3/30 hover:text-zinc-200'
                             }`}
                           >

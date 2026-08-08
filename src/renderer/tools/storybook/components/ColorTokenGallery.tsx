@@ -8,7 +8,7 @@ const SURFACE_TOKENS = [
   'bg-surface-4',
   'bg-surface-5'
 ];
-const TEXT_TOKENS = ['text-foreground', 'text-muted-foreground'];
+const TEXT_TOKENS = ['text-foreground', 'text-muted-foreground', 'text-strong'];
 const BORDER_TOKENS = ['border-border', 'border-border-dark'];
 const STATE_TOKENS = ['bg-accent', 'bg-danger'];
 

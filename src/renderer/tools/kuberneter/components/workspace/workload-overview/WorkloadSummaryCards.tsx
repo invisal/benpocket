@@ -172,7 +172,7 @@ export const WorkloadSummaryCards: React.FC<WorkloadSummaryCardsProps> = (props)
 
             {/* Count */}
             <div className="flex items-end gap-1.5">
-              <span className="text-2xl font-bold text-white leading-none">{card.total}</span>
+              <span className="text-2xl font-bold text-strong leading-none">{card.total}</span>
               <span className="text-[10px] text-zinc-600 pb-0.5">{card.subtitle}</span>
             </div>
 

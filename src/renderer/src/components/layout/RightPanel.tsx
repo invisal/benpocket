@@ -41,7 +41,7 @@ export const RightPanel: React.FC = () => {
         </div>
         <button
           onClick={toggleRightPanel}
-          className="p-1 hover:bg-editor-bg rounded text-zinc-555 hover:text-white cursor-pointer transition-colors"
+          className="p-1 hover:bg-editor-bg rounded text-zinc-555 hover:text-strong cursor-pointer transition-colors"
         >
           <X size={14} />
         </button>

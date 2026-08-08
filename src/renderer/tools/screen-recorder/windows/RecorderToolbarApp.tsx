@@ -27,6 +27,7 @@ import type {
   RecorderToolbarRecordingResult
 } from '@shared/recorder-toolbar';
 import { pickDefaultCaptureSource } from '../features/recording/lib/pick-default-capture-source';
+import { usePermission } from '../features/permissions/hooks/usePermission';
 import { isLikelyMac } from '../lib/platform';
 
 const TABS: { type: CaptureTargetType; label: string; icon: typeof Monitor }[] = [
@@ -51,10 +52,10 @@ function parseInit(): RecorderToolbarOpenPayload | null {
   }
 }
 
-// Only the native ScreenCaptureKit path throws a distinct, catchable error
-// for this (see main.swift's HelperError.permissionDenied) -- the legacy
-// getUserMedia/desktopCapturer path just silently records solid-black frames
-// instead, so there's nothing to detect there.
+// Fallback for a permission that was fine at the pre-flight checks below but
+// got revoked/denied at the actual native-helper request in between (see
+// main.swift's HelperError.permissionDenied) -- legacy getUserMedia never
+// throws this, it just silently records black frames instead.
 function isPermissionError(message: string): boolean {
   return /permission/i.test(message);
 }
@@ -108,6 +109,9 @@ function disablePointerEvents(): void {
  */
 export function RecorderToolbarApp(): JSX.Element | null {
   const init = useMemo(() => parseInit(), []);
+  const screenPermission = usePermission('screen');
+  const micPermission = usePermission('microphone');
+  const cameraPermission = usePermission('camera');
   const [sources, setSources] = useState<CaptureSource[]>([]);
   const [sourcesLoaded, setSourcesLoaded] = useState(false);
   const [sourceId, setSourceId] = useState<string | null>(init?.sourceId ?? null);
@@ -212,7 +216,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
         startRecording(source);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sources, cropRegion, audio, webcam]
+    [sources, cropRegion, audio, webcam, screenPermission.status]
   );
 
   useEffect(() => {
@@ -403,6 +407,19 @@ export function RecorderToolbarApp(): JSX.Element | null {
     source: CaptureSource,
     regionOverride?: CaptureRegionSelection | null
   ): void {
+    // Screen Recording has no JS-level "request" (see usePermission's doc) --
+    // a 'not-determined' status is left alone so the native helper's own
+    // CGRequestScreenCaptureAccess() raises the real OS prompt right here,
+    // in context. Only a status macOS has already settled as denied is
+    // worth short-circuiting before wasting a doomed capture attempt.
+    if (
+      isLikelyMac &&
+      (screenPermission.status === 'denied' || screenPermission.status === 'restricted')
+    ) {
+      setError('Screen Recording permission is required.');
+      screenPermission.openSettings();
+      return;
+    }
     setMode('starting');
     setError(null);
     const region = regionOverride !== undefined ? regionOverride : cropRegion;
@@ -438,6 +455,28 @@ export function RecorderToolbarApp(): JSX.Element | null {
   function handleStop(): void {
     setMode('stopping');
     window.screenRecorder.recorderToolbar.requestStop();
+  }
+
+  // Requests Mic/Camera access right at the click that turns each on --
+  // already-granted short-circuits synchronously so the toggle doesn't lag
+  // behind an unnecessary IPC round trip; not-yet-granted raises the real OS
+  // prompt in context, and only opens Settings if that's actually refused.
+  async function toggleMic(): Promise<void> {
+    if (audio.microphoneEnabled || micPermission.status === 'granted') {
+      setAudio((a) => ({ ...a, microphoneEnabled: !a.microphoneEnabled }));
+      return;
+    }
+    if (await micPermission.ensure()) setAudio((a) => ({ ...a, microphoneEnabled: true }));
+    else micPermission.openSettings();
+  }
+
+  async function toggleWebcam(nextEnabled: boolean): Promise<void> {
+    if (!nextEnabled || cameraPermission.status === 'granted') {
+      setWebcam((w) => ({ ...w, enabled: nextEnabled }));
+      return;
+    }
+    if (await cameraPermission.ensure()) setWebcam((w) => ({ ...w, enabled: true }));
+    else cameraPermission.openSettings();
   }
 
   if (mode === 'recording' || mode === 'stopping') {
@@ -647,7 +686,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 <input
                   type="checkbox"
                   checked={webcam.enabled}
-                  onChange={(e) => setWebcam((w) => ({ ...w, enabled: e.target.checked }))}
+                  onChange={(e) => void toggleWebcam(e.target.checked)}
                   className="h-3.5 w-3.5 accent-accent"
                 />
                 Show webcam
@@ -715,7 +754,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
         </div>
 
         <button
-          onClick={() => setAudio((a) => ({ ...a, microphoneEnabled: !a.microphoneEnabled }))}
+          onClick={() => void toggleMic()}
           className={cn(
             NO_DRAG,
             'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',

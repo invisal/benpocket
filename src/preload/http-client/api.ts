@@ -6,6 +6,7 @@ import type {
   CreateFolderPayload,
   DeleteCollectionPayload,
   DeleteEnvironmentPayload,
+  DeleteExamplePayload,
   DeleteFolderPayload,
   DeleteRequestPayload,
   DeleteWorkspacePayload,
@@ -24,11 +25,13 @@ import type {
   OAuth2TokenResult,
   RenameCollectionPayload,
   RenameEnvironmentPayload,
+  RenameExamplePayload,
   RenameFolderPayload,
   RenameRequestPayload,
   RenameWorkspacePayload,
   ResolveEnvironmentImportPayload,
   SaveEnvironmentVariablesPayload,
+  SaveExamplePayload,
   SaveRequestPayload,
   SetCollectionAuthPayload,
   SetFolderAuthPayload,
@@ -60,6 +63,9 @@ export interface PostmanBridge {
     saveRequest: (payload: SaveRequestPayload) => Promise<WsAckResult>;
     renameRequest: (payload: RenameRequestPayload) => Promise<WsAckResult>;
     deleteRequest: (payload: DeleteRequestPayload) => Promise<WsAckResult>;
+    saveExample: (payload: SaveExamplePayload) => Promise<WsAckResult>;
+    renameExample: (payload: RenameExamplePayload) => Promise<WsAckResult>;
+    deleteExample: (payload: DeleteExamplePayload) => Promise<WsAckResult>;
     createFolder: (payload: CreateFolderPayload) => Promise<WsAckResult>;
     renameFolder: (payload: RenameFolderPayload) => Promise<WsAckResult>;
     deleteFolder: (payload: DeleteFolderPayload) => Promise<WsAckResult>;
@@ -131,6 +137,12 @@ export const postmanApi: PostmanBridge = {
       ipcRenderer.invoke('collections:renameRequest', payload),
     deleteRequest: (payload: DeleteRequestPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('collections:deleteRequest', payload),
+    saveExample: (payload: SaveExamplePayload): Promise<WsAckResult> =>
+      ipcRenderer.invoke('collections:saveExample', payload),
+    renameExample: (payload: RenameExamplePayload): Promise<WsAckResult> =>
+      ipcRenderer.invoke('collections:renameExample', payload),
+    deleteExample: (payload: DeleteExamplePayload): Promise<WsAckResult> =>
+      ipcRenderer.invoke('collections:deleteExample', payload),
     createFolder: (payload: CreateFolderPayload): Promise<WsAckResult> =>
       ipcRenderer.invoke('collections:createFolder', payload),
     renameFolder: (payload: RenameFolderPayload): Promise<WsAckResult> =>

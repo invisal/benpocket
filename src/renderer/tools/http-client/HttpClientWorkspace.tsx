@@ -15,6 +15,7 @@ import { WebSocketComposer } from './components/WebSocketComposer';
 import { WebSocketLog } from './components/WebSocketLog';
 import { RequestSaveBar, type RequestSaveBarHandle } from './components/RequestSaveBar';
 import { CodeSnippetPopover } from './components/CodeSnippetPopover';
+import { SaveExamplePopover } from './components/SaveExamplePopover';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
 const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
@@ -180,13 +181,25 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         onError={setSaveError}
         extraActions={
           client.protocol === 'HTTP' ? (
-            <CodeSnippetPopover
-              method={client.http.state.method}
-              url={client.http.state.url}
-              headers={client.http.state.headers}
-              bodyType={client.http.state.bodyType}
-              body={client.http.state.body}
-            />
+            <>
+              <CodeSnippetPopover
+                method={client.http.state.method}
+                url={client.http.state.url}
+                headers={client.http.state.headers}
+                bodyType={client.http.state.bodyType}
+                body={client.http.state.body}
+              />
+              <SaveExamplePopover
+                binding={client.binding}
+                response={client.http.state.response}
+                method={client.http.state.method}
+                url={client.http.state.url}
+                headers={client.http.state.headers}
+                params={client.http.state.params}
+                bodyType={client.http.state.bodyType}
+                body={client.http.state.body}
+              />
+            </>
           ) : undefined
         }
       />
@@ -254,7 +267,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
 
         {client.protocol === 'HTTP' ? (
           <>
-            <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">
+            <div className="flex-1 min-h-0 flex flex-col gap-3">
               <RequestEditorPanel
                 method={client.http.state.method}
                 url={client.http.state.url}

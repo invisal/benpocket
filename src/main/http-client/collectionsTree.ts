@@ -20,6 +20,7 @@ function normalizeFolder(folder: CollectionFolder): CollectionFolder {
 /** Stamps requests saved before WebSocket requests were saveable with the 'HTTP' protocol they always were. */
 function normalizeRequest(request: SavedRequest): SavedRequest {
   request.protocol = request.protocol ?? 'HTTP';
+  request.examples = request.examples ?? [];
   return request;
 }
 

@@ -123,6 +123,25 @@ export interface SavedRequest {
   /** HTTP-only; optional so requests saved before this field existed still load - treat missing as 'noauth'. */
   auth?: HttpAuth;
   updatedAt: number;
+  /** Saved responses attached to this request, Postman-style. Missing/undefined for requests saved before examples existed. */
+  examples?: SavedExample[];
+}
+
+/** A named, saved request+response snapshot attached to a `SavedRequest` - Postman's "Examples" feature. */
+export interface SavedExample {
+  id: string;
+  name: string;
+  createdAt: number;
+  /** The request as it was configured when this response was captured. */
+  request: {
+    method: HttpMethod;
+    url: string;
+    headers: KeyValuePair[];
+    params: KeyValuePair[];
+    bodyType: HttpBodyType;
+    body: string;
+  };
+  response: HttpResponsePayload;
 }
 
 export interface CollectionFolder {
@@ -175,6 +194,25 @@ export interface RenameRequestPayload {
 export interface DeleteRequestPayload {
   collectionId: string;
   requestId: string;
+}
+
+export interface SaveExamplePayload {
+  collectionId: string;
+  requestId: string;
+  example: SavedExample;
+}
+
+export interface RenameExamplePayload {
+  collectionId: string;
+  requestId: string;
+  exampleId: string;
+  name: string;
+}
+
+export interface DeleteExamplePayload {
+  collectionId: string;
+  requestId: string;
+  exampleId: string;
 }
 
 export interface CreateFolderPayload {

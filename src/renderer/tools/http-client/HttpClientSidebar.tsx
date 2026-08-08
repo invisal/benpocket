@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { cn } from 'cnfast';
 import {
+  Bookmark,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -34,6 +35,7 @@ import type {
   CollectionFolder,
   HttpAuth,
   HttpMethod,
+  SavedExample,
   SavedRequest
 } from '../../../preload/http-client/types';
 import type { PostmanTabSeed } from './types';
@@ -88,6 +90,14 @@ function methodBadgeClass(method: string): string {
     default:
       return 'text-zinc-400';
   }
+}
+
+function exampleStatusClass(status: number): string {
+  if (status === 0) return 'text-red-500';
+  if (status < 300) return 'text-emerald-500';
+  if (status < 400) return 'text-sky-500';
+  if (status < 500) return 'text-amber-500';
+  return 'text-red-500';
 }
 
 /** Method/protocol badge for a saved request: the HTTP verb, or a WebSocket icon for WS requests. */
@@ -281,6 +291,8 @@ export const HttpClientSidebar: React.FC = () => {
     deleteCollection,
     renameRequest,
     deleteRequest,
+    renameExample,
+    deleteExample,
     createFolder,
     renameFolder,
     deleteFolder,
@@ -304,6 +316,7 @@ export const HttpClientSidebar: React.FC = () => {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const activeCollectionId = activeTab?.meta?.savedCollectionId ?? null;
   const activeRequestId = activeTab?.meta?.savedRequestId ?? null;
+  const activeExampleId = activeTab?.meta?.savedExampleId ?? null;
 
   // When the active tab switches to point at a (different) saved request, reveal it
   // in the tree by expanding its collection and folder chain, so the user can always
@@ -383,6 +396,42 @@ export const HttpClientSidebar: React.FC = () => {
       {
         id: tabId,
         title: request.name,
+        meta: seed
+      },
+      { preview }
+    );
+    if (replacedTabId && replacedTabId !== tabId) disposeApiClientTab(replacedTabId);
+  };
+
+  /**
+   * Opens a saved example: preloads the request fields and the captured response into a
+   * tab without sending. Deliberately left unbound (no `savedCollectionId`/`savedRequestId`
+   * in the seed) so editing it and hitting Ctrl+S opens the full Save dialog rather than
+   * silently overwriting the parent request.
+   */
+  const openSavedExample = (
+    collection: Collection,
+    request: SavedRequest,
+    example: SavedExample,
+    options?: { preview?: boolean }
+  ): void => {
+    const preview = options?.preview ?? true;
+    const tabId = `postman-example-${collection.id}-${request.id}-${example.id}`;
+    const seed: PostmanTabSeed = {
+      protocol: 'HTTP',
+      method: example.request.method,
+      url: example.request.url,
+      headers: example.request.headers,
+      params: example.request.params,
+      bodyType: example.request.bodyType,
+      body: example.request.body,
+      response: example.response,
+      savedExampleId: example.id
+    };
+    const { replacedTabId } = openTab(
+      {
+        id: tabId,
+        title: `${request.name} · ${example.name}`,
         meta: seed
       },
       { preview }
@@ -616,6 +665,15 @@ export const HttpClientSidebar: React.FC = () => {
               onDeleteRequest={(requestId) =>
                 runMutation(() => deleteRequest(collection.id, requestId))
               }
+              onOpenExample={(request, example, options) =>
+                openSavedExample(collection, request, example, options)
+              }
+              onRenameExample={(requestId, exampleId, name) =>
+                runMutation(() => renameExample(collection.id, requestId, exampleId, name))
+              }
+              onDeleteExample={(requestId, exampleId) =>
+                runMutation(() => deleteExample(collection.id, requestId, exampleId))
+              }
               onMoveRequest={(requestId, targetFolderId) =>
                 runMutation(() => moveRequest(collection.id, requestId, targetFolderId))
               }
@@ -636,6 +694,7 @@ export const HttpClientSidebar: React.FC = () => {
               onSetFolderAuth={(folderId, auth) => setFolderAuth(collection.id, folderId, auth)}
               onInvalidDrop={handleInvalidDrop}
               activeRequestId={activeCollectionId === collection.id ? activeRequestId : null}
+              activeExampleId={activeCollectionId === collection.id ? activeExampleId : null}
             />
           ))}
         </div>
@@ -814,6 +873,13 @@ interface CollectionItemProps {
   onOpenRequest: (request: SavedRequest, options?: { preview?: boolean }) => void;
   onRenameRequest: (requestId: string, name: string) => void;
   onDeleteRequest: (requestId: string) => void;
+  onOpenExample: (
+    request: SavedRequest,
+    example: SavedExample,
+    options?: { preview?: boolean }
+  ) => void;
+  onRenameExample: (requestId: string, exampleId: string, name: string) => void;
+  onDeleteExample: (requestId: string, exampleId: string) => void;
   onMoveRequest: (requestId: string, targetFolderId: string | null) => void;
   onNewRequest: (folderId: string | null) => void;
   onCreateFolder: (parentFolderId: string | null, name: string) => void;
@@ -825,6 +891,8 @@ interface CollectionItemProps {
   onInvalidDrop: (message: string) => void;
   /** The saved request id backing the currently active tab, if it lives in this collection. */
   activeRequestId: string | null;
+  /** The saved example id backing the currently active tab, if it lives in this collection. */
+  activeExampleId: string | null;
 }
 
 const CollectionItem: React.FC<CollectionItemProps> = ({
@@ -839,6 +907,9 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
   onOpenRequest,
   onRenameRequest,
   onDeleteRequest,
+  onOpenExample,
+  onRenameExample,
+  onDeleteExample,
   onMoveRequest,
   onNewRequest,
   onCreateFolder,
@@ -848,7 +919,8 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
   onSetAuth,
   onSetFolderAuth,
   onInvalidDrop,
-  activeRequestId
+  activeRequestId,
+  activeExampleId
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(collection.name);
@@ -1047,6 +1119,9 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               onOpenRequest={onOpenRequest}
               onRenameRequest={onRenameRequest}
               onDeleteRequest={onDeleteRequest}
+              onOpenExample={onOpenExample}
+              onRenameExample={onRenameExample}
+              onDeleteExample={onDeleteExample}
               onMoveRequest={onMoveRequest}
               onNewRequest={onNewRequest}
               onCreateFolder={onCreateFolder}
@@ -1056,6 +1131,7 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               onSetFolderAuth={onSetFolderAuth}
               onInvalidDrop={onInvalidDrop}
               activeRequestId={activeRequestId}
+              activeExampleId={activeExampleId}
             />
           ))}
 
@@ -1070,6 +1146,12 @@ const CollectionItem: React.FC<CollectionItemProps> = ({
               moveFolders={collection.folders}
               onMove={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
               isActive={request.id === activeRequestId}
+              isExpanded={expanded.has(request.id)}
+              onToggleExpanded={() => onToggleFolder(request.id)}
+              onOpenExample={(example, options) => onOpenExample(request, example, options)}
+              onRenameExample={(exampleId, name) => onRenameExample(request.id, exampleId, name)}
+              onDeleteExample={(exampleId) => onDeleteExample(request.id, exampleId)}
+              activeExampleId={activeExampleId}
             />
           ))}
         </div>
@@ -1088,6 +1170,13 @@ interface FolderItemProps {
   onOpenRequest: (request: SavedRequest, options?: { preview?: boolean }) => void;
   onRenameRequest: (requestId: string, name: string) => void;
   onDeleteRequest: (requestId: string) => void;
+  onOpenExample: (
+    request: SavedRequest,
+    example: SavedExample,
+    options?: { preview?: boolean }
+  ) => void;
+  onRenameExample: (requestId: string, exampleId: string, name: string) => void;
+  onDeleteExample: (requestId: string, exampleId: string) => void;
   onMoveRequest: (requestId: string, targetFolderId: string | null) => void;
   onNewRequest: (folderId: string | null) => void;
   onCreateFolder: (parentFolderId: string | null, name: string) => void;
@@ -1098,6 +1187,8 @@ interface FolderItemProps {
   onInvalidDrop: (message: string) => void;
   /** The saved request id backing the currently active tab, if it lives in this collection. */
   activeRequestId: string | null;
+  /** The saved example id backing the currently active tab, if it lives in this collection. */
+  activeExampleId: string | null;
 }
 
 const FolderItem: React.FC<FolderItemProps> = ({
@@ -1110,6 +1201,9 @@ const FolderItem: React.FC<FolderItemProps> = ({
   onOpenRequest,
   onRenameRequest,
   onDeleteRequest,
+  onOpenExample,
+  onRenameExample,
+  onDeleteExample,
   onMoveRequest,
   onNewRequest,
   onCreateFolder,
@@ -1118,7 +1212,8 @@ const FolderItem: React.FC<FolderItemProps> = ({
   onMoveFolder,
   onSetFolderAuth,
   onInvalidDrop,
-  activeRequestId
+  activeRequestId,
+  activeExampleId
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(folder.name);
@@ -1357,6 +1452,9 @@ const FolderItem: React.FC<FolderItemProps> = ({
               onOpenRequest={onOpenRequest}
               onRenameRequest={onRenameRequest}
               onDeleteRequest={onDeleteRequest}
+              onOpenExample={onOpenExample}
+              onRenameExample={onRenameExample}
+              onDeleteExample={onDeleteExample}
               onMoveRequest={onMoveRequest}
               onNewRequest={onNewRequest}
               onCreateFolder={onCreateFolder}
@@ -1366,6 +1464,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
               onSetFolderAuth={onSetFolderAuth}
               onInvalidDrop={onInvalidDrop}
               activeRequestId={activeRequestId}
+              activeExampleId={activeExampleId}
             />
           ))}
 
@@ -1381,6 +1480,12 @@ const FolderItem: React.FC<FolderItemProps> = ({
               moveFolders={rootFolders}
               onMove={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
               isActive={request.id === activeRequestId}
+              isExpanded={expanded.has(request.id)}
+              onToggleExpanded={() => onToggle(request.id)}
+              onOpenExample={(example, options) => onOpenExample(request, example, options)}
+              onRenameExample={(exampleId, name) => onRenameExample(request.id, exampleId, name)}
+              onDeleteExample={(exampleId) => onDeleteExample(request.id, exampleId)}
+              activeExampleId={activeExampleId}
             />
           ))}
         </div>
@@ -1402,6 +1507,14 @@ interface RequestItemProps {
   onMove: (targetFolderId: string | null) => void;
   /** Whether this request backs the currently active tab — highlighted so the user can see where they are. */
   isActive: boolean;
+  /** Whether the saved examples list below this request is expanded. Ignored when the request has none. */
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
+  onOpenExample: (example: SavedExample, options?: { preview?: boolean }) => void;
+  onRenameExample: (exampleId: string, name: string) => void;
+  onDeleteExample: (exampleId: string) => void;
+  /** The saved example id backing the currently active tab, if any — highlights that example. */
+  activeExampleId: string | null;
 }
 
 const RequestItem: React.FC<RequestItemProps> = ({
@@ -1413,12 +1526,20 @@ const RequestItem: React.FC<RequestItemProps> = ({
   onDelete,
   moveFolders,
   onMove,
-  isActive
+  isActive,
+  isExpanded,
+  onToggleExpanded,
+  onOpenExample,
+  onRenameExample,
+  onDeleteExample,
+  activeExampleId
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(request.name);
   const [isDragging, setIsDragging] = useState(false);
   const style = { marginLeft: indent * 12 };
+  const examples = request.examples ?? [];
+  const hasExamples = examples.length > 0;
 
   const handleDragStart = (e: React.DragEvent): void => {
     e.stopPropagation();
@@ -1463,46 +1584,182 @@ const RequestItem: React.FC<RequestItemProps> = ({
   }
 
   return (
+    <div className="flex flex-col">
+      <div
+        onClick={() => onOpen()}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onOpen({ preview: false });
+        }}
+        draggable
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        title={`${request.url}\nDouble-click to open in a permanent tab`}
+        style={style}
+        className={`flex items-center gap-2 p-1.5 hover:bg-surface-3 rounded text-xs cursor-grab active:cursor-grabbing border transition-all group ${
+          isDragging ? 'opacity-40' : ''
+        } ${
+          isActive
+            ? 'bg-accent/10 border-accent/60'
+            : 'bg-surface-3/40 border-transparent hover:border-border-dark'
+        }`}
+      >
+        {hasExamples && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpanded();
+            }}
+            title={isExpanded ? 'Hide examples' : 'Show examples'}
+            className="text-zinc-500 hover:text-foreground cursor-pointer shrink-0"
+          >
+            {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          </button>
+        )}
+        {isActive && <span className="w-1 h-1 rounded-full bg-accent shrink-0" />}
+        <RequestMethodBadge request={request} />
+        <span
+          className={`truncate flex-1 ${isActive ? 'text-foreground' : 'text-zinc-300 group-hover:text-foreground'}`}
+        >
+          {request.name}
+        </span>
+        {hasExamples && (
+          <span
+            title={`${examples.length} saved example${examples.length === 1 ? '' : 's'}`}
+            className="text-[9px] text-zinc-600 shrink-0"
+          >
+            {examples.length}
+          </span>
+        )}
+        <ActionsMenu
+          triggerTitle="Request actions"
+          actions={[
+            {
+              icon: <Pencil size={12} />,
+              label: 'Rename',
+              onClick: () => {
+                setDraftName(request.name);
+                setIsRenaming(true);
+              }
+            },
+            { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
+          ]}
+          moveTo={{ folders: moveFolders, onSelect: onMove }}
+        />
+      </div>
+
+      {isExpanded && hasExamples && (
+        <div className="flex flex-col gap-0.5 mt-0.5">
+          {examples.map((example) => (
+            <ExampleItem
+              key={example.id}
+              example={example}
+              indent={indent + 1}
+              onOpen={(options) => onOpenExample(example, options)}
+              onRename={(name) => onRenameExample(example.id, name)}
+              onDelete={() => onDeleteExample(example.id)}
+              isActive={example.id === activeExampleId}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface ExampleItemProps {
+  example: SavedExample;
+  indent: number;
+  /** Single-click previews; pass `{ preview: false }` (double-click) to open/pin it permanently. */
+  onOpen: (options?: { preview?: boolean }) => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+  /** Whether this example backs the currently active tab. */
+  isActive: boolean;
+}
+
+const ExampleItem: React.FC<ExampleItemProps> = ({
+  example,
+  indent,
+  onOpen,
+  onRename,
+  onDelete,
+  isActive
+}) => {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [draftName, setDraftName] = useState(example.name);
+  const style = { marginLeft: indent * 12 };
+
+  const commitRename = (): void => {
+    setIsRenaming(false);
+    const trimmed = draftName.trim();
+    if (trimmed && trimmed !== example.name) onRename(trimmed);
+  };
+
+  if (isRenaming) {
+    return (
+      <div
+        style={style}
+        className="flex items-center gap-2 p-1.5 rounded border border-accent bg-surface-3"
+      >
+        <Bookmark size={11} className="text-zinc-500 shrink-0" />
+        <input
+          type="text"
+          autoFocus
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename();
+            if (e.key === 'Escape') {
+              setDraftName(example.name);
+              setIsRenaming(false);
+            }
+          }}
+          className="flex-1 bg-transparent text-xs text-zinc-200 focus:outline-none min-w-0"
+        />
+      </div>
+    );
+  }
+
+  return (
     <div
       onClick={() => onOpen()}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onOpen({ preview: false });
       }}
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      title={`${request.url}\nDouble-click to open in a permanent tab`}
+      title={`${example.response.status === 0 ? 'ERROR' : `${example.response.status} ${example.response.statusText}`}\nDouble-click to open in a permanent tab`}
       style={style}
-      className={`flex items-center gap-2 p-1.5 hover:bg-surface-3 rounded text-xs cursor-grab active:cursor-grabbing border transition-all group ${
-        isDragging ? 'opacity-40' : ''
-      } ${
+      className={`flex items-center gap-2 p-1.5 hover:bg-surface-3 rounded text-xs cursor-pointer border transition-all group ${
         isActive
           ? 'bg-accent/10 border-accent/60'
           : 'bg-surface-3/40 border-transparent hover:border-border-dark'
       }`}
     >
       {isActive && <span className="w-1 h-1 rounded-full bg-accent shrink-0" />}
-      <RequestMethodBadge request={request} />
+      <Bookmark size={11} className={`shrink-0 ${exampleStatusClass(example.response.status)}`} />
       <span
-        className={`truncate flex-1 ${isActive ? 'text-foreground' : 'text-zinc-300 group-hover:text-foreground'}`}
+        className={`truncate flex-1 ${isActive ? 'text-foreground' : 'text-zinc-400 group-hover:text-foreground'}`}
       >
-        {request.name}
+        {example.name}
+      </span>
+      <span className="text-[9px] text-zinc-600 shrink-0">
+        {example.response.status === 0 ? 'ERR' : example.response.status}
       </span>
       <ActionsMenu
-        triggerTitle="Request actions"
+        triggerTitle="Example actions"
         actions={[
           {
             icon: <Pencil size={12} />,
             label: 'Rename',
             onClick: () => {
-              setDraftName(request.name);
+              setDraftName(example.name);
               setIsRenaming(true);
             }
           },
           { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
         ]}
-        moveTo={{ folders: moveFolders, onSelect: onMove }}
       />
     </div>
   );

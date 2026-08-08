@@ -39,3 +39,10 @@ export function formatCell(value: unknown): string {
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
+
+/** Short collapsed-state label for a cell whose value is a non-empty object/array, e.g. "{3 keys}" / "[5 items]". */
+export function summarizeValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.length} item${value.length === 1 ? '' : 's'}]`;
+  const count = Object.keys(value as Record<string, unknown>).length;
+  return `{${count} key${count === 1 ? '' : 's'}}`;
+}

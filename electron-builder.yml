@@ -42,6 +42,8 @@ mac:
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    - NSAppleEventsUsageDescription: Application requests permission to control System Events, to
+        read a booted iOS Simulator window's on-screen position and size while recording it.
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:

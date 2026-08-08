@@ -35,6 +35,7 @@ import type {
   CollectionFolder,
   HttpAuth,
   HttpMethod,
+  SavedExample,
   SavedRequest
 } from '../../../preload/http-client/types';
 import type { PostmanTabSeed } from './types';

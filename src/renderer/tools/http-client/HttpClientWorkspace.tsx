@@ -14,7 +14,7 @@ import { ResponseInspector } from './components/ResponseInspector';
 import { WebSocketComposer } from './components/WebSocketComposer';
 import { WebSocketLog } from './components/WebSocketLog';
 import { RequestSaveBar, type RequestSaveBarHandle } from './components/RequestSaveBar';
-import { CodeSnippetPopover } from './components/CodeSnippetPopover';
+import { CodeSnippetDrawer } from './components/CodeSnippetDrawer';
 import { SaveExamplePopover } from './components/SaveExamplePopover';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
@@ -182,7 +182,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         extraActions={
           client.protocol === 'HTTP' ? (
             <>
-              <CodeSnippetPopover
+              <CodeSnippetDrawer
                 method={client.http.state.method}
                 url={client.http.state.url}
                 headers={client.http.state.headers}

@@ -23,6 +23,9 @@
   --color-surface-4: #383838; /* elevation 3 — selected on surface-2, VS Code inactive-selection tone */
   --color-surface-5: #454545; /* elevation 4 — selected on surface-3, VS Code border tone */
   --color-border: var(--color-surface-4); /* hairline border against bg-surface */
+  --color-border-light: var(
+    --color-surface-3
+  ); /* faintest border — internal dividers inside a bordered widget */
   --color-surface-raised: var(
     --color-surface-2
   ); /* screen-recorder: elevated panel on bg-surface */
@@ -30,6 +33,7 @@
   --color-line: var(--color-border-dark); /* screen-recorder: hairline border */
   --color-emphasis-text: #11111b; /* Catppuccin Mocha Crust — text on accent/danger fills */
   --color-foreground: #c0c5d8; /* softened from Catppuccin Mocha Text — less near-white contrast */
+  --color-strong: #ffffff; /* pure white — max-contrast text, unlike the softened foreground */
   --color-text-base: var(
     --color-foreground
   ); /* alias so old `text-text-base` utility keeps working */
@@ -141,6 +145,9 @@
   --color-surface-4: #ccd0dd; /* elevation 3 — selected on surface-2 */
   --color-surface-5: #b8bed0; /* elevation 4 — selected on surface-3 */
   --color-border: var(--color-surface-4); /* hairline border against bg-surface */
+  --color-border-light: var(
+    --color-surface-3
+  ); /* faintest border — internal dividers inside a bordered widget */
   --color-surface-raised: var(
     --color-surface-2
   ); /* screen-recorder: elevated panel on bg-surface */
@@ -148,6 +155,7 @@
   --color-line: var(--color-border-dark); /* screen-recorder: hairline border */
   --color-emphasis-text: #ffffff; /* Latte's accent/danger are saturated — need light text */
   --color-foreground: #5c5f7a; /* softened from Catppuccin Latte Text — less near-black contrast */
+  --color-strong: #000000; /* pure black — max-contrast text, unlike the softened foreground */
   --color-scrollbar-track: #e6e9ef;
   --color-scrollbar-thumb: #ccd0da;
   --color-scrollbar-thumb-hover: #bcc0cc;

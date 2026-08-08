@@ -14,7 +14,7 @@ isn't covered here.
 - `ContextMenu` — right-click menu (`ContextMenu.Root/Trigger/Content/Item/CheckboxItem/RadioItem/GroupLabel/Separator/SubmenuTrigger`).
 - `Menu` — click-to-open dropdown menu (`Menu.Root/Trigger/Content/Item/GroupLabel/Separator`), same visual language as `ContextMenu`.
 - `Select` — dropdown select (`Select.Trigger/Content/Item`), `SelectTrigger` renders as a `Button`.
-- `PillTab` / `UnderlineTab` — tabbed navigation (`Root/List/Item/Panel`), built on `@base-ui/react`. `PillTab` is an accent-tinted pill; `UnderlineTab` pairs its `List` (add a `border-b`) with an `Indicator` that slides under the active `Item`.
+- `PillTab` / `UnderlineTab` — tabbed navigation (`Root/List/Item/Panel`), built on `@base-ui/react`. Both have an `Indicator` (render as a child of `List`, alongside the `Item`s) that slides to the active tab. `PillTab.List` is enclosed in its own bordered/`bg-surface-2` track with an accent-tinted pill `Indicator`; `UnderlineTab.List` (add a `border-b`) pairs with a line `Indicator` that slides under the active `Item`.
 - `Popover` — anchored floating panel (`Popover.Root/Trigger/Content`).
 - `Tooltip` — hover hint (`Tooltip.Provider/Root/Trigger/Content`).
 - `Toolbar` — horizontal action bar (`Toolbar.Root/Button/Link/Input/Label/FreeSpace/Group/Separator`).
@@ -51,11 +51,15 @@ selected: bg-surface-3
 If the container itself is already `bg-surface-2`, shift the chain up one step:
 hover becomes `bg-surface-3`, selected becomes `bg-surface-4`.
 
-## Text: `text-foreground` vs `text-muted-foreground`
+## Text: `text-foreground` vs `text-muted-foreground` vs `text-strong`
 
 - `text-foreground` — primary text color. Backed by `--color-foreground`.
 - `text-muted-foreground` — secondary/dimmed text (labels, hints, subtext).
   Backed by `--color-muted-foreground`.
+- `text-strong` — max-contrast text: pure black in light mode, pure white in
+  dark mode (`--color-strong`). Reach for this only when `text-foreground`
+  (deliberately softened) doesn't read with enough weight — e.g. the active
+  state of `PillTab.Item`.
 
 These were renamed from `text-text-base` / `text-text-dim` (formerly
 `--color-text-base` / `--color-text-dim`) for clearer, more conventional
@@ -72,10 +76,14 @@ white regardless of theme (e.g. on a saturated accent/danger fill); reach
 for `text-foreground` / `text-muted-foreground` for ordinary body/UI text
 that should adapt between light and dark.
 
-## Border levels: `border-border` vs `border-border-dark`
+## Border levels: `border-border-light` vs `border-border` vs `border-border-dark`
 
-There are only two border colors — don't introduce a third:
+There are only three border colors — don't introduce a fourth:
 
+- `border-border-light` — the faintest level. Barely-there internal dividers
+  inside an already-bordered widget (e.g. the column/row dividers inside the
+  key-value table), where `border-border` would read as too busy against the
+  widget's own outer border.
 - `border-border` — the subtle level. Low contrast, meant to barely separate
   content sitting on `bg-surface` (e.g. a hairline between rows).
 - `border-border-dark` — the stronger level. Higher contrast, used where a
@@ -84,7 +92,9 @@ There are only two border colors — don't introduce a third:
 
 When adding a new border, default to `border-border`. Reach for
 `border-border-dark` only when `border-border` isn't visible enough for
-what you're separating.
+what you're separating, and `border-border-light` only for internal
+dividers nested inside a widget that already has its own `border-border`
+(or stronger) outer edge.
 
 ## Texture utilities: `bg-dotted` and `bg-diagonal-stripes`
 

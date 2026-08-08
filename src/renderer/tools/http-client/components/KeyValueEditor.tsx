@@ -1,5 +1,5 @@
 import type React from 'react';
-import { CircleDotIcon, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { KeySuggestInput } from './KeySuggestInput';
@@ -27,23 +27,28 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
   const isLastRow = (id: string): boolean => rows[rows.length - 1]?.id === id;
 
   return (
-    <div className="flex flex-col border border-border rounded bg-surface divide-y divide-border">
-      <div className="grid grid-cols-[34px_1fr_2fr_34px] divide-x divide-border h-8 text-[10px] font-bold uppercase tracking-wider">
+    <div className="flex flex-col border-border border rounded overflow-hidden bg-surface divide-y divide-border-light">
+      <div className="grid grid-cols-[34px_1fr_2fr] divide-x divide-border-light h-8 text-[10px] font-medium uppercase tracking-wider bg-surface-2">
         <span />
         <span className="flex items-center px-2">{keyPlaceholder}</span>
         <span className="flex items-center px-2">{valuePlaceholder}</span>
-        <span />
       </div>
       {rows.map((row) => (
         <div
           key={row.id}
-          className="grid grid-cols-[34px_1fr_2fr_34px] items-center divide-x divide-border"
+          className="group grid grid-cols-[34px_1fr_2fr] items-center divide-x divide-border-light [&>*:last-child]:!border-l-0"
         >
           <div
-            className="h-8 w-full flex items-center justify-center cursor-pointer hover:bg-surface-3"
+            className="h-8 w-full flex items-center justify-center"
             onClick={() => onUpdate(row.id, { enabled: !row.enabled })}
           >
-            {row.enabled && <CircleDotIcon size={13} className="bg-blue-100 rounded-full" />}
+            <input
+              type="checkbox"
+              checked={row.enabled}
+              onChange={() => onUpdate(row.id, { enabled: !row.enabled })}
+              tabIndex={-1}
+              className="accent-accent"
+            />
           </div>
           {keySuggestions ? (
             <KeySuggestInput
@@ -63,22 +68,25 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
               onChange={(e) => onUpdate(row.id, { key: e.target.value })}
             />
           )}
-          <VariableSuggestInput
-            value={row.value}
-            onChange={(value) => onUpdate(row.id, { value })}
-            variables={variables}
-            placeholder={valuePlaceholder}
-            className={`w-full h-8 px-2 text-xs ${row.enabled ? 'text-zinc-200' : 'text-zinc-600'}`}
-          />
-          <div className="h-8 flex items-center justify-center">
-            <button
-              onClick={() => onRemove(row.id)}
-              disabled={isLastRow(row.id)}
-              title="Remove row"
-              className="p-1 text-zinc-600 hover:text-red-400 disabled:opacity-0 disabled:cursor-default cursor-pointer transition-colors justify-self-center"
-            >
-              <Trash2 size={12} />
-            </button>
+          <div className="h-8 flex">
+            <VariableSuggestInput
+              value={row.value}
+              onChange={(value) => onUpdate(row.id, { value })}
+              variables={variables}
+              placeholder={valuePlaceholder}
+              className={`w-full h-8 px-2 text-xs outline-none ${row.enabled ? 'text-zinc-200' : 'text-zinc-600'}`}
+            />
+            <div className="h-8 items-center justify-center flex px-2">
+              <button
+                onClick={() => onRemove(row.id)}
+                disabled={isLastRow(row.id)}
+                tabIndex={-1}
+                title="Remove row"
+                className=" p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-default cursor-pointer transition justify-self-center"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
           </div>
         </div>
       ))}

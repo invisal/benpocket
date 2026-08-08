@@ -1,26 +1,20 @@
 import type React from 'react';
-import { useEffect, useState, type ComponentType } from 'react';
-import { PillTab } from '@renderer/components/ui/Tabs';
-import { FileText, Globe, Waves, X } from 'lucide-react';
-import { cn } from 'cnfast';
-import type { SavedRequest } from '../../../preload/http-client/types';
-import { usePostmanTabsStore, type PostmanTab } from './store/tabs.store';
-import { useCollectionsStore } from './store/collections.store';
+import { useEffect, useRef, useState } from 'react';
+import { Plug, PlugZap, RefreshCw, Send } from 'lucide-react';
+import { usePostmanTabsStore } from './store/tabs.store';
 import { useEnvironmentsStore } from './store/environments.store';
 import { useWorkspacesStore } from './store/workspaces.store';
+import { useCollectionsStore } from './store/collections.store';
 import { HttpClientSidebar } from './HttpClientSidebar';
-import { useApiClient, disposeApiClientTab, type ProtocolTab } from './hooks/useApiClient';
+import { useApiClient } from './hooks/useApiClient';
 import type { PostmanTabSeed } from './types';
 import { RequestComposer } from './components/RequestComposer';
 import { RequestEditorPanel } from './components/RequestEditorPanel';
 import { ResponseInspector } from './components/ResponseInspector';
 import { WebSocketComposer } from './components/WebSocketComposer';
 import { WebSocketLog } from './components/WebSocketLog';
-import { SaveRequestPopover } from './components/SaveRequestPopover';
-import { SaveExamplePopover } from './components/SaveExamplePopover';
-import { EnvironmentSelector } from './components/EnvironmentSelector';
+import { RequestSaveBar, type RequestSaveBarHandle } from './components/RequestSaveBar';
 import { CodeSnippetPopover } from './components/CodeSnippetPopover';
-import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
 const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
@@ -40,18 +34,6 @@ function readStoredSidebarWidth(): number {
   return Number.isFinite(parsed) ? parsed : DEFAULT_SIDEBAR_WIDTH;
 }
 
-// Mirrors the nav-item pattern in screen-recorder/ScreenRecorderApp.tsx, so every
-// tool's top-level mode switcher (record/library/... there, HTTP/WebSocket here)
-// looks and behaves the same way.
-const PROTOCOL_ITEMS: {
-  value: ProtocolTab;
-  label: string;
-  icon: ComponentType<{ size?: number }>;
-}[] = [
-  { value: 'HTTP', label: 'REST Client', icon: Globe },
-  { value: 'WEBSOCKET', label: 'WebSocket Client', icon: Waves }
-];
-
 /**
  * HTTP Client's own sidebar + request-tab system, entirely self-contained so it
  * no longer depends on the app's global left panel / tool-tab switcher (both of
@@ -61,12 +43,7 @@ const PROTOCOL_ITEMS: {
 export const HttpClientWorkspace: React.FC = () => {
   const tabs = usePostmanTabsStore((s) => s.tabs);
   const activeTabId = usePostmanTabsStore((s) => s.activeTabId);
-  const previewTabId = usePostmanTabsStore((s) => s.previewTabId);
-  const selectTab = usePostmanTabsStore((s) => s.setActiveTabId);
-  const closeTab = usePostmanTabsStore((s) => s.closeTab);
-  const renameTab = usePostmanTabsStore((s) => s.renameTab);
   const openNewRequestTab = usePostmanTabsStore((s) => s.openNewRequestTab);
-  const pinTab = usePostmanTabsStore((s) => s.pinTab);
 
   const workspacesLoaded = useWorkspacesStore((s) => s.isLoaded);
   const loadWorkspaces = useWorkspacesStore((s) => s.load);
@@ -86,21 +63,6 @@ export const HttpClientWorkspace: React.FC = () => {
       loadEnvironments();
     }
   }, [activeWorkspaceId, loadCollections, loadEnvironments]);
-
-  const handleCloseTab = (id: string): void => {
-    closeTab(id);
-    disposeApiClientTab(id);
-  };
-
-  const handleCloseOthers = (keepId: string): void => {
-    for (const t of tabs) {
-      if (t.id !== keepId) handleCloseTab(t.id);
-    }
-  };
-
-  const handleCloseAll = (): void => {
-    for (const t of tabs) handleCloseTab(t.id);
-  };
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(readStoredSidebarWidth);
   const handleSidebarResize = (size: number): void => {
@@ -136,151 +98,12 @@ export const HttpClientWorkspace: React.FC = () => {
             </button>
           </div>
         ) : (
-          <>
-            <div className="flex h-9 bg-surface-2 border-b border-border-dark overflow-x-auto select-none shrink-0 scrollbar-none">
-              {tabs.map((tab) => (
-                <TabBarItem
-                  key={tab.id}
-                  tab={tab}
-                  isActive={tab.id === activeTabId}
-                  isPreview={tab.id === previewTabId}
-                  canCloseOthers={tabs.length > 1}
-                  onActivate={() => selectTab(tab.id)}
-                  onClose={() => handleCloseTab(tab.id)}
-                  onCloseOthers={() => handleCloseOthers(tab.id)}
-                  onCloseAll={handleCloseAll}
-                  onRename={(title) => renameTab(tab.id, title)}
-                  onPin={() => pinTab(tab.id)}
-                />
-              ))}
-            </div>
-
-            <div className="flex-1 overflow-auto flex flex-col min-h-0 bg-surface">
-              {activeTabId && <HttpClientRequestPanel key={activeTabId} tabId={activeTabId} />}
-            </div>
-          </>
+          <div className="flex-1 overflow-auto flex flex-col min-h-0 bg-surface">
+            {activeTabId && <HttpClientRequestPanel key={activeTabId} tabId={activeTabId} />}
+          </div>
         )}
       </div>
     </div>
-  );
-};
-
-interface TabBarItemProps {
-  tab: PostmanTab;
-  isActive: boolean;
-  /** Shown in italic and reused by the next preview-mode open, Postman/VS Code-style. */
-  isPreview: boolean;
-  canCloseOthers: boolean;
-  onActivate: () => void;
-  onClose: () => void;
-  onCloseOthers: () => void;
-  onCloseAll: () => void;
-  onRename: (title: string) => void;
-  /** Promotes this tab out of preview mode into a permanent one. */
-  onPin: () => void;
-}
-
-const TabBarItem: React.FC<TabBarItemProps> = ({
-  tab,
-  isActive,
-  isPreview,
-  canCloseOthers,
-  onActivate,
-  onClose,
-  onCloseOthers,
-  onCloseAll,
-  onRename,
-  onPin
-}) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(tab.title);
-
-  const startRenaming = (): void => {
-    onPin();
-    setDraftTitle(tab.title);
-    setIsEditing(true);
-  };
-
-  const commitRename = (): void => {
-    const trimmed = draftTitle.trim();
-    if (trimmed && trimmed !== tab.title) onRename(trimmed);
-    setIsEditing(false);
-  };
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-2 px-3 border-r border-border-dark text-xs shrink-0 bg-surface-3 text-white border-t-2 border-t-accent">
-        <FileText size={12} className="text-accent" />
-        <input
-          type="text"
-          autoFocus
-          value={draftTitle}
-          onChange={(e) => setDraftTitle(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitRename();
-            if (e.key === 'Escape') {
-              setDraftTitle(tab.title);
-              setIsEditing(false);
-            }
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="bg-transparent border-b border-accent outline-none w-24 text-white"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger
-        render={
-          <div
-            onClick={onActivate}
-            onDoubleClick={startRenaming}
-            title={
-              isPreview
-                ? 'Preview tab · double-click to keep open, or edit the request'
-                : 'Double-click to rename · Right-click for more options'
-            }
-            className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
-              isActive
-                ? 'bg-surface-3 text-white border-t-2 border-t-accent'
-                : 'bg-surface-2 text-zinc-550 hover:bg-surface-3 hover:text-zinc-300'
-            }`}
-          >
-            <FileText size={12} className={isActive ? 'text-accent' : 'text-zinc-600'} />
-            <span className={cn('truncate max-w-30', isPreview && 'italic')}>{tab.title}</span>
-            {!tab.meta?.savedRequestId && !tab.meta?.savedExampleId && (
-              <span
-                title="Not saved to a collection"
-                className="size-1.5 rounded-full bg-amber-500 shrink-0"
-              />
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              title="Close tab"
-              className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-555 group-hover:text-zinc-400 hover:text-foreground"
-            >
-              <X size={10} />
-            </button>
-          </div>
-        }
-      />
-      <ContextMenu.Content>
-        {isPreview && <ContextMenu.Item onClick={onPin}>Keep Tab Open</ContextMenu.Item>}
-        <ContextMenu.Item onClick={startRenaming}>Rename</ContextMenu.Item>
-        <ContextMenu.Separator />
-        <ContextMenu.Item onClick={onClose}>Close</ContextMenu.Item>
-        <ContextMenu.Item onClick={onCloseOthers} disabled={!canCloseOthers}>
-          Close Others
-        </ContextMenu.Item>
-        <ContextMenu.Item onClick={onCloseAll}>Close All</ContextMenu.Item>
-      </ContextMenu.Content>
-    </ContextMenu.Root>
   );
 };
 
@@ -297,6 +120,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   };
   const seed = tab?.meta as PostmanTabSeed | undefined;
   const [saveError, setSaveError] = useState<string | null>(null);
+  const saveBarRef = useRef<RequestSaveBarHandle>(null);
   const [responsePanelHeight, setResponsePanelHeight] = useState<number>(
     readStoredResponsePanelHeight
   );
@@ -311,8 +135,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
     return () => clearTimeout(timer);
   }, [saveError]);
 
-  // Cmd/Ctrl+Enter to send, Cmd/Ctrl+S to quick-save a request already linked to a
-  // collection (an unlinked tab still needs the Save popover to pick a destination).
+  // Cmd/Ctrl+Enter to send, Cmd/Ctrl+S to save using whatever collection/name
+  // is currently set in the save bar (same action the visible Save button runs).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (!e.metaKey && !e.ctrlKey) return;
@@ -321,203 +145,184 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         client.http.send();
       } else if (e.key.toLowerCase() === 's') {
         e.preventDefault();
-        if (!client.binding) return;
-        const request: SavedRequest =
-          client.protocol === 'HTTP'
-            ? {
-                id: client.binding.requestId,
-                name: tab?.title ?? 'Untitled Request',
-                protocol: 'HTTP',
-                method: client.http.state.method,
-                url: client.http.state.url,
-                headers: client.http.state.headers,
-                params: client.http.state.params,
-                bodyType: client.http.state.bodyType,
-                body: client.http.state.body,
-                auth: client.http.state.auth,
-                updatedAt: Date.now()
-              }
-            : {
-                id: client.binding.requestId,
-                name: tab?.title ?? 'Untitled Request',
-                protocol: 'WEBSOCKET',
-                method: 'GET',
-                url: client.ws.state.url,
-                headers: [],
-                params: [],
-                bodyType: 'none',
-                body: '',
-                updatedAt: Date.now()
-              };
-        useCollectionsStore
-          .getState()
-          .saveRequest(client.binding.collectionId, request, null)
-          .catch((err: unknown) => {
-            setSaveError(err instanceof Error ? err.message : 'Save failed.');
-          });
+        saveBarRef.current?.save();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [client, tab]);
+  }, [client]);
 
   return (
-    <div className="flex-1 flex flex-col gap-3 min-h-0">
+    <div className="flex-1 flex flex-col min-h-0">
       {saveError && (
         <div className="shrink-0 rounded px-2 py-1.5 text-[10px] leading-snug border bg-red-500/10 border-red-500/20 text-red-400">
           {saveError}
         </div>
       )}
-      <PillTab.Root
-        value={client.protocol}
-        onValueChange={(value) => client.setProtocol(value as ProtocolTab)}
-        className="flex flex-col gap-3 min-h-0 flex-1"
-      >
-        <nav className="flex items-center justify-between gap-2 shrink-0 border-b border-border py-2 px-4">
-          <PillTab.List>
-            {PROTOCOL_ITEMS.map(({ value, label, icon: Icon }) => (
-              <PillTab.Item key={value} value={value}>
-                <Icon size={13} />
-                {label}
-              </PillTab.Item>
-            ))}
-          </PillTab.List>
 
-          <div className="flex items-center gap-2">
-            <EnvironmentSelector />
-            {client.protocol === 'HTTP' && (
-              <CodeSnippetPopover
-                method={client.http.state.method}
-                url={client.http.state.url}
-                headers={client.http.state.headers}
-                bodyType={client.http.state.bodyType}
-                body={client.http.state.body}
-              />
-            )}
-            {client.protocol === 'HTTP' && (
-              <SaveExamplePopover
-                binding={client.binding}
-                response={client.http.state.response}
-                method={client.http.state.method}
-                url={client.http.state.url}
-                headers={client.http.state.headers}
-                params={client.http.state.params}
-                bodyType={client.http.state.bodyType}
-                body={client.http.state.body}
-              />
-            )}
-            <SaveRequestPopover
-              tabTitle={tab?.title ?? 'New API Request'}
-              protocol={client.protocol}
-              url={client.protocol === 'HTTP' ? client.http.state.url : client.ws.state.url}
-              method={client.protocol === 'HTTP' ? client.http.state.method : undefined}
-              headers={client.protocol === 'HTTP' ? client.http.state.headers : undefined}
-              params={client.protocol === 'HTTP' ? client.http.state.params : undefined}
-              bodyType={client.protocol === 'HTTP' ? client.http.state.bodyType : undefined}
-              body={client.protocol === 'HTTP' ? client.http.state.body : undefined}
-              auth={client.protocol === 'HTTP' ? client.http.state.auth : undefined}
-              binding={client.binding}
-              defaultCollectionId={seed?.defaultCollectionId}
-              defaultFolderId={seed?.defaultFolderId}
-              onSaved={(binding, name) => {
-                client.bindTo(binding);
-                renameTab(tabId, name);
-              }}
-            />
-          </div>
-        </nav>
-
-        <PillTab.Panel value="HTTP" className="flex flex-col gap-3 min-h-0 flex-1">
-          <div className="flex-1 min-h-0 flex flex-col gap-3">
-            <RequestComposer
-              method={client.http.state.method}
-              onMethodChange={(method) => {
-                pinIfPreview();
-                client.http.setMethod(method);
-              }}
-              url={client.http.state.url}
-              onUrlChange={(url) => {
-                pinIfPreview();
-                client.http.setUrl(url);
-              }}
-              isLoading={client.http.state.isLoading}
-              onSend={client.http.send}
-            />
-
-            <RequestEditorPanel
+      <RequestSaveBar
+        ref={saveBarRef}
+        tabTitle={tab?.title ?? 'New API Request'}
+        protocol={client.protocol}
+        url={client.protocol === 'HTTP' ? client.http.state.url : client.ws.state.url}
+        method={client.protocol === 'HTTP' ? client.http.state.method : undefined}
+        headers={client.protocol === 'HTTP' ? client.http.state.headers : undefined}
+        params={client.protocol === 'HTTP' ? client.http.state.params : undefined}
+        bodyType={client.protocol === 'HTTP' ? client.http.state.bodyType : undefined}
+        body={client.protocol === 'HTTP' ? client.http.state.body : undefined}
+        auth={client.protocol === 'HTTP' ? client.http.state.auth : undefined}
+        binding={client.binding}
+        defaultCollectionId={seed?.defaultCollectionId}
+        onSaved={(binding, name) => {
+          client.bindTo(binding);
+          renameTab(tabId, name);
+        }}
+        onError={setSaveError}
+        extraActions={
+          client.protocol === 'HTTP' ? (
+            <CodeSnippetPopover
               method={client.http.state.method}
               url={client.http.state.url}
-              params={client.http.state.params}
-              onUpdateParam={(id, patch) => {
-                pinIfPreview();
-                client.http.updateParamRow(id, patch);
-              }}
-              onRemoveParam={(id) => {
-                pinIfPreview();
-                client.http.removeParamRow(id);
-              }}
               headers={client.http.state.headers}
-              onUpdateHeader={(id, patch) => {
-                pinIfPreview();
-                client.http.updateHeaderRow(id, patch);
-              }}
-              onRemoveHeader={(id) => {
-                pinIfPreview();
-                client.http.removeHeaderRow(id);
-              }}
-              auth={client.http.state.auth}
-              onAuthChange={(auth) => {
-                pinIfPreview();
-                client.http.setAuth(auth);
-              }}
-              binding={client.binding}
               bodyType={client.http.state.bodyType}
-              onBodyTypeChange={(bodyType) => {
-                pinIfPreview();
-                client.http.setBodyType(bodyType);
-              }}
               body={client.http.state.body}
-              onBodyChange={(body) => {
-                pinIfPreview();
-                client.http.setBody(body);
-              }}
             />
-          </div>
+          ) : undefined
+        }
+      />
 
-          <ResizablePanel
-            edge="top"
-            size={responsePanelHeight}
-            onResize={handleResponsePanelResize}
-            min={15}
-            max={75}
-            unit="%"
-            className="flex flex-col min-h-0"
-          >
-            <ResponseInspector
-              response={client.http.state.response}
-              isLoading={client.http.state.isLoading}
+      <div className="flex flex-col gap-3 min-h-0 flex-1">
+        <RequestComposer
+          method={client.protocol === 'WEBSOCKET' ? 'WEBSOCKET' : client.http.state.method}
+          onMethodChange={(value) => {
+            pinIfPreview();
+            if (value === 'WEBSOCKET') {
+              client.setProtocol('WEBSOCKET');
+            } else {
+              client.setProtocol('HTTP');
+              client.http.setMethod(value);
+            }
+          }}
+          url={client.protocol === 'WEBSOCKET' ? client.ws.state.url : client.http.state.url}
+          onUrlChange={(url) => {
+            pinIfPreview();
+            if (client.protocol === 'WEBSOCKET') client.ws.setUrl(url);
+            else client.http.setUrl(url);
+          }}
+          urlDisabled={
+            client.protocol === 'WEBSOCKET' &&
+            (client.ws.state.status === 'CONNECTED' || client.ws.state.status === 'CONNECTING')
+          }
+          action={
+            client.protocol === 'WEBSOCKET'
+              ? {
+                  label:
+                    client.ws.state.status === 'CONNECTING'
+                      ? 'Connecting...'
+                      : client.ws.state.status === 'CONNECTED'
+                        ? 'Disconnect'
+                        : 'Connect',
+                  icon:
+                    client.ws.state.status === 'CONNECTING' ? (
+                      <RefreshCw size={12} className="animate-spin" />
+                    ) : client.ws.state.status === 'CONNECTED' ? (
+                      <PlugZap size={12} />
+                    ) : (
+                      <Plug size={12} />
+                    ),
+                  onClick:
+                    client.ws.state.status === 'CONNECTED'
+                      ? client.ws.disconnect
+                      : client.ws.connect,
+                  disabled:
+                    client.ws.state.status === 'CONNECTING' ||
+                    (client.ws.state.status !== 'CONNECTED' && !client.ws.state.url.trim()),
+                  className: client.ws.state.status === 'CONNECTED' ? 'text-danger' : 'text-accent'
+                }
+              : {
+                  label: client.http.state.isLoading ? 'Sending...' : 'Send',
+                  icon: client.http.state.isLoading ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <Send size={12} />
+                  ),
+                  onClick: client.http.send,
+                  disabled: client.http.state.isLoading
+                }
+          }
+        />
+
+        {client.protocol === 'HTTP' ? (
+          <>
+            <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">
+              <RequestEditorPanel
+                method={client.http.state.method}
+                url={client.http.state.url}
+                params={client.http.state.params}
+                onUpdateParam={(id, patch) => {
+                  pinIfPreview();
+                  client.http.updateParamRow(id, patch);
+                }}
+                onRemoveParam={(id) => {
+                  pinIfPreview();
+                  client.http.removeParamRow(id);
+                }}
+                headers={client.http.state.headers}
+                onUpdateHeader={(id, patch) => {
+                  pinIfPreview();
+                  client.http.updateHeaderRow(id, patch);
+                }}
+                onRemoveHeader={(id) => {
+                  pinIfPreview();
+                  client.http.removeHeaderRow(id);
+                }}
+                auth={client.http.state.auth}
+                onAuthChange={(auth) => {
+                  pinIfPreview();
+                  client.http.setAuth(auth);
+                }}
+                binding={client.binding}
+                bodyType={client.http.state.bodyType}
+                onBodyTypeChange={(bodyType) => {
+                  pinIfPreview();
+                  client.http.setBodyType(bodyType);
+                }}
+                body={client.http.state.body}
+                onBodyChange={(body) => {
+                  pinIfPreview();
+                  client.http.setBody(body);
+                }}
+              />
+            </div>
+
+            <ResizablePanel
+              edge="top"
+              size={responsePanelHeight}
+              onResize={handleResponsePanelResize}
+              min={15}
+              max={75}
+              unit="%"
+              className="flex flex-col min-h-0"
+            >
+              <ResponseInspector
+                response={client.http.state.response}
+                isLoading={client.http.state.isLoading}
+              />
+            </ResizablePanel>
+          </>
+        ) : (
+          <>
+            <WebSocketComposer
+              messageInput={client.ws.state.messageInput}
+              onMessageInputChange={client.ws.setMessageInput}
+              onSendMessage={client.ws.sendMessage}
+              disabled={client.ws.state.status !== 'CONNECTED'}
             />
-          </ResizablePanel>
-        </PillTab.Panel>
 
-        <PillTab.Panel value="WEBSOCKET" className="flex flex-col gap-3 min-h-0 flex-1">
-          <WebSocketComposer
-            url={client.ws.state.url}
-            onUrlChange={(url) => {
-              pinIfPreview();
-              client.ws.setUrl(url);
-            }}
-            status={client.ws.state.status}
-            onConnect={client.ws.connect}
-            onDisconnect={client.ws.disconnect}
-            messageInput={client.ws.state.messageInput}
-            onMessageInputChange={client.ws.setMessageInput}
-            onSendMessage={client.ws.sendMessage}
-          />
-
-          <WebSocketLog log={client.ws.state.log} onClear={client.ws.clearLog} />
-        </PillTab.Panel>
-      </PillTab.Root>
+            <WebSocketLog log={client.ws.state.log} onClear={client.ws.clearLog} />
+          </>
+        )}
+      </div>
     </div>
   );
 };

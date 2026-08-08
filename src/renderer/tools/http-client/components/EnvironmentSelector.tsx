@@ -164,13 +164,15 @@ export const EnvironmentSelector: React.FC = () => {
         if (!next) setError(null);
       }}
     >
-      <Popover.Trigger className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 border border-border-dark hover:border-accent text-zinc-300 hover:text-foreground text-xs font-semibold rounded cursor-pointer transition-colors">
+      <Popover.Trigger className="flex items-center gap-1.5 w-full px-3 py-1.5 bg-surface-2 border border-border-dark hover:border-accent text-zinc-300 hover:text-foreground text-xs font-semibold rounded cursor-pointer transition-colors">
         <Globe size={12} className={activeEnvironment ? 'text-accent' : 'text-zinc-500'} />
-        <span className="max-w-32 truncate">{activeEnvironment?.name ?? 'No Environment'}</span>
-        <ChevronDown size={11} className="text-zinc-500" />
+        <span className="flex-1 min-w-0 truncate text-left">
+          {activeEnvironment?.name ?? 'No Environment'}
+        </span>
+        <ChevronDown size={11} className="text-zinc-500 shrink-0" />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner sideOffset={8} align="end" className="z-50">
+        <Popover.Positioner sideOffset={8} align="start" className="z-50">
           <Popover.Popup className="bg-surface border border-border-dark rounded-lg shadow-xl p-3 w-80 flex flex-col gap-3 text-xs outline-none">
             <div className="flex items-center justify-between">
               <span className="font-bold text-zinc-300 uppercase tracking-wider text-[10px]">

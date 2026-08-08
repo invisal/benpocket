@@ -97,7 +97,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         <UnderlineTab.Indicator />
       </UnderlineTab.List>
 
-      <UnderlineTab.Panel value="params" className="max-h-40 overflow-auto p-2">
+      <UnderlineTab.Panel value="params" className="h-full p-3 overflow-auto bg-surface-2">
         <KeyValueEditor
           rows={params}
           onUpdate={onUpdateParam}

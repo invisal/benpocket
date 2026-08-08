@@ -424,7 +424,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         </nav>
 
         <Tabs.Panel value="HTTP" className="flex flex-col gap-3 min-h-0 flex-1">
-          <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
             <RequestComposer
               method={client.http.state.method}
               onMethodChange={(method) => {
@@ -484,8 +484,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
             edge="top"
             size={responsePanelHeight}
             onResize={handleResponsePanelResize}
-            min={15}
-            max={75}
+            min={8}
+            max={85}
             unit="%"
             className="flex flex-col min-h-0 -mx-4 -mb-4"
           >

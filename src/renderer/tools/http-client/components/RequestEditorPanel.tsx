@@ -81,9 +81,9 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
     <Tabs.Root
       value={activeTab}
       onValueChange={(value) => setActiveTab(value as RequestTabValue)}
-      className="flex flex-col gap-3 shrink-0"
+      className="flex flex-col gap-3 flex-1 min-h-0"
     >
-      <Tabs.List className="flex gap-4 border-b border-border text-xs select-none">
+      <Tabs.List className="flex gap-4 border-b border-border text-xs select-none shrink-0">
         <Tabs.Tab value="params" className={tabClassName(activeTab === 'params', 'py-1')}>
           Params{activeParamCount > 0 ? ` (${activeParamCount})` : ''}
         </Tabs.Tab>
@@ -98,7 +98,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         </Tabs.Tab>
       </Tabs.List>
 
-      <Tabs.Panel value="params" className="max-h-40 overflow-auto pr-1">
+      <Tabs.Panel value="params" className="flex-1 min-h-0 overflow-auto pr-1">
         <KeyValueEditor
           rows={params}
           onUpdate={onUpdateParam}
@@ -108,7 +108,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         />
       </Tabs.Panel>
 
-      <Tabs.Panel value="headers" className="max-h-40 overflow-auto pr-1">
+      <Tabs.Panel value="headers" className="flex-1 min-h-0 overflow-auto pr-1">
         <KeyValueEditor
           rows={headers}
           onUpdate={onUpdateHeader}
@@ -156,11 +156,11 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         )}
       </Tabs.Panel>
 
-      <Tabs.Panel value="auth" className="max-h-40 overflow-auto pr-1">
+      <Tabs.Panel value="auth" className="flex-1 min-h-0 overflow-auto pr-1">
         <AuthEditor auth={auth} onChange={onAuthChange} />
       </Tabs.Panel>
 
-      <Tabs.Panel value="body" className="flex flex-col gap-2">
+      <Tabs.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2">
         <div className="flex gap-3 text-[11px]">
           {BODY_TYPES.map((bt) => (
             <label

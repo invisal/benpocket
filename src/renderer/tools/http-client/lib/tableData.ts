@@ -39,3 +39,15 @@ export function formatCell(value: unknown): string {
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
+
+/** True when a cell value has nested data worth drilling into as a sub-table. */
+export function isExpandableCell(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return Object.keys(value).length > 0;
+}
+
+/** Short label shown for an expandable cell before it's opened, e.g. "Array(3)" or "Object". */
+export function cellLabel(value: unknown): string {
+  return Array.isArray(value) ? `Array(${value.length})` : 'Object';
+}

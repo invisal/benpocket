@@ -157,7 +157,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex-1 min-h-0 flex flex-col gap-1.5">
       {isJson && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -190,7 +190,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
         </div>
       )}
 
-      <div className="relative flex h-40 bg-surface-2 border border-border rounded overflow-hidden focus-within:border-accent">
+      <div className="relative flex flex-1 min-h-40 bg-surface-2 border border-border rounded overflow-hidden focus-within:border-accent">
         <div
           ref={gutterRef}
           className="w-9 shrink-0 overflow-hidden py-2 border-r border-border select-none"

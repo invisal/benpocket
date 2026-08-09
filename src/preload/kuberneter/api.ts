@@ -48,6 +48,14 @@ export interface TerminalSpawnOptions {
   cwd?: string;
 }
 
+export interface HelmCheckResult {
+  available: boolean;
+  version?: string;
+  path?: string;
+  isSystemPath?: boolean;
+  error?: string;
+}
+
 export interface KubectlCheckResult {
   available: boolean;
   version?: string;
@@ -121,7 +129,28 @@ export interface KuberneterApi {
   clearPrometheusCache: (kubeconfigPath?: string, contextName?: string) => Promise<{ ok: boolean }>;
   helmSearchCharts: (
     kubeconfigPath?: string
-  ) => Promise<HelmChartItem[] | { error: string } | { helmNotFound: true }>;
+  ) => Promise<
+    | HelmChartItem[]
+    | { error: string }
+    | { helmNotFound: true }
+    | { noRepos: true }
+    | { noCharts: true; reposCount: number }
+  >;
+  helmListRepos: (
+    kubeconfigPath?: string
+  ) => Promise<HelmRepoItem[] | { error: string } | { helmNotFound: true }>;
+  helmAddRepo: (
+    name: string,
+    url: string,
+    kubeconfigPath?: string
+  ) => Promise<{ success?: boolean; error?: string } | { helmNotFound: true }>;
+  helmRemoveRepo: (
+    name: string,
+    kubeconfigPath?: string
+  ) => Promise<{ success?: boolean; error?: string } | { helmNotFound: true }>;
+  helmUpdateRepos: (
+    kubeconfigPath?: string
+  ) => Promise<{ success?: boolean; message?: string; error?: string } | { helmNotFound: true }>;
   helmGetChartVersions: (
     chartName: string,
     kubeconfigPath?: string
@@ -153,6 +182,8 @@ export interface KuberneterApi {
   ) => Promise<{ values: string } | { error: string } | { helmNotFound: true }>;
   checkKubectl: (customPath?: string) => Promise<KubectlCheckResult>;
   selectKubectlFile: () => Promise<string | null>;
+  checkHelm: (customPath?: string) => Promise<HelmCheckResult>;
+  selectHelmFile: () => Promise<string | null>;
   startPortForward: (params: {
     id: string;
     kubeconfigPath?: string;
@@ -195,6 +226,11 @@ export interface KuberneterApi {
   onTerminalData: (id: string, callback: (data: string) => void) => () => void;
   /** Subscribe to PTY exit for a session. Returns an unsubscribe fn. */
   onTerminalExit: (id: string, callback: (exitCode: number, signal?: number) => void) => () => void;
+}
+
+export interface HelmRepoItem {
+  name: string;
+  url: string;
 }
 
 export interface HelmChartItem {
@@ -287,6 +323,14 @@ export const kuberneterApi: KuberneterApi = {
     ipcRenderer.invoke('kuberneter:clear-prometheus-cache', kubeconfigPath, contextName),
   helmSearchCharts: (kubeconfigPath) =>
     ipcRenderer.invoke('kuberneter:helm-search-charts', kubeconfigPath),
+  helmListRepos: (kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-list-repos', kubeconfigPath),
+  helmAddRepo: (name, url, kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-add-repo', name, url, kubeconfigPath),
+  helmRemoveRepo: (name, kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-remove-repo', name, kubeconfigPath),
+  helmUpdateRepos: (kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-update-repos', kubeconfigPath),
   helmGetChartVersions: (chartName, kubeconfigPath) =>
     ipcRenderer.invoke('kuberneter:helm-get-chart-versions', chartName, kubeconfigPath),
   helmGetChartDetails: (chartName, version, kubeconfigPath) =>
@@ -315,6 +359,8 @@ export const kuberneterApi: KuberneterApi = {
     ),
   checkKubectl: (customPath) => ipcRenderer.invoke('kuberneter:check-kubectl', customPath),
   selectKubectlFile: () => ipcRenderer.invoke('kuberneter:select-kubectl-file'),
+  checkHelm: (customPath) => ipcRenderer.invoke('kuberneter:check-helm', customPath),
+  selectHelmFile: () => ipcRenderer.invoke('kuberneter:select-kubectl-file'),
   startPortForward: (params) => ipcRenderer.invoke('kuberneter:start-port-forward', params),
   stopPortForward: (id) => ipcRenderer.invoke('kuberneter:stop-port-forward', id),
   queryPodMetricsRange: (params) =>

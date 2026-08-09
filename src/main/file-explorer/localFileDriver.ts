@@ -45,7 +45,8 @@ const capabilities: DriverCapabilities = {
   nativeIcons: true,
   atomicMove: true,
   realFolders: true,
-  sync: 'sync'
+  sync: 'sync',
+  watchable: true
 };
 
 export const localFileDriver: FileDriver = {

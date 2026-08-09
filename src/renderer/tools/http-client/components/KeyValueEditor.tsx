@@ -25,62 +25,69 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
 }) => {
   const variables = useActiveEnvironmentVariables();
   const isLastRow = (id: string): boolean => rows[rows.length - 1]?.id === id;
-  const keyInputClassName = (enabled: boolean): string =>
-    `bg-surface-2 border border-border text-xs rounded px-2 py-1 focus:outline-none focus:border-accent w-full ${
-      enabled ? 'text-zinc-200' : 'text-zinc-600'
-    }`;
 
   return (
-    <div className="flex flex-col gap-1 p-2">
-      <div className="grid grid-cols-[20px_1fr_1fr_24px] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+    <div className="flex flex-col border-border border rounded overflow-hidden bg-surface divide-y divide-border-light">
+      <div className="grid grid-cols-[34px_1fr_2fr] divide-x divide-border-light h-8 text-[10px] font-medium uppercase tracking-wider bg-surface-2">
         <span />
-        <span>{keyPlaceholder}</span>
-        <span>{valuePlaceholder}</span>
-        <span />
+        <span className="flex items-center px-2">{keyPlaceholder}</span>
+        <span className="flex items-center px-2">{valuePlaceholder}</span>
       </div>
       {rows.map((row) => (
-        <div key={row.id} className="grid grid-cols-[20px_1fr_1fr_24px] gap-2 items-center">
-          <input
-            type="checkbox"
-            checked={row.enabled}
-            onChange={(e) => onUpdate(row.id, { enabled: e.target.checked })}
-            className="accent-accent cursor-pointer justify-self-center"
-            title={row.enabled ? 'Disable row' : 'Enable row'}
-          />
+        <div
+          key={row.id}
+          className="group grid grid-cols-[34px_1fr_2fr] items-center divide-x divide-border-light [&>*:last-child]:!border-l-0"
+        >
+          <div
+            className="h-8 w-full flex items-center justify-center"
+            onClick={() => onUpdate(row.id, { enabled: !row.enabled })}
+          >
+            <input
+              type="checkbox"
+              checked={row.enabled}
+              onChange={() => onUpdate(row.id, { enabled: !row.enabled })}
+              tabIndex={-1}
+              className="accent-accent"
+            />
+          </div>
           {keySuggestions ? (
             <KeySuggestInput
               value={row.key}
               onChange={(key) => onUpdate(row.id, { key })}
               suggestions={keySuggestions}
               placeholder={keyPlaceholder}
-              className={keyInputClassName(row.enabled)}
             />
           ) : (
             <input
               type="text"
               value={row.key}
               placeholder={keyPlaceholder}
+              autoCorrect="false"
+              spellCheck="false"
+              className="h-8 outline-none px-2 text-xs"
               onChange={(e) => onUpdate(row.id, { key: e.target.value })}
-              className={keyInputClassName(row.enabled)}
             />
           )}
-          <VariableSuggestInput
-            value={row.value}
-            onChange={(value) => onUpdate(row.id, { value })}
-            variables={variables}
-            placeholder={valuePlaceholder}
-            className={`w-full bg-surface-2 border border-border text-xs rounded px-2 py-1 focus:outline-none focus:border-accent ${
-              row.enabled ? 'text-zinc-200' : 'text-zinc-600'
-            }`}
-          />
-          <button
-            onClick={() => onRemove(row.id)}
-            disabled={isLastRow(row.id)}
-            title="Remove row"
-            className="p-1 text-zinc-600 hover:text-red-400 disabled:opacity-0 disabled:cursor-default cursor-pointer transition-colors justify-self-center"
-          >
-            <Trash2 size={12} />
-          </button>
+          <div className="h-8 flex">
+            <VariableSuggestInput
+              value={row.value}
+              onChange={(value) => onUpdate(row.id, { value })}
+              variables={variables}
+              placeholder={valuePlaceholder}
+              className={`w-full h-8 px-2 text-xs outline-none ${row.enabled ? 'text-zinc-200' : 'text-zinc-600'}`}
+            />
+            <div className="h-8 items-center justify-center flex px-2">
+              <button
+                onClick={() => onRemove(row.id)}
+                disabled={isLastRow(row.id)}
+                tabIndex={-1}
+                title="Remove row"
+                className=" p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-default cursor-pointer transition justify-self-center"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          </div>
         </div>
       ))}
     </div>

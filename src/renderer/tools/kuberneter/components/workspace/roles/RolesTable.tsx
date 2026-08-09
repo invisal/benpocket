@@ -126,7 +126,7 @@ export const RolesTable: React.FC<RolesTableProps> = ({
           <div className="flex justify-center">
             <button
               onClick={(e) => e.stopPropagation()}
-              className="p-1 rounded hover:bg-surface-3 text-zinc-500 hover:text-white cursor-pointer border-none bg-transparent"
+              className="p-1 rounded hover:bg-surface-3 text-zinc-500 hover:text-strong cursor-pointer border-none bg-transparent"
             >
               <MoreVertical className="size-3.5" />
             </button>

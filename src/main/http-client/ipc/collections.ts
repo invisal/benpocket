@@ -7,13 +7,16 @@ import type {
   CreateCollectionPayload,
   CreateFolderPayload,
   DeleteCollectionPayload,
+  DeleteExamplePayload,
   DeleteFolderPayload,
   DeleteRequestPayload,
   MoveFolderPayload,
   MoveRequestPayload,
   RenameCollectionPayload,
+  RenameExamplePayload,
   RenameFolderPayload,
   RenameRequestPayload,
+  SaveExamplePayload,
   SaveRequestPayload,
   SetCollectionAuthPayload,
   SetFolderAuthPayload,
@@ -139,6 +142,52 @@ export function registerCollectionHandlers(): void {
       const target = collections.find((c) => c.id === payload.collectionId);
       if (!target) return { ok: false, error: 'Collection not found.' };
       removeRequest(target, payload.requestId);
+      await writeCollections(collections);
+      return { ok: true };
+    }
+  );
+
+  ipcMain.handle(
+    'collections:saveExample',
+    async (_event, payload: SaveExamplePayload): Promise<WsAckResult> => {
+      const collections = await readCollections();
+      const target = collections.find((c) => c.id === payload.collectionId);
+      if (!target) return { ok: false, error: 'Collection not found.' };
+      const container = findContainerOfRequest(target, payload.requestId);
+      const request = container?.requests.find((r) => r.id === payload.requestId);
+      if (!request) return { ok: false, error: 'Request not found.' };
+      request.examples = [...(request.examples ?? []), payload.example];
+      await writeCollections(collections);
+      return { ok: true };
+    }
+  );
+
+  ipcMain.handle(
+    'collections:renameExample',
+    async (_event, payload: RenameExamplePayload): Promise<WsAckResult> => {
+      const collections = await readCollections();
+      const target = collections.find((c) => c.id === payload.collectionId);
+      if (!target) return { ok: false, error: 'Collection not found.' };
+      const container = findContainerOfRequest(target, payload.requestId);
+      const request = container?.requests.find((r) => r.id === payload.requestId);
+      const example = request?.examples?.find((e) => e.id === payload.exampleId);
+      if (!example) return { ok: false, error: 'Example not found.' };
+      example.name = payload.name.trim() || example.name;
+      await writeCollections(collections);
+      return { ok: true };
+    }
+  );
+
+  ipcMain.handle(
+    'collections:deleteExample',
+    async (_event, payload: DeleteExamplePayload): Promise<WsAckResult> => {
+      const collections = await readCollections();
+      const target = collections.find((c) => c.id === payload.collectionId);
+      if (!target) return { ok: false, error: 'Collection not found.' };
+      const container = findContainerOfRequest(target, payload.requestId);
+      const request = container?.requests.find((r) => r.id === payload.requestId);
+      if (!request) return { ok: false, error: 'Request not found.' };
+      request.examples = (request.examples ?? []).filter((e) => e.id !== payload.exampleId);
       await writeCollections(collections);
       return { ok: true };
     }

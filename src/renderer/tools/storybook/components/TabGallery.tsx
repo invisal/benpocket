@@ -25,6 +25,7 @@ export function TabGallery() {
             <PillTab.Item value="disabled" disabled>
               Disabled
             </PillTab.Item>
+            <PillTab.Indicator />
           </PillTab.List>
         </PillTab.Root>
       </Swatch>

@@ -1,5 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Activity, type ComponentType, lazy, type ReactNode, Suspense } from 'react';
+import {
+  Activity,
+  type ComponentType,
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useState
+} from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -171,6 +179,20 @@ export function createTabProvider<TTool extends Tool<string, any>>(
     const tabs = useTabsStore((s) => s.tabs);
     const activeTabId = useTabsStore((s) => s.activeTabId);
 
+    // A tab's component only mounts the first time it becomes active -- e.g. tabs
+    // restored from a previous session shouldn't all load on launch, just the one
+    // that was active. Once mounted, it stays mounted (kept alive via `Activity`
+    // below) even after the user switches away, so switching back is instant.
+    const [mountedTabIds, setMountedTabIds] = useState<ReadonlySet<string>>(
+      () => new Set(activeTabId ? [activeTabId] : [])
+    );
+
+    useEffect(() => {
+      if (activeTabId && !mountedTabIds.has(activeTabId)) {
+        setMountedTabIds((prev) => new Set(prev).add(activeTabId));
+      }
+    }, [activeTabId, mountedTabIds]);
+
     if (tabs.length === 0) {
       return emptyState ?? null;
     }
@@ -178,6 +200,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(
     return (
       <>
         {tabs.map((tab) => {
+          if (!mountedTabIds.has(tab.id)) return null;
           const isTabActive = tab.id === activeTabId;
           return (
             <Activity key={tab.id} mode={isTabActive ? 'visible' : 'hidden'}>

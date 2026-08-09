@@ -38,6 +38,9 @@ export type ReadBinaryFileResponse =
 
 export type WriteFileContentResponse = { success: true } | { error: string };
 
+export type WriteBinaryFileResponse =
+  { success: true } | { error: 'unsupported-extension' } | { error: string };
+
 export type ClipboardMode = 'copy' | 'cut';
 export type ClipboardFiles = { paths: string[]; mode: ClipboardMode };
 
@@ -88,6 +91,7 @@ export interface FileExplorerApi {
   readFileContent: (filePath: string) => Promise<ReadFileContentResponse>;
   readFileBinary: (filePath: string) => Promise<ReadBinaryFileResponse>;
   writeFileContent: (filePath: string, content: string) => Promise<WriteFileContentResponse>;
+  writeFileBinary: (filePath: string, data: Uint8Array) => Promise<WriteBinaryFileResponse>;
   deleteEntries: (paths: string[]) => Promise<{ success: true } | { error: string }>;
   copyEntries: (
     sourcePaths: string[],
@@ -115,6 +119,10 @@ export interface FileExplorerApi {
   listR2Buckets: () => Promise<R2Bucket[] | { error: string }>;
   agentSend: (messages: AgentMessage[]) => Promise<AgentSendResponse>;
   agentExecuteTool: (name: string, args: unknown) => Promise<AgentToolResult>;
+  /** Subscribes to filesystem changes made outside the app for a directory (no-op if the driver doesn't support it). */
+  watchDirectory: (dirPath: string) => Promise<void>;
+  unwatchDirectory: (dirPath: string) => Promise<void>;
+  onWatchEvent: (callback: (dirPath: string) => void) => () => void;
 }
 
 export const fileExplorerApi: FileExplorerApi = {
@@ -129,6 +137,8 @@ export const fileExplorerApi: FileExplorerApi = {
   readFileBinary: (filePath) => ipcRenderer.invoke('file-explorer:read-file-binary', filePath),
   writeFileContent: (filePath, content) =>
     ipcRenderer.invoke('file-explorer:write-file-content', filePath, content),
+  writeFileBinary: (filePath, data) =>
+    ipcRenderer.invoke('file-explorer:write-file-binary', filePath, data),
   deleteEntries: (paths) => ipcRenderer.invoke('file-explorer:delete-entries', paths),
   copyEntries: (sourcePaths, destDir) =>
     ipcRenderer.invoke('file-explorer:copy-entries', sourcePaths, destDir),
@@ -149,5 +159,12 @@ export const fileExplorerApi: FileExplorerApi = {
   listR2Buckets: () => ipcRenderer.invoke('file-explorer:list-r2-buckets'),
   agentSend: (messages) => ipcRenderer.invoke('file-explorer:agent-send', messages),
   agentExecuteTool: (name, args) =>
-    ipcRenderer.invoke('file-explorer:agent-execute-tool', name, args)
+    ipcRenderer.invoke('file-explorer:agent-execute-tool', name, args),
+  watchDirectory: (dirPath) => ipcRenderer.invoke('file-explorer:watch-directory', dirPath),
+  unwatchDirectory: (dirPath) => ipcRenderer.invoke('file-explorer:unwatch-directory', dirPath),
+  onWatchEvent: (callback): (() => void) => {
+    const listener = (_event: unknown, dirPath: string): void => callback(dirPath);
+    ipcRenderer.on(IpcChannels.FileExplorerWatchEvent, listener);
+    return () => ipcRenderer.removeListener(IpcChannels.FileExplorerWatchEvent, listener);
+  }
 };

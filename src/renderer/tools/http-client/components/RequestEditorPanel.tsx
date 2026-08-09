@@ -1,6 +1,6 @@
-import type React from 'react';
+﻿import type React from 'react';
 import { useMemo, useState } from 'react';
-import { UnderlineTab } from '@renderer/components/ui/Tabs';
+import { PillTab } from '@renderer/components/ui/Tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
@@ -77,27 +77,30 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   );
 
   return (
-    <UnderlineTab.Root
+    <PillTab.Root
       value={activeTab}
       onValueChange={(value) => setActiveTab(value as RequestTabValue)}
+      className="flex flex-col min-h-0 flex-1"
     >
-      <UnderlineTab.List className="border-border border-b px-4">
-        <UnderlineTab.Item value="params">
-          Params{activeParamCount > 0 ? ` (${activeParamCount})` : ''}
-        </UnderlineTab.Item>
-        <UnderlineTab.Item value="headers">
-          Headers{activeHeaderCount > 0 ? ` (${activeHeaderCount})` : ''}
-        </UnderlineTab.Item>
-        <UnderlineTab.Item value="auth">
-          Authorization{auth.type !== 'noauth' ? ` (${authTypeLabel(auth.type)})` : ''}
-        </UnderlineTab.Item>
-        <UnderlineTab.Item value="body">
-          Body{bodyType !== 'none' ? ` (${bodyType})` : ''}
-        </UnderlineTab.Item>
-        <UnderlineTab.Indicator />
-      </UnderlineTab.List>
+      <div>
+        <PillTab.List className="mx-3 shrink-0">
+          <PillTab.Item value="params">
+            Params{activeParamCount > 0 ? ` (${activeParamCount})` : ''}
+          </PillTab.Item>
+          <PillTab.Item value="headers">
+            Headers{activeHeaderCount > 0 ? ` (${activeHeaderCount})` : ''}
+          </PillTab.Item>
+          <PillTab.Item value="auth">
+            Authorization{auth.type !== 'noauth' ? ` (${authTypeLabel(auth.type)})` : ''}
+          </PillTab.Item>
+          <PillTab.Item value="body">
+            Body{bodyType !== 'none' ? ` (${bodyType})` : ''}
+          </PillTab.Item>
+          <PillTab.Indicator />
+        </PillTab.List>
+      </div>
 
-      <UnderlineTab.Panel value="params" className="max-h-40 overflow-auto p-2">
+      <PillTab.Panel value="params" className="flex-1 min-h-0 overflow-auto p-3">
         <KeyValueEditor
           rows={params}
           onUpdate={onUpdateParam}
@@ -105,9 +108,9 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           keyPlaceholder="Param"
           valuePlaceholder="Value or {{var}}"
         />
-      </UnderlineTab.Panel>
+      </PillTab.Panel>
 
-      <UnderlineTab.Panel value="headers" className="max-h-40 overflow-auto p-2">
+      <PillTab.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-2">
         <KeyValueEditor
           rows={headers}
           onUpdate={onUpdateHeader}
@@ -153,14 +156,14 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             )}
           </div>
         )}
-      </UnderlineTab.Panel>
+      </PillTab.Panel>
 
-      <UnderlineTab.Panel value="auth" className="p-2">
+      <PillTab.Panel value="auth" className="flex-1 min-h-0 overflow-auto p-2">
         <AuthEditor auth={auth} onChange={onAuthChange} />
-      </UnderlineTab.Panel>
+      </PillTab.Panel>
 
-      <UnderlineTab.Panel value="body" className="flex flex-col gap-2 p-2">
-        <div className="flex gap-3 text-[11px]">
+      <PillTab.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2 p-2 overflow-auto">
+        <div className="flex gap-3 text-[11px] shrink-0">
           {BODY_TYPES.map((bt) => (
             <label
               key={bt.value}
@@ -186,7 +189,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
           />
         )}
-      </UnderlineTab.Panel>
-    </UnderlineTab.Root>
+      </PillTab.Panel>
+    </PillTab.Root>
   );
 };

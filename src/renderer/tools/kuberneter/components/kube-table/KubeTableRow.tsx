@@ -32,7 +32,7 @@ export function KubeTableRow<T>({
       className={cn(
         'transition-colors duration-100 border-b border-border hover:bg-surface-2',
         onRowClick && 'cursor-pointer',
-        isSelected && 'bg-surface-3 text-white font-semibold'
+        isSelected && 'bg-surface-3 text-strong font-semibold'
       )}
     >
       {columns.map((col) => (

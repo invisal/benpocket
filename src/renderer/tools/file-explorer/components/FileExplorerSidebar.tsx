@@ -18,7 +18,6 @@ export function FileExplorerSidebar({ onNavigate }: FileExplorerSidebarProps) {
   const [sections, setSections] = useState<SidebarSections | null>(null);
   const [bucketDialogOpen, setBucketDialogOpen] = useState(false);
 
-  const activePanel = useFileExplorerStore((s) => s.activePanel);
   const panels = useFileExplorerStore((s) => s.panels);
 
   const refreshSections = () => {
@@ -31,8 +30,7 @@ export function FileExplorerSidebar({ onNavigate }: FileExplorerSidebarProps) {
 
   if (!sections) return null;
 
-  const activeIndex = activePanel === 'panel1' ? 0 : 1;
-  const activePath = panels[activeIndex].path;
+  const activePath = panels[0].path;
   const navigateActive = onNavigate;
 
   return (

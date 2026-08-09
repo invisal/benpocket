@@ -10,6 +10,7 @@ import {
 } from './nativeClipboard';
 import { pathExists } from './localFileDriver';
 import { getDriverForLocation } from './driverRegistry';
+import { watchDirectory, unwatchDirectory } from './directoryWatcher';
 import { getCloudflareSettings } from '../store/cloudflareSettings';
 import { registerAgentHandlers } from './agent';
 import { listR2Buckets } from './r2FileDriver';
@@ -22,6 +23,7 @@ import {
   type MutationResult,
   type ReadBinaryFileResult,
   type ReadFileResult,
+  type WriteBinaryFileResult,
   type WriteFileResult
 } from './fileDriver';
 
@@ -230,6 +232,13 @@ export function registerFileExplorerHandlers(): void {
   );
 
   ipcMain.handle(
+    'file-explorer:write-file-binary',
+    async (_, uri: string, data: Uint8Array): Promise<WriteBinaryFileResult> => {
+      return getDriverForLocation(uri).writeBinaryFile(uri, data);
+    }
+  );
+
+  ipcMain.handle(
     'file-explorer:delete-entries',
     async (_, uris: string[]): Promise<MutationResult> => {
       if (uris.length === 0) return { success: true };
@@ -275,6 +284,15 @@ export function registerFileExplorerHandlers(): void {
       return getDriverForLocation(destDirUri).createFolder(destDirUri, name);
     }
   );
+
+  ipcMain.handle('file-explorer:watch-directory', (event, uri: string): void => {
+    if (!getDriverForLocation(uri).capabilities.watchable) return;
+    watchDirectory(uri, event.sender);
+  });
+
+  ipcMain.handle('file-explorer:unwatch-directory', (event, uri: string): void => {
+    unwatchDirectory(uri, event.sender);
+  });
 
   // Fire-and-forget: lets a row drag hand off to a real OS drag session (so it
   // can be dropped onto Explorer/Finder or another app), not a request/response

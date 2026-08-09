@@ -223,7 +223,7 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
                   <SelectPrimitive.Item
                     key={v.version}
                     value={v.version}
-                    className="font-mono text-[11px] py-1 px-2 rounded hover:bg-surface-3 cursor-pointer outline-none text-zinc-350 hover:text-white flex items-center justify-between data-[selected]:bg-accent data-[selected]:text-emphasis-text select-none"
+                    className="font-mono text-[11px] py-1 px-2 rounded hover:bg-surface-3 cursor-pointer outline-none text-zinc-350 hover:text-strong flex items-center justify-between data-[selected]:bg-accent data-[selected]:text-emphasis-text select-none"
                   >
                     <SelectPrimitive.ItemText>{v.version}</SelectPrimitive.ItemText>
                     {v.app_version && (

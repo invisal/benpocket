@@ -3,7 +3,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { KeyValuePair } from '../../../../preload/http-client/types';
 import { findOpenToken, insertVariable, type OpenToken } from '../lib/variableToken';
-import { Input } from '@renderer/components/ui/Input';
 
 interface VariableSuggestInputProps {
   value: string;
@@ -11,6 +10,7 @@ interface VariableSuggestInputProps {
   variables: KeyValuePair[];
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
   /** Called on Enter when no suggestion dropdown is open (e.g. to trigger Send from the URL field). */
   onEnter?: () => void;
 }
@@ -32,6 +32,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   variables,
   placeholder,
   className,
+  disabled,
   onEnter
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,13 +92,14 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   };
 
   return (
-    <div className="relative">
-      <Input
+    <div className="relative flex-1 h-full">
+      <input
         ref={inputRef}
         type="text"
         value={value}
         placeholder={placeholder}
         className={className}
+        disabled={disabled}
         onChange={(e) => {
           onChange(e.target.value);
           evaluate(e.target);

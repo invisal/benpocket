@@ -176,7 +176,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
 
       <div className="h-11 shrink-0 flex items-center gap-2 px-4 border-b border-border-dark min-w-0">
         <span
-          className="text-xs font-bold text-white uppercase tracking-wider truncate min-w-0 flex-1"
+          className="text-xs font-bold text-strong uppercase tracking-wider truncate min-w-0 flex-1"
           title={headerTitle}
         >
           {headerTitle}
@@ -189,7 +189,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
                 render={
                   <button
                     onClick={handleMaximize}
-                    className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+                    className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
                   >
                     <Maximize2 className="size-3.5" />
                   </button>
@@ -202,7 +202,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
                 render={
                   <button
                     onClick={handleClose}
-                    className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+                    className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
                   >
                     <X className="size-3.5" />
                   </button>

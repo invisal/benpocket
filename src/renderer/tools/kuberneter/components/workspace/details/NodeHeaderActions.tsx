@@ -24,7 +24,7 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
           render={
             <button
               onClick={handleShell}
-              className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+              className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
             >
               <Terminal className="size-3.5" />
             </button>
@@ -36,7 +36,7 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
       <Tooltip.Root>
         <Tooltip.Trigger
           render={
-            <button className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
+            <button className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
               <Pause className="size-3.5" />
             </button>
           }
@@ -47,7 +47,7 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
       <Tooltip.Root>
         <Tooltip.Trigger
           render={
-            <button className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
+            <button className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
               <RefreshCw className="size-3.5" />
             </button>
           }
@@ -58,7 +58,7 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
       <Tooltip.Root>
         <Tooltip.Trigger
           render={
-            <button className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
+            <button className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
               <Pencil className="size-3.5" />
             </button>
           }

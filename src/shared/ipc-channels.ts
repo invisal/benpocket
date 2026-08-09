@@ -57,6 +57,16 @@ export const IpcChannels = {
   OpenScreenRecordingSettings: 'permissions:open-screen-recording-settings',
   GetMicrophoneStatus: 'permissions:get-microphone-status',
   OpenMicrophoneSettings: 'permissions:open-microphone-settings',
+  RequestMicrophoneAccess: 'permissions:request-microphone-access',
+  RelaunchApp: 'permissions:relaunch-app',
+  GetCameraStatus: 'permissions:get-camera-status',
+  OpenCameraSettings: 'permissions:open-camera-settings',
+  RequestCameraAccess: 'permissions:request-camera-access',
+  GetAccessibilityStatus: 'permissions:get-accessibility-status',
+  RequestAccessibilityAccess: 'permissions:request-accessibility-access',
+  OpenAccessibilitySettings: 'permissions:open-accessibility-settings',
+  RequestAutomationAccess: 'permissions:request-automation-access',
+  OpenAutomationSettings: 'permissions:open-automation-settings',
   GetBootedSimulator: 'simulator:get-booted',
   RefreshWindowBounds: 'recording:refresh-window-bounds',
   TrayOpenRecordPicker: 'tray:open-record-picker',
@@ -77,5 +87,6 @@ export const IpcChannels = {
   SourcePickerOverlayCancel: 'source-picker-overlay:cancel',
   SourcePickerOverlayPicked: 'source-picker-overlay:picked',
   FileExplorerTransferProgress: 'file-explorer:transfer-progress',
-  FileExplorerStartNativeDrag: 'file-explorer:start-native-drag'
+  FileExplorerStartNativeDrag: 'file-explorer:start-native-drag',
+  FileExplorerWatchEvent: 'file-explorer:watch-event'
 } as const;

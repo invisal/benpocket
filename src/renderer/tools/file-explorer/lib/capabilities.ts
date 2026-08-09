@@ -4,6 +4,8 @@ export interface DriverCapabilities {
   atomicMove: boolean;
   realFolders: boolean;
   sync: 'watch' | 'optimistic' | 'sync';
+  /** Driver can watch a directory for changes made outside the app and push events (e.g. `fs.watch`). */
+  watchable: boolean;
 }
 
 // Mirrors LocalFileDriver.capabilities / R2FileDriver.capabilities in
@@ -14,7 +16,8 @@ const LOCAL_CAPABILITIES: DriverCapabilities = {
   nativeIcons: true,
   atomicMove: true,
   realFolders: true,
-  sync: 'sync'
+  sync: 'sync',
+  watchable: true
 };
 
 const R2_CAPABILITIES: DriverCapabilities = {
@@ -22,7 +25,8 @@ const R2_CAPABILITIES: DriverCapabilities = {
   nativeIcons: false,
   atomicMove: false,
   realFolders: false,
-  sync: 'optimistic'
+  sync: 'optimistic',
+  watchable: false
 };
 
 export function getCapabilitiesForLocation(uri: string): DriverCapabilities {

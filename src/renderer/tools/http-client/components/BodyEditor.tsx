@@ -157,9 +157,9 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 flex-1 min-h-0">
       {isJson && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleBeautify}
@@ -190,7 +190,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
         </div>
       )}
 
-      <div className="relative flex h-40 bg-surface-2 border border-border rounded overflow-hidden focus-within:border-accent">
+      <div className="relative flex flex-1 min-h-24 bg-surface-2 border border-border rounded overflow-hidden focus-within:border-accent">
         <div
           ref={gutterRef}
           className="w-9 shrink-0 overflow-hidden py-2 border-r border-border select-none"
@@ -267,7 +267,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
       </div>
 
       {isJson && jsonError && value.trim() && (
-        <p className="text-[10px] text-red-400 leading-relaxed">{jsonError}</p>
+        <p className="text-[10px] text-red-400 leading-relaxed shrink-0">{jsonError}</p>
       )}
 
       {showDropdown &&

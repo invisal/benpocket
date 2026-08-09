@@ -208,7 +208,7 @@ export const KuberneterHomeView: React.FC = () => {
       <KuberneterToastContainer />
       {/* Header Info */}
       <div className="shrink-0 border-b border-border-dark pb-4">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2 font-sans tracking-tight">
+        <h2 className="text-xl font-bold text-strong flex items-center gap-2 font-sans tracking-tight">
           <Home className="size-5 text-accent fill-accent/10" />
           Home
         </h2>

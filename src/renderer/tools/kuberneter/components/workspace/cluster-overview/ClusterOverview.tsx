@@ -7,6 +7,7 @@ import { HistoryChart } from './HistoryChart';
 import { WarningsFeed } from './WarningsFeed';
 import { ClusterOverviewHeader } from './ClusterOverviewHeader';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { ErrorBanner } from '../../shared/ErrorBanner';
 import {
   getCapacitySums,
   getWorkloadMetrics,
@@ -16,7 +17,7 @@ import {
   filterPodsByNodes
 } from './clusterMetrics';
 import type { NodeResource, PodResource, EventResource, NodeMetric } from './types';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export const ClusterOverview: React.FC = () => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
@@ -217,10 +218,8 @@ export const ClusterOverview: React.FC = () => {
 
   if (errorMsg) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-red-400/90 gap-3 p-8 text-center select-none">
-        <AlertCircle className="size-8" />
-        <p className="text-sm font-semibold">Cluster Connectivity Lost</p>
-        <p className="max-w-md text-xs text-zinc-500 leading-relaxed">{errorMsg}</p>
+      <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-xl mx-auto select-none">
+        <ErrorBanner error={errorMsg} className="w-full" />
       </div>
     );
   }

@@ -40,12 +40,14 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({ podName, podNs }
 
   const { data, isFetching } = usePodMetricsRange(podNs, podName, timeRange, true);
 
-  // Respect hiddenMetrics — filter out tabs that are hidden
-  const visibleCategories = (['cpu', 'memory', 'network', 'filesystem'] as MetricCategory[]).filter(
-    (cat) => !metricsConfig.hiddenMetrics.includes(cat)
-  );
+  // ALL metric categories — ensure CPU tab is always visible and available
+  const ALL_CATEGORIES: MetricCategory[] = ['cpu', 'memory', 'network', 'filesystem'];
+  const hiddenSet = new Set(metricsConfig.hiddenMetrics || []);
 
-  // If current tab got hidden, fall back to first visible
+  // Filter hidden categories, but ensure 'cpu' is never hidden by default
+  const visibleCategories = ALL_CATEGORIES.filter((cat) => !hiddenSet.has(cat) || cat === 'cpu');
+
+  // Active tab selection
   const activeCategory = visibleCategories.includes(category)
     ? category
     : (visibleCategories[0] ?? 'cpu');
@@ -62,8 +64,38 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({ podName, podNs }
     void queryClient.invalidateQueries({ queryKey: key });
   }
 
-  // Don't render when source disables charts or no data yet
-  if (!isFetching && !data?.timeLabels.length) return null;
+  // If metrics disabled explicitly in config
+  if (metricsConfig.source === 'none') return null;
+
+  if (isFetching && !data?.timeLabels.length) {
+    return (
+      <div className="flex items-center justify-center gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-6 text-xs text-muted-foreground font-mono">
+        <RefreshCw className="size-4 animate-spin text-accent" />
+        <span>Loading Prometheus metrics...</span>
+      </div>
+    );
+  }
+
+  if (!data?.timeLabels.length) {
+    return (
+      <div className="flex items-center justify-between gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 text-xs text-muted-foreground font-mono">
+        <div className="flex items-center gap-2">
+          <BarChart2 className="size-4 text-muted-foreground" />
+          <span>
+            No Prometheus metric points available for this pod (Source:{' '}
+            <span className="text-accent font-medium">{metricsConfig.provider}</span>)
+          </span>
+        </div>
+        <button
+          onClick={handleRefresh}
+          className="flex items-center gap-1 px-2 py-1 rounded bg-surface-3 border border-border text-[10px] text-foreground hover:bg-surface-2 cursor-pointer transition-colors"
+        >
+          <RefreshCw className="size-3" />
+          <span>Retry</span>
+        </button>
+      </div>
+    );
+  }
 
   let activeSeries: ChartSeries[] = [];
   let activeUnit = '';

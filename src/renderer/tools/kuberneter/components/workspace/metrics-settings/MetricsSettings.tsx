@@ -121,7 +121,8 @@ export function MetricsSettings() {
         contextName: cluster || undefined,
         provider: metricsConfig.provider,
         useHttps: metricsConfig.useHttps,
-        pathPrefix: metricsConfig.pathPrefix
+        pathPrefix: metricsConfig.pathPrefix,
+        kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined
       });
       if (res.ok) {
         setTestState({ status: 'ok', latencyMs: res.latencyMs, source: res.source ?? '' });

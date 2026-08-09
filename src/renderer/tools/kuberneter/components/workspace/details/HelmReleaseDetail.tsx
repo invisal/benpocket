@@ -56,6 +56,8 @@ export const HelmReleaseDetail: React.FC<HelmReleaseDetailProps> = ({
       );
       if ('error' in res) {
         setValuesError(res.error);
+      } else if ('helmNotFound' in res) {
+        setValuesError('Helm is not installed.');
       } else {
         setValues(res.values);
       }

@@ -156,6 +156,13 @@ export const ImagePreview = forwardRef<
         </div>
       </Toolbar.Root>
 
+      {saveError && (
+        <div className="bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs px-3 py-1.5 flex items-center gap-2">
+          <AlertCircle size={14} className="shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
+
       {isEditable ? (
         <ImageTool
           binary={state.original}

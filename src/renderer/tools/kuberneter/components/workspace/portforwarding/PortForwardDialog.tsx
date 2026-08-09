@@ -105,7 +105,7 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
               type="submit"
               variant="primary"
               size="sm"
-              className="px-5 text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white"
+              className="px-5 text-xs font-medium bg-sky-600 hover:bg-sky-500 text-strong"
             >
               Start
             </Button>

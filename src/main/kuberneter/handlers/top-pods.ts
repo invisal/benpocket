@@ -1,8 +1,10 @@
 import { ipcMain } from 'electron';
-import { runKubectl } from '../k8s-cli';
+import { KubeClientService } from '../services/KubeClientService';
 
 export function registerTopPodsHandler(): void {
-  // Query live pod metrics (CPU & Memory usage)
+  ipcMain.removeHandler('kuberneter:get-top-pods');
+
+  // Query live pod metrics via @kubernetes/client-node Metrics API
   ipcMain.handle(
     'kuberneter:get-top-pods',
     async (
@@ -11,59 +13,34 @@ export function registerTopPodsHandler(): void {
       contextName: string | undefined,
       namespace?: string
     ) => {
-      try {
-        const resolvedKubeconfig = kubeconfigPath || undefined;
-        const args = [];
-        if (contextName) {
-          args.push('--context', contextName);
-        }
-        args.push('top', 'pods');
-        if (namespace && namespace !== 'All Namespaces') {
-          args.push('-n', namespace);
-        } else {
-          args.push('-A');
-        }
-        args.push('--no-headers');
+      const subPath =
+        namespace && namespace !== 'All Namespaces' ? `namespaces/${namespace}/pods` : 'pods';
 
-        let stdout: string;
-        try {
-          stdout = await runKubectl(args, resolvedKubeconfig);
-        } catch {
-          // Metrics API not available - return empty items so UI shows N/A
-          return { items: [] };
-        }
+      const result = await KubeClientService.getMetricsDirect(kubeconfigPath, contextName, subPath);
 
-        const lines = stdout.trim().split('\n');
-        const items = lines
-          .map((line) => {
-            const trimmed = line.trim();
-            if (!trimmed) return null;
-            const parts = trimmed.split(/\s+/);
-            const isAllNamespaces = !namespace || namespace === 'All Namespaces';
-            if (isAllNamespaces && parts.length >= 4) {
-              return {
-                namespace: parts[0],
-                name: parts[1],
-                cpu: parts[2],
-                memory: parts[3]
-              };
-            } else if (!isAllNamespaces && parts.length >= 3) {
-              return {
-                namespace: namespace,
-                name: parts[0],
-                cpu: parts[1],
-                memory: parts[2]
-              };
-            }
-            return null;
-          })
-          .filter(Boolean);
-
-        return { items };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { error: message };
+      if (!result || !Array.isArray(result.items) || result.items.length === 0) {
+        return {
+          items: [],
+          error:
+            result?.error ||
+            'Metrics API unavailable. Ensure metrics-server is installed in your cluster.'
+        };
       }
+
+      const items = result.items.map((rawItem: unknown) => {
+        const item = (rawItem || {}) as {
+          metadata?: { name?: string; namespace?: string };
+          usage?: { cpu?: string; memory?: string };
+        };
+        return {
+          namespace: item.metadata?.namespace || namespace || 'default',
+          name: item.metadata?.name || 'unknown',
+          cpu: item.usage?.cpu || '0m',
+          memory: item.usage?.memory || '0Mi'
+        };
+      });
+
+      return { items };
     }
   );
 }

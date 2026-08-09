@@ -23,6 +23,7 @@ export interface PrometheusQueryConfig {
   filterEmptyContainers?: boolean;
   useHttps?: boolean;
   pathPrefix?: string;
+  kubectlPath?: string;
 }
 
 export interface WatchOptions {
@@ -47,10 +48,33 @@ export interface TerminalSpawnOptions {
   cwd?: string;
 }
 
+export interface HelmCheckResult {
+  available: boolean;
+  version?: string;
+  path?: string;
+  isSystemPath?: boolean;
+  error?: string;
+}
+
+export interface KubectlCheckResult {
+  available: boolean;
+  version?: string;
+  path?: string;
+  error?: string;
+}
+
 export interface KuberneterApi {
   listContexts: (kubeconfigPath?: string) => Promise<ListContextsResponse>;
   selectKubeconfigFile: () => Promise<string | null>;
   saveKubeconfig: (content: string, filename: string) => Promise<string | { error: string }>;
+  readKubeconfigFile: (
+    filePath: string
+  ) => Promise<{ name?: string; content?: string; error?: string }>;
+  syncCloudKubeconfig: (
+    id: string,
+    name: string,
+    content: string
+  ) => Promise<string | { error: string }>;
   getResources: (
     kubeconfigPath: string | undefined,
     contextName: string | undefined,
@@ -68,7 +92,7 @@ export interface KuberneterApi {
     yamlContent: string,
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<{ result?: string; error?: string }>;
+  ) => Promise<{ result?: string; error?: string; yaml?: string }>;
   startWatch: (id: string, options: WatchOptions) => Promise<{ success?: boolean; error?: string }>;
   stopWatch: (id: string) => Promise<{ success?: boolean; error?: string }>;
   onWatchEvent: (callback: (event: WatchEvent) => void) => () => void;
@@ -92,6 +116,10 @@ export interface KuberneterApi {
     source?: string;
     error?: string;
   }>;
+  queryPrometheusInstantPods: (config: PrometheusQueryConfig) => Promise<{
+    items?: { namespace: string; name: string; cpu: string; memory: string }[];
+    error?: string;
+  }>;
   testPrometheus: (config: PrometheusQueryConfig) => Promise<{
     ok: boolean;
     latencyMs: number;
@@ -99,16 +127,39 @@ export interface KuberneterApi {
     error?: string;
   }>;
   clearPrometheusCache: (kubeconfigPath?: string, contextName?: string) => Promise<{ ok: boolean }>;
-  helmSearchCharts: (kubeconfigPath?: string) => Promise<HelmChartItem[] | { error: string }>;
+  helmSearchCharts: (
+    kubeconfigPath?: string
+  ) => Promise<
+    | HelmChartItem[]
+    | { error: string }
+    | { helmNotFound: true }
+    | { noRepos: true }
+    | { noCharts: true; reposCount: number }
+  >;
+  helmListRepos: (
+    kubeconfigPath?: string
+  ) => Promise<HelmRepoItem[] | { error: string } | { helmNotFound: true }>;
+  helmAddRepo: (
+    name: string,
+    url: string,
+    kubeconfigPath?: string
+  ) => Promise<{ success?: boolean; error?: string } | { helmNotFound: true }>;
+  helmRemoveRepo: (
+    name: string,
+    kubeconfigPath?: string
+  ) => Promise<{ success?: boolean; error?: string } | { helmNotFound: true }>;
+  helmUpdateRepos: (
+    kubeconfigPath?: string
+  ) => Promise<{ success?: boolean; message?: string; error?: string } | { helmNotFound: true }>;
   helmGetChartVersions: (
     chartName: string,
     kubeconfigPath?: string
-  ) => Promise<HelmChartVersion[] | { error: string }>;
+  ) => Promise<HelmChartVersion[] | { error: string } | { helmNotFound: true }>;
   helmGetChartDetails: (
     chartName: string,
     version?: string,
     kubeconfigPath?: string
-  ) => Promise<HelmChartDetails | { error: string }>;
+  ) => Promise<HelmChartDetails | { error: string } | { helmNotFound: true }>;
   helmInstallChart: (
     releaseName: string,
     chartName: string,
@@ -116,19 +167,23 @@ export interface KuberneterApi {
     namespace: string,
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<{ result?: string; error?: string }>;
+  ) => Promise<{ result?: string; error?: string } | { helmNotFound: true }>;
   helmGetChartIcons: () => Promise<Record<string, string>>;
   helmListReleases: (
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<HelmReleaseItem[] | { error: string }>;
+  ) => Promise<HelmReleaseItem[] | { error: string } | { helmNotFound: true }>;
   helmGetReleaseValues: (
     releaseName: string,
     namespace: string,
     allValues?: boolean,
     kubeconfigPath?: string,
     contextName?: string
-  ) => Promise<{ values: string } | { error: string }>;
+  ) => Promise<{ values: string } | { error: string } | { helmNotFound: true }>;
+  checkKubectl: (customPath?: string) => Promise<KubectlCheckResult>;
+  selectKubectlFile: () => Promise<string | null>;
+  checkHelm: (customPath?: string) => Promise<HelmCheckResult>;
+  selectHelmFile: () => Promise<string | null>;
   startPortForward: (params: {
     id: string;
     kubeconfigPath?: string;
@@ -138,6 +193,7 @@ export interface KuberneterApi {
     resourceName: string;
     localPort: number;
     targetPort: number;
+    kubectlPath?: string;
   }) => Promise<{ success?: boolean; error?: string }>;
   stopPortForward: (id: string) => Promise<{ success?: boolean; error?: string }>;
   queryPodMetricsRange: (
@@ -170,6 +226,11 @@ export interface KuberneterApi {
   onTerminalData: (id: string, callback: (data: string) => void) => () => void;
   /** Subscribe to PTY exit for a session. Returns an unsubscribe fn. */
   onTerminalExit: (id: string, callback: (exitCode: number, signal?: number) => void) => () => void;
+}
+
+export interface HelmRepoItem {
+  name: string;
+  url: string;
 }
 
 export interface HelmChartItem {
@@ -219,6 +280,9 @@ export const kuberneterApi: KuberneterApi = {
   selectKubeconfigFile: () => ipcRenderer.invoke('kuberneter:select-kubeconfig-file'),
   saveKubeconfig: (content, filename) =>
     ipcRenderer.invoke('kuberneter:save-kubeconfig', content, filename),
+  readKubeconfigFile: (filePath) => ipcRenderer.invoke('kuberneter:read-kubeconfig-file', filePath),
+  syncCloudKubeconfig: (id, name, content) =>
+    ipcRenderer.invoke('kuberneter:sync-cloud-kubeconfig', id, name, content),
   getResources: (kubeconfigPath, contextName, resource, namespace) =>
     ipcRenderer.invoke(
       'kuberneter:get-resources',
@@ -252,11 +316,21 @@ export const kuberneterApi: KuberneterApi = {
   getTopPods: (kubeconfigPath, contextName, namespace) =>
     ipcRenderer.invoke('kuberneter:get-top-pods', kubeconfigPath, contextName, namespace),
   queryPrometheus: (config) => ipcRenderer.invoke('kuberneter:query-prometheus', config),
+  queryPrometheusInstantPods: (config) =>
+    ipcRenderer.invoke('kuberneter:query-prometheus-instant-pods', config),
   testPrometheus: (config) => ipcRenderer.invoke('kuberneter:test-prometheus', config),
   clearPrometheusCache: (kubeconfigPath, contextName) =>
     ipcRenderer.invoke('kuberneter:clear-prometheus-cache', kubeconfigPath, contextName),
   helmSearchCharts: (kubeconfigPath) =>
     ipcRenderer.invoke('kuberneter:helm-search-charts', kubeconfigPath),
+  helmListRepos: (kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-list-repos', kubeconfigPath),
+  helmAddRepo: (name, url, kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-add-repo', name, url, kubeconfigPath),
+  helmRemoveRepo: (name, kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-remove-repo', name, kubeconfigPath),
+  helmUpdateRepos: (kubeconfigPath) =>
+    ipcRenderer.invoke('kuberneter:helm-update-repos', kubeconfigPath),
   helmGetChartVersions: (chartName, kubeconfigPath) =>
     ipcRenderer.invoke('kuberneter:helm-get-chart-versions', chartName, kubeconfigPath),
   helmGetChartDetails: (chartName, version, kubeconfigPath) =>
@@ -283,6 +357,10 @@ export const kuberneterApi: KuberneterApi = {
       kubeconfigPath,
       contextName
     ),
+  checkKubectl: (customPath) => ipcRenderer.invoke('kuberneter:check-kubectl', customPath),
+  selectKubectlFile: () => ipcRenderer.invoke('kuberneter:select-kubectl-file'),
+  checkHelm: (customPath) => ipcRenderer.invoke('kuberneter:check-helm', customPath),
+  selectHelmFile: () => ipcRenderer.invoke('kuberneter:select-kubectl-file'),
   startPortForward: (params) => ipcRenderer.invoke('kuberneter:start-port-forward', params),
   stopPortForward: (id) => ipcRenderer.invoke('kuberneter:stop-port-forward', id),
   queryPodMetricsRange: (params) =>

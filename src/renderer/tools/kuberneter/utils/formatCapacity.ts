@@ -52,12 +52,28 @@ export const parseK8sCapacity = (value: string | number | undefined | null): num
  */
 export function parseCpu(val: string | number | undefined | null): number {
   if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val * 1000;
+
   const str = val.toString().trim();
-  if (str.endsWith('m')) {
-    return parseInt(str.slice(0, -1), 10) || 0;
+  if (!str) return 0;
+
+  if (str.endsWith('n')) {
+    const num = parseFloat(str.slice(0, -1));
+    return isNaN(num) ? 0 : num / 1e6; // nanocores → millicores
   }
-  const raw = parseK8sCapacity(str);
-  return Math.round(raw < 1 ? raw * 1000 : parseFloat(str) * 1000);
+
+  if (str.endsWith('u')) {
+    const num = parseFloat(str.slice(0, -1));
+    return isNaN(num) ? 0 : num / 1e3; // microcores → millicores
+  }
+
+  if (str.endsWith('m')) {
+    const num = parseFloat(str.slice(0, -1));
+    return isNaN(num) ? 0 : num; // millicores → millicores
+  }
+
+  const rawCores = parseK8sCapacity(str);
+  return rawCores * 1000; // cores → millicores
 }
 
 /**

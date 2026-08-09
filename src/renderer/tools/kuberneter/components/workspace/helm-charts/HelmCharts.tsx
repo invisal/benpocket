@@ -3,18 +3,15 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { HelmChartsToolbar } from './HelmChartsToolbar';
 import { HelmChartsTable } from './HelmChartsTable';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
-import { HelmNotInstalled } from '../helm-releases/HelmNotInstalled';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { type HelmChartItem } from '../../../../../../preload/kuberneter/api';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export const HelmCharts: React.FC = () => {
   const [charts, setCharts] = useState<HelmChartItem[]>([]);
   const [iconMap, setIconMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [helmNotInstalled, setHelmNotInstalled] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -52,7 +49,6 @@ export const HelmCharts: React.FC = () => {
 
   const fetchChartsAndIcons = useCallback(async () => {
     setIsLoading(true);
-    setErrorMsg(null);
     try {
       const configPathArg = activeConfigPath === 'default' ? undefined : activeConfigPath;
 
@@ -62,9 +58,14 @@ export const HelmCharts: React.FC = () => {
       ]);
 
       if (chartsRes && 'helmNotFound' in chartsRes) {
-        setHelmNotInstalled(true);
-      } else if (chartsRes && 'error' in chartsRes) {
-        setErrorMsg(chartsRes.error);
+        useKuberneterStore.getState().showHelmMissingToast();
+        setCharts([]);
+      } else if (chartsRes && 'noRepos' in chartsRes) {
+        useKuberneterStore.getState().showHelmNoReposToast();
+        setCharts([]);
+      } else if (chartsRes && 'noCharts' in chartsRes) {
+        useKuberneterStore.getState().showHelmNoReposToast();
+        setCharts([]);
       } else if (Array.isArray(chartsRes)) {
         setCharts(chartsRes);
       }
@@ -73,7 +74,7 @@ export const HelmCharts: React.FC = () => {
         setIconMap(iconsRes as Record<string, string>);
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
+      console.error('[HelmCharts] fetch error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -83,6 +84,17 @@ export const HelmCharts: React.FC = () => {
     queueMicrotask(() => {
       fetchChartsAndIcons();
     });
+  }, [fetchChartsAndIcons]);
+
+  // Re-fetch when the window regains visibility (e.g. user switched to Settings to add repos)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchChartsAndIcons();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [fetchChartsAndIcons]);
 
   // Filter rows by search query
@@ -165,28 +177,12 @@ export const HelmCharts: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0">
-      {isLoading && (
+      {isLoading ? (
         <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
           <Loader2 className="size-6 text-accent animate-spin" />
           <p className="text-[10px] text-zinc-500">Querying configured Helm repositories...</p>
         </div>
-      )}
-
-      {helmNotInstalled && !isLoading && <HelmNotInstalled />}
-
-      {errorMsg && !isLoading && !helmNotInstalled && (
-        <div className="shrink-0 flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
-          <AlertCircle className="size-4.5 shrink-0 mt-0.5" />
-          <div className="font-semibold break-all">
-            <p>Error running helm command:</p>
-            <p className="font-normal text-zinc-400 mt-1 font-mono text-[10px] bg-black/20 p-2 rounded border border-border-dark/30">
-              {errorMsg}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isLoading && !errorMsg && !helmNotInstalled && (
+      ) : (
         <KubeWorkspaceLayout
           header={
             <HelmChartsToolbar

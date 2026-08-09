@@ -202,6 +202,10 @@ interface ChatInputProps extends Omit<ComponentProps<'textarea'>, 'value'> {
   onModelChange?: (id: string) => void;
   tokens?: number | null;
   cost?: number | null;
+  /** Current conversation size, in tokens -- distinct from `tokens` (the session's cumulative usage). */
+  contextTokens?: number | null;
+  /** Model's max input+output tokens; paired with `contextTokens` to render a usage percentage. */
+  contextWindow?: number | null;
 }
 
 export function ChatInput({
@@ -218,8 +222,11 @@ export function ChatInput({
   onModelChange,
   tokens,
   cost,
+  contextTokens,
+  contextWindow,
   ...props
 }: ChatInputProps) {
+  const contextPct = contextTokens != null && contextWindow ? contextTokens / contextWindow : null;
   const sendDisabled = loading || !value.trim();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -284,6 +291,21 @@ export function ChatInput({
               </Select.Root>
             )}
           </div>
+          {contextPct != null && (
+            <span
+              className={cn(
+                'h-full flex items-center px-3 text-xs tabular-nums',
+                contextPct >= 0.9
+                  ? 'text-red-400'
+                  : contextPct >= 0.7
+                    ? 'text-amber-400'
+                    : 'text-muted-foreground'
+              )}
+              title={`${contextTokens!.toLocaleString()} / ${contextWindow!.toLocaleString()} context tokens used`}
+            >
+              {Math.round(contextPct * 100)}% context
+            </span>
+          )}
           {tokens != null && (
             <span className="h-full flex items-center px-3 text-xs text-muted-foreground tabular-nums">
               {tokens.toLocaleString()} tokens

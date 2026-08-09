@@ -6,6 +6,7 @@ export { registerPrometheusHandler } from './handlers/prometheus';
 export { registerPortForwardHandler } from './handlers/port-forward';
 export { registerWatchHandler } from './handlers/watch';
 export { registerTerminalHandler } from './handlers/terminal';
+export { registerKubectlSettingsHandler } from './handlers/kubectl-settings';
 
 import { registerKubeconfigHandlers } from './handlers/kubeconfig';
 import { registerResourcesHandler } from './handlers/resources';
@@ -15,6 +16,7 @@ import { registerPrometheusHandler } from './handlers/prometheus';
 import { registerPortForwardHandler } from './handlers/port-forward';
 import { registerWatchHandler } from './handlers/watch';
 import { registerTerminalHandler } from './handlers/terminal';
+import { registerKubectlSettingsHandler } from './handlers/kubectl-settings';
 
 export function registerK8sHandlers(): void {
   registerKubeconfigHandlers();
@@ -25,4 +27,5 @@ export function registerK8sHandlers(): void {
   registerPortForwardHandler();
   registerWatchHandler();
   registerTerminalHandler();
+  registerKubectlSettingsHandler();
 }

@@ -23,6 +23,7 @@ export interface PrometheusQueryConfig {
   filterEmptyContainers?: boolean;
   useHttps?: boolean;
   pathPrefix?: string;
+  kubectlPath?: string;
 }
 
 export interface WatchOptions {
@@ -45,6 +46,13 @@ export interface TerminalSpawnOptions {
   cols?: number;
   rows?: number;
   cwd?: string;
+}
+
+export interface KubectlCheckResult {
+  available: boolean;
+  version?: string;
+  path?: string;
+  error?: string;
 }
 
 export interface KuberneterApi {
@@ -100,6 +108,10 @@ export interface KuberneterApi {
     source?: string;
     error?: string;
   }>;
+  queryPrometheusInstantPods: (config: PrometheusQueryConfig) => Promise<{
+    items?: { namespace: string; name: string; cpu: string; memory: string }[];
+    error?: string;
+  }>;
   testPrometheus: (config: PrometheusQueryConfig) => Promise<{
     ok: boolean;
     latencyMs: number;
@@ -139,6 +151,8 @@ export interface KuberneterApi {
     kubeconfigPath?: string,
     contextName?: string
   ) => Promise<{ values: string } | { error: string } | { helmNotFound: true }>;
+  checkKubectl: (customPath?: string) => Promise<KubectlCheckResult>;
+  selectKubectlFile: () => Promise<string | null>;
   startPortForward: (params: {
     id: string;
     kubeconfigPath?: string;
@@ -148,6 +162,7 @@ export interface KuberneterApi {
     resourceName: string;
     localPort: number;
     targetPort: number;
+    kubectlPath?: string;
   }) => Promise<{ success?: boolean; error?: string }>;
   stopPortForward: (id: string) => Promise<{ success?: boolean; error?: string }>;
   queryPodMetricsRange: (
@@ -265,6 +280,8 @@ export const kuberneterApi: KuberneterApi = {
   getTopPods: (kubeconfigPath, contextName, namespace) =>
     ipcRenderer.invoke('kuberneter:get-top-pods', kubeconfigPath, contextName, namespace),
   queryPrometheus: (config) => ipcRenderer.invoke('kuberneter:query-prometheus', config),
+  queryPrometheusInstantPods: (config) =>
+    ipcRenderer.invoke('kuberneter:query-prometheus-instant-pods', config),
   testPrometheus: (config) => ipcRenderer.invoke('kuberneter:test-prometheus', config),
   clearPrometheusCache: (kubeconfigPath, contextName) =>
     ipcRenderer.invoke('kuberneter:clear-prometheus-cache', kubeconfigPath, contextName),
@@ -296,6 +313,8 @@ export const kuberneterApi: KuberneterApi = {
       kubeconfigPath,
       contextName
     ),
+  checkKubectl: (customPath) => ipcRenderer.invoke('kuberneter:check-kubectl', customPath),
+  selectKubectlFile: () => ipcRenderer.invoke('kuberneter:select-kubectl-file'),
   startPortForward: (params) => ipcRenderer.invoke('kuberneter:start-port-forward', params),
   stopPortForward: (id) => ipcRenderer.invoke('kuberneter:stop-port-forward', id),
   queryPodMetricsRange: (params) =>

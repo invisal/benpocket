@@ -50,6 +50,7 @@ export const HelmRepoManagement: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchRepos();
   }, [fetchRepos]);
 
@@ -156,7 +157,10 @@ export const HelmRepoManagement: React.FC = () => {
                     }`}
                   >
                     {isAdded && (
-                      <svg viewBox="0 0 10 8" className="size-2.5 text-white fill-none stroke-current stroke-2">
+                      <svg
+                        viewBox="0 0 10 8"
+                        className="size-2.5 text-white fill-none stroke-current stroke-2"
+                      >
                         <path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}

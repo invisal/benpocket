@@ -404,7 +404,7 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
             <Button
               size="sm"
               onClick={handleInstall}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 cursor-pointer h-7"
+              className="bg-blue-600 hover:bg-blue-500 text-strong font-semibold text-xs px-4 cursor-pointer h-7"
             >
               Confirm Install
             </Button>

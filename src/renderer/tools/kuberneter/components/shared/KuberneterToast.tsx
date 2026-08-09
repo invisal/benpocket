@@ -48,7 +48,7 @@ const toastThemeMap: Record<ToastType, ToastThemeConfig> = {
     footer:
       'bg-amber-100/40 border-t border-amber-200/60 dark:bg-amber-900/30 dark:border-amber-500/30',
     actionPrimary:
-      'bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-amber-950 dark:font-semibold',
+      'bg-amber-600 hover:bg-amber-700 text-strong font-semibold shadow-sm dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-amber-950 dark:font-semibold',
     actionSecondary:
       'bg-amber-200/70 text-amber-900 hover:bg-amber-200 dark:bg-amber-800/50 dark:text-amber-200 dark:hover:bg-amber-800'
   },
@@ -62,7 +62,7 @@ const toastThemeMap: Record<ToastType, ToastThemeConfig> = {
     closeBtn: 'text-red-700 hover:bg-red-200/60 dark:text-red-300 dark:hover:bg-red-800/60',
     footer: 'bg-red-100/40 border-t border-red-200/60 dark:bg-red-900/30 dark:border-red-500/30',
     actionPrimary:
-      'bg-red-600 hover:bg-red-700 text-white font-semibold shadow-sm dark:bg-red-500 dark:hover:bg-red-400 dark:text-red-950 dark:font-semibold',
+      'bg-red-600 hover:bg-red-700 text-strong font-semibold shadow-sm dark:bg-red-500 dark:hover:bg-red-400 dark:text-red-950 dark:font-semibold',
     actionSecondary:
       'bg-red-200/70 text-red-900 hover:bg-red-200 dark:bg-red-800/50 dark:text-red-200 dark:hover:bg-red-800'
   },
@@ -79,7 +79,7 @@ const toastThemeMap: Record<ToastType, ToastThemeConfig> = {
     footer:
       'bg-emerald-100/40 border-t border-emerald-200/60 dark:bg-emerald-900/30 dark:border-emerald-500/30',
     actionPrimary:
-      'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950 dark:font-semibold',
+      'bg-emerald-600 hover:bg-emerald-700 text-strong font-semibold shadow-sm dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950 dark:font-semibold',
     actionSecondary:
       'bg-emerald-200/70 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-800/50 dark:text-emerald-200 dark:hover:bg-emerald-800'
   },
@@ -96,7 +96,7 @@ const toastThemeMap: Record<ToastType, ToastThemeConfig> = {
     footer:
       'bg-emerald-100/40 border-t border-emerald-200/60 dark:bg-emerald-900/30 dark:border-emerald-500/30',
     actionPrimary:
-      'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950 dark:font-semibold',
+      'bg-emerald-600 hover:bg-emerald-700 text-strong font-semibold shadow-sm dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950 dark:font-semibold',
     actionSecondary:
       'bg-emerald-200/70 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-800/50 dark:text-emerald-200 dark:hover:bg-emerald-800'
   }

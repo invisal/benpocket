@@ -10,7 +10,6 @@ interface FileExplorerPanelBodyProps {
   path: string | null;
   onNavigate: (path: string) => void;
   onSelectionChange?: (selected: FileEntry[]) => void;
-  onActivate?: () => void;
   modeSwitch?: {
     value: PanelMode;
     onChange: (mode: PanelMode) => void;
@@ -21,7 +20,6 @@ export function FileExplorerPanelBody({
   path,
   onNavigate,
   onSelectionChange,
-  onActivate,
   modeSwitch
 }: FileExplorerPanelBodyProps) {
   const refreshSignal = useFileExplorerStore((s) => s.refreshSignal);
@@ -39,7 +37,7 @@ export function FileExplorerPanelBody({
   const parentPath = getParentPath(path);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 min-w-0" onMouseDownCapture={onActivate}>
+    <div className="flex-1 flex flex-col min-h-0 min-w-0">
       <Breadcrumb
         currentPath={path}
         onNavigate={onNavigate}

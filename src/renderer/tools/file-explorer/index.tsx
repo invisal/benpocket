@@ -54,7 +54,6 @@ function computePreviewTarget(selection: FileEntry[]): {
 
 function FileExplorerLayout() {
   const panels = useFileExplorerStore((s) => s.panels);
-  const activePanel = useFileExplorerStore((s) => s.activePanel);
   const sidebarWidth = useFileExplorerStore((s) => s.sidebarWidth);
   const panel1Width = useFileExplorerStore((s) => s.panel1Width);
   const setPanelPath = useFileExplorerStore((s) => s.setPanelPath);
@@ -62,7 +61,6 @@ function FileExplorerLayout() {
   const setPanelMode = useFileExplorerStore((s) => s.setPanelMode);
   const setPanelPreviewFile = useFileExplorerStore((s) => s.setPanelPreviewFile);
   const setPanelDirty = useFileExplorerStore((s) => s.setPanelDirty);
-  const setActivePanel = useFileExplorerStore((s) => s.setActivePanel);
   const setSidebarWidth = useFileExplorerStore((s) => s.setSidebarWidth);
   const setPanel1Width = useFileExplorerStore((s) => s.setPanel1Width);
 
@@ -125,21 +123,19 @@ function FileExplorerLayout() {
   }, []);
 
   function handleSidebarNavigate(path: string) {
-    const index: PanelIndex = activePanel === 'panel1' ? 0 : 1;
-    setPanelPath(index, path);
-    setPanelSelection(index, []);
+    setPanelPath(0, path);
+    setPanelSelection(0, []);
 
-    const siblingIndex = otherPanel(index);
-    const sibling = panels[siblingIndex];
+    const sibling = panels[1];
     if (sibling.mode !== 'preview') return;
 
     const target = computePreviewTarget([]);
     if (!sibling.isDirty) {
-      setPanelPreviewFile(siblingIndex, target.previewFile);
+      setPanelPreviewFile(1, target.previewFile);
       return;
     }
     setPendingLeave({
-      panelIndex: siblingIndex,
+      panelIndex: 1,
       action: { type: 'switch-file', path: target.previewFile }
     });
   }
@@ -155,9 +151,6 @@ function FileExplorerLayout() {
     if (mode === 'preview') {
       const target = computePreviewTarget(panels[otherPanel(index)].selection);
       setPanelPreviewFile(index, target.previewFile);
-      // Panel 2 has no independent location while previewing, so switching into
-      // preview mode always snaps sidebar-driven navigation back to Panel 1.
-      setActivePanel('panel1');
     }
   }
 
@@ -227,7 +220,6 @@ function FileExplorerLayout() {
             path={panels[0].path}
             onNavigate={(path) => setPanelPath(0, path)}
             onSelectionChange={handlePanel0SelectionChange}
-            onActivate={() => setActivePanel('panel1')}
           />
         </ResizablePanel>
 
@@ -237,15 +229,11 @@ function FileExplorerLayout() {
               path={panels[1].path}
               onNavigate={(path) => setPanelPath(1, path)}
               onSelectionChange={handlePanel1SelectionChange}
-              onActivate={() => setActivePanel('panel2')}
               modeSwitch={{ value: panels[1].mode, onChange: (mode) => handleModeToggle(1, mode) }}
             />
           )}
           {panels[1].mode === 'preview' && (
-            <div
-              className="flex-1 flex flex-col min-h-0 min-w-0"
-              onMouseDownCapture={() => setActivePanel('panel2')}
-            >
+            <div className="flex-1 flex flex-col min-h-0 min-w-0">
               <Breadcrumb
                 currentPath={panels[1].path ?? ''}
                 onNavigate={(path) => setPanelPath(1, path)}
@@ -264,10 +252,7 @@ function FileExplorerLayout() {
             </div>
           )}
           {panels[1].mode === 'agent' && (
-            <div
-              className="flex-1 flex flex-col min-h-0 min-w-0"
-              onMouseDownCapture={() => setActivePanel('panel2')}
-            >
+            <div className="flex-1 flex flex-col min-h-0 min-w-0">
               <Breadcrumb
                 currentPath={panels[1].path ?? ''}
                 onNavigate={(path) => setPanelPath(1, path)}

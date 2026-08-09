@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { decodeToImageData } from '../lib/codec';
-import type { ImageToolId } from '../types';
 
 type DecodeState =
   | { status: 'loading' }
@@ -22,8 +21,6 @@ export function useImageEditor(
 ): {
   binary: Uint8Array<ArrayBuffer>;
   decode: DecodeState;
-  activeTool: ImageToolId;
-  setActiveTool: (tool: ImageToolId) => void;
   commit: (newBinary: Uint8Array<ArrayBuffer>) => void;
 } {
   // `useState(initialBinary)` only ever reads its argument on the very first render -- later
@@ -32,7 +29,6 @@ export function useImageEditor(
   // itself mid-session.
   const [binary, setBinary] = useState(initialBinary);
   const [decode, setDecode] = useState<DecodeState>({ status: 'loading' });
-  const [activeTool, setActiveTool] = useState<ImageToolId>('resize');
 
   useEffect(() => {
     let cancelled = false;
@@ -63,5 +59,5 @@ export function useImageEditor(
     onChange(newBinary);
   }
 
-  return { binary, decode, activeTool, setActiveTool, commit };
+  return { binary, decode, commit };
 }

@@ -1,9 +1,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { AlertCircle, Loader2, Save } from 'lucide-react';
 import cn from 'cnfast';
-import { ImageTool, EDITABLE_MIME_TYPES } from '../../../image-editor';
+import { Toolbar } from '@renderer/components/ui/Toolbar';
+import {
+  ImageTool,
+  EDITABLE_MIME_TYPES,
+  ToolSelectorMenu,
+  type ImageToolId
+} from '../../../image-editor';
 import { formatBytes } from '../columns';
 import { type PreviewEditorHandle } from './types';
+import { Button } from '@renderer/components/ui/Button';
 
 type ImagePreviewState =
   | { status: 'loading' }
@@ -46,6 +53,7 @@ export const ImagePreview = forwardRef<
   const [state, setState] = useState<ImagePreviewState>({ status: 'loading' });
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [tool, setTool] = useState<ImageToolId>('preview');
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +126,6 @@ export const ImagePreview = forwardRef<
     );
   }
 
-  const fileName = filePath.split(/[\\/]/).pop() ?? filePath;
   const isEditable = EDITABLE_MIME_TYPES.has(state.mimeType);
 
   return (
@@ -131,29 +138,23 @@ export const ImagePreview = forwardRef<
         }
       }}
     >
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border-dark text-xs text-text-dim">
-        <span className="truncate">{fileName}</span>
-        <div className="flex items-center gap-2 shrink-0">
-          {saveError && <span className="text-red-500">{saveError}</span>}
-          {isDirty && !saveError && <span className="text-amber-500">Unsaved changes</span>}
-          <button
+      <Toolbar.Root>
+        {isEditable && <ToolSelectorMenu active={tool} onSelect={setTool} />}
+        <div className="flex-1" />
+        <div className="flex items-center justify-center pr-2">
+          <Button
+            variant={isDirty && !isSaving ? 'primary' : undefined}
+            size="sm"
             onClick={() => {
               void handleSave();
             }}
             disabled={!isDirty || isSaving}
-            className={cn(
-              'flex items-center gap-1 h-6 px-2 rounded text-xs cursor-pointer transition-colors',
-              'border border-border',
-              isDirty && !isSaving
-                ? 'bg-surface-4 text-text-base hover:bg-surface-3'
-                : 'text-text-dim opacity-50 cursor-not-allowed'
-            )}
           >
             <Save size={12} />
-            {isSaving ? 'Saving…' : 'Save'}
-          </button>
+            <span> {isSaving ? 'Saving…' : 'Save'}</span>
+          </Button>
         </div>
-      </div>
+      </Toolbar.Root>
 
       {isEditable ? (
         <ImageTool
@@ -162,6 +163,8 @@ export const ImagePreview = forwardRef<
           onChange={(bytes) =>
             setState((s) => (s.status === 'ready' ? { ...s, current: bytes } : s))
           }
+          tool={tool}
+          onToolChange={setTool}
           className="flex-1 min-h-0"
         />
       ) : (

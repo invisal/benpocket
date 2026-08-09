@@ -23,6 +23,8 @@ interface BreadcrumbProps {
   showPath?: boolean;
   /** Shows a refresh button that re-lists the current folder. Omit to hide it. */
   onRefresh?: () => void;
+  /** Shown in place of the path when `showPath` is false (e.g. the previewed file's name). */
+  fileName?: string;
 }
 
 export function Breadcrumb(props: BreadcrumbProps) {
@@ -38,7 +40,8 @@ export function BreadcrumbInner({
   onNavigate,
   modeSwitch,
   showPath = true,
-  onRefresh
+  onRefresh,
+  fileName
 }: BreadcrumbProps) {
   const segments = splitPathSegments(currentPath);
   const [isEditing, setIsEditing] = useState(false);
@@ -120,7 +123,11 @@ export function BreadcrumbInner({
           )}
         </>
       )}
-      {!showPath && <div className="flex-1" />}
+      {!showPath && (
+        <div className="flex-1 flex items-center px-3 text-xs text-text-dim truncate">
+          {fileName}
+        </div>
+      )}
     </>
   );
 }

@@ -1,9 +1,10 @@
-import { ChevronDown, Crop, Eraser, Maximize2, Wand2, type LucideIcon } from 'lucide-react';
+import { ChevronDown, Crop, Eraser, Eye, Maximize2, Wand2, type LucideIcon } from 'lucide-react';
 import { Menu } from '@renderer/components/ui/Menu';
 import { Toolbar } from '@renderer/components/ui/Toolbar';
 import type { ImageToolId } from '../types';
 
 const TOOLS: { id: ImageToolId; label: string; icon: LucideIcon }[] = [
+  { id: 'preview', label: 'Preview', icon: Eye },
   { id: 'resize', label: 'Resize', icon: Maximize2 },
   { id: 'crop', label: 'Crop', icon: Crop },
   { id: 'context-resize', label: 'Content-Aware Expand', icon: Wand2 },

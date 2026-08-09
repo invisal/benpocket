@@ -1,4 +1,4 @@
-export type ImageToolId = 'resize' | 'crop' | 'context-resize' | 'context-removal';
+export type ImageToolId = 'preview' | 'resize' | 'crop' | 'context-resize' | 'context-removal';
 
 export interface ImageToolProps {
   /** Raw encoded image bytes (the format named by `mimeType`). */
@@ -7,6 +7,11 @@ export interface ImageToolProps {
   mimeType: string;
   /** Called with the newly re-encoded bytes (same `mimeType`) every time an edit is applied. */
   onChange: (binary: Uint8Array<ArrayBuffer>) => void;
+  /** Which panel to show. Controlled by the caller so the tool picker can live in the caller's own
+   * toolbar (alongside e.g. a Save button) instead of a separate one nested inside `ImageTool`. */
+  tool: ImageToolId;
+  /** Setter for `tool`, handed to the caller's own picker UI. `ImageTool` never calls this itself. */
+  onToolChange: (tool: ImageToolId) => void;
   className?: string;
 }
 

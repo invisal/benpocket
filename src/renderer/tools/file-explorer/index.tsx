@@ -242,6 +242,7 @@ function FileExplorerLayout() {
                   onChange: (mode) => handleModeToggle(1, mode)
                 }}
                 showPath={false}
+                fileName={panels[1].previewFile?.split(/[\\/]/).pop()}
               />
               <FilePreview
                 ref={editorRef1}

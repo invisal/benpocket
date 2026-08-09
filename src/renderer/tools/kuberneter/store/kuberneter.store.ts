@@ -56,11 +56,15 @@ interface KuberneterState {
   kuberneterMetricsConfig: Record<string, MetricsConfig>;
   /** Configured custom path for kubectl binary (empty string defaults to system PATH / probing). */
   kuberneterKubectlPath: string;
+  /** Configured custom path for helm binary (empty string defaults to system PATH / probing). */
+  kuberneterHelmPath: string;
 
   kuberneterToasts: KuberneterToastItem[];
   addToast: (toast: Omit<KuberneterToastItem, 'id'>) => string;
   removeToast: (id: string) => void;
   showKubectlMissingToast: (customMessage?: string) => void;
+  showHelmMissingToast: (customMessage?: string) => void;
+  showHelmNoReposToast: (customMessage?: string) => void;
 
   kuberneterKubeconfigs: string[];
   kuberneterRecentConnections: RecentConnection[];
@@ -82,6 +86,7 @@ interface KuberneterState {
   setKuberneterInstanceRefreshInterval: (instanceId: string, interval: string) => void;
   setKuberneterMetricsConfig: (contextName: string, config: Partial<MetricsConfig>) => void;
   setKuberneterKubectlPath: (path: string) => void;
+  setKuberneterHelmPath: (path: string) => void;
 
   setKuberneterTabDrawerState: (tabId: string, state: Partial<DrawerState>) => void;
 
@@ -430,6 +435,9 @@ export const useKuberneterStore = create<KuberneterState>()(
       kuberneterKubectlPath: '',
       setKuberneterKubectlPath: (path) => set({ kuberneterKubectlPath: path }),
 
+      kuberneterHelmPath: '',
+      setKuberneterHelmPath: (path) => set({ kuberneterHelmPath: path }),
+
       kuberneterToasts: [],
       addToast: (toast) => {
         const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -453,6 +461,70 @@ export const useKuberneterStore = create<KuberneterState>()(
           message:
             customMessage ||
             'The kubectl CLI executable was not found on your system $PATH or configured location. Please configure it in Settings.',
+          actions: [
+            {
+              label: 'Go to Settings',
+              variant: 'primary',
+              onClick: () => {
+                const activeInstanceId = useLayoutStore.getState().activeInstanceId;
+                useKuberneterStore
+                  .getState()
+                  .setKuberneterInstanceResource(activeInstanceId, 'settings');
+                useLayoutStore.getState().openTab({
+                  id: `kuberneter-k8s-settings-${activeInstanceId}`,
+                  title: 'Settings',
+                  type: 'kuberneter',
+                  instanceId: activeInstanceId,
+                  meta: { resource: 'settings' }
+                });
+              }
+            }
+          ]
+        });
+      },
+      showHelmMissingToast: (customMessage) => {
+        const state = get();
+        if (state.kuberneterToasts.some((t) => t.title.toLowerCase().includes('helm'))) {
+          return;
+        }
+        state.addToast({
+          type: 'warning',
+          title: 'Helm Executable Required',
+          message:
+            customMessage ||
+            'The Helm CLI executable was not found on your system $PATH or configured location. Please configure Helm in Settings.',
+          actions: [
+            {
+              label: 'Go to Settings',
+              variant: 'primary',
+              onClick: () => {
+                const activeInstanceId = useLayoutStore.getState().activeInstanceId;
+                useKuberneterStore
+                  .getState()
+                  .setKuberneterInstanceResource(activeInstanceId, 'settings');
+                useLayoutStore.getState().openTab({
+                  id: `kuberneter-k8s-settings-${activeInstanceId}`,
+                  title: 'Settings',
+                  type: 'kuberneter',
+                  instanceId: activeInstanceId,
+                  meta: { resource: 'settings' }
+                });
+              }
+            }
+          ]
+        });
+      },
+      showHelmNoReposToast: (customMessage) => {
+        const state = get();
+        if (state.kuberneterToasts.some((t) => t.title.toLowerCase().includes('repositories'))) {
+          return;
+        }
+        state.addToast({
+          type: 'warning',
+          title: 'No Helm Repositories Configured',
+          message:
+            customMessage ||
+            'You need to add at least one Helm chart repository to search and browse charts. Configure repositories in Settings.',
           actions: [
             {
               label: 'Go to Settings',
@@ -544,6 +616,7 @@ export const useKuberneterStore = create<KuberneterState>()(
         kuberneterInstanceRefreshInterval: state.kuberneterInstanceRefreshInterval,
         kuberneterMetricsConfig: state.kuberneterMetricsConfig,
         kuberneterKubectlPath: state.kuberneterKubectlPath,
+        kuberneterHelmPath: state.kuberneterHelmPath,
         kuberneterRecentConnections: state.kuberneterRecentConnections
       })
     }

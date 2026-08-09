@@ -66,7 +66,8 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       resourceKind: 'pod',
       resourceName: payload.name,
       localPort: localPort,
-      targetPort: port
+      targetPort: port,
+      kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined
     });
 
     if (res.error) {
@@ -81,7 +82,20 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
         status: 'Error',
         url: url
       });
-      alert(`Port Forward Error: ${res.error}`);
+
+      const isKubectlMissing =
+        res.error.includes('KUBECTL_NOT_FOUND') ||
+        res.error.toLowerCase().includes('kubectl') ||
+        res.error.toLowerCase().includes('enoent') ||
+        res.error.toLowerCase().includes('not found');
+
+      if (isKubectlMissing) {
+        useKuberneterStore
+          .getState()
+          .showKubectlMissingToast(
+            'Port Forwarding requires the kubectl CLI executable. Please configure kubectl in Settings.'
+          );
+      }
       return;
     }
 

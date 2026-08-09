@@ -2,27 +2,30 @@ export { registerKubeconfigHandlers } from './handlers/kubeconfig';
 export { registerResourcesHandler } from './handlers/resources';
 export { registerTopNodesHandler } from './handlers/top-nodes';
 export { registerTopPodsHandler } from './handlers/top-pods';
-export { registerPrometheusHandler } from './handlers/prometheus';
+export { registerPrometheusHandlers } from './handlers/prometheus';
 export { registerPortForwardHandler } from './handlers/port-forward';
 export { registerWatchHandler } from './handlers/watch';
 export { registerTerminalHandler } from './handlers/terminal';
+export { registerKubectlSettingsHandler } from './handlers/kubectl-settings';
 
 import { registerKubeconfigHandlers } from './handlers/kubeconfig';
 import { registerResourcesHandler } from './handlers/resources';
 import { registerTopNodesHandler } from './handlers/top-nodes';
 import { registerTopPodsHandler } from './handlers/top-pods';
-import { registerPrometheusHandler } from './handlers/prometheus';
+import { registerPrometheusHandlers } from './handlers/prometheus';
 import { registerPortForwardHandler } from './handlers/port-forward';
 import { registerWatchHandler } from './handlers/watch';
 import { registerTerminalHandler } from './handlers/terminal';
+import { registerKubectlSettingsHandler } from './handlers/kubectl-settings';
 
 export function registerK8sHandlers(): void {
   registerKubeconfigHandlers();
   registerResourcesHandler();
   registerTopNodesHandler();
   registerTopPodsHandler();
-  registerPrometheusHandler();
+  registerPrometheusHandlers();
   registerPortForwardHandler();
   registerWatchHandler();
   registerTerminalHandler();
+  registerKubectlSettingsHandler();
 }

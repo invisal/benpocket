@@ -8,7 +8,16 @@ import { ActionsPanel } from './ActionsPanel';
 import { RecentList } from './RecentList';
 import { ConfigTree } from './ConfigTree';
 import { PasteConfigModal } from './PasteConfigModal';
-import { AlertCircle, Home } from 'lucide-react';
+import { ErrorBanner } from '../../shared/ErrorBanner';
+import { KuberneterToastContainer } from '../../shared/KuberneterToastContainer';
+import { Home } from 'lucide-react';
+
+interface SyncedKubeconfig {
+  id: string;
+  name: string;
+  content: string;
+  updatedAt: number;
+}
 
 const KUBERNETER_CONFIG_KEY = 'kuberneter/configfile';
 
@@ -40,34 +49,56 @@ export const KuberneterHomeView: React.FC = () => {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Sync Yjs persisted map with local store on mount/update
+  // Sync Yjs persisted map with local store on mount/update across devices
   useEffect(() => {
     if (isLoading) return;
 
-    const syncFromYjs = () => {
-      const cloudPaths = Array.from(map.keys());
-      const currentPaths = useKuberneterStore.getState().kuberneterKubeconfigs;
+    const syncFromYjs = async () => {
+      const keys = Array.from(map.keys());
+      const localPaths: string[] = [];
 
-      if (cloudPaths.length > 0) {
-        if (
-          cloudPaths.length !== currentPaths.length ||
-          cloudPaths.some((path, i) => path !== currentPaths[i])
-        ) {
-          setKuberneterKubeconfigs(cloudPaths);
-        }
-      } else if (currentPaths.length > 0) {
-        doc.transact(() => {
-          for (const path of currentPaths) {
-            map.set(path, path);
+      for (const key of keys) {
+        const val = map.get(key);
+        if (!val) continue;
+
+        let entry: SyncedKubeconfig | null = null;
+        try {
+          if (val.startsWith('{')) {
+            entry = JSON.parse(val) as SyncedKubeconfig;
           }
-        });
+        } catch {
+          // Backward compatibility for raw file path strings
+        }
+
+        if (entry && entry.content) {
+          const res = await window.kuberneter.syncCloudKubeconfig(
+            entry.id,
+            entry.name,
+            entry.content
+          );
+          if (typeof res === 'string') {
+            localPaths.push(res);
+          }
+        } else {
+          localPaths.push(val);
+        }
+      }
+
+      if (localPaths.length > 0) {
+        const currentPaths = useKuberneterStore.getState().kuberneterKubeconfigs;
+        if (
+          localPaths.length !== currentPaths.length ||
+          localPaths.some((p, i) => p !== currentPaths[i])
+        ) {
+          setKuberneterKubeconfigs(localPaths);
+        }
       }
     };
 
     syncFromYjs();
     map.observe(syncFromYjs);
     return () => map.unobserve(syncFromYjs);
-  }, [isLoading, map, doc, setKuberneterKubeconfigs]);
+  }, [isLoading, map, setKuberneterKubeconfigs]);
 
   // Trigger loading file from local disk
   const handleAddFile = async () => {
@@ -75,9 +106,23 @@ export const KuberneterHomeView: React.FC = () => {
     try {
       const filePath = await window.kuberneter.selectKubeconfigFile();
       if (filePath) {
+        const readResult = await window.kuberneter.readKubeconfigFile(filePath);
+        if (readResult.error || !readResult.content) {
+          setErrorMsg(readResult.error || 'Failed to read Kubeconfig file content.');
+          return;
+        }
+
+        const id = readResult.name || `config-${Date.now()}`;
+        const syncedData: SyncedKubeconfig = {
+          id,
+          name: readResult.name || 'config',
+          content: readResult.content,
+          updatedAt: Date.now()
+        };
+
         addKuberneterKubeconfig(filePath);
         if (!isLoading) {
-          map.set(filePath, filePath);
+          map.set(id, JSON.stringify(syncedData));
         }
         setKuberneterInstanceConfigPath(activeInstanceId, filePath);
       }
@@ -91,7 +136,21 @@ export const KuberneterHomeView: React.FC = () => {
   const handleRemoveConfig = (filePath: string) => {
     removeKuberneterKubeconfig(filePath);
     if (!isLoading) {
-      map.delete(filePath);
+      for (const key of Array.from(map.keys())) {
+        const val = map.get(key);
+        if (key === filePath || val === filePath) {
+          map.delete(key);
+        } else if (val && val.startsWith('{')) {
+          try {
+            const entry = JSON.parse(val) as SyncedKubeconfig;
+            if (entry.id === key) {
+              map.delete(key);
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
     }
   };
 
@@ -127,9 +186,17 @@ export const KuberneterHomeView: React.FC = () => {
   const handleSavePastedConfig = async (content: string, filename: string) => {
     const res = await window.kuberneter.saveKubeconfig(content, filename);
     if (typeof res === 'string') {
+      const id = filename || `config-${Date.now()}`;
+      const syncedData: SyncedKubeconfig = {
+        id,
+        name: filename,
+        content,
+        updatedAt: Date.now()
+      };
+
       addKuberneterKubeconfig(res);
       if (!isLoading) {
-        map.set(res, res);
+        map.set(id, JSON.stringify(syncedData));
       }
       setKuberneterInstanceConfigPath(activeInstanceId, res);
     }
@@ -137,7 +204,8 @@ export const KuberneterHomeView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-6 min-h-0 min-w-0 bg-surface text-zinc-300 p-4">
+    <div className="flex-1 flex flex-col gap-6 min-h-0 min-w-0 bg-surface text-zinc-300 p-4 relative">
+      <KuberneterToastContainer />
       {/* Header Info */}
       <div className="shrink-0 border-b border-border-dark pb-4">
         <h2 className="text-xl font-bold text-strong flex items-center gap-2 font-sans tracking-tight">
@@ -146,12 +214,7 @@ export const KuberneterHomeView: React.FC = () => {
         </h2>
       </div>
 
-      {errorMsg && (
-        <div className="shrink-0 flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
-          <AlertCircle className="size-4 shrink-0 mt-0.5" />
-          <div className="font-semibold">{errorMsg}</div>
-        </div>
-      )}
+      {errorMsg && <ErrorBanner error={errorMsg} />}
 
       {/* Main Connection Layout */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-8 min-h-0 min-w-0">

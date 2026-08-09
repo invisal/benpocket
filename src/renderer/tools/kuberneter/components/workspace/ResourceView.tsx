@@ -1,5 +1,6 @@
 import type React from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { ErrorBanner } from '../shared/ErrorBanner';
 
 interface ResourceViewProps {
   isLoading: boolean;
@@ -25,14 +26,8 @@ export const ResourceView: React.FC<ResourceViewProps> = ({ isLoading, errorMsg,
 
   if (errorMsg) {
     return (
-      <div className="shrink-0 flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
-        <AlertCircle className="size-4.5 shrink-0 mt-0.5" />
-        <div className="font-semibold break-all">
-          <p>Error running kubectl command:</p>
-          <p className="font-normal text-zinc-400 mt-1 font-mono text-[10px] bg-black/20 p-2 rounded border border-border-dark/30">
-            {errorMsg}
-          </p>
-        </div>
+      <div className="p-4 max-w-xl">
+        <ErrorBanner error={errorMsg} />
       </div>
     );
   }

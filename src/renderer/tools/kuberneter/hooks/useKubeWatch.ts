@@ -68,7 +68,7 @@ export function useKubeWatch(queryResource: string, enabled: boolean) {
               kuberneterSelectedNamespace
             ]
           });
-        }, 300);
+        }, 1000);
       }
     });
 

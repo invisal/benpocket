@@ -134,7 +134,7 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
           selectedVersion,
           kubeconfigPath
         );
-        if (res && !('error' in res)) {
+        if (res && !('error' in res) && !('helmNotFound' in res)) {
           setDetails(res);
         } else {
           setDetails({
@@ -180,8 +180,8 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
         activeCluster
       );
 
-      if (res.error) {
-        setInstallError(res.error);
+      if ('helmNotFound' in res || 'error' in res) {
+        setInstallError(('error' in res ? res.error : undefined) || 'Helm is not installed.');
       } else {
         setInstallSuccess(res.result || 'Chart installed successfully!');
         setShowInstallForm(false);
@@ -404,7 +404,7 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
             <Button
               size="sm"
               onClick={handleInstall}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 cursor-pointer h-7"
+              className="bg-blue-600 hover:bg-blue-500 text-strong font-semibold text-xs px-4 cursor-pointer h-7"
             >
               Confirm Install
             </Button>

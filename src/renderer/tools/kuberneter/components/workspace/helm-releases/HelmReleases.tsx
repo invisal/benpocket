@@ -70,6 +70,7 @@ export const HelmReleases: React.FC = () => {
 
       if (res && 'helmNotFound' in res) {
         setHelmNotInstalled(true);
+        useKuberneterStore.getState().showHelmMissingToast();
       } else if (res && 'error' in res) {
         setErrorMsg(res.error);
       } else if (Array.isArray(res)) {

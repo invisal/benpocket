@@ -1,5 +1,7 @@
 import type React from 'react';
-import { Package, ExternalLink, Terminal } from 'lucide-react';
+import { Package, ExternalLink, Terminal, Settings } from 'lucide-react';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 
 function getPlatformInstallInfo(): { command: string; label: string } {
   // process.platform is available in Electron renderer via contextBridge / window.process
@@ -41,8 +43,8 @@ export const HelmNotInstalled: React.FC = () => {
       {/* Heading */}
       <h2 className="text-base font-semibold text-foreground mb-1">Helm is not installed</h2>
       <p className="text-xs text-muted-foreground text-center max-w-sm mb-6 leading-5">
-        Helm is required to manage releases and browse chart repositories. Install it on your
-        system, then reopen this view.
+        Helm is required to manage releases and browse chart repositories. Configure its path in
+        Settings or install it on your system.
       </p>
 
       {/* Platform install command */}
@@ -70,14 +72,36 @@ export const HelmNotInstalled: React.FC = () => {
         </p>
       </div>
 
-      {/* CTA button */}
-      <button
-        onClick={openInstallDocs}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-border hover:border-border-dark text-xs font-medium text-foreground transition-colors"
-      >
-        <ExternalLink className="size-3.5" />
-        View Install Instructions
-      </button>
+      {/* CTA buttons */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => {
+            const activeInstanceId = useLayoutStore.getState().activeInstanceId;
+            useKuberneterStore
+              .getState()
+              .setKuberneterInstanceResource(activeInstanceId, 'settings');
+            useLayoutStore.getState().openTab({
+              id: `kuberneter-k8s-settings-${activeInstanceId}`,
+              title: 'Settings',
+              type: 'kuberneter',
+              instanceId: activeInstanceId,
+              meta: { resource: 'settings' }
+            });
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-emphasis-text text-xs font-semibold hover:brightness-105 transition-colors cursor-pointer"
+        >
+          <Settings className="size-3.5" />
+          Configure Helm in Settings
+        </button>
+
+        <button
+          onClick={openInstallDocs}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-border hover:border-border-dark text-xs font-medium text-foreground transition-colors cursor-pointer"
+        >
+          <ExternalLink className="size-3.5" />
+          View Install Instructions
+        </button>
+      </div>
     </div>
   );
 };

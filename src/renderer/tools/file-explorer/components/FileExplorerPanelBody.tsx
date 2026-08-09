@@ -25,6 +25,7 @@ export function FileExplorerPanelBody({
   modeSwitch
 }: FileExplorerPanelBodyProps) {
   const refreshSignal = useFileExplorerStore((s) => s.refreshSignal);
+  const bumpRefresh = useFileExplorerStore((s) => s.bumpRefresh);
   const { entries, status, errorMessage } = useDirectoryListing(path, refreshSignal);
 
   if (path === null) {
@@ -39,7 +40,12 @@ export function FileExplorerPanelBody({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0" onMouseDownCapture={onActivate}>
-      <Breadcrumb currentPath={path} onNavigate={onNavigate} modeSwitch={modeSwitch} />
+      <Breadcrumb
+        currentPath={path}
+        onNavigate={onNavigate}
+        modeSwitch={modeSwitch}
+        onRefresh={bumpRefresh}
+      />
 
       {status === 'loading' && (
         <div className="flex-1 flex items-center justify-center text-text-dim">

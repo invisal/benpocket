@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import cn from 'cnfast';
 import { useImageEditor } from './hooks/useImageEditor';
@@ -14,6 +15,14 @@ export { ToolSelectorMenu } from './components/ToolSelectorMenu';
 
 export function ImageTool({ binary, mimeType, onChange, tool, className }: ImageToolProps) {
   const { binary: currentBinary, decode, commit } = useImageEditor(binary, mimeType, onChange);
+
+  // Mounted inline in File Explorer's preview panel, not as a tab of its own, so it
+  // can't rely on createTabProvider's activeTabId subscriber to report `tool_opened`
+  // -- report directly on mount instead. telemetryStore.enqueue dedupes repeats within
+  // a session, so this can fire every time a file preview mounts one without care.
+  useEffect(() => {
+    window.telemetry.send({ event: 'tool_opened', tool: 'image-editor' });
+  }, []);
 
   if (decode.status === 'loading') {
     return (

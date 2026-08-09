@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { AlertCircle, Loader2, Save } from 'lucide-react';
-import cn from 'cnfast';
 import { Toolbar } from '@renderer/components/ui/Toolbar';
 import {
   ImageTool,
@@ -155,6 +154,13 @@ export const ImagePreview = forwardRef<
           </Button>
         </div>
       </Toolbar.Root>
+
+      {saveError && (
+        <div className="bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs px-3 py-1.5 flex items-center gap-2">
+          <AlertCircle size={14} className="shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
 
       {isEditable ? (
         <ImageTool

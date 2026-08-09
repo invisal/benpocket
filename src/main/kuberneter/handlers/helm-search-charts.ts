@@ -1,11 +1,6 @@
 import { ipcMain } from 'electron';
 import { runHelm, checkHelmInstalled } from '../helm-cli';
 
-export interface HelmRepoItem {
-  name: string;
-  url: string;
-}
-
 export function registerHelmSearchChartsHandler(): void {
   // Search Helm repository charts
   ipcMain.handle('kuberneter:helm-search-charts', async (_, kubeconfigPath?: string) => {

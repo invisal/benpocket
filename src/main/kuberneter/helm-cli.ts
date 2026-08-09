@@ -1,4 +1,4 @@
-import { spawn, execFile } from 'child_process';
+import { execFile } from 'child_process';
 import * as fs from 'fs';
 
 const COMMON_HELM_PATHS_POSIX = [

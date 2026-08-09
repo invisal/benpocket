@@ -919,5 +919,3 @@ export function registerPrometheusHandlers(): void {
     }
   );
 }
-
-export { registerPrometheusHandlers as registerPrometheusHandler };

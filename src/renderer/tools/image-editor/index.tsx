@@ -3,6 +3,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import cn from 'cnfast';
 import { useImageEditor } from './hooks/useImageEditor';
 import { PreviewTool } from './components/PreviewTool';
+import { GenerativeTool } from './components/GenerativeTool';
 import { ResizeTool } from './components/ResizeTool';
 import { CropTool } from './components/CropTool';
 import { ContextResizeTool } from './components/ContextResizeTool';
@@ -58,6 +59,7 @@ export function ImageTool({ binary, mimeType, onChange, tool, className }: Image
   return (
     <div className={cn('relative h-full min-h-0 w-full', className)}>
       {tool === 'preview' && <PreviewTool imageData={decode.imageData} />}
+      {tool === 'generative' && <GenerativeTool {...toolProps} />}
       {tool === 'resize' && <ResizeTool {...toolProps} />}
       {tool === 'crop' && <CropTool {...toolProps} />}
       {tool === 'context-resize' && <ContextResizeTool {...toolProps} />}

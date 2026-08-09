@@ -1,8 +1,9 @@
 import type { FC, ComponentType, ReactNode } from 'react';
 import { useState } from 'react';
-import { BarChart2, Terminal } from 'lucide-react';
+import { BarChart2, Terminal, Package } from 'lucide-react';
 import { MetricsSettings } from '../metrics-settings/MetricsSettings';
 import { KubectlSettings } from '../kubectl-settings/KubectlSettings';
+import { HelmSettings } from '../helm-settings/HelmSettings';
 import { PillTab } from '@renderer/components/ui/Tabs';
 
 // ─── Settings section registry ────────────────────────────────────────────────
@@ -22,6 +23,13 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     description: 'Configure executable path and check availability',
     icon: Terminal,
     content: <KubectlSettings />
+  },
+  {
+    id: 'helm',
+    label: 'Helm CLI',
+    description: 'Configure executable path and check availability',
+    icon: Package,
+    content: <HelmSettings />
   },
   {
     id: 'metrics',

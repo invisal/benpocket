@@ -5,6 +5,7 @@ export { registerHelmInstallChartHandler } from './handlers/helm-install-chart';
 export { registerHelmChartIconsHandler } from './handlers/helm-chart-icons';
 export { registerHelmListReleasesHandler } from './handlers/helm-list-releases';
 export { registerHelmReleaseValuesHandler } from './handlers/helm-release-values';
+export { registerHelmSettingsHandlers } from './handlers/helm-settings';
 
 import { registerHelmSearchChartsHandler } from './handlers/helm-search-charts';
 import { registerHelmChartVersionsHandler } from './handlers/helm-chart-versions';
@@ -13,6 +14,7 @@ import { registerHelmInstallChartHandler } from './handlers/helm-install-chart';
 import { registerHelmChartIconsHandler } from './handlers/helm-chart-icons';
 import { registerHelmListReleasesHandler } from './handlers/helm-list-releases';
 import { registerHelmReleaseValuesHandler } from './handlers/helm-release-values';
+import { registerHelmSettingsHandlers } from './handlers/helm-settings';
 
 export function registerHelmHandlers(): void {
   registerHelmSearchChartsHandler();
@@ -22,4 +24,5 @@ export function registerHelmHandlers(): void {
   registerHelmChartIconsHandler();
   registerHelmListReleasesHandler();
   registerHelmReleaseValuesHandler();
+  registerHelmSettingsHandlers();
 }

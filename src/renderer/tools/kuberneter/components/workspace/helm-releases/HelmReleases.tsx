@@ -4,6 +4,7 @@ import { HelmReleasesToolbar } from './HelmReleasesToolbar';
 import { HelmReleasesTable } from './HelmReleasesTable';
 import { parseReleaseChart } from './parseReleaseChart';
 import { KubeWorkspaceLayout } from '../KubeWorkspaceLayout';
+import { HelmNotInstalled } from './HelmNotInstalled';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { type HelmReleaseItem } from '../../../../../../preload/kuberneter/api';
@@ -17,6 +18,7 @@ export const HelmReleases: React.FC = () => {
   const [releases, setReleases] = useState<HelmReleaseItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [helmNotInstalled, setHelmNotInstalled] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -66,7 +68,10 @@ export const HelmReleases: React.FC = () => {
         activeCluster || undefined
       );
 
-      if (res && 'error' in res) {
+      if (res && 'helmNotFound' in res) {
+        setHelmNotInstalled(true);
+        useKuberneterStore.getState().showHelmMissingToast();
+      } else if (res && 'error' in res) {
         setErrorMsg(res.error);
       } else if (Array.isArray(res)) {
         setReleases(res);
@@ -197,7 +202,9 @@ export const HelmReleases: React.FC = () => {
         </div>
       )}
 
-      {errorMsg && !isLoading && (
+      {helmNotInstalled && !isLoading && <HelmNotInstalled />}
+
+      {errorMsg && !isLoading && !helmNotInstalled && (
         <div className="shrink-0 flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
           <AlertCircle className="size-4.5 shrink-0 mt-0.5" />
           <div className="font-semibold break-all">
@@ -209,7 +216,7 @@ export const HelmReleases: React.FC = () => {
         </div>
       )}
 
-      {!isLoading && !errorMsg && (
+      {!isLoading && !errorMsg && !helmNotInstalled && (
         <KubeWorkspaceLayout
           header={
             <HelmReleasesToolbar

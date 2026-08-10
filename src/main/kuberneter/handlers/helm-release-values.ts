@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { runHelm } from '../helm-cli';
+import { runHelm, checkHelmInstalled } from '../helm-cli';
 
 export function registerHelmReleaseValuesHandler(): void {
   // Get the values of a Helm release (user-supplied or all computed values)
@@ -13,6 +13,7 @@ export function registerHelmReleaseValuesHandler(): void {
       kubeconfigPath?: string,
       contextName?: string
     ) => {
+      if (!(await checkHelmInstalled())) return { helmNotFound: true };
       try {
         const args = ['get', 'values', releaseName, '-n', namespace, '-o', 'yaml'];
         if (allValues) {

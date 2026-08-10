@@ -109,7 +109,7 @@ export const PasteConfigModal: React.FC<PasteConfigModalProps> = ({ isOpen, onCl
             </button>
             <button
               type="submit"
-              className="py-1.5 px-4 bg-accent hover:bg-accent-light text-white rounded-md text-xs font-semibold cursor-pointer transition-colors"
+              className="py-1.5 px-4 bg-accent hover:bg-accent-light text-strong rounded-md text-xs font-semibold cursor-pointer transition-colors"
             >
               Save Config
             </button>

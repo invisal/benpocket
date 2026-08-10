@@ -58,7 +58,7 @@ events within one run without needing wall-clock stitching.
 ```mermaid
 flowchart LR
     subgraph App
-        Hooks["hook points:\napp.whenReady\nactiveTabId subscriber\n(createTabProvider.tsx)\neach tool's own completion\nboundaries (e.g. recording stop,\nexport finish)"]
+        Hooks["hook points:\napp.whenReady\nactiveTabId subscriber\n(createTabProvider.tsx)\ntools with no tab of their\nown (e.g. Image Tool, on mount)\neach tool's own completion\nboundaries (e.g. recording stop,\nexport finish)"]
         Queue["local event queue\n(electron-store, capped)"]
         LocalStats["local stats view\n(Home tool — no network)"]
         Sender["batch sender\n(flush timer + size threshold)"]
@@ -173,9 +173,17 @@ fills in `sessionId`, `ts`, `installId`, `appVersion`, and `platform`.
 
 Call sites: `app.whenReady()` → `app_opened`; the `activeTabId` subscriber in
 `createTabProvider.tsx` (not `openTab`, which fires per new tab rather than
-per tool) → `tool_opened`, once per tool per session; each tool's own
-completion boundary (recording stop, export finish, capture taken, request
-sent) → its namespaced event.
+per tool) → `tool_opened`; a tool with no tab of its own (e.g. Image Tool,
+mounted inline in File Explorer's preview panel) reports `tool_opened`
+directly on mount instead; each tool's own completion boundary (recording
+stop, export finish, capture taken, request sent) → its namespaced event.
+
+"Once per (tool, session)" for `tool_opened` is enforced in one place --
+`telemetryStore.enqueue` in the main process, keyed off `tool` -- rather than
+by each call site, since main is the shared source of truth across every
+caller. A call site can send `tool_opened` unconditionally; a repeat within
+the same session is silently dropped before it reaches the queue or the
+local `toolStats` tally.
 
 ## Event catalog
 
@@ -191,13 +199,15 @@ Purpose: daily/weekly active installs.
 
 ### `tool_opened`
 
-| Field  | Type   | Notes                                                     |
-| ------ | ------ | --------------------------------------------------------- |
-| `tool` | string | e.g. `http-client` — matches `allTools` in `AllTools.tsx` |
+| Field  | Type   | Notes                                                                                                                       |
+| ------ | ------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `tool` | string | e.g. `http-client` — matches `allTools` in `AllTools.tsx`, except `image-editor` (Image Tool), which has no tab/entry there |
 
-Purpose: which tools get used. Fires once per (tool, session) — the first
-time a tool becomes the active tab in a session, whether via a brand-new tab
-or switching to an already-open one — never once per `openTab` call.
+Purpose: which tools get used. Fires once per (tool, session) — for tab-based
+tools, the first time a tab of that type becomes active, whether via a
+brand-new tab or switching to an already-open one, never once per `openTab`
+call; for a tool with no tab of its own, on mount. Deduping to "once" happens
+in `telemetryStore` (main process), not at the call site.
 
 ### `screen-recorder:record`
 

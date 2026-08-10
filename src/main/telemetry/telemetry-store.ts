@@ -34,6 +34,13 @@ class Telemetry {
   // event and being dropped.
   private queue: QueuedTelemetryEvent[] = [];
 
+  // In-memory, per launch -- the single source of truth for "has this tool already been
+  // reported opened this session," shared by every caller of `telemetry:send`. Used to
+  // live as a renderer-side Set in createTabProvider.tsx, keyed off tab activation only;
+  // living here instead also covers tools with no tab of their own (e.g. Image Tool,
+  // mounted inline in File Explorer's preview panel).
+  private readonly openedTools = new Set<string>();
+
   getOrCreateInstallId(): string {
     const existing = this.store.get('installId');
     if (existing) return existing;
@@ -82,8 +89,14 @@ class Telemetry {
   /** Enqueues one event (capped at MAX_QUEUE_SIZE, drop-oldest on overflow) and, for
    * `tool_opened`, bumps a separate local-only tally that survives a successful flush --
    * the send queue itself is meant to drain once delivered, but a future "most used
-   * tools" view still needs real history to read from. */
+   * tools" view still needs real history to read from. A repeat `tool_opened` for a tool
+   * already reported this session is dropped before it reaches the queue or the tally. */
   enqueue(payload: TelemetryEvent): void {
+    if (payload.event === 'tool_opened') {
+      if (this.openedTools.has(payload.tool)) return;
+      this.openedTools.add(payload.tool);
+    }
+
     const event: QueuedTelemetryEvent = { payload, sessionId: this.sessionId, ts: Date.now() };
     const updated = [...this.queue, event];
     this.queue =

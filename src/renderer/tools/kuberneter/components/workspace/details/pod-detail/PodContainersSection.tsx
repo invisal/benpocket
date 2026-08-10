@@ -107,7 +107,7 @@ export const PodContainersSection: React.FC<PodContainersSectionProps> = ({
                           variant="primary"
                           size="sm"
                           onClick={() => onStopPortForward(activePf.id)}
-                          className="h-6 px-2.5 py-0.5 text-[10px] font-medium bg-sky-600 hover:bg-sky-500 text-white"
+                          className="h-6 px-2.5 py-0.5 text-[10px] font-medium bg-sky-600 hover:bg-sky-500 text-strong"
                         >
                           Stop/Remove
                         </Button>

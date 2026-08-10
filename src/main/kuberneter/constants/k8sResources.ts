@@ -412,14 +412,6 @@ export function getResourceDefinition(resource: string): K8sResourceDefinition {
 }
 
 /**
- * Helper to check whether a resource is cluster-scoped
- */
-export function isClusterScopedResource(resource: string): boolean {
-  const def = getResourceDefinition(resource);
-  return !!def.isClusterScoped;
-}
-
-/**
  * Helper to construct direct K8s REST API URL path
  */
 export function buildKubeApiPath(resource: string, namespace?: string): string {

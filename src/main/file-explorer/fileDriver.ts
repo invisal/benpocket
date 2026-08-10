@@ -73,6 +73,8 @@ export interface DriverCapabilities {
    * - 'sync' — await the mutation, then force a full refetch.
    */
   sync: 'watch' | 'optimistic' | 'sync';
+  /** Driver can watch a directory for changes made outside the app and push events (e.g. `fs.watch`). */
+  watchable: boolean;
 }
 
 export interface FileDriver {

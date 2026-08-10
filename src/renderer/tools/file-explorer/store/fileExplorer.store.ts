@@ -4,7 +4,6 @@ import { type FileEntry } from '../components/columns';
 
 export type PanelMode = 'explorer' | 'preview' | 'agent';
 export type PanelIndex = 0 | 1;
-export type ActivePanelId = 'panel1' | 'panel2';
 export type FileClipboard = { paths: string[]; mode: 'copy' | 'cut' } | null;
 
 /** A predicted change to a directory listing, applied immediately under 'optimistic' sync. */
@@ -21,11 +20,11 @@ export interface FileExplorerPanelState {
   isDirty: boolean;
 }
 
-function createInitialPanelState(): FileExplorerPanelState {
+function createInitialPanelState(mode: PanelMode = 'explorer'): FileExplorerPanelState {
   return {
     path: null,
     selection: [],
-    mode: 'explorer',
+    mode,
     previewFile: null,
     isDirty: false
   };
@@ -33,7 +32,6 @@ function createInitialPanelState(): FileExplorerPanelState {
 
 interface FileExplorerState {
   panels: [FileExplorerPanelState, FileExplorerPanelState];
-  activePanel: ActivePanelId;
 
   sidebarWidth: number;
   /** Percentage (0-100) of the panel1/panel2 content area, so the split stays proportional on window resize. */
@@ -49,7 +47,6 @@ interface FileExplorerState {
   setPanelMode: (index: PanelIndex, mode: PanelMode) => void;
   setPanelPreviewFile: (index: PanelIndex, previewFile: string | null) => void;
   setPanelDirty: (index: PanelIndex, isDirty: boolean) => void;
-  setActivePanel: (panel: ActivePanelId) => void;
   setSidebarWidth: (width: number) => void;
   setPanel1Width: (width: number) => void;
   setClipboard: (clipboard: FileClipboard) => void;
@@ -75,8 +72,7 @@ function updatePanel(
  */
 export function createFileExplorerStore(): FileExplorerStore {
   return create<FileExplorerState>((set, get) => ({
-    panels: [createInitialPanelState(), createInitialPanelState()],
-    activePanel: 'panel1',
+    panels: [createInitialPanelState(), createInitialPanelState('preview')],
 
     sidebarWidth: 200,
     panel1Width: 50,
@@ -92,7 +88,6 @@ export function createFileExplorerStore(): FileExplorerStore {
       set({ panels: updatePanel(get().panels, index, { previewFile }) }),
     setPanelDirty: (index, isDirty) =>
       set({ panels: updatePanel(get().panels, index, { isDirty }) }),
-    setActivePanel: (panel) => set({ activePanel: panel }),
     setSidebarWidth: (width) => set({ sidebarWidth: width }),
     setPanel1Width: (width) => set({ panel1Width: width }),
     setClipboard: (clipboard) => set({ clipboard }),

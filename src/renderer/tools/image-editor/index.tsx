@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import cn from 'cnfast';
-import { Toolbar } from '@renderer/components/ui/Toolbar';
 import { useImageEditor } from './hooks/useImageEditor';
-import { ToolSelectorMenu } from './components/ToolSelectorMenu';
+import { PreviewTool } from './components/PreviewTool';
+import { GenerativeTool } from './components/GenerativeTool';
 import { ResizeTool } from './components/ResizeTool';
 import { CropTool } from './components/CropTool';
 import { ContextResizeTool } from './components/ContextResizeTool';
@@ -11,15 +12,18 @@ import type { ImageToolProps } from './types';
 
 export type { ImageToolProps, ImageToolId } from './types';
 export { EDITABLE_MIME_TYPES } from './types';
+export { ToolSelectorMenu } from './components/ToolSelectorMenu';
 
-export function ImageTool({ binary, mimeType, onChange, className }: ImageToolProps) {
-  const {
-    binary: currentBinary,
-    decode,
-    activeTool,
-    setActiveTool,
-    commit
-  } = useImageEditor(binary, mimeType, onChange);
+export function ImageTool({ binary, mimeType, onChange, tool, className }: ImageToolProps) {
+  const { binary: currentBinary, decode, commit } = useImageEditor(binary, mimeType, onChange);
+
+  // Mounted inline in File Explorer's preview panel, not as a tab of its own, so it
+  // can't rely on createTabProvider's activeTabId subscriber to report `tool_opened`
+  // -- report directly on mount instead. telemetryStore.enqueue dedupes repeats within
+  // a session, so this can fire every time a file preview mounts one without care.
+  useEffect(() => {
+    window.telemetry.send({ event: 'tool_opened', tool: 'image-editor' });
+  }, []);
 
   if (decode.status === 'loading') {
     return (
@@ -53,16 +57,13 @@ export function ImageTool({ binary, mimeType, onChange, className }: ImageToolPr
   };
 
   return (
-    <div className={cn('flex h-full min-h-0 w-full flex-col', className)}>
-      <Toolbar.Root>
-        <ToolSelectorMenu active={activeTool} onSelect={setActiveTool} />
-      </Toolbar.Root>
-      <div className="relative min-h-0 flex-1">
-        {activeTool === 'resize' && <ResizeTool {...toolProps} />}
-        {activeTool === 'crop' && <CropTool {...toolProps} />}
-        {activeTool === 'context-resize' && <ContextResizeTool {...toolProps} />}
-        {activeTool === 'context-removal' && <ContextRemovalTool {...toolProps} />}
-      </div>
+    <div className={cn('relative h-full min-h-0 w-full', className)}>
+      {tool === 'preview' && <PreviewTool imageData={decode.imageData} />}
+      {tool === 'generative' && <GenerativeTool {...toolProps} />}
+      {tool === 'resize' && <ResizeTool {...toolProps} />}
+      {tool === 'crop' && <CropTool {...toolProps} />}
+      {tool === 'context-resize' && <ContextResizeTool {...toolProps} />}
+      {tool === 'context-removal' && <ContextRemovalTool {...toolProps} />}
     </div>
   );
 }

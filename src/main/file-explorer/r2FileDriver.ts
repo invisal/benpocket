@@ -398,7 +398,8 @@ const capabilities: DriverCapabilities = {
   nativeIcons: false,
   atomicMove: false,
   realFolders: false,
-  sync: 'optimistic'
+  sync: 'optimistic',
+  watchable: false
 };
 
 export const r2FileDriver: FileDriver = {

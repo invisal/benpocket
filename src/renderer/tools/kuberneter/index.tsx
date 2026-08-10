@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useKuberneterStore } from './store/kuberneter.store';
 import { KuberneterHomeView } from './components/workspace/kubernetes-home';
+import { KuberneterToastContainer } from './components/shared/KuberneterToastContainer';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,7 +75,7 @@ function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: str
   };
 
   return (
-    <div className="flex-1 flex min-h-0 min-w-0 bg-surface">
+    <div className="flex-1 flex min-h-0 min-w-0 bg-surface relative">
       {/* Tool-specific Collapsible Left Panel */}
       {isSidebarOpen && (
         <div
@@ -97,6 +98,8 @@ function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: str
         <Workspace />
         <BottomPanel />
       </div>
+
+      <KuberneterToastContainer />
     </div>
   );
 }

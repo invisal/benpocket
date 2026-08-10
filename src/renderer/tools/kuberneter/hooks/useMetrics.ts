@@ -49,7 +49,8 @@ function useMetricsContext() {
     provider: metricsConfig.provider,
     filterEmptyContainers: metricsConfig.filterEmptyContainers,
     useHttps: metricsConfig.useHttps,
-    pathPrefix: metricsConfig.pathPrefix
+    pathPrefix: metricsConfig.pathPrefix,
+    kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined
   };
 
   // Stable key representing the current metrics config (for cache invalidation)
@@ -75,41 +76,18 @@ export interface InstantPodMetric {
 
 async function fetchInstantMetrics(
   source: string,
-  promConfig: {
-    kubeconfigPath: string | undefined;
-    contextName: string | undefined;
-    provider: string;
-    filterEmptyContainers: boolean;
-    useHttps: boolean;
-    pathPrefix: string;
-  },
+  _promConfig: unknown,
   configPath: string | undefined,
   cluster: string
 ): Promise<InstantPodMetric[]> {
   if (source === 'none') return [];
 
-  // Try Prometheus when source allows it
-  if (source === 'auto' || source === 'prometheus') {
-    try {
-      const res = await window.kuberneter.queryPrometheus(promConfig);
-      if (res.items && res.items.length > 0) return res.items;
-      if (source === 'prometheus') return []; // explicit Prometheus mode — don't fall back
-    } catch {
-      if (source === 'prometheus') return [];
-    }
+  try {
+    const res = await window.kuberneter.getTopPods(configPath, cluster || undefined);
+    return res.items ?? [];
+  } catch {
+    return [];
   }
-
-  // Metrics-server (explicit or auto fallback)
-  if (source === 'auto' || source === 'metrics-server') {
-    try {
-      const res = await window.kuberneter.getTopPods(configPath, cluster || undefined);
-      return res.items ?? [];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
 }
 
 export function useInstantMetrics(enabled: boolean) {
@@ -119,7 +97,8 @@ export function useInstantMetrics(enabled: boolean) {
     queryKey: metricsKeys.instant(configPath ?? 'default', cluster, metricsConfigKey),
     queryFn: () => fetchInstantMetrics(metricsConfig.source, promConfig, configPath, cluster),
     enabled: enabled && !!cluster,
-    staleTime: 30_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
     gcTime: 60_000
   });
 }
@@ -143,6 +122,13 @@ const EMPTY_RANGE: PodMetricsRange = {
   filesystem: { usage: [], limit: [] }
 };
 
+// In-memory rolling buffer for live metrics-server streaming
+const liveMetricsBuffer = new Map<
+  string,
+  { timeLabels: string[]; cpuUsage: number[]; memUsage: number[] }
+>();
+const MAX_LIVE_SAMPLES = 60; // 3 minutes of 3-second samples
+
 async function fetchPodMetricsRange(
   source: string,
   promConfig: {
@@ -157,18 +143,164 @@ async function fetchPodMetricsRange(
   podName: string,
   timeRange: '1h' | '6h' | '24h'
 ): Promise<PodMetricsRange> {
-  // Range metrics require Prometheus — metrics-server has no history
-  if (source === 'none' || source === 'metrics-server') return EMPTY_RANGE;
+  if (source === 'none') return EMPTY_RANGE;
 
-  const res = await window.kuberneter.queryPodMetricsRange({
-    ...promConfig,
-    namespace,
-    podName,
-    timeRange
-  });
+  // Handle metrics-server explicit selection & live streaming rolling buffer
+  if (source === 'metrics-server') {
+    try {
+      const topRes = await window.kuberneter.getTopPods(
+        promConfig.kubeconfigPath,
+        promConfig.contextName,
+        namespace
+      );
+      if (topRes && topRes.items) {
+        const podItem = topRes.items.find(
+          (p: { name: string; namespace: string }) => p.name === podName
+        );
+        if (podItem) {
+          const nowStr = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          let cpuVal = 0;
+          if (podItem.cpu.endsWith('m')) {
+            cpuVal = (parseFloat(podItem.cpu.slice(0, -1)) || 0) / 1000;
+          } else if (podItem.cpu.endsWith('n')) {
+            cpuVal = (parseFloat(podItem.cpu.slice(0, -1)) || 0) / 1e9;
+          } else {
+            cpuVal = parseFloat(podItem.cpu) || 0;
+          }
 
-  if (res.error || !res.timeLabels.length) return EMPTY_RANGE;
-  return res;
+          let memVal = 0;
+          if (podItem.memory.endsWith('Mi')) {
+            memVal = parseFloat(podItem.memory.slice(0, -2)) || 0;
+          } else if (podItem.memory.endsWith('Gi')) {
+            memVal = (parseFloat(podItem.memory.slice(0, -2)) || 0) * 1024;
+          } else if (podItem.memory.endsWith('Ki')) {
+            memVal = (parseFloat(podItem.memory.slice(0, -2)) || 0) / 1024;
+          } else {
+            memVal = parseFloat(podItem.memory) || 0;
+          }
+
+          const cacheKey = `${promConfig.contextName ?? 'default'}:${namespace}:${podName}`;
+          let buffer = liveMetricsBuffer.get(cacheKey);
+          if (!buffer) {
+            buffer = { timeLabels: [], cpuUsage: [], memUsage: [] };
+            liveMetricsBuffer.set(cacheKey, buffer);
+          }
+
+          buffer.timeLabels.push(nowStr);
+          buffer.cpuUsage.push(cpuVal);
+          buffer.memUsage.push(memVal);
+
+          if (buffer.timeLabels.length > MAX_LIVE_SAMPLES) {
+            buffer.timeLabels.shift();
+            buffer.cpuUsage.shift();
+            buffer.memUsage.shift();
+          }
+
+          return {
+            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            timeLabels: [...buffer.timeLabels],
+            cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
+            memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
+            network: { rx: [], tx: [] },
+            filesystem: { usage: [], limit: [] }
+          };
+        }
+      }
+    } catch {
+      // Fall through to EMPTY_RANGE
+    }
+    return EMPTY_RANGE;
+  }
+
+  // Handle Prometheus queries (for 'auto' or 'prometheus')
+  try {
+    const res = await window.kuberneter.queryPodMetricsRange({
+      ...promConfig,
+      namespace,
+      podName,
+      timeRange
+    });
+
+    if (!res.error && res.timeLabels.length > 0) return res;
+  } catch {
+    // Try auto fallback to metrics-server below
+  }
+
+  // Auto mode fallback to metrics-server if Prometheus returned no data
+  if (source === 'auto') {
+    try {
+      const topRes = await window.kuberneter.getTopPods(
+        promConfig.kubeconfigPath,
+        promConfig.contextName,
+        namespace
+      );
+      if (topRes && topRes.items) {
+        const podItem = topRes.items.find(
+          (p: { name: string; namespace: string }) => p.name === podName
+        );
+        if (podItem) {
+          const nowStr = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          let cpuVal = 0;
+          if (podItem.cpu.endsWith('m')) {
+            cpuVal = (parseFloat(podItem.cpu.slice(0, -1)) || 0) / 1000;
+          } else if (podItem.cpu.endsWith('n')) {
+            cpuVal = (parseFloat(podItem.cpu.slice(0, -1)) || 0) / 1e9;
+          } else {
+            cpuVal = parseFloat(podItem.cpu) || 0;
+          }
+
+          let memVal = 0;
+          if (podItem.memory.endsWith('Mi')) {
+            memVal = parseFloat(podItem.memory.slice(0, -2)) || 0;
+          } else if (podItem.memory.endsWith('Gi')) {
+            memVal = (parseFloat(podItem.memory.slice(0, -2)) || 0) * 1024;
+          } else if (podItem.memory.endsWith('Ki')) {
+            memVal = (parseFloat(podItem.memory.slice(0, -2)) || 0) / 1024;
+          } else {
+            memVal = parseFloat(podItem.memory) || 0;
+          }
+
+          const cacheKey = `${promConfig.contextName ?? 'default'}:${namespace}:${podName}`;
+          let buffer = liveMetricsBuffer.get(cacheKey);
+          if (!buffer) {
+            buffer = { timeLabels: [], cpuUsage: [], memUsage: [] };
+            liveMetricsBuffer.set(cacheKey, buffer);
+          }
+
+          buffer.timeLabels.push(nowStr);
+          buffer.cpuUsage.push(cpuVal);
+          buffer.memUsage.push(memVal);
+
+          if (buffer.timeLabels.length > MAX_LIVE_SAMPLES) {
+            buffer.timeLabels.shift();
+            buffer.cpuUsage.shift();
+            buffer.memUsage.shift();
+          }
+
+          return {
+            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            timeLabels: [...buffer.timeLabels],
+            cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
+            memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
+            network: { rx: [], tx: [] },
+            filesystem: { usage: [], limit: [] }
+          };
+        }
+      }
+    } catch {
+      // Return EMPTY_RANGE
+    }
+  }
+
+  return EMPTY_RANGE;
 }
 
 export function usePodMetricsRange(
@@ -178,6 +310,9 @@ export function usePodMetricsRange(
   enabled: boolean
 ) {
   const { cluster, configPath, metricsConfig, promConfig, metricsConfigKey } = useMetricsContext();
+
+  const isLiveMetricsServer =
+    metricsConfig.source === 'metrics-server' || metricsConfig.source === 'auto';
 
   return useQuery({
     queryKey: metricsKeys.range(
@@ -191,7 +326,8 @@ export function usePodMetricsRange(
     queryFn: () =>
       fetchPodMetricsRange(metricsConfig.source, promConfig, namespace, podName, timeRange),
     enabled: enabled && !!cluster && !!namespace && !!podName,
-    staleTime: 60_000,
+    staleTime: isLiveMetricsServer ? 1_500 : 60_000,
+    refetchInterval: isLiveMetricsServer ? 3_000 : false,
     gcTime: 120_000
   });
 }

@@ -90,12 +90,9 @@ export const TextPreview = forwardRef<
     );
   }
 
-  const fileName = filePath.split(/[\\/]/).pop() ?? filePath;
-
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border-dark text-xs text-text-dim">
-        <span className="truncate">{fileName}</span>
+      <div className="flex items-center justify-end gap-2 px-3 py-1.5 border-b border-border-dark text-xs text-text-dim">
         <div className="flex items-center gap-2 shrink-0">
           {saveError && <span className="text-red-500">{saveError}</span>}
           {isDirty && !saveError && <span className="text-amber-500">Unsaved changes</span>}

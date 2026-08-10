@@ -49,8 +49,16 @@ export const KuberneterBottomPanel: React.FC = () => {
     closeTab(id);
   };
 
-  const handleApplyYaml = (yamlContent: string) => {
-    return window.kuberneter.applyResourceYaml(yamlContent, activeConfigPath, activeCluster);
+  const handleApplyYaml = async (yamlContent: string) => {
+    const res = await window.kuberneter.applyResourceYaml(
+      yamlContent,
+      activeConfigPath,
+      activeCluster
+    );
+    if (res && res.yaml && activeTabId) {
+      setResourceYamls((prev) => ({ ...prev, [activeTabId]: res.yaml! }));
+    }
+    return res;
   };
 
   return (

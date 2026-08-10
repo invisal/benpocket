@@ -2,6 +2,7 @@ import type React from 'react';
 import { ChevronDownIcon } from 'lucide-react';
 import type { HttpMethod } from '../../../../preload/http-client/types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
+import { looksLikeCurlCommand, parseCurlCommand, type ParsedCurlRequest } from '../lib/curlImport';
 import { VariableSuggestInput } from './VariableSuggestInput';
 import { Menu } from '@renderer/components/ui/Menu';
 
@@ -34,6 +35,10 @@ interface RequestComposerProps {
   onUrlChange: (url: string) => void;
   urlDisabled?: boolean;
   action: ComposerAction;
+  /** Pasting a `curl ...` command into the URL field fills the whole request instead of
+   * dropping the raw command text in as the URL - HTTP mode only (undefined in WebSocket
+   * mode disables the interception, since there's nothing to import into). */
+  onImportCurl?: (parsed: ParsedCurlRequest) => void;
 }
 
 export const RequestComposer: React.FC<RequestComposerProps> = ({
@@ -42,7 +47,8 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
   url,
   onUrlChange,
   urlDisabled,
-  action
+  action,
+  onImportCurl
 }) => {
   const variables = useActiveEnvironmentVariables();
   const selectedLabel = METHODS.find((m) => m.value === method)?.label ?? method;
@@ -73,8 +79,19 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
             onEnter={() => {
               if (!action.disabled) action.onClick();
             }}
+            onPaste={
+              onImportCurl &&
+              ((e) => {
+                const text = e.clipboardData.getData('text');
+                if (!looksLikeCurlCommand(text)) return;
+                const parsed = parseCurlCommand(text);
+                if (!parsed) return;
+                e.preventDefault();
+                onImportCurl(parsed);
+              })
+            }
             className="w-full outline-none text-xs px-2 h-full py-0 disabled:opacity-60"
-            placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/..."
+            placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
           />
         </div>
 

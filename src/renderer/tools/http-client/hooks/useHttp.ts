@@ -9,6 +9,7 @@ import type {
 import { getActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
+import { makeId } from '../lib/makeId';
 import { mergeRowsFromPairs, withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
 import { parseUrlEncodedBody, serializeUrlEncodedBody, type BodyPair } from '../lib/formBody';
 import {
@@ -18,6 +19,7 @@ import {
   withTrailingMultipartRow,
   type MultipartRow
 } from '../lib/multipartRows';
+import type { ParsedCurlRequest } from '../lib/curlImport';
 import { resolveJsonVariables, resolveRows, resolveVariables } from '../lib/variables';
 import { DEFAULT_HTTP_AUTH, resolveAuth } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
@@ -202,6 +204,9 @@ export interface UseHttpResult {
   updateMultipartRow: (id: string, patch: Partial<MultipartRow>) => void;
   removeMultipartRow: (id: string) => void;
   pickMultipartFile: (id: string) => Promise<void>;
+  /** Replaces method/url/params/headers/body(+auth if the curl had credentials) with a
+   * parsed `curl ...` command - see RequestComposer's URL-bar paste handler. */
+  importCurl: (parsed: ParsedCurlRequest) => void;
   setAuth: (auth: HttpAuth) => void;
   send: () => void;
 }
@@ -351,6 +356,48 @@ export function useHttp(tabId: string): UseHttpResult {
     [updateMultipartRow]
   );
 
+  const importCurl = useCallback(
+    (parsed: ParsedCurlRequest) =>
+      setState((prev) => {
+        const headers = withTrailingRow(
+          parsed.headers.map((h) => ({ id: makeId(), key: h.key, value: h.value, enabled: true }))
+        );
+        const bodyRows = hydrateBodyRows(parsed.bodyType, parsed.body, []);
+        const multipartRows =
+          parsed.bodyType === 'multipart' && parsed.multipartFields
+            ? withTrailingMultipartRow(
+                parsed.multipartFields.map((f) => ({
+                  id: makeId(),
+                  key: f.key,
+                  enabled: true,
+                  fieldType: f.type,
+                  value: f.type === 'text' ? f.value : '',
+                  file:
+                    f.type === 'file'
+                      ? { filePath: f.filePath, fileName: f.fileName, size: 0 }
+                      : undefined
+                }))
+              )
+            : withTrailingMultipartRow([]);
+
+        return {
+          ...prev,
+          method: parsed.method,
+          url: parsed.url,
+          params: mergeParamsFromUrl(parsed.url, []),
+          headers,
+          // Only overwrite auth when the curl actually had credentials (-u, or a
+          // Bearer/Basic Authorization header) - otherwise leave whatever was configured.
+          auth: parsed.auth ?? prev.auth,
+          bodyType: parsed.bodyType,
+          body: parsed.body,
+          bodyRows,
+          multipartRows
+        };
+      }),
+    [setState]
+  );
+
   const setAuth = useCallback(
     (auth: HttpAuth) => setState((prev) => ({ ...prev, auth })),
     [setState]
@@ -436,6 +483,7 @@ export function useHttp(tabId: string): UseHttpResult {
     updateMultipartRow,
     removeMultipartRow,
     pickMultipartFile,
+    importCurl,
     setAuth,
     send
   };

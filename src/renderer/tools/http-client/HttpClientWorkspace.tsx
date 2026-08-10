@@ -229,6 +229,14 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
             client.protocol === 'WEBSOCKET' &&
             (client.ws.state.status === 'CONNECTED' || client.ws.state.status === 'CONNECTING')
           }
+          onImportCurl={
+            client.protocol === 'HTTP'
+              ? (parsed) => {
+                  pinIfPreview();
+                  client.http.importCurl(parsed);
+                }
+              : undefined
+          }
           action={
             client.protocol === 'WEBSOCKET'
               ? {

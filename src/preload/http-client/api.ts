@@ -23,6 +23,7 @@ import type {
   MoveRequestPayload,
   OAuth2TokenRequest,
   OAuth2TokenResult,
+  PickFileResult,
   RenameCollectionPayload,
   RenameEnvironmentPayload,
   RenameExamplePayload,
@@ -48,6 +49,9 @@ export interface PostmanBridge {
   http: {
     send: (payload: HttpRequestPayload) => Promise<HttpResponsePayload>;
     oauth2GetToken: (payload: OAuth2TokenRequest) => Promise<OAuth2TokenResult>;
+    /** Opens a native "choose a file" dialog for a multipart body's file field. Resolves to
+     * `null` if the user cancels. */
+    pickFile: () => Promise<PickFileResult | null>;
   };
   ws: {
     connect: (payload: WsConnectPayload) => Promise<WsAckResult>;
@@ -103,7 +107,8 @@ export const postmanApi: PostmanBridge = {
     send: (payload: HttpRequestPayload): Promise<HttpResponsePayload> =>
       ipcRenderer.invoke('http:send', payload),
     oauth2GetToken: (payload: OAuth2TokenRequest): Promise<OAuth2TokenResult> =>
-      ipcRenderer.invoke('http:oauth2GetToken', payload)
+      ipcRenderer.invoke('http:oauth2GetToken', payload),
+    pickFile: (): Promise<PickFileResult | null> => ipcRenderer.invoke('http:pickFile')
   },
 
   // WebSocket client - sockets live in the main process; the renderer only

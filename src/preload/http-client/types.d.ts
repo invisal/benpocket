@@ -42,6 +42,12 @@ export interface OAuth2TokenResult {
   error?: string;
 }
 
+/** One part of a 'multipart' body. A 'file' part is sent by reference (the main process
+ * reads it off disk at send time) - the renderer never loads file bytes into memory. */
+export type MultipartField =
+  | { type: 'text'; key: string; value: string }
+  | { type: 'file'; key: string; filePath: string; fileName: string };
+
 export interface HttpRequestPayload {
   method: HttpMethod;
   url: string;
@@ -49,9 +55,19 @@ export interface HttpRequestPayload {
   params: KeyValuePair[];
   bodyType: HttpBodyType;
   body: string;
+  /** Only present (and only used) when bodyType is 'multipart' - takes over from `body`
+   * for actually building the request so file parts can be read from disk. `body` still
+   * carries a text-only preview/placeholder form for saving/exporting/Content-Type preview. */
+  multipartFields?: MultipartField[];
   /** Optional so requests sent before this field existed still type-check; treat missing as 'noauth'. */
   auth?: HttpAuth;
   timeoutMs?: number;
+}
+
+export interface PickFileResult {
+  filePath: string;
+  fileName: string;
+  size: number;
 }
 
 export interface HttpResponsePayload {

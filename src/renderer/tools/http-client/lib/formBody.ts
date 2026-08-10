@@ -35,10 +35,11 @@ export function serializeUrlEncodedBody(pairs: BodyPair[]): string {
     .join('&');
 }
 
-// --- multipart/form-data ---
-// Text fields only - there's no file-picker/binary plumbing in this client yet, so a
-// part with a `filename=` (as Postman-imported formdata may have) is dropped rather
-// than faked.
+// --- multipart/form-data boundary helpers ---
+// The row/file-aware multipart parse+serialize live in ./multipartRows.ts - these two
+// are shared with it (and with the renderer/main Content-Type preview logic) since a
+// multipart body's boundary is recovered from its own leading "--boundary" line rather
+// than plumbed through as separate state.
 
 /** A fresh boundary for a new multipart body. Re-serializing after an edit recovers the
  * existing one via `extractMultipartBoundary` instead of calling this again, so it stays
@@ -50,33 +51,4 @@ export function makeMultipartBoundary(): string {
 export function extractMultipartBoundary(body: string): string | null {
   const match = /^--(\S+)/.exec(body);
   return match ? match[1] : null;
-}
-
-export function parseMultipartBody(body: string): BodyPair[] {
-  const boundary = extractMultipartBoundary(body);
-  if (!boundary) return [];
-  const marker = `--${boundary}`;
-  const segments = body.split(marker).slice(1, -1);
-  const result: BodyPair[] = [];
-  for (const segment of segments) {
-    const content = segment.replace(/^\r?\n/, '');
-    const headerEnd = content.indexOf('\r\n\r\n');
-    if (headerEnd === -1) continue;
-    const headerBlock = content.slice(0, headerEnd);
-    if (/filename="/.test(headerBlock)) continue;
-    const nameMatch = /name="([^"]*)"/.exec(headerBlock);
-    if (!nameMatch) continue;
-    const value = content.slice(headerEnd + 4).replace(/\r\n$/, '');
-    result.push({ key: nameMatch[1], value });
-  }
-  return result;
-}
-
-export function serializeMultipartBody(pairs: BodyPair[], boundary: string): string {
-  const enabled = pairs.filter((p) => p.key.trim());
-  if (enabled.length === 0) return '';
-  const parts = enabled.map(
-    (p) => `--${boundary}\r\nContent-Disposition: form-data; name="${p.key}"\r\n\r\n${p.value}`
-  );
-  return `${parts.join('\r\n')}\r\n--${boundary}--`;
 }

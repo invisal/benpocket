@@ -10,15 +10,14 @@ import { getActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
 import { mergeRowsFromPairs, withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
+import { parseUrlEncodedBody, serializeUrlEncodedBody, type BodyPair } from '../lib/formBody';
 import {
-  extractMultipartBoundary,
-  makeMultipartBoundary,
-  parseMultipartBody,
-  parseUrlEncodedBody,
-  serializeMultipartBody,
-  serializeUrlEncodedBody,
-  type BodyPair
-} from '../lib/formBody';
+  parseMultipartRows,
+  serializeMultipartRows,
+  toMultipartFields,
+  withTrailingMultipartRow,
+  type MultipartRow
+} from '../lib/multipartRows';
 import { resolveJsonVariables, resolveRows, resolveVariables } from '../lib/variables';
 import { DEFAULT_HTTP_AUTH, resolveAuth } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
@@ -34,10 +33,14 @@ export interface HttpState {
   auth: HttpAuth;
   bodyType: HttpBodyType;
   body: string;
-  /** Row-editor view of `body` for the 'form'/'multipart' body types - kept in sync with
-   * `body` in both directions (see hydrateBodyRows/serializeBodyRows) so switching bodyType
-   * or reloading a saved request doesn't lose row ids/enabled-state. Unused for other types. */
+  /** Row-editor view of `body` for the 'form' body type - kept in sync with `body` in both
+   * directions (see hydrateBodyRows/serializeBodyRows) so switching bodyType or reloading a
+   * saved request doesn't lose row ids/enabled-state. Unused for other types. */
   bodyRows: KeyValueRow[];
+  /** Row-editor view of `body` for the 'multipart' body type - separate from `bodyRows`
+   * because a multipart row can carry a picked-file reference a plain KeyValueRow can't
+   * represent. See lib/multipartRows.ts. Unused for other types. */
+  multipartRows: MultipartRow[];
   isLoading: boolean;
   response: HttpResponsePayload | null;
 }
@@ -71,15 +74,14 @@ function buildUrlWithParams(url: string, params: KeyValueRow[]): string {
   return `${base}?${usp.toString()}`;
 }
 
-// Parses `body` into row form for the 'form'/'multipart' body types, reusing
-// `existingRows`' ids/enabled-state for keys that already existed (see mergeRowsFromPairs).
+// Parses `body` into row form for the 'form' body type, reusing `existingRows`' ids/
+// enabled-state for keys that already existed (see mergeRowsFromPairs).
 function hydrateBodyRows(
   bodyType: HttpBodyType,
   body: string,
   existingRows: KeyValueRow[]
 ): KeyValueRow[] {
   if (bodyType === 'form') return mergeRowsFromPairs(parseUrlEncodedBody(body), existingRows);
-  if (bodyType === 'multipart') return mergeRowsFromPairs(parseMultipartBody(body), existingRows);
   return withTrailingRow(existingRows);
 }
 
@@ -87,22 +89,28 @@ function hydrateBodyRows(
 // templated `{{var}}` placeholders intact (they're only resolved at send() time - see
 // resolveBodyForSend, which resolves the rows *before* this encoding step so a
 // urlencoded value's braces don't get percent-escaped out of matchability).
-function serializeBodyRows(bodyType: HttpBodyType, rows: KeyValueRow[], prevBody: string): string {
+function serializeBodyRows(bodyType: HttpBodyType, rows: KeyValueRow[]): string {
+  if (bodyType !== 'form') return '';
   const pairs: BodyPair[] = rows
     .filter((r) => r.enabled && r.key.trim())
     .map((r) => ({ key: r.key, value: r.value }));
-  if (bodyType === 'form') return serializeUrlEncodedBody(pairs);
-  if (bodyType === 'multipart') {
-    const boundary = extractMultipartBoundary(prevBody) ?? makeMultipartBoundary();
-    return serializeMultipartBody(pairs, boundary);
-  }
-  return prevBody;
+  return serializeUrlEncodedBody(pairs);
+}
+
+// One-time hydration for multipartRows - only reparses `body` when no live row state
+// exists yet (see parseMultipartRows' own doc comment for why this isn't reused per-edit).
+function hydrateMultipartRows(body: string, existingRows: MultipartRow[]): MultipartRow[] {
+  if (existingRows.length > 0) return withTrailingMultipartRow(existingRows);
+  return withTrailingMultipartRow(parseMultipartRows(body));
 }
 
 // multipart part values are inserted as raw text (no percent-encoding), so a flat
 // resolveVariables() over the whole body works there - but urlencoded values are
 // percent-encoded, which mangles a literal "{{name}}" before resolveVariables ever
-// sees it. So for 'form', resolve each row's key/value first, then encode.
+// sees it. So for 'form', resolve each row's key/value first, then encode. 'multipart'
+// only needs the text-only preview form here - the actual send uses resolved
+// multipartFields (built separately in send(), see toMultipartFields) since file bytes
+// have to be read fresh by the main process regardless of what this string says.
 function resolveBodyForSend(
   bodyType: HttpBodyType,
   body: string,
@@ -130,6 +138,10 @@ function createDefaultHttpState(tabId: string): HttpState {
     bodyType,
     body,
     bodyRows: hydrateBodyRows(bodyType, body, []),
+    // Always hydrated (not gated on bodyType === 'multipart', unlike the initial `body`
+    // parse) so switching *into* multipart later via setBodyType always finds at least
+    // the trailing blank row ready to type into, same as bodyRows already does for 'form'.
+    multipartRows: hydrateMultipartRows(body, []),
     isLoading: false,
     response: seed?.response ?? null
   };
@@ -145,7 +157,8 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
     auth: s.auth,
     bodyType: s.bodyType,
     body: s.body,
-    bodyRows: s.bodyRows
+    bodyRows: s.bodyRows,
+    multipartRows: s.multipartRows
   }),
   deserialize: (raw) => {
     const r = (raw ?? {}) as Partial<HttpState>;
@@ -163,6 +176,7 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
         r.bodyRows && r.bodyRows.length > 0
           ? withTrailingRow(r.bodyRows)
           : hydrateBodyRows(bodyType, body, []),
+      multipartRows: hydrateMultipartRows(body, r.multipartRows ?? []),
       isLoading: false,
       response: null
     };
@@ -181,6 +195,9 @@ export interface UseHttpResult {
   removeParamRow: (id: string) => void;
   updateBodyRow: (id: string, patch: Partial<KeyValueRow>) => void;
   removeBodyRow: (id: string) => void;
+  updateMultipartRow: (id: string, patch: Partial<MultipartRow>) => void;
+  removeMultipartRow: (id: string) => void;
+  pickMultipartFile: (id: string) => Promise<void>;
   setAuth: (auth: HttpAuth) => void;
   send: () => void;
 }
@@ -203,11 +220,22 @@ export function useHttp(tabId: string): UseHttpResult {
   const setBodyType = useCallback(
     (bodyType: HttpBodyType) =>
       setState((prev) => {
-        if (bodyType !== 'form' && bodyType !== 'multipart') return { ...prev, bodyType };
-        // Switching into a row-edited body type: resync `body` from whatever rows
-        // were last built (possibly from a previous form/multipart session) so the
+        // Switching into a row-edited body type: resync `body` from whatever rows were
+        // last built (possibly from a previous form/multipart session) so the
         // Content-Type/preview reflect rows rather than stale leftover text.
-        return { ...prev, bodyType, body: serializeBodyRows(bodyType, prev.bodyRows, prev.body) };
+        if (bodyType === 'form') {
+          return { ...prev, bodyType, body: serializeBodyRows(bodyType, prev.bodyRows) };
+        }
+        if (bodyType === 'multipart') {
+          const rows = withTrailingMultipartRow(prev.multipartRows);
+          return {
+            ...prev,
+            bodyType,
+            multipartRows: rows,
+            body: serializeMultipartRows(rows, prev.body)
+          };
+        }
+        return { ...prev, bodyType };
       }),
     [setState]
   );
@@ -262,11 +290,7 @@ export function useHttp(tabId: string): UseHttpResult {
         const nextRows = withTrailingRow(
           prev.bodyRows.map((row) => (row.id === id ? { ...row, ...patch } : row))
         );
-        return {
-          ...prev,
-          bodyRows: nextRows,
-          body: serializeBodyRows(prev.bodyType, nextRows, prev.body)
-        };
+        return { ...prev, bodyRows: nextRows, body: serializeBodyRows(prev.bodyType, nextRows) };
       }),
     [setState]
   );
@@ -275,13 +299,52 @@ export function useHttp(tabId: string): UseHttpResult {
     (id: string) =>
       setState((prev) => {
         const nextRows = withTrailingRow(prev.bodyRows.filter((row) => row.id !== id));
+        return { ...prev, bodyRows: nextRows, body: serializeBodyRows(prev.bodyType, nextRows) };
+      }),
+    [setState]
+  );
+
+  const updateMultipartRow = useCallback(
+    (id: string, patch: Partial<MultipartRow>) =>
+      setState((prev) => {
+        const nextRows = withTrailingMultipartRow(
+          prev.multipartRows.map((row) => (row.id === id ? { ...row, ...patch } : row))
+        );
         return {
           ...prev,
-          bodyRows: nextRows,
-          body: serializeBodyRows(prev.bodyType, nextRows, prev.body)
+          multipartRows: nextRows,
+          body: serializeMultipartRows(nextRows, prev.body)
         };
       }),
     [setState]
+  );
+
+  const removeMultipartRow = useCallback(
+    (id: string) =>
+      setState((prev) => {
+        const nextRows = withTrailingMultipartRow(
+          prev.multipartRows.filter((row) => row.id !== id)
+        );
+        return {
+          ...prev,
+          multipartRows: nextRows,
+          body: serializeMultipartRows(nextRows, prev.body)
+        };
+      }),
+    [setState]
+  );
+
+  const pickMultipartFile = useCallback(
+    async (id: string): Promise<void> => {
+      const picked = await window.api.http.pickFile();
+      if (!picked) return;
+      updateMultipartRow(id, {
+        fieldType: 'file',
+        value: '',
+        file: { filePath: picked.filePath, fileName: picked.fileName, size: picked.size }
+      });
+    },
+    [updateMultipartRow]
   );
 
   const setAuth = useCallback(
@@ -323,6 +386,13 @@ export function useHttp(tabId: string): UseHttpResult {
           auth,
           bodyType: current.bodyType,
           body: resolveBodyForSend(current.bodyType, current.body, current.bodyRows, variables),
+          multipartFields:
+            current.bodyType === 'multipart'
+              ? toMultipartFields(current.multipartRows, (key, value) => ({
+                  key: resolveVariables(key, variables),
+                  value: resolveVariables(value, variables)
+                }))
+              : undefined,
           timeoutMs: 30000
         });
         httpStore.setSnapshot(tabId, (prev) => ({ ...prev, isLoading: false, response }));
@@ -359,6 +429,9 @@ export function useHttp(tabId: string): UseHttpResult {
     removeParamRow,
     updateBodyRow,
     removeBodyRow,
+    updateMultipartRow,
+    removeMultipartRow,
+    pickMultipartFile,
     setAuth,
     send
   };

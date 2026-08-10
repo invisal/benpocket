@@ -4,6 +4,7 @@ import { PillTab } from '@renderer/components/ui/Tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
+import type { MultipartRow } from '../lib/multipartRows';
 import type { SavedBinding } from '../types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
@@ -11,6 +12,7 @@ import { getAutoHeaders } from '../lib/autoHeaders';
 import { authTypeLabel } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
 import { KeyValueEditor } from './KeyValueEditor';
+import { MultipartBodyEditor } from './MultipartBodyEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
 import { AuthEditor } from './AuthEditor';
@@ -24,8 +26,6 @@ const BODY_TYPES: { value: HttpBodyType; label: string }[] = [
   { value: 'form', label: 'Form (urlencoded)' },
   { value: 'multipart', label: 'Form (multipart)' }
 ];
-
-const ROW_EDITED_BODY_TYPES = new Set<HttpBodyType>(['form', 'multipart']);
 
 interface RequestEditorPanelProps {
   method: HttpMethod;
@@ -47,6 +47,10 @@ interface RequestEditorPanelProps {
   bodyRows: KeyValueRow[];
   onUpdateBodyRow: (id: string, patch: Partial<KeyValueRow>) => void;
   onRemoveBodyRow: (id: string) => void;
+  multipartRows: MultipartRow[];
+  onUpdateMultipartRow: (id: string, patch: Partial<MultipartRow>) => void;
+  onRemoveMultipartRow: (id: string) => void;
+  onPickMultipartFile: (id: string) => void;
 }
 
 export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
@@ -67,7 +71,11 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   onBodyChange,
   bodyRows,
   onUpdateBodyRow,
-  onRemoveBodyRow
+  onRemoveBodyRow,
+  multipartRows,
+  onUpdateMultipartRow,
+  onRemoveMultipartRow,
+  onPickMultipartFile
 }) => {
   const [activeTab, setActiveTab] = useState<RequestTabValue>('params');
   const [showAutoHeaders, setShowAutoHeaders] = useState(false);
@@ -189,7 +197,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             </label>
           ))}
         </div>
-        {ROW_EDITED_BODY_TYPES.has(bodyType) ? (
+        {bodyType === 'form' && (
           <KeyValueEditor
             rows={bodyRows}
             onUpdate={onUpdateBodyRow}
@@ -197,16 +205,23 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             keyPlaceholder="Key"
             valuePlaceholder="Value or {{var}}"
           />
-        ) : (
-          bodyType !== 'none' && (
-            <BodyEditor
-              value={body}
-              onChange={onBodyChange}
-              bodyType={bodyType}
-              variables={variables}
-              placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
-            />
-          )
+        )}
+        {bodyType === 'multipart' && (
+          <MultipartBodyEditor
+            rows={multipartRows}
+            onUpdate={onUpdateMultipartRow}
+            onRemove={onRemoveMultipartRow}
+            onPickFile={onPickMultipartFile}
+          />
+        )}
+        {bodyType !== 'none' && bodyType !== 'form' && bodyType !== 'multipart' && (
+          <BodyEditor
+            value={body}
+            onChange={onBodyChange}
+            bodyType={bodyType}
+            variables={variables}
+            placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
+          />
         )}
       </PillTab.Panel>
     </PillTab.Root>

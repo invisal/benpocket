@@ -1,9 +1,13 @@
-import { ipcMain } from 'electron';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { readFile, stat } from 'fs/promises';
+import { basename } from 'path';
 import type {
   HttpAuth,
   HttpRequestPayload,
   HttpResponsePayload,
-  KeyValuePair
+  KeyValuePair,
+  MultipartField,
+  PickFileResult
 } from '../../../preload/http-client/types';
 
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -68,20 +72,38 @@ function applyAuthHeader(headers: Record<string, string>, auth: HttpAuth | undef
 
 // Kept in sync with src/renderer/tools/http-client/lib/autoHeaders.ts, which shows
 // these same defaults as "hidden" headers in the Headers tab - both only apply
-// when the user hasn't set Content-Type themselves.
+// when the user hasn't set Content-Type themselves. 'multipart' isn't here: its body is
+// sent as a native FormData (see buildMultipartBody), and fetch/undici sets that
+// Content-Type itself (including the boundary) - setting it manually would risk it not
+// matching the boundary undici actually put in the body.
 const BODY_CONTENT_TYPES: Partial<Record<HttpRequestPayload['bodyType'], string>> = {
   json: 'application/json',
   text: 'text/plain',
   form: 'application/x-www-form-urlencoded'
 };
 
-// multipart's Content-Type needs the boundary the body was actually built with, which
-// (unlike the static types above) varies per-request - recovered from the body's own
-// leading "--boundary" line rather than plumbed through as separate state. Kept in sync
-// with the identical helper in src/renderer/tools/http-client/lib/autoHeaders.ts.
-function multipartContentType(body: string): string | undefined {
-  const match = /^--(\S+)/.exec(body);
-  return match ? `multipart/form-data; boundary=${match[1]}` : undefined;
+/** Reads each field's file off disk and assembles a native FormData - undici serializes
+ * this itself (boundary generation, headers, streaming) rather than us hand-building the
+ * multipart wire format. Throws with a message naming the offending file on read failure. */
+async function buildMultipartBody(fields: MultipartField[]): Promise<FormData> {
+  const formData = new FormData();
+  for (const field of fields) {
+    if (field.type === 'file') {
+      let buffer: Buffer;
+      try {
+        buffer = await readFile(field.filePath);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `Couldn't read file "${field.fileName}" for field "${field.key}": ${reason}`
+        );
+      }
+      formData.append(field.key, new Blob([Uint8Array.from(buffer)]), field.fileName);
+    } else if (field.key.trim()) {
+      formData.append(field.key, field.value);
+    }
+  }
+  return formData;
 }
 
 // Postman sends these on every request regardless of body, and shows them as
@@ -149,22 +171,28 @@ export function registerHttpHandlers(): void {
         }
 
         const methodAllowsBody = !['GET', 'HEAD'].includes(payload.method);
-        const hasBody =
-          methodAllowsBody && payload.bodyType !== 'none' && payload.body.trim().length > 0;
+        const isMultipart = payload.bodyType === 'multipart';
+        const hasBody = isMultipart
+          ? methodAllowsBody && (payload.multipartFields?.length ?? 0) > 0
+          : methodAllowsBody && payload.bodyType !== 'none' && payload.body.trim().length > 0;
 
-        const contentType = hasBody
-          ? payload.bodyType === 'multipart'
-            ? multipartContentType(payload.body)
-            : BODY_CONTENT_TYPES[payload.bodyType]
-          : undefined;
-        if (contentType && !hasHeader(headers, 'content-type')) {
-          headers['Content-Type'] = contentType;
+        let requestBody: string | FormData | undefined;
+        if (hasBody && isMultipart) {
+          requestBody = await buildMultipartBody(payload.multipartFields ?? []);
+          // Deliberately not honoring a user-set Content-Type header here - see the
+          // BODY_CONTENT_TYPES comment above.
+        } else if (hasBody) {
+          requestBody = payload.body;
+          const contentType = BODY_CONTENT_TYPES[payload.bodyType];
+          if (contentType && !hasHeader(headers, 'content-type')) {
+            headers['Content-Type'] = contentType;
+          }
         }
 
         const response = await fetch(requestUrl, {
           method: payload.method,
           headers,
-          body: hasBody ? payload.body : undefined,
+          body: requestBody,
           signal: controller.signal
         });
 
@@ -210,4 +238,17 @@ export function registerHttpHandlers(): void {
       }
     }
   );
+
+  ipcMain.handle('http:pickFile', async (event): Promise<PickFileResult | null> => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const options = { title: 'Choose File', properties: ['openFile' as const] };
+    const result = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options);
+    if (result.canceled || result.filePaths.length === 0) return null;
+
+    const filePath = result.filePaths[0];
+    const stats = await stat(filePath);
+    return { filePath, fileName: basename(filePath), size: stats.size };
+  });
 }

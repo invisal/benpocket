@@ -398,22 +398,29 @@ function exportBody(bodyType: HttpBodyType, body: string): PostmanBody | undefin
   }
 
   if (bodyType === 'multipart') {
-    // Mirrors src/renderer/tools/http-client/lib/formBody.ts's parseMultipartBody -
-    // kept in sync since main can't import renderer-side code.
+    // Mirrors src/renderer/tools/http-client/lib/multipartRows.ts's parseMultipartRows -
+    // kept in sync since main can't import renderer-side code. A file row's "value" here
+    // is its local disk path (see serializeMultipartRows) - exported as a bare `type:
+    // 'file'` entry rather than leaking that path into a Postman "text" value, since the
+    // permissive PostmanFormDataEntry shape below has no `src` field for it anyway.
     const boundaryMatch = /^--(\S+)/.exec(body);
     if (!boundaryMatch) return undefined;
     const marker = `--${boundaryMatch[1]}`;
     const formdata: PostmanFormDataEntry[] = body
       .split(marker)
       .slice(1, -1)
-      .flatMap((segment) => {
+      .flatMap((segment): PostmanFormDataEntry[] => {
         const content = segment.replace(/^\r?\n/, '');
         const headerEnd = content.indexOf('\r\n\r\n');
         if (headerEnd === -1) return [];
-        const nameMatch = /name="([^"]*)"/.exec(content.slice(0, headerEnd));
+        const headerBlock = content.slice(0, headerEnd);
+        const nameMatch = /name="([^"]*)"/.exec(headerBlock);
         if (!nameMatch) return [];
+        if (/filename="/.test(headerBlock)) {
+          return [{ key: nameMatch[1], type: 'file' }];
+        }
         const value = content.slice(headerEnd + 4).replace(/\r\n$/, '');
-        return [{ key: nameMatch[1], value, type: 'text' as const }];
+        return [{ key: nameMatch[1], value, type: 'text' }];
       });
     return { mode: 'formdata', formdata };
   }

@@ -314,6 +314,19 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                   pinIfPreview();
                   client.http.removeBodyRow(id);
                 }}
+                multipartRows={client.http.state.multipartRows}
+                onUpdateMultipartRow={(id, patch) => {
+                  pinIfPreview();
+                  client.http.updateMultipartRow(id, patch);
+                }}
+                onRemoveMultipartRow={(id) => {
+                  pinIfPreview();
+                  client.http.removeMultipartRow(id);
+                }}
+                onPickMultipartFile={(id) => {
+                  pinIfPreview();
+                  void client.http.pickMultipartFile(id);
+                }}
               />
             </div>
 

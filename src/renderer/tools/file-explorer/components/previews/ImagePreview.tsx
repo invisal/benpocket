@@ -140,7 +140,8 @@ export const ImagePreview = forwardRef<
       <Toolbar.Root>
         {isEditable && <ToolSelectorMenu active={tool} onSelect={setTool} />}
         <div className="flex-1" />
-        <div className="flex items-center justify-center pr-2">
+        <div className="flex items-center gap-2 justify-center pr-2">
+          {saveError && <span className="text-xs text-red-500">{saveError}</span>}
           <Button
             variant={isDirty && !isSaving ? 'primary' : undefined}
             size="sm"

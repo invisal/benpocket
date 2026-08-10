@@ -72,11 +72,12 @@ export function createTabProvider<TTool extends Tool<string, any>>(
   options: {
     storageKey: string;
     initialTabs?: () => Tab<TTool>[];
-    /** Called the first time a tab of a given `type` becomes the active tab in this
-     * session -- whether via a brand-new tab or switching to an already-open one --
-     * never once per `openTab`/`selectTab` call. Kept as a plain callback rather than
-     * an import so this generic tab-system factory stays decoupled from what a caller
-     * does with the notification (telemetry, in ToolProvider.ts's case). */
+    /** Called whenever the active tab changes to a different tab, whether via a
+     * brand-new tab or switching to an already-open one -- never once per
+     * `openTab`/`selectTab` call, but not deduped by `type` here (the caller's own
+     * "first time this session" logic, if any, owns that). Kept as a plain callback
+     * rather than an import so this generic tab-system factory stays decoupled from
+     * what a caller does with the notification (telemetry, in ToolProvider.ts's case). */
     onTabActivated?: (type: TabType<TTool>) => void;
   }
 ) {
@@ -143,17 +144,17 @@ export function createTabProvider<TTool extends Tool<string, any>>(
     )
   );
 
-  // Module-scope (not component state) so it survives remounts and naturally resets
-  // per app launch, matching "once per (tool, session)" -- rehydration from the
-  // persisted `activeTabId` on reload doesn't re-report a tool that was already open
-  // before, only tools that become active for the first time in *this* run.
-  const reportedTypes = new Set<TabType<TTool>>();
+  // Module-scope (not component state) so it survives remounts. Only guards against
+  // re-firing while the same tab stays active across unrelated store changes (e.g.
+  // renameTab) -- "first time per (tool, session)" dedup now happens on the IPC/main
+  // side (telemetryStore), which is the shared source of truth across every caller,
+  // including tools with no tab of their own.
+  let lastReportedTabId: string | undefined;
   function reportActiveTab(state: TabsState<TTool>): void {
+    if (state.activeTabId === lastReportedTabId) return;
+    lastReportedTabId = state.activeTabId;
     const tab = state.tabs.find((t) => t.id === state.activeTabId);
-    if (tab && !reportedTypes.has(tab.type)) {
-      reportedTypes.add(tab.type);
-      options.onTabActivated?.(tab.type);
-    }
+    if (tab) options.onTabActivated?.(tab.type);
   }
   // subscribe() only fires on later changes, so the tab that's already active at
   // creation time (the initial tab, or whatever rehydrated before this line ran)

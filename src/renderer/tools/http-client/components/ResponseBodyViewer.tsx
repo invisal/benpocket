@@ -1,8 +1,16 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
+import CodeMirror, { type Extension } from '@uiw/react-codemirror';
+import { json as jsonLang } from '@codemirror/lang-json';
+import { xml as xmlLang } from '@codemirror/lang-xml';
+import { html as htmlLang } from '@codemirror/lang-html';
+import { yaml as yamlLang } from '@codemirror/lang-yaml';
+import { javascript as javascriptLang } from '@codemirror/lang-javascript';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Select } from '@renderer/components/ui/Select';
 import { Check, Copy, Eye, FileText, Table } from 'lucide-react';
-import { getPrettyText, getTokens } from '../lib/formatters/index';
+import { useThemeStore } from '@renderer/store/theme.store';
+import { getPrettyText } from '../lib/formatters/index';
 import { RESPONSE_FORMATS, detectFormat, isImageContentType } from '../lib/responseFormat';
 import type { ResponseFormat } from '../lib/responseFormat';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
@@ -11,6 +19,24 @@ import { ResponsePreview } from './ResponsePreview';
 import { ResponseTable } from './ResponseTable';
 
 const BASE64_LINE_LENGTH = 76;
+
+/** CodeMirror language extension for the "Pretty" view, per format - undefined formats (raw, markdown, ...) still get CodeMirror's line-virtualized rendering, just without coloring. */
+function prettyLanguage(format: ResponseFormat): Extension[] {
+  switch (format) {
+    case 'json':
+      return [jsonLang()];
+    case 'xml':
+      return [xmlLang()];
+    case 'html':
+      return [htmlLang()];
+    case 'yaml':
+      return [yamlLang()];
+    case 'javascript':
+      return [javascriptLang()];
+    default:
+      return [];
+  }
+}
 
 function chunkBase64(base64: string): string {
   const lines: string[] = [];
@@ -44,12 +70,13 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
     isImageContentType(contentType) ? 'preview' : 'formatted'
   );
   const [copied, copy] = useCopyFeedback();
+  const theme = useThemeStore((s) => s.theme);
 
   const previewEnabled = format === 'html' || isImageContentType(contentType);
   const tableEnabled = format === 'json' || format === 'yaml';
 
   const prettyText = useMemo(() => getPrettyText(format, text), [format, text]);
-  const tokens = useMemo(() => getTokens(format, prettyText), [format, prettyText]);
+  const prettyExtensions = useMemo(() => prettyLanguage(format), [format]);
   const chunkedBase64 = useMemo(() => chunkBase64(bodyBase64), [bodyBase64]);
 
   const copyText = format === 'base64' ? bodyBase64 : prettyText;
@@ -141,13 +168,24 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
             {chunkedBase64}
           </pre>
         ) : (
-          <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap break-all select-text">
-            {tokens.map((tok, i) => (
-              <span key={i} className={tok.className}>
-                {tok.text}
-              </span>
-            ))}
-          </pre>
+          <CodeMirror
+            value={prettyText}
+            editable={false}
+            height="100%"
+            className="h-full text-xs"
+            theme={theme === 'dark' ? vscodeDark : vscodeLight}
+            extensions={prettyExtensions}
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: true,
+              highlightActiveLine: false,
+              highlightActiveLineGutter: false,
+              bracketMatching: true,
+              autocompletion: false,
+              closeBrackets: false,
+              history: false
+            }}
+          />
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-﻿import type React from 'react';
+import type React from 'react';
 import { useMemo, useState } from 'react';
 import { PillTab } from '@renderer/components/ui/Tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';

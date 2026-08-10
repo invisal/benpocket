@@ -41,7 +41,10 @@ export function PillTabIndicator({
   return (
     <TabsPrimitive.Indicator
       className={cn(
-        'absolute rounded-sm bg-surface-3 transition-all duration-200 ease-out border border-border',
+        // bg-surface-3 on a bg-surface-2 track only differs by 8/255 in dark mode - close enough
+        // to invisible that the active tab reads as unmarked. Accent tint keeps real contrast in
+        // both themes instead of relying on two adjacent surface shades.
+        'absolute rounded-sm bg-accent/20 transition-all duration-200 ease-out border border-accent/30',
         'left-[var(--active-tab-left)] top-[var(--active-tab-top)]',
         'h-[var(--active-tab-height)] w-[var(--active-tab-width)]',
         className

@@ -171,6 +171,17 @@ function importCollectionVariables(variables: PostmanVariable[] | undefined): Ke
     .map((v) => ({ id: randomUUID(), key: v.key, value: v.value ?? '', enabled: !v.disabled }));
 }
 
+// Matches the wire format built by src/renderer/tools/http-client/lib/formBody.ts's
+// serializeMultipartBody - kept in sync since main can't import renderer-side code.
+function buildMultipartBody(fields: { key: string; value: string }[]): string {
+  if (fields.length === 0) return '';
+  const boundary = `----benpocketFormBoundary${randomUUID().replace(/-/g, '')}`;
+  const parts = fields.map(
+    (f) => `--${boundary}\r\nContent-Disposition: form-data; name="${f.key}"\r\n\r\n${f.value}`
+  );
+  return `${parts.join('\r\n')}\r\n--${boundary}--`;
+}
+
 function importBody(body: PostmanBody | undefined): { bodyType: HttpBodyType; body: string } {
   if (!body || !body.mode || body.mode === 'none') return { bodyType: 'none', body: '' };
 
@@ -184,10 +195,12 @@ function importBody(body: PostmanBody | undefined): { bodyType: HttpBodyType; bo
       return { bodyType: 'form', body: pairs.map((p) => `${p.key}=${p.value}`).join('&') };
     }
     case 'formdata': {
-      const lines = (body.formdata ?? []).map((f) =>
-        f.type === 'file' ? `${f.key}=<file>` : `${f.key}=${f.value ?? ''}`
-      );
-      return { bodyType: 'text', body: lines.join('\n') };
+      // File fields aren't representable without binary-body plumbing this client
+      // doesn't have yet, so they're dropped rather than faked.
+      const fields = (body.formdata ?? [])
+        .filter((f) => f.type !== 'file' && !f.disabled)
+        .map((f) => ({ key: f.key, value: f.value ?? '' }));
+      return { bodyType: 'multipart', body: buildMultipartBody(fields) };
     }
     case 'graphql': {
       return {
@@ -382,6 +395,27 @@ function exportBody(bodyType: HttpBodyType, body: string): PostmanBody | undefin
         value: decodeURIComponent(value)
       }));
     return { mode: 'urlencoded', urlencoded };
+  }
+
+  if (bodyType === 'multipart') {
+    // Mirrors src/renderer/tools/http-client/lib/formBody.ts's parseMultipartBody -
+    // kept in sync since main can't import renderer-side code.
+    const boundaryMatch = /^--(\S+)/.exec(body);
+    if (!boundaryMatch) return undefined;
+    const marker = `--${boundaryMatch[1]}`;
+    const formdata: PostmanFormDataEntry[] = body
+      .split(marker)
+      .slice(1, -1)
+      .flatMap((segment) => {
+        const content = segment.replace(/^\r?\n/, '');
+        const headerEnd = content.indexOf('\r\n\r\n');
+        if (headerEnd === -1) return [];
+        const nameMatch = /name="([^"]*)"/.exec(content.slice(0, headerEnd));
+        if (!nameMatch) return [];
+        const value = content.slice(headerEnd + 4).replace(/\r\n$/, '');
+        return [{ key: nameMatch[1], value, type: 'text' as const }];
+      });
+    return { mode: 'formdata', formdata };
   }
 
   return {

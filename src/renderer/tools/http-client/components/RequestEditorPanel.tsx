@@ -21,8 +21,11 @@ const BODY_TYPES: { value: HttpBodyType; label: string }[] = [
   { value: 'none', label: 'None' },
   { value: 'json', label: 'JSON' },
   { value: 'text', label: 'Text' },
-  { value: 'form', label: 'Form (urlencoded)' }
+  { value: 'form', label: 'Form (urlencoded)' },
+  { value: 'multipart', label: 'Form (multipart)' }
 ];
+
+const ROW_EDITED_BODY_TYPES = new Set<HttpBodyType>(['form', 'multipart']);
 
 interface RequestEditorPanelProps {
   method: HttpMethod;
@@ -41,6 +44,9 @@ interface RequestEditorPanelProps {
   onBodyTypeChange: (type: HttpBodyType) => void;
   body: string;
   onBodyChange: (body: string) => void;
+  bodyRows: KeyValueRow[];
+  onUpdateBodyRow: (id: string, patch: Partial<KeyValueRow>) => void;
+  onRemoveBodyRow: (id: string) => void;
 }
 
 export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
@@ -58,7 +64,10 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   bodyType,
   onBodyTypeChange,
   body,
-  onBodyChange
+  onBodyChange,
+  bodyRows,
+  onUpdateBodyRow,
+  onRemoveBodyRow
 }) => {
   const [activeTab, setActiveTab] = useState<RequestTabValue>('params');
   const [showAutoHeaders, setShowAutoHeaders] = useState(false);
@@ -123,7 +132,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           <div className="mt-2 pt-2 border-t border-border">
             <button
               onClick={() => setShowAutoHeaders((v) => !v)}
-              className="flex items-center gap-1 text-[10px] font-semibold text-zinc-555 hover:text-zinc-350 cursor-pointer transition-colors"
+              className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
               {showAutoHeaders ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               {autoHeaders.length} auto-generated header{autoHeaders.length === 1 ? '' : 's'}{' '}
@@ -134,7 +143,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
                 {autoHeaders.map((h) => (
                   <div
                     key={h.key}
-                    className="grid grid-cols-[20px_1fr_1fr_24px] gap-2 items-center"
+                    className="grid grid-cols-[34px_1fr_2fr_24px] gap-2 items-center"
                     title="Automatically generated from the URL/body - not editable here."
                   >
                     <input
@@ -180,14 +189,24 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             </label>
           ))}
         </div>
-        {bodyType !== 'none' && (
-          <BodyEditor
-            value={body}
-            onChange={onBodyChange}
-            bodyType={bodyType}
-            variables={variables}
-            placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
+        {ROW_EDITED_BODY_TYPES.has(bodyType) ? (
+          <KeyValueEditor
+            rows={bodyRows}
+            onUpdate={onUpdateBodyRow}
+            onRemove={onRemoveBodyRow}
+            keyPlaceholder="Key"
+            valuePlaceholder="Value or {{var}}"
           />
+        ) : (
+          bodyType !== 'none' && (
+            <BodyEditor
+              value={body}
+              onChange={onBodyChange}
+              bodyType={bodyType}
+              variables={variables}
+              placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
+            />
+          )
         )}
       </PillTab.Panel>
     </PillTab.Root>

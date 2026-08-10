@@ -75,6 +75,15 @@ const BODY_CONTENT_TYPES: Partial<Record<HttpRequestPayload['bodyType'], string>
   form: 'application/x-www-form-urlencoded'
 };
 
+// multipart's Content-Type needs the boundary the body was actually built with, which
+// (unlike the static types above) varies per-request - recovered from the body's own
+// leading "--boundary" line rather than plumbed through as separate state. Kept in sync
+// with the identical helper in src/renderer/tools/http-client/lib/autoHeaders.ts.
+function multipartContentType(body: string): string | undefined {
+  const match = /^--(\S+)/.exec(body);
+  return match ? `multipart/form-data; boundary=${match[1]}` : undefined;
+}
+
 // Postman sends these on every request regardless of body, and shows them as
 // "hidden" headers in its Headers tab - matched here (and in autoHeaders.ts) so
 // the request behaves the same way our UI says it does. Node's own fetch/undici
@@ -143,7 +152,11 @@ export function registerHttpHandlers(): void {
         const hasBody =
           methodAllowsBody && payload.bodyType !== 'none' && payload.body.trim().length > 0;
 
-        const contentType = hasBody ? BODY_CONTENT_TYPES[payload.bodyType] : undefined;
+        const contentType = hasBody
+          ? payload.bodyType === 'multipart'
+            ? multipartContentType(payload.body)
+            : BODY_CONTENT_TYPES[payload.bodyType]
+          : undefined;
         if (contentType && !hasHeader(headers, 'content-type')) {
           headers['Content-Type'] = contentType;
         }

@@ -5,7 +5,7 @@
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
-export type HttpBodyType = 'none' | 'json' | 'text' | 'form';
+export type HttpBodyType = 'none' | 'json' | 'text' | 'form' | 'multipart';
 
 export type RequestProtocol = 'HTTP' | 'WEBSOCKET';
 

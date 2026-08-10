@@ -6,6 +6,7 @@ import { Input } from '@renderer/components/ui/Input';
 import { resolveVariables } from '../lib/variables';
 import { getCachedOAuth2Token, getOrFetchOAuth2Token } from '../lib/oauth2TokenCache';
 import { VariableSuggestInput } from './VariableSuggestInput';
+import { fieldInputClass, fieldLabelClass } from './authFieldStyles';
 
 interface OAuth2Config {
   tokenUrl: string;
@@ -19,8 +20,6 @@ interface OAuth2AuthFieldsProps {
   onChange: (oauth2: OAuth2Config) => void;
   variables: KeyValuePair[];
 }
-
-const fieldLabelClass = 'text-[10px] font-bold uppercase tracking-wider text-zinc-500';
 
 /** Client Credentials grant only - fields plus a manual "Get New Access Token" fetch/refresh. */
 export const OAuth2AuthFields: React.FC<OAuth2AuthFieldsProps> = ({
@@ -65,6 +64,7 @@ export const OAuth2AuthFields: React.FC<OAuth2AuthFieldsProps> = ({
           onChange={(value) => onChange({ tokenUrl: value, clientId, clientSecret, scope })}
           variables={variables}
           placeholder="https://example.com/oauth/token"
+          className={fieldInputClass}
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -74,6 +74,7 @@ export const OAuth2AuthFields: React.FC<OAuth2AuthFieldsProps> = ({
           onChange={(value) => onChange({ tokenUrl, clientId: value, clientSecret, scope })}
           variables={variables}
           placeholder="Client ID"
+          className={fieldInputClass}
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -92,6 +93,7 @@ export const OAuth2AuthFields: React.FC<OAuth2AuthFieldsProps> = ({
           onChange={(value) => onChange({ tokenUrl, clientId, clientSecret, scope: value })}
           variables={variables}
           placeholder="Optional, space-separated"
+          className={fieldInputClass}
         />
       </label>
 

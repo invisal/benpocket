@@ -305,6 +305,15 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                   pinIfPreview();
                   client.http.setBody(body);
                 }}
+                bodyRows={client.http.state.bodyRows}
+                onUpdateBodyRow={(id, patch) => {
+                  pinIfPreview();
+                  client.http.updateBodyRow(id, patch);
+                }}
+                onRemoveBodyRow={(id) => {
+                  pinIfPreview();
+                  client.http.removeBodyRow(id);
+                }}
               />
             </div>
 

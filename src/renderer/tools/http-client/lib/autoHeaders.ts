@@ -21,6 +21,15 @@ const BODY_CONTENT_TYPES: Partial<Record<HttpBodyType, string>> = {
   form: 'application/x-www-form-urlencoded'
 };
 
+// multipart's Content-Type needs the boundary the body was actually built with, which
+// (unlike the static types above) varies per-request - recovered from the body's own
+// leading "--boundary" line rather than plumbed through as separate state. Kept in sync
+// with the identical helper in src/main/http-client/ipc/http.ts.
+function multipartContentType(body: string): string | undefined {
+  const match = /^--(\S+)/.exec(body);
+  return match ? `multipart/form-data; boundary=${match[1]}` : undefined;
+}
+
 // Kept in sync with DEFAULT_HEADERS in src/main/http-client/ipc/http.ts - sent on
 // every request regardless of body, same as Postman's own "hidden" defaults.
 const DEFAULT_HEADERS: AutoHeader[] = [
@@ -69,7 +78,8 @@ export function getAutoHeaders(
     bodyType === 'json' ? resolveJsonVariables(body, variables) : resolveVariables(body, variables);
   const hasBody = methodAllowsBody && bodyType !== 'none' && resolvedBody.trim().length > 0;
   if (hasBody) {
-    const contentType = BODY_CONTENT_TYPES[bodyType];
+    const contentType =
+      bodyType === 'multipart' ? multipartContentType(resolvedBody) : BODY_CONTENT_TYPES[bodyType];
     if (contentType && !explicitKeys.has('content-type')) {
       auto.push({ key: 'Content-Type', value: contentType });
     }

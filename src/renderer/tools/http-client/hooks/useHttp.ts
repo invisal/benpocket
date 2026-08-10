@@ -3,13 +3,22 @@ import type {
   HttpAuth,
   HttpBodyType,
   HttpMethod,
-  HttpResponsePayload
+  HttpResponsePayload,
+  KeyValuePair
 } from '../../../../preload/http-client/types';
 import { getActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
-import { withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
-import { makeId } from '../lib/makeId';
+import { mergeRowsFromPairs, withTrailingRow, type KeyValueRow } from '../lib/keyValueRows';
+import {
+  extractMultipartBoundary,
+  makeMultipartBoundary,
+  parseMultipartBody,
+  parseUrlEncodedBody,
+  serializeMultipartBody,
+  serializeUrlEncodedBody,
+  type BodyPair
+} from '../lib/formBody';
 import { resolveJsonVariables, resolveRows, resolveVariables } from '../lib/variables';
 import { DEFAULT_HTTP_AUTH, resolveAuth } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
@@ -25,6 +34,10 @@ export interface HttpState {
   auth: HttpAuth;
   bodyType: HttpBodyType;
   body: string;
+  /** Row-editor view of `body` for the 'form'/'multipart' body types - kept in sync with
+   * `body` in both directions (see hydrateBodyRows/serializeBodyRows) so switching bodyType
+   * or reloading a saved request doesn't lose row ids/enabled-state. Unused for other types. */
+  bodyRows: KeyValueRow[];
   isLoading: boolean;
   response: HttpResponsePayload | null;
 }
@@ -44,20 +57,7 @@ function parseQueryString(url: string): { key: string; value: string }[] {
 // ids/enabled-state for keys that already existed so the grid doesn't jitter
 // or lose toggles while the user is still typing the URL.
 function mergeParamsFromUrl(url: string, existingParams: KeyValueRow[]): KeyValueRow[] {
-  const parsed = parseQueryString(url);
-  const pool = new Map<string, KeyValueRow[]>();
-  for (const row of existingParams) {
-    if (!row.key.trim()) continue;
-    const bucket = pool.get(row.key) ?? [];
-    bucket.push(row);
-    pool.set(row.key, bucket);
-  }
-  const merged: KeyValueRow[] = parsed.map(({ key, value }) => {
-    const bucket = pool.get(key);
-    const reused = bucket?.shift();
-    return reused ? { ...reused, value } : { id: makeId(), key, value, enabled: true };
-  });
-  return withTrailingRow(merged);
+  return mergeRowsFromPairs(parseQueryString(url), existingParams);
 }
 
 // Rebuilds the URL's query string from enabled Params rows, keeping the base
@@ -71,16 +71,65 @@ function buildUrlWithParams(url: string, params: KeyValueRow[]): string {
   return `${base}?${usp.toString()}`;
 }
 
+// Parses `body` into row form for the 'form'/'multipart' body types, reusing
+// `existingRows`' ids/enabled-state for keys that already existed (see mergeRowsFromPairs).
+function hydrateBodyRows(
+  bodyType: HttpBodyType,
+  body: string,
+  existingRows: KeyValueRow[]
+): KeyValueRow[] {
+  if (bodyType === 'form') return mergeRowsFromPairs(parseUrlEncodedBody(body), existingRows);
+  if (bodyType === 'multipart') return mergeRowsFromPairs(parseMultipartBody(body), existingRows);
+  return withTrailingRow(existingRows);
+}
+
+// The inverse of hydrateBodyRows: rebuilds the raw `body` string from rows, keeping
+// templated `{{var}}` placeholders intact (they're only resolved at send() time - see
+// resolveBodyForSend, which resolves the rows *before* this encoding step so a
+// urlencoded value's braces don't get percent-escaped out of matchability).
+function serializeBodyRows(bodyType: HttpBodyType, rows: KeyValueRow[], prevBody: string): string {
+  const pairs: BodyPair[] = rows
+    .filter((r) => r.enabled && r.key.trim())
+    .map((r) => ({ key: r.key, value: r.value }));
+  if (bodyType === 'form') return serializeUrlEncodedBody(pairs);
+  if (bodyType === 'multipart') {
+    const boundary = extractMultipartBoundary(prevBody) ?? makeMultipartBoundary();
+    return serializeMultipartBody(pairs, boundary);
+  }
+  return prevBody;
+}
+
+// multipart part values are inserted as raw text (no percent-encoding), so a flat
+// resolveVariables() over the whole body works there - but urlencoded values are
+// percent-encoded, which mangles a literal "{{name}}" before resolveVariables ever
+// sees it. So for 'form', resolve each row's key/value first, then encode.
+function resolveBodyForSend(
+  bodyType: HttpBodyType,
+  body: string,
+  bodyRows: KeyValueRow[],
+  variables: KeyValuePair[]
+): string {
+  if (bodyType === 'json') return resolveJsonVariables(body, variables);
+  if (bodyType === 'form') {
+    const resolved = resolveRows(bodyRows, variables).filter((r) => r.enabled && r.key.trim());
+    return serializeUrlEncodedBody(resolved.map((r) => ({ key: r.key, value: r.value })));
+  }
+  return resolveVariables(body, variables);
+}
+
 function createDefaultHttpState(tabId: string): HttpState {
   const seed = readTabSeed(tabId);
+  const bodyType = seed?.bodyType ?? 'none';
+  const body = seed?.body ?? '';
   return {
     method: seed?.method ?? 'GET',
     url: seed?.url ?? '',
     headers: withTrailingRow(seed?.headers ?? []),
     params: withTrailingRow(seed?.params ?? []),
     auth: seed?.auth ?? DEFAULT_HTTP_AUTH,
-    bodyType: seed?.bodyType ?? 'none',
-    body: seed?.body ?? '',
+    bodyType,
+    body,
+    bodyRows: hydrateBodyRows(bodyType, body, []),
     isLoading: false,
     response: seed?.response ?? null
   };
@@ -95,18 +144,25 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
     params: s.params,
     auth: s.auth,
     bodyType: s.bodyType,
-    body: s.body
+    body: s.body,
+    bodyRows: s.bodyRows
   }),
   deserialize: (raw) => {
     const r = (raw ?? {}) as Partial<HttpState>;
+    const bodyType = r.bodyType ?? 'none';
+    const body = r.body ?? '';
     return {
       method: r.method ?? 'GET',
       url: r.url ?? '',
       headers: withTrailingRow(r.headers ?? []),
       params: withTrailingRow(r.params ?? []),
       auth: r.auth ?? DEFAULT_HTTP_AUTH,
-      bodyType: r.bodyType ?? 'none',
-      body: r.body ?? '',
+      bodyType,
+      body,
+      bodyRows:
+        r.bodyRows && r.bodyRows.length > 0
+          ? withTrailingRow(r.bodyRows)
+          : hydrateBodyRows(bodyType, body, []),
       isLoading: false,
       response: null
     };
@@ -123,6 +179,8 @@ export interface UseHttpResult {
   removeHeaderRow: (id: string) => void;
   updateParamRow: (id: string, patch: Partial<KeyValueRow>) => void;
   removeParamRow: (id: string) => void;
+  updateBodyRow: (id: string, patch: Partial<KeyValueRow>) => void;
+  removeBodyRow: (id: string) => void;
   setAuth: (auth: HttpAuth) => void;
   send: () => void;
 }
@@ -143,7 +201,14 @@ export function useHttp(tabId: string): UseHttpResult {
   );
 
   const setBodyType = useCallback(
-    (bodyType: HttpBodyType) => setState((prev) => ({ ...prev, bodyType })),
+    (bodyType: HttpBodyType) =>
+      setState((prev) => {
+        if (bodyType !== 'form' && bodyType !== 'multipart') return { ...prev, bodyType };
+        // Switching into a row-edited body type: resync `body` from whatever rows
+        // were last built (possibly from a previous form/multipart session) so the
+        // Content-Type/preview reflect rows rather than stale leftover text.
+        return { ...prev, bodyType, body: serializeBodyRows(bodyType, prev.bodyRows, prev.body) };
+      }),
     [setState]
   );
   const setBody = useCallback(
@@ -191,6 +256,34 @@ export function useHttp(tabId: string): UseHttpResult {
     [setState]
   );
 
+  const updateBodyRow = useCallback(
+    (id: string, patch: Partial<KeyValueRow>) =>
+      setState((prev) => {
+        const nextRows = withTrailingRow(
+          prev.bodyRows.map((row) => (row.id === id ? { ...row, ...patch } : row))
+        );
+        return {
+          ...prev,
+          bodyRows: nextRows,
+          body: serializeBodyRows(prev.bodyType, nextRows, prev.body)
+        };
+      }),
+    [setState]
+  );
+
+  const removeBodyRow = useCallback(
+    (id: string) =>
+      setState((prev) => {
+        const nextRows = withTrailingRow(prev.bodyRows.filter((row) => row.id !== id));
+        return {
+          ...prev,
+          bodyRows: nextRows,
+          body: serializeBodyRows(prev.bodyType, nextRows, prev.body)
+        };
+      }),
+    [setState]
+  );
+
   const setAuth = useCallback(
     (auth: HttpAuth) => setState((prev) => ({ ...prev, auth })),
     [setState]
@@ -229,10 +322,7 @@ export function useHttp(tabId: string): UseHttpResult {
           params: resolveRows(current.params, variables),
           auth,
           bodyType: current.bodyType,
-          body:
-            current.bodyType === 'json'
-              ? resolveJsonVariables(current.body, variables)
-              : resolveVariables(current.body, variables),
+          body: resolveBodyForSend(current.bodyType, current.body, current.bodyRows, variables),
           timeoutMs: 30000
         });
         httpStore.setSnapshot(tabId, (prev) => ({ ...prev, isLoading: false, response }));
@@ -267,6 +357,8 @@ export function useHttp(tabId: string): UseHttpResult {
     removeHeaderRow,
     updateParamRow,
     removeParamRow,
+    updateBodyRow,
+    removeBodyRow,
     setAuth,
     send
   };

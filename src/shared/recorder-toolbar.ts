@@ -19,6 +19,16 @@ export interface RecorderToolbarOpenPayload {
   webcam: WebcamOptions;
   /** Drag-selected sub-rectangle of a display ("Area" mode) -- see capture-engine.ts's live crop relay. */
   cropRegion?: CaptureRegionSelection;
+  /**
+   * Live cursor-visibility/click-highlight settings for the toolbar's
+   * Recording preferences menu to seed from and round-trip back on start --
+   * these belong to useCursorStore, a separate per-process store instance
+   * the toolbar can't safely mutate directly (see RecorderToolbarBridge.tsx,
+   * which applies these to the real store).
+   */
+  cursorSettings: { visible: boolean; clickRippleEnabled: boolean };
+  /** Seconds to count down before recording actually starts -- see useRecordingStore.countdownSeconds. */
+  countdownSeconds: number;
 }
 
 export interface RecorderToolbarStartPayload extends RecorderToolbarOpenPayload {
@@ -36,4 +46,6 @@ export interface RecorderToolbarStartPayload extends RecorderToolbarOpenPayload 
 export interface RecorderToolbarRecordingResult {
   ok: boolean;
   error?: string;
+  /** Whether this recording is on the native helper path -- only it supports Pause/Resume (see CaptureHandle.native in capture-engine.ts). */
+  native?: boolean;
 }

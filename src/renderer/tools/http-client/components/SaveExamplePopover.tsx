@@ -4,6 +4,7 @@ import { Popover } from '@base-ui/react/popover';
 import { Bookmark } from 'lucide-react';
 import { useCollectionsStore } from '../store/collections.store';
 import type {
+  HttpAuth,
   HttpBodyType,
   HttpMethod,
   HttpResponsePayload
@@ -22,6 +23,7 @@ interface SaveExamplePopoverProps {
   params: KeyValueRow[];
   bodyType: HttpBodyType;
   body: string;
+  auth: HttpAuth;
 }
 
 export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
@@ -32,7 +34,8 @@ export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
   headers,
   params,
   bodyType,
-  body
+  body,
+  auth
 }) => {
   const saveExample = useCollectionsStore((s) => s.saveExample);
   const [open, setOpen] = useState(false);
@@ -67,7 +70,8 @@ export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
           headers: headers.filter((h) => h.key.trim()),
           params: params.filter((p) => p.key.trim()),
           bodyType,
-          body
+          body,
+          auth
         },
         response
       });

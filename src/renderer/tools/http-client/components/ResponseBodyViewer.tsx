@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import CodeMirror, { type Extension } from '@uiw/react-codemirror';
+import CodeMirror, { EditorView, type Extension } from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { xml as xmlLang } from '@codemirror/lang-xml';
 import { html as htmlLang } from '@codemirror/lang-html';
@@ -174,7 +174,7 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
             height="100%"
             className="h-full text-xs"
             theme={theme === 'dark' ? vscodeDark : vscodeLight}
-            extensions={prettyExtensions}
+            extensions={[...prettyExtensions, EditorView.lineWrapping]}
             basicSetup={{
               lineNumbers: true,
               foldGutter: true,

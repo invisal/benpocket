@@ -156,6 +156,8 @@ export interface SavedExample {
     params: KeyValuePair[];
     bodyType: HttpBodyType;
     body: string;
+    /** Optional so examples saved before this field existed still load - treat missing as 'noauth'. */
+    auth?: HttpAuth;
   };
   response: HttpResponsePayload;
 }

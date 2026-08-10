@@ -188,6 +188,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 headers={client.http.state.headers}
                 bodyType={client.http.state.bodyType}
                 body={client.http.state.body}
+                auth={client.http.state.auth}
+                binding={client.binding}
               />
               <SaveExamplePopover
                 binding={client.binding}
@@ -198,6 +200,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 params={client.http.state.params}
                 bodyType={client.http.state.bodyType}
                 body={client.http.state.body}
+                auth={client.http.state.auth}
               />
             </>
           ) : undefined

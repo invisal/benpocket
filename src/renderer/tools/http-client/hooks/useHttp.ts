@@ -158,9 +158,10 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
     bodyType: s.bodyType,
     body: s.body,
     bodyRows: s.bodyRows,
-    multipartRows: s.multipartRows
+    multipartRows: s.multipartRows,
+    response: s.response
   }),
-  deserialize: (raw) => {
+  deserialize: (raw, tabId) => {
     const r = (raw ?? {}) as Partial<HttpState>;
     const bodyType = r.bodyType ?? 'none';
     const body = r.body ?? '';
@@ -178,7 +179,10 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
           : hydrateBodyRows(bodyType, body, []),
       multipartRows: hydrateMultipartRows(body, r.multipartRows ?? []),
       isLoading: false,
-      response: null
+      // Prefer whatever was actually persisted, but fall back to the tab's seed - an
+      // "open saved example" tab's captured response only lives in its seed (see
+      // HttpClientSidebar's openSavedExample), and previously never got read back here.
+      response: r.response ?? readTabSeed(tabId)?.response ?? null
     };
   }
 });

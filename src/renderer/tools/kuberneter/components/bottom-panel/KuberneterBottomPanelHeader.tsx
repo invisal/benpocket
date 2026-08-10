@@ -63,7 +63,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
                 className={cn(
                   'flex items-center gap-2 px-3 h-full border-r border-border-dark cursor-pointer text-[11px] font-sans transition-colors shrink-0 group relative',
                   isActive
-                    ? 'bg-surface-1 text-white font-medium border-t-2 border-t-accent'
+                    ? 'bg-surface-1 text-strong font-medium border-t-2 border-t-accent'
                     : 'bg-surface-3/40 text-zinc-400 hover:text-zinc-200 hover:bg-surface-2'
                 )}
               >
@@ -71,7 +71,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
                 <span className="truncate max-w-32">{tab.title}</span>
                 <button
                   onClick={(e) => onCloseTab(tab.id, e)}
-                  className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-500 hover:text-white transition-colors border-none bg-transparent cursor-pointer"
+                  className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-500 hover:text-strong transition-colors border-none bg-transparent cursor-pointer"
                 >
                   <X className="size-3" />
                 </button>
@@ -88,7 +88,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
               setIsPlusMenuOpen((prev) => !prev);
             }}
             title="New Tab"
-            className="flex items-center justify-center size-7 hover:bg-border-dark/50 text-zinc-400 hover:text-white rounded transition-colors cursor-pointer border-none bg-transparent ml-1"
+            className="flex items-center justify-center size-7 hover:bg-border-dark/50 text-zinc-400 hover:text-strong rounded transition-colors cursor-pointer border-none bg-transparent ml-1"
           >
             <Plus className="size-4" />
           </button>
@@ -101,7 +101,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
                   onAddTab('create-resource');
                   setIsPlusMenuOpen(false);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface-2 text-zinc-300 hover:text-white text-left transition-colors cursor-pointer border-none bg-transparent"
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface-2 text-zinc-300 hover:text-strong text-left transition-colors cursor-pointer border-none bg-transparent"
               >
                 <Pencil className="size-3.5 text-accent" />
                 <span>Create resource</span>
@@ -111,7 +111,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
                   onAddTab('terminal');
                   setIsPlusMenuOpen(false);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface-2 text-zinc-300 hover:text-white text-left transition-colors cursor-pointer border-none bg-transparent"
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface-2 text-zinc-300 hover:text-strong text-left transition-colors cursor-pointer border-none bg-transparent"
               >
                 <TerminalIcon className="size-3.5 text-accent" />
                 <span>Terminal Session</span>
@@ -134,7 +134,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
         <button
           onClick={onClosePanel}
           title="Collapse Panel"
-          className="p-1 text-zinc-500 hover:text-white hover:bg-border-dark/40 rounded transition-colors cursor-pointer border-none bg-transparent"
+          className="p-1 text-zinc-500 hover:text-strong hover:bg-border-dark/40 rounded transition-colors cursor-pointer border-none bg-transparent"
         >
           <ChevronDown className="size-4" />
         </button>

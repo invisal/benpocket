@@ -92,7 +92,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   };
 
   return (
-    <div className="relative h-full">
+    <div className="relative flex-1 h-full">
       <input
         ref={inputRef}
         type="text"

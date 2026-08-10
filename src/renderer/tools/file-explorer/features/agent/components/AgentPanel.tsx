@@ -5,7 +5,13 @@ import { Button } from '@renderer/components/ui/Button';
 import { useCloudflareSettings } from '@renderer/hooks/useCloudflareSettings';
 import type { AgentMessage, AgentToolCall } from '../../../../../../preload/file-explorer/api';
 import { deniedToolMessage, runToolCall, splitToolCalls } from '../lib/agentLoop';
-import { AGENT_MODELS, calculateCost, getModelPricing, type SessionUsage } from '../lib/models';
+import {
+  AGENT_MODELS,
+  calculateCost,
+  getModelContextWindow,
+  getModelPricing,
+  type SessionUsage
+} from '../lib/models';
 import { describeToolCall } from '../lib/toolDescriptions';
 import { ConnectAiGatewayDialog } from './ConnectAiGatewayDialog';
 
@@ -33,7 +39,12 @@ function buildSystemPrompt(workingDirectory: string | null): string {
     `The user's current working directory is ${workingDirectory ?? 'unknown'}. ` +
     `When a path isn't specified, assume it's relative to this directory. Use the ` +
     `available tools to inspect and modify the filesystem -- mutating actions are ` +
-    `gated behind the user's explicit approval before they run.`
+    `gated behind the user's explicit approval before they run. When an action applies to ` +
+    `multiple files or folders (renaming, moving, or deleting several entries), always pass ` +
+    `all of them as a single call to the bulk tool (e.g. rename_entries, move_entries, ` +
+    `delete_entries) instead of calling the tool once per item -- each tool call needs its ` +
+    `own manual approval, so batching keeps the user from having to approve the same action ` +
+    `dozens or hundreds of times.`
   );
 }
 
@@ -45,6 +56,10 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
   const modelId = fields.model || null;
   const [connectOpen, setConnectOpen] = useState(false);
   const [usage, setUsage] = useState<SessionUsage>(EMPTY_USAGE);
+  // Size of the most recent request's conversation (prompt + completion tokens) --
+  // unlike `usage`, this isn't cumulative: it reflects how full the *next* request's
+  // context will be, not total spend across the session.
+  const [contextTokens, setContextTokens] = useState<number | null>(null);
   // Excludes the system message -- that's derived fresh from `workingDirectoryRef`
   // on every send instead of living in state, so it always reflects panel 1's
   // current path (panel 2 has no navigation of its own while in Agent mode).
@@ -67,6 +82,7 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
   const pricing = modelId ? getModelPricing(modelId) : null;
   const sessionCost = pricing ? calculateCost(usage, pricing) : null;
   const sessionTokens = usage.promptTokens + usage.completionTokens;
+  const contextWindow = modelId ? getModelContextWindow(modelId) : null;
 
   async function runTurn(currentMessages: AgentMessage[]) {
     const systemMessage: AgentMessage = {
@@ -96,6 +112,7 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
         completionTokens: prev.completionTokens + turnUsage.completionTokens,
         cachedTokens: prev.cachedTokens + turnUsage.cachedTokens
       }));
+      setContextTokens(turnUsage.promptTokens + turnUsage.completionTokens);
     }
 
     const withAssistant = [...currentMessages, message];
@@ -287,6 +304,8 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
           onModelChange={handleModelChange}
           tokens={sessionTokens > 0 ? sessionTokens : null}
           cost={sessionCost}
+          contextTokens={contextTokens}
+          contextWindow={contextWindow}
         />
       </Chat.Root>
 

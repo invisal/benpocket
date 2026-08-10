@@ -7,7 +7,13 @@ import type {
 } from '@screen-recorder/types/recording';
 import type { Project, ProjectSummary, CursorPathPoint } from '@screen-recorder/types/project';
 import type { ExportFormat } from '@screen-recorder/types/export';
-import type { MicrophoneStatus, ScreenRecordingStatus } from '@screen-recorder/types/permissions';
+import type {
+  AccessibilityStatus,
+  AutomationStatus,
+  CameraStatus,
+  MicrophoneStatus,
+  ScreenRecordingStatus
+} from '@screen-recorder/types/permissions';
 import type {
   ScreenRect,
   CaptureRegionSelection,
@@ -152,7 +158,24 @@ export const screenRecorderApi = {
     getMicrophoneStatus: (): Promise<MicrophoneStatus> =>
       ipcRenderer.invoke(IpcChannels.GetMicrophoneStatus),
     openMicrophoneSettings: (): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.OpenMicrophoneSettings)
+      ipcRenderer.invoke(IpcChannels.OpenMicrophoneSettings),
+    requestMicrophoneAccess: (): Promise<MicrophoneStatus> =>
+      ipcRenderer.invoke(IpcChannels.RequestMicrophoneAccess),
+    relaunchApp: (): Promise<void> => ipcRenderer.invoke(IpcChannels.RelaunchApp),
+    getCameraStatus: (): Promise<CameraStatus> => ipcRenderer.invoke(IpcChannels.GetCameraStatus),
+    openCameraSettings: (): Promise<void> => ipcRenderer.invoke(IpcChannels.OpenCameraSettings),
+    requestCameraAccess: (): Promise<CameraStatus> =>
+      ipcRenderer.invoke(IpcChannels.RequestCameraAccess),
+    getAccessibilityStatus: (): Promise<AccessibilityStatus> =>
+      ipcRenderer.invoke(IpcChannels.GetAccessibilityStatus),
+    requestAccessibilityAccess: (): Promise<AccessibilityStatus> =>
+      ipcRenderer.invoke(IpcChannels.RequestAccessibilityAccess),
+    openAccessibilitySettings: (): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.OpenAccessibilitySettings),
+    requestAutomationAccess: (): Promise<AutomationStatus> =>
+      ipcRenderer.invoke(IpcChannels.RequestAutomationAccess),
+    openAutomationSettings: (): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.OpenAutomationSettings)
   },
   dialog: {
     showSaveExportPath: (defaultFileName: string, format: ExportFormat): Promise<string | null> =>

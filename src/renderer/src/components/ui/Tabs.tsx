@@ -7,16 +7,24 @@ export function TabPanel({ className, ...props }: ComponentProps<typeof TabsPrim
 }
 
 export function PillTabList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
-  return <TabsPrimitive.List className={cn('flex items-center gap-1', className)} {...props} />;
+  return (
+    <TabsPrimitive.List
+      className={cn(
+        'relative h-8 inline-flex items-center gap-1 rounded border border-border bg-surface-2 p-1',
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
 export function PillTabItem({ className, ...props }: ComponentProps<typeof TabsPrimitive.Tab>) {
   return (
     <TabsPrimitive.Tab
       className={cn(
-        'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium cursor-pointer outline-none transition-colors',
-        'text-muted-foreground hover:bg-surface-2 hover:text-foreground',
-        'data-[active]:bg-accent/10 data-[active]:text-accent',
+        'relative z-10 flex items-center gap-1.5 px-2 h-6 text-xs cursor-pointer outline-none transition-colors',
+        'text-muted-foreground hover:text-foreground font-medium',
+        'data-[active]:text-strong',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className
       )}
@@ -25,12 +33,31 @@ export function PillTabItem({ className, ...props }: ComponentProps<typeof TabsP
   );
 }
 
-/** Pill-style tabs: active tab fills with the accent tint. */
+/** Sliding pill — render as a child of `PillTab.List`, alongside the items. */
+export function PillTabIndicator({
+  className,
+  ...props
+}: ComponentProps<typeof TabsPrimitive.Indicator>) {
+  return (
+    <TabsPrimitive.Indicator
+      className={cn(
+        'absolute rounded-sm bg-surface-3 transition-all duration-200 ease-out border border-border',
+        'left-[var(--active-tab-left)] top-[var(--active-tab-top)]',
+        'h-[var(--active-tab-height)] w-[var(--active-tab-width)]',
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+/** Pill-style tabs: enclosed in a bordered track, with a pill that slides to the active tab. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const PillTab = {
   Root: TabsPrimitive.Root,
   List: PillTabList,
   Item: PillTabItem,
+  Indicator: PillTabIndicator,
   Panel: TabPanel
 };
 

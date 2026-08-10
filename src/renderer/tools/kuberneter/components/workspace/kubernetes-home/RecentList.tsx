@@ -25,7 +25,7 @@ export const RecentList: React.FC<RecentListProps> = ({ recents, activeContext, 
                 onClick={() => onConnect(item.contextName, item.configPath, item.server)}
                 className={`w-full flex items-center justify-between py-1.5 px-2 rounded text-left cursor-pointer transition-colors ${
                   isConnected
-                    ? 'bg-accent/10 text-white font-semibold'
+                    ? 'bg-accent/10 text-strong font-semibold'
                     : 'text-zinc-400 hover:bg-surface-2 hover:text-zinc-200'
                 }`}
               >

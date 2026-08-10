@@ -1,5 +1,6 @@
 import { ipcMain, app } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
+import { resolveKubectlBinaryPath } from './kubectl-settings';
 
 const activePortForwards = new Map<string, ChildProcess>();
 
@@ -13,6 +14,15 @@ function waitForPortForward(child: ChildProcess, timeoutMs = 8000): Promise<void
       );
     }, timeoutMs);
 
+    const onError = (err: Error) => {
+      clearTimeout(timer);
+      reject(
+        new Error(`KUBECTL_NOT_FOUND: Failed to execute kubectl port-forward (${err.message})`)
+      );
+    };
+
+    child.on('error', onError);
+
     const onData = (chunk: Buffer) => {
       const text = chunk.toString();
       outputLog += text;
@@ -20,6 +30,7 @@ function waitForPortForward(child: ChildProcess, timeoutMs = 8000): Promise<void
         clearTimeout(timer);
         child.stdout?.off('data', onData);
         child.stderr?.off('data', onData);
+        child.off('error', onError);
         resolve();
       }
     };
@@ -29,6 +40,7 @@ function waitForPortForward(child: ChildProcess, timeoutMs = 8000): Promise<void
 
     child.on('exit', (code) => {
       clearTimeout(timer);
+      child.off('error', onError);
       reject(new Error(outputLog.trim() || `kubectl port-forward exited early with code ${code}`));
     });
   });
@@ -48,6 +60,7 @@ export function registerPortForwardHandler(): void {
         resourceName: string;
         localPort: number;
         targetPort: number;
+        kubectlPath?: string;
       }
     ) => {
       const {
@@ -58,7 +71,8 @@ export function registerPortForwardHandler(): void {
         resourceKind,
         resourceName,
         localPort,
-        targetPort
+        targetPort,
+        kubectlPath
       } = params;
 
       // Kill any existing process running for the same ID
@@ -71,14 +85,6 @@ export function registerPortForwardHandler(): void {
       }
 
       try {
-        const pfArgs: string[] = [];
-        if (kubeconfigPath && kubeconfigPath !== 'default') {
-          pfArgs.push('--kubeconfig', kubeconfigPath);
-        }
-        if (contextName) {
-          pfArgs.push('--context', contextName);
-        }
-
         const normalizedKind = resourceKind.toLowerCase();
         let resourceTarget = `${normalizedKind}/${resourceName}`;
         if (normalizedKind === 'pod' || normalizedKind === 'pods') {
@@ -97,9 +103,28 @@ export function registerPortForwardHandler(): void {
           resourceTarget = `deploy/${resourceName}`;
         }
 
-        pfArgs.push('port-forward', resourceTarget, `${localPort}:${targetPort}`, '-n', namespace);
+        const pfArgs: string[] = [
+          'port-forward',
+          '--address',
+          '127.0.0.1',
+          resourceTarget,
+          `${localPort}:${targetPort}`,
+          '-n',
+          namespace
+        ];
 
-        const child = spawn('kubectl', pfArgs, { shell: true });
+        if (contextName) {
+          pfArgs.push('--context', contextName);
+        }
+
+        const env: NodeJS.ProcessEnv = { ...process.env };
+        if (kubeconfigPath && kubeconfigPath !== 'default') {
+          env.KUBECONFIG = kubeconfigPath;
+          pfArgs.push('--kubeconfig', kubeconfigPath);
+        }
+
+        const kubectlBin = await resolveKubectlBinaryPath(kubectlPath);
+        const child = spawn(kubectlBin, pfArgs, { shell: false, env });
 
         // Wait until kubectl port-forward outputs "Forwarding from"
         await waitForPortForward(child);

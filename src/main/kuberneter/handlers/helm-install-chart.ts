@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { runHelm } from '../helm-cli';
+import { runHelm, checkHelmInstalled } from '../helm-cli';
 
 export function registerHelmInstallChartHandler(): void {
   // Install a Helm chart
@@ -14,6 +14,7 @@ export function registerHelmInstallChartHandler(): void {
       kubeconfigPath?: string,
       contextName?: string
     ) => {
+      if (!(await checkHelmInstalled())) return { helmNotFound: true };
       try {
         const args = ['install', releaseName, chartName, '--version', version, '-n', namespace];
         const stdout = await runHelm(args, kubeconfigPath, contextName);

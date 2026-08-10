@@ -34,7 +34,7 @@ export const IngressClassHeaderActions: React.FC<IngressClassHeaderActionsProps>
       <Tooltip.Root>
         <Tooltip.Trigger
           render={
-            <button className="text-zinc-400 hover:text-white cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
+            <button className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
               <Pencil className="size-3.5" />
             </button>
           }

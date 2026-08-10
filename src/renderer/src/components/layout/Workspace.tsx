@@ -142,7 +142,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-2 px-3 border-r border-border-dark text-xs shrink-0 bg-editor-bg text-white border-t-2 border-t-accent">
+      <div className="flex items-center gap-2 px-3 border-r border-border-dark text-xs shrink-0 bg-editor-bg text-strong border-t-2 border-t-accent">
         <FileText size={12} className="text-accent" />
         <input
           type="text"
@@ -158,7 +158,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
             }
           }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-transparent border-b border-accent outline-none w-24 text-white"
+          className="bg-transparent border-b border-accent outline-none w-24 text-strong"
         />
       </div>
     );
@@ -182,7 +182,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
             title={tab.isPreview ? 'Double-click to pin' : 'Double-click to rename'}
             className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
               isActive
-                ? 'bg-editor-bg text-white border-t-2 border-t-accent'
+                ? 'bg-editor-bg text-strong border-t-2 border-t-accent'
                 : 'bg-sidebar-bg text-zinc-555 hover:bg-editor-bg/40 hover:text-zinc-300'
             }`}
           >
@@ -197,7 +197,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
                 e.stopPropagation();
                 onClose();
               }}
-              className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-555 group-hover:text-zinc-400 hover:text-white"
+              className="p-0.5 rounded-full hover:bg-border-dark/65 text-zinc-555 group-hover:text-zinc-400 hover:text-strong"
             >
               <X size={10} />
             </button>

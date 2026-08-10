@@ -21,6 +21,7 @@ import {
   type MutationResult,
   type ReadBinaryFileResult,
   type ReadFileResult,
+  type WriteBinaryFileResult,
   type WriteFileResult
 } from './fileDriver';
 import { getCloudflareSettings } from '../store/cloudflareSettings';
@@ -279,6 +280,23 @@ async function writeFile(uri: string, content: string): Promise<WriteFileResult>
   }
 }
 
+async function writeBinaryFile(uri: string, data: Uint8Array): Promise<WriteBinaryFileResult> {
+  const { bucket, key } = parseR2Uri(uri);
+  const extension = keyExtension(key);
+  if (!MEDIA_EXTENSIONS[extension]) {
+    return { error: 'unsupported-extension' };
+  }
+
+  try {
+    const client = await getS3Client();
+    await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }));
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: message };
+  }
+}
+
 async function deleteEntries(uris: string[]): Promise<MutationResult> {
   if (uris.length === 0) return { success: true };
   const { bucket } = parseR2Uri(uris[0]);
@@ -380,7 +398,8 @@ const capabilities: DriverCapabilities = {
   nativeIcons: false,
   atomicMove: false,
   realFolders: false,
-  sync: 'optimistic'
+  sync: 'optimistic',
+  watchable: false
 };
 
 export const r2FileDriver: FileDriver = {
@@ -390,6 +409,7 @@ export const r2FileDriver: FileDriver = {
   readFile,
   readBinaryFile,
   writeFile,
+  writeBinaryFile,
   deleteEntries,
   copyEntries,
   moveEntries,

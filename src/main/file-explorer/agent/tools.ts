@@ -26,15 +26,30 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
     mutates: false
   },
   {
-    name: 'rename_entry',
-    description: 'Rename a single file or folder in place, keeping it in the same directory.',
+    name: 'rename_entries',
+    description:
+      'Rename one or more files/folders in place, keeping each in its original directory. ' +
+      'Pass every rename in a single call (one entry per file) instead of calling this once per file.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Absolute path of the file or folder to rename.' },
-        newName: { type: 'string', description: 'New name (not a full path) for the entry.' }
+        renames: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              path: {
+                type: 'string',
+                description: 'Absolute path of the file or folder to rename.'
+              },
+              newName: { type: 'string', description: 'New name (not a full path) for the entry.' }
+            },
+            required: ['path', 'newName']
+          },
+          description: 'List of {path, newName} pairs, one per file/folder to rename.'
+        }
       },
-      required: ['path', 'newName']
+      required: ['renames']
     },
     mutates: true
   },
@@ -71,31 +86,43 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
     mutates: true
   },
   {
-    name: 'move_entry',
-    description: 'Move a single file or folder into a different directory.',
+    name: 'move_entries',
+    description:
+      'Move one or more files/folders into a different directory in a single operation. ' +
+      'Pass every path to move in one call instead of calling this once per file.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Absolute path of the file or folder to move.' },
+        paths: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Absolute paths of the files/folders to move.'
+        },
         destinationDirectory: {
           type: 'string',
-          description: 'Absolute path of the directory to move it into.'
+          description: 'Absolute path of the directory to move them into.'
         }
       },
-      required: ['path', 'destinationDirectory']
+      required: ['paths', 'destinationDirectory']
     },
     mutates: true
   },
   {
-    name: 'delete_entry',
+    name: 'delete_entries',
     description:
-      'Delete a single file or folder. On local disk this goes to the trash/recycle bin; on R2 it is permanent.',
+      'Delete one or more files/folders in a single operation. On local disk these go to the ' +
+      'trash/recycle bin; on R2 deletion is permanent. Pass every path to delete in one call ' +
+      'instead of calling this once per file.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Absolute path of the file or folder to delete.' }
+        paths: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Absolute paths of the files/folders to delete.'
+        }
       },
-      required: ['path']
+      required: ['paths']
     },
     mutates: true
   }
@@ -107,10 +134,21 @@ async function runListDirectory(args: { path: string }): Promise<AgentToolResult
   return { success: true, result: result.entries };
 }
 
-async function runRenameEntry(args: { path: string; newName: string }): Promise<AgentToolResult> {
-  const result = await getDriverForLocation(args.path).renameEntry(args.path, args.newName);
-  if ('error' in result) return { error: result.error };
-  return { success: true, result: { renamed: true } };
+async function runRenameEntries(args: {
+  renames: { path: string; newName: string }[];
+}): Promise<AgentToolResult> {
+  if (args.renames.length === 0) return { error: 'No renames provided.' };
+
+  const renamed: string[] = [];
+  const failed: { path: string; error: string }[] = [];
+
+  for (const { path: entryPath, newName } of args.renames) {
+    const result = await getDriverForLocation(entryPath).renameEntry(entryPath, newName);
+    if ('error' in result) failed.push({ path: entryPath, error: result.error });
+    else renamed.push(entryPath);
+  }
+
+  return { success: true, result: { renamed, failed } };
 }
 
 async function runCreateFolder(args: {
@@ -146,38 +184,40 @@ async function runCreateFolderTree(args: {
   return { success: true, result: { created, failed } };
 }
 
-async function runMoveEntry(args: {
-  path: string;
+async function runMoveEntries(args: {
+  paths: string[];
   destinationDirectory: string;
 }): Promise<AgentToolResult> {
-  const result = await getDriverForLocation(args.path).moveEntries(
-    [args.path],
+  if (args.paths.length === 0) return { error: 'No paths provided.' };
+  const result = await getDriverForLocation(args.paths[0]).moveEntries(
+    args.paths,
     args.destinationDirectory
   );
   if ('error' in result) return { error: result.error };
-  return { success: true, result: { moved: true } };
+  return { success: true, result: { moved: args.paths } };
 }
 
-async function runDeleteEntry(args: { path: string }): Promise<AgentToolResult> {
-  const result = await getDriverForLocation(args.path).deleteEntries([args.path]);
+async function runDeleteEntries(args: { paths: string[] }): Promise<AgentToolResult> {
+  if (args.paths.length === 0) return { error: 'No paths provided.' };
+  const result = await getDriverForLocation(args.paths[0]).deleteEntries(args.paths);
   if ('error' in result) return { error: result.error };
-  return { success: true, result: { deleted: true } };
+  return { success: true, result: { deleted: args.paths } };
 }
 
 export async function executeAgentTool(name: string, args: unknown): Promise<AgentToolResult> {
   switch (name) {
     case 'list_directory':
       return runListDirectory(args as { path: string });
-    case 'rename_entry':
-      return runRenameEntry(args as { path: string; newName: string });
+    case 'rename_entries':
+      return runRenameEntries(args as { renames: { path: string; newName: string }[] });
     case 'create_folder':
       return runCreateFolder(args as { parentPath: string; name: string });
     case 'create_folder_tree':
       return runCreateFolderTree(args as { parentPath: string; paths: string[] });
-    case 'move_entry':
-      return runMoveEntry(args as { path: string; destinationDirectory: string });
-    case 'delete_entry':
-      return runDeleteEntry(args as { path: string });
+    case 'move_entries':
+      return runMoveEntries(args as { paths: string[]; destinationDirectory: string });
+    case 'delete_entries':
+      return runDeleteEntries(args as { paths: string[] });
     default:
       return { error: `Unknown tool: ${name}` };
   }

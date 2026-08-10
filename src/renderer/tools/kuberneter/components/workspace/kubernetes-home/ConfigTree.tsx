@@ -300,7 +300,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
                             onContextMenu={(e) => handleContextMenu(e, ctx, configPath)}
                             className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded text-left cursor-pointer transition-colors ${
                               isConnected
-                                ? 'bg-accent/10 text-white font-semibold'
+                                ? 'bg-accent/10 text-strong font-semibold'
                                 : 'text-zinc-400 hover:bg-surface-3/30 hover:text-zinc-200'
                             }`}
                           >
@@ -350,10 +350,10 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
               );
               handleCloseContextMenu();
             }}
-            className="w-full px-3 py-1.5 hover:bg-accent hover:text-white text-left cursor-pointer transition-colors flex items-center gap-2 group/item"
+            className="w-full px-3 py-1.5 hover:bg-accent hover:text-foreground text-left cursor-pointer transition-colors flex items-center gap-2 group/item"
           >
-            <Globe className="size-3.5 text-zinc-500 group-hover/item:text-white" />
-            <span>Connect Context</span>
+            <Globe className="size-3.5 text-zinc-500 group-hover/item:text-foreground" />
+            <span>Connect</span>
           </button>
 
           <button
@@ -366,10 +366,10 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
               );
               handleCloseContextMenu();
             }}
-            className="w-full px-3 py-1.5 hover:bg-accent hover:text-white text-left cursor-pointer transition-colors flex items-center gap-2 border-t border-border-dark/30 mt-1 pt-1 group/item"
+            className="w-full px-3 py-1.5 hover:bg-accent hover:text-foreground text-left cursor-pointer transition-colors flex items-center gap-2 border-t border-border-dark/30 mt-1 pt-1 group/item"
           >
-            <Folder className="size-3.5 text-zinc-500 group-hover/item:text-white" />
-            <span>Connect on New Instance</span>
+            <Folder className="size-3.5 text-zinc-500 group-hover/item:text-foreground" />
+            <span>Connect on new instance</span>
           </button>
         </div>
       )}

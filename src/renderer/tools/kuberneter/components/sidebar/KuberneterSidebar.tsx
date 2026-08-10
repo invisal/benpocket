@@ -462,7 +462,7 @@ export const KuberneterSidebar: React.FC = () => {
                   title={cat.label}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
                     isActive
-                      ? 'bg-border-dark text-white font-semibold'
+                      ? 'bg-border-dark text-strong font-semibold'
                       : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
                   }`}
                 >
@@ -481,7 +481,7 @@ export const KuberneterSidebar: React.FC = () => {
                   onClick={() => toggleGroup(cat.id)}
                   title={cat.label}
                   className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
-                    isSubActive ? 'text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
+                    isSubActive ? 'text-strong font-medium' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 truncate">

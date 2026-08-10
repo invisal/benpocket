@@ -203,7 +203,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       value: (
         <div className="flex items-center justify-between w-full">
           <span className="font-mono text-accent text-[11px]">{payload.ports}</span>
-          <button className="px-2.5 py-1 text-[10px] bg-accent hover:bg-accent/80 text-white font-medium rounded border-none cursor-pointer select-none transition-colors">
+          <button className="px-2.5 py-1 text-[10px] bg-accent hover:bg-accent/80 text-strong font-medium rounded border-none cursor-pointer select-none transition-colors">
             Forward...
           </button>
         </div>

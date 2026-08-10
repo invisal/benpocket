@@ -1,8 +1,9 @@
-import { ChevronDown, ChevronRight, CloudIcon, HardDrive } from 'lucide-react';
+import { ChevronDown, ChevronRight, CloudIcon, HardDrive, RotateCw } from 'lucide-react';
 import { cn } from 'cnfast';
 import { useEffect, useRef, useState } from 'react';
 import { Menu } from '@renderer/components/ui/Menu';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
+import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { splitPathSegments } from '../lib/paths';
 import { getFavoriteIcon } from '../lib/sidebarIcons';
 import type { SidebarSections } from '../../../../preload/file-explorer/api';
@@ -20,6 +21,10 @@ interface BreadcrumbProps {
   modeSwitch?: BreadcrumbModeSwitch;
   /** False when there's no folder to show a path for (e.g. panel 2 in preview mode). Defaults to true. */
   showPath?: boolean;
+  /** Shows a refresh button that re-lists the current folder. Omit to hide it. */
+  onRefresh?: () => void;
+  /** Shown in place of the path when `showPath` is false (e.g. the previewed file's name). */
+  fileName?: string;
 }
 
 export function Breadcrumb(props: BreadcrumbProps) {
@@ -34,7 +39,9 @@ export function BreadcrumbInner({
   currentPath,
   onNavigate,
   modeSwitch,
-  showPath = true
+  showPath = true,
+  onRefresh,
+  fileName
 }: BreadcrumbProps) {
   const segments = splitPathSegments(currentPath);
   const [isEditing, setIsEditing] = useState(false);
@@ -45,6 +52,18 @@ export function BreadcrumbInner({
       {showPath && (
         <>
           <BreadcrumbLocationPicker onNavigate={onNavigate} />
+          {onRefresh && (
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <Toolbar.Button shape="square" onClick={onRefresh}>
+                    <RotateCw size={14} />
+                  </Toolbar.Button>
+                }
+              />
+              <Tooltip.Content>Refresh</Tooltip.Content>
+            </Tooltip.Root>
+          )}
 
           {isEditing ? (
             <BreadcrumbPathInput
@@ -104,7 +123,11 @@ export function BreadcrumbInner({
           )}
         </>
       )}
-      {!showPath && <div className="flex-1" />}
+      {!showPath && (
+        <div className="flex-1 flex items-center px-3 text-xs text-text-dim truncate">
+          {fileName}
+        </div>
+      )}
     </>
   );
 }

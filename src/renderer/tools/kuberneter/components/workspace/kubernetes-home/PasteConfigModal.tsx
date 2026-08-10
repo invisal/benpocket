@@ -46,13 +46,13 @@ export const PasteConfigModal: React.FC<PasteConfigModalProps> = ({ isOpen, onCl
       <div className="w-full max-w-xl bg-surface-2 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Title */}
         <div className="flex items-center justify-between p-4 border-b border-border-dark shrink-0">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-strong flex items-center gap-2">
             <FileCode className="size-4.5 text-accent" />
             Paste Kubeconfig Contents
           </h3>
           <button
             onClick={onClose}
-            className="size-7 rounded hover:bg-surface-3 flex items-center justify-center text-zinc-500 hover:text-white cursor-pointer transition-colors"
+            className="size-7 rounded hover:bg-surface-3 flex items-center justify-center text-zinc-500 hover:text-strong cursor-pointer transition-colors"
           >
             <X className="size-4" />
           </button>
@@ -72,7 +72,7 @@ export const PasteConfigModal: React.FC<PasteConfigModalProps> = ({ isOpen, onCl
                 value={pasteFilename}
                 onChange={(e) => setPasteFilename(e.target.value)}
                 placeholder="e.g. k8s-production-eu"
-                className="w-full bg-editor-bg border border-border-dark rounded px-3 py-1.5 text-xs text-white outline-none focus:border-accent transition-colors font-semibold"
+                className="w-full bg-editor-bg border border-border-dark rounded px-3 py-1.5 text-xs text-strong outline-none focus:border-accent transition-colors font-semibold"
               />
             </div>
 
@@ -109,7 +109,7 @@ export const PasteConfigModal: React.FC<PasteConfigModalProps> = ({ isOpen, onCl
             </button>
             <button
               type="submit"
-              className="py-1.5 px-4 bg-accent hover:bg-accent-light text-white rounded-md text-xs font-semibold cursor-pointer transition-colors"
+              className="py-1.5 px-4 bg-accent hover:bg-accent-light text-strong rounded-md text-xs font-semibold cursor-pointer transition-colors"
             >
               Save Config
             </button>

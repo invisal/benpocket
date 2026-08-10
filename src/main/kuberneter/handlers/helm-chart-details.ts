@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { runHelm } from '../helm-cli';
+import { runHelm, checkHelmInstalled } from '../helm-cli';
 
 interface ParsedHelmChart {
   [key: string]: string | string[] | Record<string, string>[];
@@ -118,6 +118,7 @@ export function registerHelmChartDetailsHandler(): void {
   ipcMain.handle(
     'kuberneter:helm-get-chart-details',
     async (_, chartName: string, version?: string, kubeconfigPath?: string) => {
+      if (!(await checkHelmInstalled())) return { error: 'helm not found', helmNotFound: true };
       try {
         const args = ['show', 'chart', chartName];
         if (version) {

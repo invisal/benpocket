@@ -49,6 +49,9 @@ export type ReadBinaryFileResult =
 
 export type WriteFileResult = { success: true } | { error: string };
 
+export type WriteBinaryFileResult =
+  { success: true } | { error: 'unsupported-extension' } | { error: string };
+
 export type MutationResult = { success: true } | { error: string };
 
 export type CreateResult =
@@ -70,6 +73,8 @@ export interface DriverCapabilities {
    * - 'sync' — await the mutation, then force a full refetch.
    */
   sync: 'watch' | 'optimistic' | 'sync';
+  /** Driver can watch a directory for changes made outside the app and push events (e.g. `fs.watch`). */
+  watchable: boolean;
 }
 
 export interface FileDriver {
@@ -79,6 +84,7 @@ export interface FileDriver {
   readFile(uri: string): Promise<ReadFileResult>;
   readBinaryFile(uri: string): Promise<ReadBinaryFileResult>;
   writeFile(uri: string, content: string): Promise<WriteFileResult>;
+  writeBinaryFile(uri: string, data: Uint8Array): Promise<WriteBinaryFileResult>;
   deleteEntries(uris: string[]): Promise<MutationResult>;
   copyEntries(sourceUris: string[], destDirUri: string): Promise<MutationResult>;
   moveEntries(sourceUris: string[], destDirUri: string): Promise<MutationResult>;

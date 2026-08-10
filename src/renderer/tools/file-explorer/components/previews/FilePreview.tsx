@@ -71,7 +71,14 @@ export const FilePreview = forwardRef<PreviewEditorHandle, FilePreviewProps>(fun
   }
 
   if (kind === 'image') {
-    return <ImagePreview key={previewFile} ref={ref} filePath={previewFile} />;
+    return (
+      <ImagePreview
+        key={previewFile}
+        ref={ref}
+        filePath={previewFile}
+        onDirtyChange={onDirtyChange}
+      />
+    );
   }
 
   if (kind === 'video') {

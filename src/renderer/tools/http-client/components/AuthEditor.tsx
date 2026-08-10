@@ -5,6 +5,7 @@ import { AUTH_TYPE_OPTIONS, authTypeLabel } from '../lib/auth';
 import { VariableSuggestInput } from './VariableSuggestInput';
 import { OAuth2AuthFields } from './OAuth2AuthFields';
 import { Select } from '@renderer/components/ui/Select';
+import { fieldInputClass, fieldLabelClass } from './authFieldStyles';
 
 const APIKEY_LOCATION_LABELS: Record<'header' | 'query', string> = {
   header: 'Header',
@@ -15,8 +16,6 @@ interface AuthEditorProps {
   auth: HttpAuth;
   onChange: (auth: HttpAuth) => void;
 }
-
-const fieldLabelClass = 'text-[10px] font-bold uppercase tracking-wider text-zinc-500';
 
 /** Postman-style Authorization tab: pick an auth type, fill its fields, values support `{{var}}`. */
 export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
@@ -30,7 +29,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
           value={auth.type}
           onValueChange={(value) => onChange({ ...auth, type: value as HttpAuthType })}
         >
-          <Select.Trigger>
+          <Select.Trigger size="sm" className="w-full justify-between">
             {/* base-ui's Select.Value renders the raw value ("noauth"), so render the label ourselves. */}
             <Select.Value>{(value: HttpAuthType) => authTypeLabel(value)}</Select.Value>
           </Select.Trigger>
@@ -45,14 +44,14 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
       </label>
 
       {auth.type === 'inherit' && (
-        <p className="text-[11px] text-zinc-600 italic">
+        <p className="text-[11px] text-muted-foreground italic">
           Uses the auth configured on the parent folder/collection, or no auth if none of them have
           one set.
         </p>
       )}
 
       {auth.type === 'noauth' && (
-        <p className="text-[11px] text-zinc-600 italic">
+        <p className="text-[11px] text-muted-foreground italic">
           This request does not use any authorization.
         </p>
       )}
@@ -65,6 +64,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
             onChange={(token) => onChange({ ...auth, bearer: { token } })}
             variables={variables}
             placeholder="Token or {{var}}"
+            className={fieldInputClass}
           />
         </label>
       )}
@@ -80,6 +80,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
               }
               variables={variables}
               placeholder="Username or {{var}}"
+              className={fieldInputClass}
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -91,6 +92,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
               }
               variables={variables}
               placeholder="Password or {{var}}"
+              className={fieldInputClass}
             />
           </label>
         </>
@@ -110,6 +112,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
               }
               variables={variables}
               placeholder="Key"
+              className={fieldInputClass}
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -124,6 +127,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
               }
               variables={variables}
               placeholder="Value or {{var}}"
+              className={fieldInputClass}
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -141,7 +145,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
                 })
               }
             >
-              <Select.Trigger>
+              <Select.Trigger size="sm" className="w-full justify-between">
                 <Select.Value>
                   {(value: 'header' | 'query') => APIKEY_LOCATION_LABELS[value]}
                 </Select.Value>

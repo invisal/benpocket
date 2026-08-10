@@ -42,6 +42,7 @@ import { registerUpdaterHandlers } from './updater/ipc';
 import { registerTelemetryHandlers } from './telemetry/ipc';
 import { telemetryStore } from './telemetry/telemetry-store';
 import { flushOnQuit, startTelemetrySender } from './telemetry/sender';
+import { startHeapLogger } from './heapLogger';
 
 // Must run before app.whenReady(): app.requestSingleInstanceLock() has to be
 // called this early for `second-instance` (Windows/Linux deep-link delivery,
@@ -151,6 +152,10 @@ if (gotSingleInstanceLock) {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   app.whenReady().then(() => {
+    // Catches a leak growing with no single operation to pin it to (e.g. the
+    // startup-only OOM this was added to chase down) -- see heapLogger.ts.
+    startHeapLogger();
+
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.electron');
 

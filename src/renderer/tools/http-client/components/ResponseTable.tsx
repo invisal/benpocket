@@ -6,7 +6,11 @@ import { buildTableData, formatCell, summarizeValue, type TableData } from '../l
 
 const TH_CLASS =
   'text-left font-semibold text-zinc-400 px-2 py-1 border-b border-r border-border whitespace-nowrap';
-const TD_CLASS = 'px-2 py-1 border-b border-r border-border align-top select-text';
+// max-w caps a single wide cell (a long scalar, or an expanded nested object/array) so it
+// wraps/scrolls in place instead of stretching the whole table - and therefore the whole
+// response panel - wider than its container. Works under table-layout:auto same as fixed:
+// browsers still clamp a cell's contribution to the auto layout using its max-width.
+const TD_CLASS = 'px-2 py-1 border-b border-r border-border align-top select-text max-w-[380px]';
 
 interface ResponseTableProps {
   format: 'json' | 'yaml';
@@ -140,10 +144,15 @@ const TableCell: React.FC<TableCellProps> = ({ value, wrap }) => {
   const nested = buildTableData(value);
 
   if (!nested || nested.rows.length === 0) {
-    return (
-      <span className={wrap === 'nowrap' ? 'whitespace-nowrap' : 'break-all'}>
-        {formatCell(value)}
+    const text = formatCell(value);
+    return wrap === 'nowrap' ? (
+      // truncate (not just whitespace-nowrap): without it a long single-line value has
+      // no upper bound and stretches the column - and the whole table - to fit it.
+      <span className="block truncate" title={text}>
+        {text}
       </span>
+    ) : (
+      <span className="break-all">{text}</span>
     );
   }
 
@@ -161,7 +170,7 @@ const TableCell: React.FC<TableCellProps> = ({ value, wrap }) => {
         {summarizeValue(value)}
       </button>
       {expanded && (
-        <div className="border border-border-dark rounded overflow-auto max-h-64 bg-surface">
+        <div className="border border-border-dark rounded overflow-auto max-h-64 max-w-full bg-surface">
           <TableGrid data={nested} />
         </div>
       )}

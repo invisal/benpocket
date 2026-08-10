@@ -13,6 +13,9 @@ interface VariableSuggestInputProps {
   disabled?: boolean;
   /** Called on Enter when no suggestion dropdown is open (e.g. to trigger Send from the URL field). */
   onEnter?: () => void;
+  /** Raw clipboard paste handler, run before the normal onChange-driven insert - e.g. the
+   * URL field intercepts a pasted `curl ...` command instead of dropping it in as text. */
+  onPaste?: (event: React.ClipboardEvent<HTMLInputElement>) => void;
 }
 
 interface DropdownRect {
@@ -33,7 +36,8 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   placeholder,
   className,
   disabled,
-  onEnter
+  onEnter,
+  onPaste
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [token, setToken] = useState<OpenToken | null>(null);
@@ -92,7 +96,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   };
 
   return (
-    <div className="relative flex-1 h-full">
+    <div className="relative flex-1 min-w-0 h-full">
       <input
         ref={inputRef}
         type="text"
@@ -105,6 +109,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
           evaluate(e.target);
         }}
         onClick={(e) => evaluate(e.currentTarget)}
+        onPaste={onPaste}
         onKeyUp={(e) => {
           if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') evaluate(e.currentTarget);
         }}

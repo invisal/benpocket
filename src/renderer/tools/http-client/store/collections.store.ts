@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   Collection,
+  CollectionFolder,
   ExportCollectionResult,
   HttpAuth,
   ImportCollectionResult,
@@ -57,10 +58,41 @@ interface CollectionsState {
   importCollection: () => Promise<ImportCollectionResult>;
 }
 
+/**
+ * Appends `example` to the given request wherever it lives in the tree, returning a new
+ * container only along the path that changed (siblings keep their old reference). Used to patch
+ * `saveExample` into state locally instead of round-tripping a fresh `collections:list` -- that
+ * read/parses/refilters every collection's full example history (response bodies included) just
+ * to pick up the one example that was added.
+ */
+function addExampleRecursive<T extends { requests: SavedRequest[]; folders: CollectionFolder[] }>(
+  container: T,
+  requestId: string,
+  example: SavedExample
+): T {
+  if (container.requests.some((r) => r.id === requestId)) {
+    return {
+      ...container,
+      requests: container.requests.map((r) =>
+        r.id === requestId ? { ...r, examples: [...(r.examples ?? []), example] } : r
+      )
+    };
+  }
+  let changed = false;
+  const folders = container.folders.map((f) => {
+    const updated = addExampleRecursive(f, requestId, example);
+    if (updated !== f) changed = true;
+    return updated;
+  });
+  return changed ? { ...container, folders } : container;
+}
+
 // Renderer-side cache of the main-process collections store (which is the
 // source of truth, persisted to disk). Every mutation round-trips through
 // IPC then refetches - collections data is tiny and local, so simplicity
-// wins over optimistic-update bookkeeping.
+// wins over optimistic-update bookkeeping. saveExample is the one exception:
+// examples carry full response bodies, so a full reload after every save
+// is disproportionately expensive -- see addExampleRecursive above.
 export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   collections: [],
   isLoaded: false,
@@ -106,7 +138,11 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
 
   saveExample: async (collectionId, requestId, example) => {
     assertOk(await window.api.collections.saveExample({ collectionId, requestId, example }));
-    await get().load();
+    set((state) => ({
+      collections: state.collections.map((c) =>
+        c.id === collectionId ? addExampleRecursive(c, requestId, example) : c
+      )
+    }));
   },
 
   renameExample: async (collectionId, requestId, exampleId, name) => {

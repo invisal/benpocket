@@ -188,6 +188,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 headers={client.http.state.headers}
                 bodyType={client.http.state.bodyType}
                 body={client.http.state.body}
+                auth={client.http.state.auth}
+                binding={client.binding}
               />
               <SaveExamplePopover
                 binding={client.binding}
@@ -198,6 +200,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 params={client.http.state.params}
                 bodyType={client.http.state.bodyType}
                 body={client.http.state.body}
+                auth={client.http.state.auth}
               />
             </>
           ) : undefined
@@ -225,6 +228,14 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           urlDisabled={
             client.protocol === 'WEBSOCKET' &&
             (client.ws.state.status === 'CONNECTED' || client.ws.state.status === 'CONNECTING')
+          }
+          onImportCurl={
+            client.protocol === 'HTTP'
+              ? (parsed) => {
+                  pinIfPreview();
+                  client.http.importCurl(parsed);
+                }
+              : undefined
           }
           action={
             client.protocol === 'WEBSOCKET'
@@ -304,6 +315,28 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 onBodyChange={(body) => {
                   pinIfPreview();
                   client.http.setBody(body);
+                }}
+                bodyRows={client.http.state.bodyRows}
+                onUpdateBodyRow={(id, patch) => {
+                  pinIfPreview();
+                  client.http.updateBodyRow(id, patch);
+                }}
+                onRemoveBodyRow={(id) => {
+                  pinIfPreview();
+                  client.http.removeBodyRow(id);
+                }}
+                multipartRows={client.http.state.multipartRows}
+                onUpdateMultipartRow={(id, patch) => {
+                  pinIfPreview();
+                  client.http.updateMultipartRow(id, patch);
+                }}
+                onRemoveMultipartRow={(id) => {
+                  pinIfPreview();
+                  client.http.removeMultipartRow(id);
+                }}
+                onPickMultipartFile={(id) => {
+                  pinIfPreview();
+                  void client.http.pickMultipartFile(id);
                 }}
               />
             </div>

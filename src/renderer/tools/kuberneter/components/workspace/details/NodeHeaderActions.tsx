@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Pencil, Trash2, Terminal, Pause, RefreshCw } from 'lucide-react';
+import { Pencil, Trash2, Terminal, Pause } from 'lucide-react';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { type NodeData } from '../../../types/NodeData';
@@ -14,6 +14,12 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
   const handleShell = () => {
     if (name) {
       useKuberneterStore.getState().openNodeTerminalTab(name);
+    }
+  };
+
+  const handleEdit = () => {
+    if (name) {
+      void useKuberneterStore.getState().openNodeEditTab(name, payload?.rawItem);
     }
   };
 
@@ -47,23 +53,15 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
       <Tooltip.Root>
         <Tooltip.Trigger
           render={
-            <button className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
-              <RefreshCw className="size-3.5" />
-            </button>
-          }
-        />
-        <Tooltip.Content side="bottom">Refresh</Tooltip.Content>
-      </Tooltip.Root>
-
-      <Tooltip.Root>
-        <Tooltip.Trigger
-          render={
-            <button className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center">
+            <button
+              onClick={handleEdit}
+              className="text-zinc-400 hover:text-strong cursor-pointer hover:bg-border-dark/40 p-1 rounded transition-colors border-none bg-transparent flex items-center justify-center"
+            >
               <Pencil className="size-3.5" />
             </button>
           }
         />
-        <Tooltip.Content side="bottom">Edit</Tooltip.Content>
+        <Tooltip.Content side="bottom">Edit YAML</Tooltip.Content>
       </Tooltip.Root>
 
       <Tooltip.Root>

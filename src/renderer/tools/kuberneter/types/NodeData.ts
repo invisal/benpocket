@@ -18,4 +18,5 @@ export interface NodeData {
   rawDisk: string;
   rawAge: string;
   rawConditions: string;
+  rawItem?: unknown;
 }

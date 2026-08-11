@@ -97,6 +97,7 @@ interface KuberneterState {
   openPodTerminalTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodLogsTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodEditTab: (podName: string, namespace?: string, rawItem?: unknown) => Promise<void>;
+  openNodeEditTab: (nodeName: string, rawItem?: unknown) => Promise<void>;
   openResourceEditTab: (
     resource: string,
     name: string,
@@ -324,6 +325,10 @@ export const useKuberneterStore = create<KuberneterState>()(
 
       openPodEditTab: async (podName, namespace, rawItem) => {
         return get().openResourceEditTab('pod', podName, namespace, rawItem);
+      },
+
+      openNodeEditTab: async (nodeName, rawItem) => {
+        return get().openResourceEditTab('node', nodeName, undefined, rawItem);
       },
 
       openNodeTerminalTab: (nodeName) => {

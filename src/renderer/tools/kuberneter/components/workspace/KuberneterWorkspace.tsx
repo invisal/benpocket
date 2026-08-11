@@ -67,7 +67,8 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
 
   // Settings page works without a cluster connection
   if (resource === 'settings') {
-    return <KuberneterSettings />;
+    const section = (activeTab?.meta as { section?: string })?.section;
+    return <KuberneterSettings section={section} />;
   }
 
   // If there's no connected cluster

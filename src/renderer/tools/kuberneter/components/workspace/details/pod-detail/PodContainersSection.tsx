@@ -1,5 +1,5 @@
 import type React from 'react';
-import { MetricsSection } from './MetricsSection';
+import { MetricsSection } from '../metrics';
 import { type ContainerItem, type ContainerStatusItem } from './types';
 import { type PortForwardData } from '../../../../types/PortForwardData';
 import { KubePropertiesTable, type PropertyItem } from '../KubePropertiesTable';

@@ -13,7 +13,7 @@ import {
   type PodToleration,
   type PodVolume
 } from './types';
-import { MetricsSection } from './MetricsSection';
+import { MetricsSection } from '../metrics';
 import { PodTolerationsSection } from './PodTolerationsSection';
 import { PodVolumesSection } from './PodVolumesSection';
 import { PodContainersSection } from './PodContainersSection';

@@ -26,7 +26,9 @@ import {
 } from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
+import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { useAppStore, EMPTY_CURSOR_PATH } from '../../../app/app-store';
+import { selectClipSegment, selectZoomKeyframe } from '../../../app/selection-coordinator';
 import { useHistoryStore } from '../../history/store/history-store';
 import { useTimelineStore, MIN_TIMELINE_ZOOM, MAX_TIMELINE_ZOOM } from '../store/timeline-store';
 import { useWaveformStore } from '../store/waveform-store';
@@ -86,7 +88,16 @@ function pickMajorTickIntervalMs(totalDurationMs: number): number {
 // Sized to comfortably fit the ruler+clip row plus the Zoom/Caption/Speed/Crop
 // pill tracks beneath it without squishing (each track is a fixed h-9, `shrink-0`).
 const MIN_PANEL_HEIGHT_PX = 150;
+// Also caps how far the auto-grow effect below will stretch the panel --
+// a pathological number of overlapping pills still can't squeeze the
+// preview stage down to nothing (see ScreenRecorderApp.tsx's layout: this
+// panel's height is taken directly out of the preview area's).
 const MAX_PANEL_HEIGHT_PX = 300;
+// The content wrapper's own `py-3` padding (24px) plus its `gap-2` (8px)
+// between the toolbar row and the scrollable track area -- the only part of
+// the panel's required height that isn't covered by measuring
+// `toolbarRowRef`/`trackAreaRef` directly (see the auto-grow effect below).
+const PANEL_CONTENT_CHROME_PX = 24 + 8;
 
 // Taller than a plain pill track (`CLIP_ROW_HEIGHT_PX`) -- clips carry a
 // two-line label (name + duration/speed), not just a single corner badge.
@@ -172,7 +183,6 @@ export function CutTimeline(): JSX.Element {
     (s) => s.tracks.find((t) => t.id === 'video-1')?.segments ?? []
   );
   const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
-  const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
   const zoom = useTimelineStore((s) => s.timelineZoom);
   const setTimelineZoom = useTimelineStore((s) => s.setTimelineZoom);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
@@ -209,7 +219,6 @@ export function CutTimeline(): JSX.Element {
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
   const updateZoomKeyframe = useZoomStore((s) => s.updateKeyframe);
-  const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   // Any "arm a tool, then click the timeline" mode currently active -- both
   // suppress the clip row's normal select/drag/resize/double-click-to-split
@@ -249,9 +258,41 @@ export function CutTimeline(): JSX.Element {
   } = useEdgeResize();
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const toolbarRowRef = useRef<HTMLDivElement>(null);
   const playheadDraggingRef = useRef(false);
   const dragRafIdRef = useRef<number | null>(null);
   const pendingDragClientXRef = useRef<number | null>(null);
+
+  // Auto-grows the panel to fit its content as tracks (Zoom/Caption/
+  // Annotation/Blur-Mask) gain pills or their pills stack into more lanes --
+  // `trackAreaRef` isn't itself height-constrained (only `scrollContainerRef`
+  // around it is, via `overflow-auto`), so its `offsetHeight` always reflects
+  // the *true* content height regardless of how much of it currently fits.
+  // Grow-only and driven by `getState()`/`setState()` rather than the
+  // subscribed `panelHeightPx` value, so back-to-back ResizeObserver firings
+  // (e.g. several pills mounting in the same frame) each compare against the
+  // latest committed height instead of a stale render's closure -- and so a
+  // track shrinking (a pill deleted) never yanks the panel back down under
+  // whatever the user's still looking at; only manually dragging the handle
+  // does that.
+  useEffect(() => {
+    const trackArea = trackAreaRef.current;
+    const toolbarRow = toolbarRowRef.current;
+    if (!trackArea || !toolbarRow) return;
+
+    function recalcAutoHeight(): void {
+      const requiredPx =
+        toolbarRow!.offsetHeight + trackArea!.offsetHeight + PANEL_CONTENT_CHROME_PX;
+      const clampedPx = Math.min(MAX_PANEL_HEIGHT_PX, Math.max(MIN_PANEL_HEIGHT_PX, requiredPx));
+      const currentPx = useAppStore.getState().timelinePanelHeight;
+      if (clampedPx > currentPx) useAppStore.getState().setTimelinePanelHeight(clampedPx);
+    }
+
+    const observer = new ResizeObserver(recalcAutoHeight);
+    observer.observe(trackArea);
+    recalcAutoHeight();
+    return () => observer.disconnect();
+  }, []);
 
   // A second, gray playhead that tracks the cursor while it's over the
   // ruler and live-seeks the preview video to that position -- scrubbing by
@@ -392,7 +433,7 @@ export function CutTimeline(): JSX.Element {
           position: resolveFixedPosition(clickPath, cursorPath, created.atMs, created.durationMs)
         });
       }
-      setSelectedZoomKeyframeId(id);
+      selectZoomKeyframe(id);
       setActiveTool('zoom');
     },
     [
@@ -403,7 +444,6 @@ export function CutTimeline(): JSX.Element {
       updateZoomKeyframe,
       clickPath,
       cursorPath,
-      setSelectedZoomKeyframeId,
       setActiveTool
     ]
   );
@@ -559,62 +599,88 @@ export function CutTimeline(): JSX.Element {
       handleClassName="z-40"
     >
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
-        <div className="flex shrink-0 items-center gap-1">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              title="Undo"
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
-            >
-              <Undo2 size={14} />
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              title="Redo"
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
-            >
-              <Redo2 size={14} />
-            </button>
+        <div ref={toolbarRowRef} className="flex shrink-0 items-center gap-1">
+          <Tooltip.Provider delay={300} closeDelay={0}>
+            <div className="flex items-center gap-1">
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={undo}
+                      disabled={!canUndo}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
+                    >
+                      <Undo2 size={14} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>Undo</Tooltip.Content>
+              </Tooltip.Root>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={redo}
+                      disabled={!canRedo}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
+                    >
+                      <Redo2 size={14} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>Redo</Tooltip.Content>
+              </Tooltip.Root>
 
-            <div className="mx-1 h-4 w-px bg-line" />
+              <div className="mx-1 h-4 w-px bg-line" />
 
-            <button
-              onClick={() => setCutToolActive(!isCutToolActive)}
-              title={
-                isCutToolActive
-                  ? 'Cut tool active -- click the timeline to trim'
-                  : 'Cut tool -- click to arm, then click the timeline to trim'
-              }
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                isCutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
-              )}
-            >
-              <Scissors size={13} />
-            </button>
-            <button
-              onClick={() => setZoomToolActive(!isZoomToolActive)}
-              title={
-                isZoomToolActive
-                  ? 'Zoom tool active -- click the timeline to place a keyframe'
-                  : 'Zoom tool -- click to arm, then click the timeline to place a keyframe'
-              }
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                isZoomToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
-              )}
-            >
-              <ZoomIn size={13} />
-            </button>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={() => setCutToolActive(!isCutToolActive)}
+                      className={cn(
+                        'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                        isCutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
+                      )}
+                    >
+                      <Scissors size={13} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>
+                  {isCutToolActive
+                    ? 'Cut tool active (C or Esc to exit) -- click the timeline to trim'
+                    : 'Cut tool (C) -- click to arm, then click the timeline to trim'}
+                </Tooltip.Content>
+              </Tooltip.Root>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={() => setZoomToolActive(!isZoomToolActive)}
+                      className={cn(
+                        'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                        isZoomToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
+                      )}
+                    >
+                      <ZoomIn size={13} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>
+                  {isZoomToolActive
+                    ? 'Zoom tool active (Z or Esc to exit) -- click the timeline to place a keyframe'
+                    : 'Zoom tool (Z) -- click to arm, then click the timeline to place a keyframe'}
+                </Tooltip.Content>
+              </Tooltip.Root>
 
-            <div className="mx-1 h-4 w-px bg-line" />
+              <div className="mx-1 h-4 w-px bg-line" />
 
-            <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
-            </span>
-          </div>
+              <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
+              </span>
+            </div>
+          </Tooltip.Provider>
 
           <div className="ml-auto flex items-center gap-2">
             <button
@@ -805,7 +871,7 @@ export function CutTimeline(): JSX.Element {
                                   placeZoomKeyframeFromClientX(e.clientX);
                                   return;
                                 }
-                                setSelectedSegmentId(segment.id);
+                                selectClipSegment(segment.id);
                               }}
                               onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
                               className={cn(

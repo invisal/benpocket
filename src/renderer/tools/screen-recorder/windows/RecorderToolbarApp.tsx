@@ -7,14 +7,19 @@ import {
   Mic,
   MicOff,
   Monitor,
+  Pause,
+  Play,
+  RotateCcw,
   Smartphone,
   Square,
+  Trash2,
   Video,
   VideoOff,
   X
 } from 'lucide-react';
 import { cn } from 'cnfast';
 import { Popover } from '@renderer/components/ui/Popover';
+import { Tooltip } from '@renderer/components/ui/Tooltip';
 import type {
   AudioInputOptions,
   CaptureSource,
@@ -29,10 +34,17 @@ import type {
 import { pickDefaultCaptureSource } from '../features/recording/lib/pick-default-capture-source';
 import { usePermission } from '../features/permissions/hooks/usePermission';
 import { isLikelyMac } from '../lib/platform';
+import { Button } from '@renderer/components/ui/Button';
 
 const TABS: { type: CaptureTargetType; label: string; icon: typeof Monitor }[] = [
   { type: 'screen', label: 'Display', icon: Monitor },
   { type: 'window', label: 'Window', icon: AppWindow }
+];
+
+const SHAPES: { value: WebcamOptions['shape']; label: string; className: string }[] = [
+  { value: 'circle', label: 'Circle', className: 'rounded-full' },
+  { value: 'rounded-square', label: 'Rounded', className: 'rounded-[4px]' },
+  { value: 'square', label: 'Square', className: 'rounded-none' }
 ];
 
 const DEFAULT_WEBCAM: WebcamOptions = {
@@ -68,7 +80,12 @@ function formatElapsed(totalSeconds: number): string {
   return `${minutes}:${seconds}`;
 }
 
-type Mode = 'setup' | 'starting' | 'recording' | 'stopping';
+type Mode = 'setup' | 'counting' | 'starting' | 'recording' | 'paused' | 'restarting' | 'stopping';
+
+// Carries its own settings-action so screen/mic/camera permission failures
+// can each drive the same banner treatment without the banner hardcoding
+// which permission kind (and which native settings pane) it's about.
+type ToolbarError = { message: string; openSettings?: () => void; settingsLabel?: string };
 
 // The window is frameless (see recorder-toolbar-window.ts's `movable: true`),
 // so dragging has to be opted into via CSS rather than a native titlebar.
@@ -128,7 +145,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
   // user has interacted with anything.
   const [activeTab, setActiveTab] = useState<CaptureTargetType | null>(null);
   const [mode, setMode] = useState<Mode>('setup');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ToolbarError | null>(null);
   const [openPopover, setOpenPopover] = useState<'camera' | 'device' | null>(null);
   // Which device kind the user picked via the Device popover below, purely
   // to highlight the right label on the button -- the actual selection lives
@@ -138,9 +155,67 @@ export function RecorderToolbarApp(): JSX.Element | null {
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+  // Cursor visibility/click-highlight/countdown are round-tripped through the
+  // start payload as whatever the main window handed over when it opened this
+  // toolbar (see openRecorderToolbarFor) -- nothing in this toolbar changes
+  // them, so these are fixed for the toolbar's lifetime rather than state.
+  const cursorVisible = init?.cursorSettings.visible ?? true;
+  const clickHighlight = init?.cursorSettings.clickRippleEnabled ?? false;
+  const countdownSeconds = init?.countdownSeconds ?? 0;
+  const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
+  // Only the native helper path supports Pause/Resume (see CaptureHandle.native)
+  // -- set from the start result once a recording actually begins.
+  const [nativeActive, setNativeActive] = useState(false);
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const [micDeviceLabel, setMicDeviceLabel] = useState<string | null>(null);
   const cameraPreviewRef = useRef<HTMLVideoElement>(null);
   const cameraPreviewStreamRef = useRef<MediaStream | null>(null);
+  const micLevelBarRef = useRef<HTMLDivElement>(null);
+  const pausedDurationRef = useRef(0);
+  const pauseStartedAtRef = useRef<number | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deleteArmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pillRef = useRef<HTMLDivElement>(null);
+
+  function beginRecording(
+    source: CaptureSource,
+    regionOverride?: CaptureRegionSelection | null
+  ): void {
+    setMode('starting');
+    const region = regionOverride !== undefined ? regionOverride : cropRegion;
+    // The drag-selected Area rect is the most specific target available;
+    // otherwise fall back to the source's own display bounds (only ever
+    // resolved for a 'screen' source, or a 'window' source with a known
+    // owner -- currently just the Simulator -- see CaptureSource.displayBounds).
+    // A generic window with no bounds just leaves this undefined, and the
+    // toolbar stays wherever it already is.
+    const targetBounds = region?.rect ?? source.displayBounds;
+    window.screenRecorder.recorderToolbar.requestStart({
+      sourceId: source.id,
+      audio,
+      webcam,
+      cropRegion: region ?? undefined,
+      targetBounds,
+      cursorSettings: { visible: cursorVisible, clickRippleEnabled: clickHighlight },
+      countdownSeconds
+    });
+  }
+
+  function cancelCountdown(): void {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setCountdownRemaining(null);
+    setMode('setup');
+  }
+
+  useEffect(
+    () => () => {
+      if (deleteArmTimeoutRef.current) clearTimeout(deleteArmTimeoutRef.current);
+    },
+    []
+  );
 
   useEffect(() => {
     window.screenRecorder.recording
@@ -187,42 +262,37 @@ export function RecorderToolbarApp(): JSX.Element | null {
           if (result.ok) {
             setMode('recording');
             setRecordingStartedAt(Date.now());
+            setNativeActive(result.native ?? false);
+            pausedDurationRef.current = 0;
+            pauseStartedAtRef.current = null;
             setError(null);
           } else {
             setMode('setup');
-            setError(result.error ?? 'Failed to start recording.');
+            const message = result.error ?? 'Failed to start recording.';
+            setError({
+              message,
+              openSettings: isPermissionError(message) ? screenPermission.openSettings : undefined,
+              settingsLabel: 'Open System Settings, then fully quit and reopen benpocket'
+            });
           }
         }
       ),
-    []
+    [screenPermission.openSettings]
   );
 
-  // A pick from the Display/Window click-to-record overlay (see
-  // source-picker-overlay-window.ts) skips the toolbar's own Record button
-  // entirely -- clicking a display/window panel there both selects it and
-  // starts recording immediately, same as the native macOS window-select
-  // flow. `sources`/`cropRegion`/`audio`/`webcam` are all read inside
-  // startRecording via closure, so this has to re-subscribe whenever any of
-  // them change or it'd start with stale config.
-  useEffect(
-    () =>
-      window.screenRecorder.recorderToolbar.onSourcePicked((sourceId) => {
-        const source = sources.find((s) => s.id === sourceId);
-        if (!source) return;
-        setSourceId(source.id);
-        setCropRegion(null);
-        setActiveTab(source.type);
-        setSelectedDevice(null);
-        startRecording(source);
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sources, cropRegion, audio, webcam, screenPermission.status]
-  );
-
+  // Stops ticking (and freezes the displayed time) the instant `mode` isn't
+  // 'recording' -- covers 'paused' automatically. `pausedDurationRef` is
+  // accumulated in handleResume so the displayed elapsed time doesn't jump
+  // forward by the pause's length the moment recording resumes, mirroring
+  // how the native helper retimes the actual video (see main.swift's
+  // totalPausedDuration).
   useEffect(() => {
     if (mode !== 'recording' || recordingStartedAt === null) return;
     const id = setInterval(
-      () => setElapsedSeconds(Math.floor((Date.now() - recordingStartedAt) / 1000)),
+      () =>
+        setElapsedSeconds(
+          Math.floor((Date.now() - recordingStartedAt - pausedDurationRef.current) / 1000)
+        ),
       250
     );
     return () => clearInterval(id);
@@ -230,10 +300,15 @@ export function RecorderToolbarApp(): JSX.Element | null {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
+      if (event.key !== 'Escape') return;
+      // Cancels just the countdown, not the whole toolbar.
+      if (mode === 'counting') {
+        cancelCountdown();
+        return;
+      }
       // Only cancels pre-recording setup -- an active recording only stops
       // via the explicit Stop button, same as the native recorder.
-      if (event.key === 'Escape' && mode === 'setup')
-        window.screenRecorder.recorderToolbar.cancel();
+      if (mode === 'setup') window.screenRecorder.recorderToolbar.cancel();
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -273,6 +348,69 @@ export function RecorderToolbarApp(): JSX.Element | null {
       cameraPreviewStreamRef.current = null;
     };
   }, [openPopover, webcam.enabled, webcam.deviceId]);
+
+  // Live level meter + real device label while the mic is enabled -- same
+  // getUserMedia lifecycle shape as the camera preview above. The meter
+  // itself writes straight into a ref'd DOM node via requestAnimationFrame
+  // rather than React state, since it updates far too often (~60fps) to
+  // push through re-renders.
+  useEffect(() => {
+    // No reset here when mic is off -- the label is only ever read while
+    // `audio.microphoneEnabled` is true (see the Mic button below), so a
+    // stale value sitting unused in state until the mic is re-enabled is
+    // harmless, and avoids a synchronous setState at the top of this effect.
+    if (!audio.microphoneEnabled) return;
+
+    let cancelled = false;
+    let audioContext: AudioContext | null = null;
+    let stream: MediaStream | null = null;
+    let rafId: number | null = null;
+
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then(async (s) => {
+        if (cancelled) {
+          s.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        stream = s;
+        const track = s.getAudioTracks()[0];
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const deviceId = track?.getSettings().deviceId;
+        setMicDeviceLabel(
+          devices.find((d) => d.deviceId === deviceId)?.label ?? track?.label ?? null
+        );
+
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(s);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        function tick(): void {
+          analyser.getByteTimeDomainData(data);
+          // RMS of the waveform, normalized -- cheap, standard level-meter math.
+          let sumSquares = 0;
+          for (const value of data) {
+            const centered = (value - 128) / 128;
+            sumSquares += centered * centered;
+          }
+          const level = Math.min(1, Math.sqrt(sumSquares / data.length) * 4);
+          if (micLevelBarRef.current) micLevelBarRef.current.style.transform = `scaleX(${level})`;
+          rafId = requestAnimationFrame(tick);
+        }
+        tick();
+      })
+      .catch(() => setMicDeviceLabel(null));
+
+    return () => {
+      cancelled = true;
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      stream?.getTracks().forEach((track) => track.stop());
+      void audioContext?.close();
+    };
+  }, [audio.microphoneEnabled]);
 
   const focusedSource = sources.find((s) => s.id === sourceId) ?? null;
 
@@ -416,27 +554,36 @@ export function RecorderToolbarApp(): JSX.Element | null {
       isLikelyMac &&
       (screenPermission.status === 'denied' || screenPermission.status === 'restricted')
     ) {
-      setError('Screen Recording permission is required.');
+      setError({
+        message: 'Screen Recording permission is required.',
+        openSettings: screenPermission.openSettings,
+        settingsLabel: 'Open System Settings, then fully quit and reopen benpocket'
+      });
       screenPermission.openSettings();
       return;
     }
-    setMode('starting');
     setError(null);
-    const region = regionOverride !== undefined ? regionOverride : cropRegion;
-    // The drag-selected Area rect is the most specific target available;
-    // otherwise fall back to the source's own display bounds (only ever
-    // resolved for a 'screen' source, or a 'window' source with a known
-    // owner -- currently just the Simulator -- see CaptureSource.displayBounds).
-    // A generic window with no bounds just leaves this undefined, and the
-    // toolbar stays wherever it already is.
-    const targetBounds = region?.rect ?? source.displayBounds;
-    window.screenRecorder.recorderToolbar.requestStart({
-      sourceId: source.id,
-      audio,
-      webcam,
-      cropRegion: region ?? undefined,
-      targetBounds
-    });
+
+    // Checked up front, before counting down, so a doomed attempt doesn't
+    // waste the user's chosen countdown -- the actual `requestStart` still
+    // only fires once the countdown (if any) finishes.
+    if (countdownSeconds > 0) {
+      setMode('counting');
+      setCountdownRemaining(countdownSeconds);
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdownRemaining((remaining) => {
+          if (remaining === null || remaining <= 1) {
+            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+            beginRecording(source, regionOverride);
+            return null;
+          }
+          return remaining - 1;
+        });
+      }, 1000);
+      return;
+    }
+    beginRecording(source, regionOverride);
   }
 
   function handleStart(): void {
@@ -446,15 +593,65 @@ export function RecorderToolbarApp(): JSX.Element | null {
 
   // Opens the full-desktop click-to-record overlay for this tab's type
   // instead of silently auto-picking the first matching source -- see
-  // source-picker-overlay-window.ts. A pick there arrives via
-  // onSourcePicked above and starts recording immediately.
+  // source-picker-overlay-window.ts. A pick there calls requestStart
+  // directly (see SourcePickerOverlayApp.tsx's confirmSelection) with the
+  // current settings handed over here, rather than relaying back through
+  // this (by then hidden) window to build the payload.
   async function openSourcePicker(type: CaptureTargetType): Promise<void> {
-    await window.screenRecorder.recorderToolbar.openSourcePicker({ type });
+    await window.screenRecorder.recorderToolbar.openSourcePicker({
+      type,
+      countdownSeconds,
+      audio,
+      webcam,
+      cursorSettings: { visible: cursorVisible, clickRippleEnabled: clickHighlight }
+    });
   }
 
   function handleStop(): void {
     setMode('stopping');
     window.screenRecorder.recorderToolbar.requestStop();
+  }
+
+  // Fire-and-forget, no ack event wired up on either the native or IPC side
+  // (see recording-helper.ts's pauseNativeRecording/resumeNativeRecording) --
+  // optimistic UI, same as `cancel()` elsewhere in this file.
+  function handlePause(): void {
+    void window.screenRecorder.nativeRecording.pause();
+    pauseStartedAtRef.current = Date.now();
+    setMode('paused');
+  }
+
+  function handleResume(): void {
+    void window.screenRecorder.nativeRecording.resume();
+    if (pauseStartedAtRef.current !== null) {
+      pausedDurationRef.current += Date.now() - pauseStartedAtRef.current;
+      pauseStartedAtRef.current = null;
+    }
+    setMode('recording');
+  }
+
+  // No native "abort without finalizing" exists (see useRecordingController's
+  // stopAndDiscard) -- this is a real stop-then-start round trip under the
+  // hood, so the toolbar shows a "Restarting..." beat rather than an instant
+  // reset.
+  function handleRestart(): void {
+    setMode('restarting');
+    window.screenRecorder.recorderToolbar.requestRestart();
+  }
+
+  // Destructive and irreversible (no undo, see stopAndDiscard) -- needs a
+  // confirm step. First click arms it for 3s; a second click within that
+  // window is the real delete. No room for a modal in a pill this size, so
+  // this mirrors "click again to confirm" patterns rather than adding one.
+  function handleDeleteClick(): void {
+    if (!deleteArmed) {
+      setDeleteArmed(true);
+      deleteArmTimeoutRef.current = setTimeout(() => setDeleteArmed(false), 3000);
+      return;
+    }
+    if (deleteArmTimeoutRef.current) clearTimeout(deleteArmTimeoutRef.current);
+    setDeleteArmed(false);
+    window.screenRecorder.recorderToolbar.requestDelete();
   }
 
   // Requests Mic/Camera access right at the click that turns each on --
@@ -466,8 +663,15 @@ export function RecorderToolbarApp(): JSX.Element | null {
       setAudio((a) => ({ ...a, microphoneEnabled: !a.microphoneEnabled }));
       return;
     }
-    if (await micPermission.ensure()) setAudio((a) => ({ ...a, microphoneEnabled: true }));
-    else micPermission.openSettings();
+    if (await micPermission.ensure()) {
+      setAudio((a) => ({ ...a, microphoneEnabled: true }));
+    } else {
+      setError({
+        message: 'Microphone access is required.',
+        openSettings: micPermission.openSettings
+      });
+      micPermission.openSettings();
+    }
   }
 
   async function toggleWebcam(nextEnabled: boolean): Promise<void> {
@@ -475,11 +679,44 @@ export function RecorderToolbarApp(): JSX.Element | null {
       setWebcam((w) => ({ ...w, enabled: nextEnabled }));
       return;
     }
-    if (await cameraPermission.ensure()) setWebcam((w) => ({ ...w, enabled: true }));
-    else cameraPermission.openSettings();
+    if (await cameraPermission.ensure()) {
+      setWebcam((w) => ({ ...w, enabled: true }));
+    } else {
+      setError({
+        message: 'Camera access is required.',
+        openSettings: cameraPermission.openSettings
+      });
+      cameraPermission.openSettings();
+    }
   }
 
-  if (mode === 'recording' || mode === 'stopping') {
+  if (mode === 'counting') {
+    return (
+      <div className="relative flex h-full items-end justify-center pb-4">
+        <div className="absolute inset-0" onMouseEnter={disablePointerEvents} />
+        <div
+          ref={pillRef}
+          onMouseEnter={enablePointerEvents}
+          className={cn(
+            DRAG,
+            'flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur'
+          )}
+        >
+          <span className="font-mono text-4xl font-semibold text-white">{countdownRemaining}</span>
+          <button
+            onClick={cancelCountdown}
+            className={cn(NO_DRAG, 'text-[10px] text-white/50 hover:text-white')}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'recording' || mode === 'paused' || mode === 'restarting' || mode === 'stopping') {
+    const isPaused = mode === 'paused';
+    const busy = mode === 'stopping' || mode === 'restarting';
     return (
       <div className="relative flex h-full items-end justify-center pb-4">
         {/* Dead-space overlay: everything in this (fixed-size) window that
@@ -494,22 +731,91 @@ export function RecorderToolbarApp(): JSX.Element | null {
           onMouseEnter={enablePointerEvents}
           className={cn(
             DRAG,
-            'flex items-center gap-3 rounded-full border border-white/10 bg-zinc-900/95 py-2.5 pr-2.5 pl-4 shadow-2xl backdrop-blur'
+            'flex items-center gap-4 rounded-full border border-white/10 bg-zinc-900/95 px-5 py-3 shadow-2xl backdrop-blur'
           )}
         >
-          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
-          <span className="font-mono text-sm text-white">{formatElapsed(elapsedSeconds)}</span>
-          <button
-            onClick={handleStop}
-            disabled={mode === 'stopping'}
-            className={cn(
-              NO_DRAG,
-              'flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[12px] font-medium text-white hover:bg-white/20 disabled:opacity-60'
-            )}
-          >
-            <Square size={11} fill="currentColor" />
-            {mode === 'stopping' ? 'Stopping...' : 'Stop'}
-          </button>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn('h-2.5 w-2.5 rounded-full bg-red-500', !isPaused && 'animate-pulse')}
+            />
+            <span className="font-mono text-sm text-white">{formatElapsed(elapsedSeconds)}</span>
+          </div>
+
+          <Tooltip.Provider delay={200} closeDelay={0}>
+            <div className="flex items-center gap-3 border-l border-white/10 pl-4">
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  onClick={handleStop}
+                  disabled={busy}
+                  className={cn(
+                    NO_DRAG,
+                    'flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50'
+                  )}
+                >
+                  <Square size={13} fill="currentColor" />
+                </Tooltip.Trigger>
+                <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+                  {mode === 'stopping' ? 'Finishing…' : 'Finish'}
+                </Tooltip.Content>
+              </Tooltip.Root>
+
+              {/* Only the native helper path supports pause/resume -- silently
+                  doing nothing on the legacy path would be worse than not
+                  offering it at all, see nativeRecording.pause()'s doc. */}
+              {nativeActive && (
+                <Tooltip.Root>
+                  <Tooltip.Trigger
+                    onClick={isPaused ? handleResume : handlePause}
+                    disabled={busy}
+                    className={cn(
+                      NO_DRAG,
+                      'flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50'
+                    )}
+                  >
+                    {isPaused ? <Play size={13} /> : <Pause size={13} />}
+                  </Tooltip.Trigger>
+                  <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+                    {isPaused ? 'Resume' : 'Pause'}
+                  </Tooltip.Content>
+                </Tooltip.Root>
+              )}
+
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  onClick={handleRestart}
+                  disabled={busy}
+                  className={cn(
+                    NO_DRAG,
+                    'flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50'
+                  )}
+                >
+                  <RotateCcw size={13} />
+                </Tooltip.Trigger>
+                <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+                  {mode === 'restarting' ? 'Restarting…' : 'Restart'}
+                </Tooltip.Content>
+              </Tooltip.Root>
+
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  onClick={handleDeleteClick}
+                  disabled={busy}
+                  className={cn(
+                    NO_DRAG,
+                    'flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-50',
+                    deleteArmed
+                      ? 'bg-red-500/20 text-red-400'
+                      : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
+                  )}
+                >
+                  <Trash2 size={13} />
+                </Tooltip.Trigger>
+                <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+                  {deleteArmed ? 'Confirm?' : 'Delete'}
+                </Tooltip.Content>
+              </Tooltip.Root>
+            </div>
+          </Tooltip.Provider>
         </div>
       </div>
     );
@@ -543,263 +849,312 @@ export function RecorderToolbarApp(): JSX.Element | null {
 
   return (
     <div className="relative flex h-full flex-col items-center justify-end gap-2 pb-4">
-      {/* See the recording-mode return above for why this has no onMouseLeave. */}
-      <div className="absolute inset-0" onMouseEnter={disablePointerEvents} />
+      {/* See the recording-mode return above for why this has no onMouseLeave.
+          Suppressed while a popover is open (see openPopover) -- Camera/Device
+          popovers render outside the pill's own footprint, so without this
+          guard the cursor crossing into one from the pill would re-trigger
+          this and the window would go click-through with nothing left open
+          to recover it. */}
       <div
-        ref={pillRef}
-        onMouseEnter={enablePointerEvents}
-        className={cn(
-          DRAG,
-          'flex items-center gap-1 rounded-full border border-white/10 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur'
-        )}
-      >
-        {/* Purely decorative -- stays a drag handle, unlike everything else in the bar. */}
-        <GripVertical size={13} className="mx-1 shrink-0 text-white/25" />
-
-        <button
-          onClick={() => window.screenRecorder.recorderToolbar.cancel()}
-          title="Cancel (Esc)"
+        className="absolute inset-0"
+        onMouseEnter={() => {
+          if (!openPopover) disablePointerEvents();
+        }}
+      />
+      <Tooltip.Provider delay={200} closeDelay={0}>
+        <div
+          ref={pillRef}
+          onMouseEnter={enablePointerEvents}
           className={cn(
-            NO_DRAG,
-            'flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white'
+            DRAG,
+            'flex items-center gap-1 rounded-full border border-white/10 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur'
           )}
         >
-          <X size={14} />
-        </button>
+          {/* Purely decorative -- stays a drag handle, unlike everything else in the bar. */}
+          <GripVertical size={13} className="mx-1 shrink-0 text-white/25" />
 
-        <div className="ml-1 flex items-center gap-1 border-r border-white/10 pr-1.5">
-          {TABS.map(({ type, label, icon: Icon }) => (
-            <button
-              key={type}
-              onClick={() => {
-                setActiveTab(type);
-                setSelectedDevice(null);
-                void openSourcePicker(type);
-              }}
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              onClick={() => window.screenRecorder.recorderToolbar.cancel()}
               className={cn(
                 NO_DRAG,
-                'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
-                activeTab === type
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                'flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white'
               )}
             >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
+              <X size={14} />
+            </Tooltip.Trigger>
+            <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+              Cancel (Esc)
+            </Tooltip.Content>
+          </Tooltip.Root>
+
+          <div className="ml-1 flex items-center gap-1 border-r border-white/10 pr-1.5">
+            {TABS.map(({ type, label, icon: Icon }) => (
+              <button
+                key={type}
+                onClick={() => {
+                  setActiveTab(type);
+                  setSelectedDevice(null);
+                  void openSourcePicker(type);
+                }}
+                className={cn(
+                  NO_DRAG,
+                  'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
+                  activeTab === type
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                )}
+              >
+                <Icon size={15} />
+                {label}
+              </button>
+            ))}
+
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                onClick={pickArea}
+                className={cn(
+                  NO_DRAG,
+                  'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
+                  cropRegion
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                )}
+              >
+                <Crop size={15} />
+                {cropRegion
+                  ? `${Math.round(cropRegion.rect.width)}×${Math.round(cropRegion.rect.height)}`
+                  : 'Area'}
+              </Tooltip.Trigger>
+              <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+                Drag-select a region of a display to record
+              </Tooltip.Content>
+            </Tooltip.Root>
+
+            <Popover.Root
+              open={openPopover === 'device'}
+              onOpenChange={(open) => {
+                setOpenPopover(open ? 'device' : null);
+                if (open) enablePointerEvents();
+              }}
+            >
+              <Popover.Trigger
+                title="Record a booted iOS Simulator or Android Emulator"
+                className={cn(
+                  NO_DRAG,
+                  'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
+                  selectedDevice
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                )}
+              >
+                <Smartphone size={15} />
+                {selectedDevice === 'simulator'
+                  ? 'Simulator'
+                  : selectedDevice === 'emulator'
+                    ? 'Emulator'
+                    : 'Device'}
+              </Popover.Trigger>
+
+              <Popover.Content
+                side="top"
+                align="start"
+                onMouseEnter={enablePointerEvents}
+                className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-1.5 text-white')}
+              >
+                <button
+                  onClick={() => pickDevice('simulator', simulatorSource)}
+                  disabled={!simulatorSource}
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  Simulator
+                  <span className="text-[10px] text-white/40">
+                    {simulatorSource ? bootedSimulatorName : 'None booted'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => pickDevice('emulator', emulatorSource)}
+                  disabled={!emulatorSource}
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  Emulator
+                  <span className="text-[10px] text-white/40">
+                    {emulatorSource ? emulatorSource.name : 'None running'}
+                  </span>
+                </button>
+              </Popover.Content>
+            </Popover.Root>
+          </div>
+
+          <div className="flex items-center gap-1 border-r border-white/10 px-1.5">
+            <Popover.Root
+              open={openPopover === 'camera'}
+              onOpenChange={(open) => {
+                setOpenPopover(open ? 'camera' : null);
+                if (open) enablePointerEvents();
+              }}
+            >
+              <Popover.Trigger
+                className={cn(
+                  NO_DRAG,
+                  'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
+                  webcam.enabled
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                )}
+              >
+                {webcam.enabled ? <Video size={14} /> : <VideoOff size={14} />}
+                {webcam.enabled ? 'Camera on' : 'Camera off'}
+              </Popover.Trigger>
+
+              <Popover.Content
+                side="top"
+                align="start"
+                onMouseEnter={enablePointerEvents}
+                className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-3 text-white')}
+              >
+                <label className="mb-2 flex items-center gap-2 text-xs text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={webcam.enabled}
+                    onChange={(e) => void toggleWebcam(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-accent"
+                  />
+                  Show webcam
+                </label>
+                {webcam.enabled && (
+                  <div className="flex flex-col gap-2">
+                    <video
+                      ref={cameraPreviewRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className={cn(
+                        'h-24 w-full rounded-lg bg-black object-cover',
+                        webcam.mirrored && 'scale-x-[-1]'
+                      )}
+                    />
+                    {cameraDevices.length > 1 && (
+                      <select
+                        value={webcam.deviceId ?? ''}
+                        onChange={(e) =>
+                          setWebcam((w) => ({ ...w, deviceId: e.target.value || undefined }))
+                        }
+                        className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-1 text-[11px] text-white/80"
+                      >
+                        {cameraDevices.map((device, index) => (
+                          <option
+                            key={device.deviceId}
+                            value={device.deviceId}
+                            className="bg-zinc-900"
+                          >
+                            {device.label || `Camera ${index + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {SHAPES.map(({ value, label, className }) => (
+                        <button
+                          key={value}
+                          onClick={() => setWebcam((w) => ({ ...w, shape: value }))}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-lg border px-2 py-1.5 text-[10px]',
+                            webcam.shape === value
+                              ? 'border-accent text-accent'
+                              : 'border-white/15 text-white/60'
+                          )}
+                        >
+                          <span
+                            className={cn('h-4 w-4 border border-current bg-current/20', className)}
+                          />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-white/80">
+                      <input
+                        type="checkbox"
+                        checked={webcam.mirrored}
+                        onChange={(e) => setWebcam((w) => ({ ...w, mirrored: e.target.checked }))}
+                        className="h-3.5 w-3.5 accent-accent"
+                      />
+                      Mirror
+                    </label>
+                  </div>
+                )}
+              </Popover.Content>
+            </Popover.Root>
+          </div>
 
           <button
-            onClick={pickArea}
-            title="Drag-select a region of a display to record"
+            onClick={() => void toggleMic()}
             className={cn(
               NO_DRAG,
-              'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
-              cropRegion
+              'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
+              audio.microphoneEnabled
                 ? 'bg-white/15 text-white'
                 : 'text-white/50 hover:bg-white/10 hover:text-white/80'
             )}
           >
-            <Crop size={15} />
-            {cropRegion
-              ? `${Math.round(cropRegion.rect.width)}×${Math.round(cropRegion.rect.height)}`
-              : 'Area'}
+            {audio.microphoneEnabled ? <Mic size={14} /> : <MicOff size={14} />}
+            <span className="max-w-20 truncate">
+              {audio.microphoneEnabled ? (micDeviceLabel ?? 'Mic') : 'Mic'}
+            </span>
+            {audio.microphoneEnabled && (
+              <span className="h-3 w-6 overflow-hidden rounded-full bg-white/10">
+                <span
+                  ref={micLevelBarRef}
+                  className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent"
+                />
+              </span>
+            )}
           </button>
 
-          <Popover.Root
-            open={openPopover === 'device'}
-            onOpenChange={(open) => setOpenPopover(open ? 'device' : null)}
-          >
-            <Popover.Trigger
-              title="Record a booted iOS Simulator or Android Emulator"
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              onClick={() => setAudio((a) => ({ ...a, systemAudioEnabled: !a.systemAudioEnabled }))}
               className={cn(
                 NO_DRAG,
-                'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
-                selectedDevice
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                'flex items-center rounded-full border-r border-white/10 px-2.5 py-1.5 pr-4 text-[11px]',
+                audio.systemAudioEnabled ? 'text-white' : 'text-white/50 hover:text-white/80'
               )}
             >
-              <Smartphone size={15} />
-              {selectedDevice === 'simulator'
-                ? 'Simulator'
-                : selectedDevice === 'emulator'
-                  ? 'Emulator'
-                  : 'Device'}
-            </Popover.Trigger>
-
-            <Popover.Content
-              side="top"
-              align="start"
-              onMouseEnter={enablePointerEvents}
-              className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-1.5 text-white')}
-            >
-              <button
-                onClick={() => pickDevice('simulator', simulatorSource)}
-                disabled={!simulatorSource}
-                className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              {audio.systemAudioEnabled ? 'System audio' : 'No system audio'}
+            </Tooltip.Trigger>
+            {audio.systemAudioEnabled && isLikelyMac && (
+              <Tooltip.Content
+                side="top"
+                className="max-w-48 border-white/10 bg-zinc-900 text-white"
               >
-                Simulator
-                <span className="text-[10px] text-white/40">
-                  {simulatorSource ? bootedSimulatorName : 'None booted'}
-                </span>
-              </button>
-              <button
-                onClick={() => pickDevice('emulator', emulatorSource)}
-                disabled={!emulatorSource}
-                className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-              >
-                Emulator
-                <span className="text-[10px] text-white/40">
-                  {emulatorSource ? emulatorSource.name : 'None running'}
-                </span>
-              </button>
-            </Popover.Content>
-          </Popover.Root>
-        </div>
+                Unreliable on macOS without a virtual audio driver -- this may record silence.
+              </Tooltip.Content>
+            )}
+          </Tooltip.Root>
 
-        <div className="flex items-center gap-1 border-r border-white/10 px-1.5">
-          <Popover.Root
-            open={openPopover === 'camera'}
-            onOpenChange={(open) => setOpenPopover(open ? 'camera' : null)}
+          <Button
+            onClick={handleStart}
+            disabled={mode === 'starting'}
+            className={cn(
+              NO_DRAG,
+              'ml-1 flex items-center gap-2 rounded-full px-4 py-1.5 text-[12px] font-medium disabled:opacity-60'
+            )}
           >
-            <Popover.Trigger
-              className={cn(
-                NO_DRAG,
-                'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
-                webcam.enabled
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/50 hover:bg-white/10 hover:text-white/80'
-              )}
-            >
-              {webcam.enabled ? <Video size={14} /> : <VideoOff size={14} />}
-              {webcam.enabled ? 'Camera on' : 'Camera off'}
-            </Popover.Trigger>
-
-            <Popover.Content
-              side="top"
-              align="start"
-              onMouseEnter={enablePointerEvents}
-              className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-3 text-white')}
-            >
-              <label className="mb-2 flex items-center gap-2 text-xs text-white/80">
-                <input
-                  type="checkbox"
-                  checked={webcam.enabled}
-                  onChange={(e) => void toggleWebcam(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-accent"
-                />
-                Show webcam
-              </label>
-              {webcam.enabled && (
-                <div className="flex flex-col gap-2">
-                  <video
-                    ref={cameraPreviewRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className={cn(
-                      'h-24 w-full rounded-lg bg-black object-cover',
-                      webcam.mirrored && 'scale-x-[-1]'
-                    )}
-                  />
-                  {cameraDevices.length > 1 && (
-                    <select
-                      value={webcam.deviceId ?? ''}
-                      onChange={(e) =>
-                        setWebcam((w) => ({ ...w, deviceId: e.target.value || undefined }))
-                      }
-                      className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-1 text-[11px] text-white/80"
-                    >
-                      {cameraDevices.map((device, index) => (
-                        <option
-                          key={device.deviceId}
-                          value={device.deviceId}
-                          className="bg-zinc-900"
-                        >
-                          {device.label || `Camera ${index + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(['circle', 'rounded-square', 'square'] as const).map((option) => (
-                      <button
-                        key={option}
-                        onClick={() => setWebcam((w) => ({ ...w, shape: option }))}
-                        className={cn(
-                          'truncate rounded-lg border px-2 py-1 text-[11px]',
-                          webcam.shape === option
-                            ? 'border-accent text-accent'
-                            : 'border-white/15 text-white/60'
-                        )}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                  <label className="flex items-center gap-2 text-xs text-white/80">
-                    <input
-                      type="checkbox"
-                      checked={webcam.mirrored}
-                      onChange={(e) => setWebcam((w) => ({ ...w, mirrored: e.target.checked }))}
-                      className="h-3.5 w-3.5 accent-accent"
-                    />
-                    Mirror
-                  </label>
-                </div>
-              )}
-            </Popover.Content>
-          </Popover.Root>
+            <span className="h-2.5 w-2.5 rounded-full bg-red-600" />
+            {mode === 'starting' ? 'Starting...' : 'Record'}
+          </Button>
         </div>
-
-        <button
-          onClick={() => void toggleMic()}
-          className={cn(
-            NO_DRAG,
-            'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
-            audio.microphoneEnabled
-              ? 'bg-white/15 text-white'
-              : 'text-white/50 hover:bg-white/10 hover:text-white/80'
-          )}
-        >
-          {audio.microphoneEnabled ? <Mic size={14} /> : <MicOff size={14} />}
-          Mic
-        </button>
-
-        <button
-          onClick={() => setAudio((a) => ({ ...a, systemAudioEnabled: !a.systemAudioEnabled }))}
-          className={cn(
-            NO_DRAG,
-            'flex items-center rounded-full border-r border-white/10 px-2.5 py-1.5 pr-4 text-[11px]',
-            audio.systemAudioEnabled ? 'text-white' : 'text-white/50 hover:text-white/80'
-          )}
-        >
-          {audio.systemAudioEnabled ? 'System audio' : 'No system audio'}
-        </button>
-
-        <button
-          onClick={handleStart}
-          disabled={mode === 'starting'}
-          className={cn(
-            NO_DRAG,
-            'ml-1 flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-[12px] font-medium text-black disabled:opacity-60'
-          )}
-        >
-          <span className="h-2.5 w-2.5 rounded-full bg-red-600" />
-          {mode === 'starting' ? 'Starting...' : 'Record'}
-        </button>
-      </div>
+      </Tooltip.Provider>
 
       {error && (
         <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-zinc-900/95 px-4 py-2.5 text-center shadow-2xl backdrop-blur">
-          <p className="text-xs text-red-400">{error}</p>
-          {isLikelyMac && isPermissionError(error) && (
+          <p className="text-xs text-red-400">{error.message}</p>
+          {error.openSettings && (
             <button
-              onClick={() => window.screenRecorder.permissions.openScreenRecordingSettings()}
+              onClick={error.openSettings}
               className="text-[11px] font-medium text-accent underline-offset-2 hover:underline"
             >
-              Open System Settings, then fully quit and reopen benpocket
+              {error.settingsLabel ?? 'Open System Settings'}
             </button>
           )}
         </div>

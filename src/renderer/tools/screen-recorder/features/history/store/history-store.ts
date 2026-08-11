@@ -180,3 +180,15 @@ export function resetHistory(): void {
   gestureEntryCommitted = false;
   useHistoryStore.setState({ past: [], future: [] });
 }
+
+/**
+ * Cheap "does the open project have edits since the last save/load?" proxy --
+ * `resetHistory()` runs at every session boundary (a project loading in) and
+ * every successful save, so a non-empty `past` means real edits have
+ * accumulated since whichever of those happened most recently. Used to guard
+ * switching to a different project (see `useOpenProject`) so it can warn
+ * before silently discarding them.
+ */
+export function hasUnsavedChanges(): boolean {
+  return useHistoryStore.getState().past.length > 0;
+}

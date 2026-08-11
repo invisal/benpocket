@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { Activity, useState } from 'react';
+import { Activity, useCallback, useEffect, useState } from 'react';
 import { Flag, Loader2, Save } from 'lucide-react';
 import { useAppStore } from './app/app-store';
 import { useToastStore } from './app/toast-store';
@@ -15,6 +15,7 @@ import { ExportDialogButton } from './features/export/components/ExportDialog';
 import { LaunchRecorderButton } from './features/recording/components/LaunchRecorderButton';
 import { SaveProjectDialog } from './features/project/components/SaveProjectDialog';
 import { buildProjectSnapshot } from './features/project/lib/build-project-snapshot';
+import { resetHistory } from './features/history/store/history-store';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { Button } from '@renderer/components/ui/Button';
 import { ToastViewport } from './components/ui/toast';
@@ -48,7 +49,7 @@ export function ScreenRecorderApp(): JSX.Element {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isQuickSaving, setIsQuickSaving] = useState(false);
 
-  async function handleSaveClick(): Promise<void> {
+  const handleSaveClick = useCallback(async (): Promise<void> => {
     if (!currentProjectId) {
       setIsSaveDialogOpen(true);
       return;
@@ -61,6 +62,7 @@ export function ScreenRecorderApp(): JSX.Element {
       if (ok) {
         setCurrentProjectId(project.id);
         bumpProjectsVersion();
+        resetHistory();
         showToast('Project saved');
       } else {
         showToast('Failed to save project', 'error');
@@ -68,7 +70,22 @@ export function ScreenRecorderApp(): JSX.Element {
     } finally {
       setIsQuickSaving(false);
     }
-  }
+  }, [currentProjectId, projectName, setCurrentProjectId, bumpProjectsVersion, showToast]);
+
+  // Cmd/Ctrl+S is bound in use-editor-keyboard-shortcuts.ts (all editor
+  // shortcuts live there) -- it can't call `handleSaveClick` directly since
+  // that hook is scoped to EditorPage, not this component, and the actual
+  // save flow needs this component's own dialog/toast state. It bumps
+  // `saveRequestToken` instead; subscribed (not read reactively) so the
+  // resulting `handleSaveClick` call happens from within the subscription's
+  // own callback rather than synchronously in this effect's body.
+  useEffect(() => {
+    return useAppStore.subscribe((state, prevState) => {
+      if (state.saveRequestToken === prevState.saveRequestToken) return;
+      if (route !== 'editor' || !lastRecording || isQuickSaving) return;
+      void handleSaveClick();
+    });
+  }, [handleSaveClick, route, lastRecording, isQuickSaving]);
 
   return (
     <RecordingControllerProvider>

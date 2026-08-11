@@ -74,6 +74,9 @@ export default defineConfig({
     server: {
       cors: true
     },
+    optimizeDeps: {
+      include: ['gif.js']
+    },
     define: {
       __APP_VERSION__: JSON.stringify(version)
     },

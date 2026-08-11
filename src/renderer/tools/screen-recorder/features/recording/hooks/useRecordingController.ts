@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../../app/app-store';
 import { useRecordingStore } from '../store/recording-store';
 import { startCapture, fileExtensionForBlob, type CaptureHandle } from '../engine/capture-engine';
@@ -9,6 +9,7 @@ import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useCursorStore } from '../../cursor/store/cursor-store';
 import { parseWindowSourceId } from '@shared/window-source-id';
 import { toRecordingMediaUrl } from '@shared/media-protocol';
+import { resetContentStoresForNewRecording } from '../../project/lib/reset-content-stores-for-new-recording';
 
 export interface LiveCounts {
   cursorCount: number;
@@ -18,11 +19,17 @@ export interface LiveCounts {
 export interface StartResult {
   ok: boolean;
   error?: string;
+  /** Whether this recording is on the native helper path -- only it supports Pause/Resume (see CaptureHandle.native). */
+  native?: boolean;
 }
 
 export interface RecordingController {
   start: () => Promise<StartResult>;
   stop: () => Promise<void>;
+  /** Stops and discards the in-progress recording -- no editor hand-off, and the finalized file is deleted rather than kept. */
+  stopAndDiscard: () => Promise<void>;
+  /** Discards the in-progress recording and immediately starts a fresh one with the same settings. */
+  restart: () => Promise<StartResult>;
   error: string | null;
   liveCounts: LiveCounts | null;
 }
@@ -48,6 +55,25 @@ export function useRecordingController(): RecordingController {
     systemAudioEnabled: boolean;
     webcamEnabled: boolean;
   } | null>(null);
+
+  // Safety net for this component unmounting mid-recording -- e.g. the
+  // Screen Recorder tab getting swapped out for another tab while the
+  // floating toolbar is still up and recording (Workspace.tsx only keeps
+  // Kuberneter tabs mounted when inactive, not this one). captureRef/
+  // cursorCaptureRef are plain refs, so an ordinary unmount would otherwise
+  // just drop the last reference to a live capture without ever calling its
+  // stop() -- orphaning the native helper process (or leaked
+  // MediaStreamTracks) and leaving the OS "screen is being recorded"
+  // indicator on indefinitely, since nothing is left to call stop() later.
+  // Fire-and-forget: an unmount can't be awaited, and by the time this runs
+  // there's no toolbar/editor left to hand a result to anyway -- this only
+  // exists to release the OS-level resources, not to save the recording.
+  useEffect(() => {
+    return () => {
+      captureRef.current?.stop().catch(() => {});
+      cursorCaptureRef.current?.stop().catch(() => {});
+    };
+  }, []);
 
   const start = useCallback(async (): Promise<StartResult> => {
     // Read fresh rather than via a reactive subscription -- the focus
@@ -151,7 +177,7 @@ export function useRecordingController(): RecordingController {
         webcamEnabled: useWebcamStore.getState().enabled
       };
       setIsRecording(true);
-      return { ok: true };
+      return { ok: true, native: captureRef.current.native };
     } catch (err) {
       // Own the stream's cleanup here -- it was already taken out of the
       // store above, so nothing else will stop it if startCapture itself
@@ -166,9 +192,13 @@ export function useRecordingController(): RecordingController {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const stop = useCallback(async (): Promise<void> => {
+  // Everything through "the finished file(s) are on disk" -- shared by
+  // `stop()` (which then hands off to the editor) and `stopAndDiscard()`
+  // (which throws the result away instead). Returns null if nothing was
+  // recording to begin with.
+  const finalize = useCallback(async () => {
     const capture = captureRef.current;
-    if (!capture) return;
+    if (!capture) return null;
     setIsRecording(false);
 
     const { video, webcamBlob, webcamStartedAt } = await capture.stop();
@@ -242,16 +272,43 @@ export function useRecordingController(): RecordingController {
         : URL.createObjectURL(webcamBlob);
     }
 
+    return {
+      previewUrl,
+      filePath,
+      webcamFilePath,
+      sizeBytes: blob.size,
+      cursorPath,
+      clickPath,
+      webcamPreviewUrl,
+      webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const stop = useCallback(async (): Promise<void> => {
+    const result = await finalize();
+    if (!result) return;
+    const {
+      filePath,
+      webcamFilePath,
+      sizeBytes,
+      cursorPath,
+      clickPath,
+      previewUrl,
+      webcamPreviewUrl,
+      webcamOffsetMs
+    } = result;
+
     setLastRecording({
       previewUrl,
       filePath,
-      sizeBytes: blob.size,
+      sizeBytes,
       createdAt: Date.now(),
       cursorPath,
       clickPath,
       webcamPreviewUrl,
       webcamFilePath,
-      webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0,
+      webcamOffsetMs,
       source: 'recorded'
     });
     // A fresh recording is a new, unsaved project -- clear whatever project
@@ -259,9 +316,33 @@ export function useRecordingController(): RecordingController {
     // import-video.ts does for imports, so "Save" can't silently overwrite
     // it instead of creating a new one.
     useAppStore.setState({ currentProjectId: null, projectName: 'Untitled Recording' });
+    // Also clear whatever the previous project's background/cursor/captions/
+    // annotations/blur-mask/crop stores held -- without this they'd silently
+    // carry over into this new recording's editor session instead of
+    // starting blank. After `finalize()` (already reset zoom's keyframes
+    // above) so it doesn't disturb that decision.
+    resetContentStoresForNewRecording();
     setRoute('editor');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [finalize]);
 
-  return { start, stop, error, liveCounts };
+  // Restart/Delete both need "stop the capture, but don't hand off to the
+  // editor" -- there's no native "abort without finalizing" (every native
+  // `stop` writes a real file, see recording-helper.ts), so discarding means
+  // actually finalizing then deleting what was just written.
+  const stopAndDiscard = useCallback(async (): Promise<void> => {
+    const result = await finalize();
+    if (!result) return;
+    const { filePath, webcamFilePath } = result;
+    if (filePath) await window.screenRecorder.recording.deleteFile(filePath).catch(() => {});
+    if (webcamFilePath)
+      await window.screenRecorder.recording.deleteFile(webcamFilePath).catch(() => {});
+  }, [finalize]);
+
+  const restart = useCallback(async (): Promise<StartResult> => {
+    await stopAndDiscard();
+    return start();
+  }, [stopAndDiscard, start]);
+
+  return { start, stop, stopAndDiscard, restart, error, liveCounts };
 }

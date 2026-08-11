@@ -6,6 +6,7 @@ import type { SourceResolution } from '@screen-recorder/types/editor';
 import { ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { useZoomStore } from '../store/zoom-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
+import { selectZoomKeyframe } from '../../../app/selection-coordinator';
 import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
 import { Select } from '@renderer/components/ui/Select';
@@ -217,15 +218,8 @@ export function ZoomKeyframeEditor({
   currentTimeMs,
   sourceResolution
 }: ZoomKeyframeEditorProps): JSX.Element {
-  const {
-    mode,
-    keyframes,
-    selectedKeyframeId,
-    setMode,
-    addKeyframe,
-    updateKeyframe,
-    setSelectedKeyframeId
-  } = useZoomStore();
+  const { mode, keyframes, selectedKeyframeId, setMode, addKeyframe, updateKeyframe } =
+    useZoomStore();
   const sourceDurationMs = useTimelineStore((s) => s.sourceDurationMs);
   const sorted = [...keyframes].sort((a, b) => a.atMs - b.atMs);
   const selected = sorted.find((k) => k.id === selectedKeyframeId) ?? null;
@@ -290,7 +284,7 @@ export function ZoomKeyframeEditor({
         variant="secondary"
         onClick={() => {
           const id = addKeyframe(currentTimeMs, sourceDurationMs);
-          setSelectedKeyframeId(id);
+          selectZoomKeyframe(id);
         }}
         className="flex items-center justify-center gap-1.5 py-1.5 text-xs"
       >

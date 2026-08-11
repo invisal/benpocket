@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { Droplets, Square, Timer, Trash2 } from 'lucide-react';
 import type { BlurMaskRegion } from '@screen-recorder/types/project';
 import { useBlurMaskStore, MIN_BLUR_INTENSITY, MAX_BLUR_INTENSITY } from '../store/blur-mask-store';
+import { selectBlurMaskRegion } from '../../../app/selection-coordinator';
 import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';
@@ -35,7 +36,6 @@ interface BlurMaskPanelProps {
 export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Element {
   const regions = useBlurMaskStore((s) => s.regions);
   const selectedRegionId = useBlurMaskStore((s) => s.selectedRegionId);
-  const setSelectedRegionId = useBlurMaskStore((s) => s.setSelectedRegionId);
   const addBlurRegion = useBlurMaskStore((s) => s.addBlurRegion);
   const addMaskRegion = useBlurMaskStore((s) => s.addMaskRegion);
   const removeRegion = useBlurMaskStore((s) => s.removeRegion);
@@ -74,7 +74,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
             return (
               <button
                 key={region.id}
-                onClick={() => setSelectedRegionId(region.id)}
+                onClick={() => selectBlurMaskRegion(region.id)}
                 className={cn(
                   'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-xs transition-colors',
                   selectedRegionId === region.id

@@ -35,6 +35,8 @@ interface RecordingStoreState {
    * cursor/click path, same as if nothing were ever captured.
    */
   autoZoomEnabled: boolean;
+  /** Seconds to count down before a recording actually starts, once the toolbar's Record button is clicked. 0 disables it. */
+  countdownSeconds: number;
   setSelectedSource: (source: CaptureSource | null) => void;
   /** Adopts a native-picker stream as the current pick, releasing any previous one. */
   setNativePickerSelection: (stream: MediaStream, source: CaptureSource) => void;
@@ -49,6 +51,7 @@ interface RecordingStoreState {
   setCropRegion: (region: CaptureRegionSelection | null) => void;
   setAudio: (audio: Partial<AudioInputOptions>) => void;
   setAutoZoomEnabled: (enabled: boolean) => void;
+  setCountdownSeconds: (seconds: number) => void;
 }
 
 export const useRecordingStore = create<RecordingStoreState>()(
@@ -59,6 +62,7 @@ export const useRecordingStore = create<RecordingStoreState>()(
       cropRegion: null,
       audio: { microphoneEnabled: true, systemAudioEnabled: false },
       autoZoomEnabled: true,
+      countdownSeconds: 0,
       setSelectedSource: (selectedSource) => {
         stopStream(get().nativePickerStream);
         set({ selectedSource, nativePickerStream: null, cropRegion: null });
@@ -74,14 +78,19 @@ export const useRecordingStore = create<RecordingStoreState>()(
       },
       setCropRegion: (cropRegion) => set({ cropRegion }),
       setAudio: (audio) => set((state) => ({ audio: { ...state.audio, ...audio } })),
-      setAutoZoomEnabled: (autoZoomEnabled) => set({ autoZoomEnabled })
+      setAutoZoomEnabled: (autoZoomEnabled) => set({ autoZoomEnabled }),
+      setCountdownSeconds: (countdownSeconds) => set({ countdownSeconds })
     }),
     {
       name: 'craftbox-screen-recorder-recording-settings',
       // Only the Settings-page defaults survive a restart -- the current
       // pick/stream/crop are tied to whatever's on screen right now, not a
       // preference, and a MediaStream can't be serialized to storage anyway.
-      partialize: (state) => ({ audio: state.audio, autoZoomEnabled: state.autoZoomEnabled })
+      partialize: (state) => ({
+        audio: state.audio,
+        autoZoomEnabled: state.autoZoomEnabled,
+        countdownSeconds: state.countdownSeconds
+      })
     }
   )
 );

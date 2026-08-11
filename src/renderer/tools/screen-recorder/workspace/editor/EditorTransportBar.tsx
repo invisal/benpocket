@@ -82,7 +82,7 @@ export function EditorTransportBar({
         </button>
         <button
           onClick={togglePlay}
-          title={isPlaying ? 'Pause' : 'Play'}
+          title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
           className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2"
         >
           {isPlaying ? <Pause size={15} /> : <Play size={15} />}

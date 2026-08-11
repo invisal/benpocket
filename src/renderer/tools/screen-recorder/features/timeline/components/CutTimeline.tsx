@@ -584,8 +584,8 @@ export function CutTimeline(): JSX.Element {
               onClick={() => setCutToolActive(!isCutToolActive)}
               title={
                 isCutToolActive
-                  ? 'Cut tool active -- click the timeline to trim'
-                  : 'Cut tool -- click to arm, then click the timeline to trim'
+                  ? 'Cut tool active (C or Esc to exit) -- click the timeline to trim'
+                  : 'Cut tool (C) -- click to arm, then click the timeline to trim'
               }
               className={cn(
                 'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
@@ -598,8 +598,8 @@ export function CutTimeline(): JSX.Element {
               onClick={() => setZoomToolActive(!isZoomToolActive)}
               title={
                 isZoomToolActive
-                  ? 'Zoom tool active -- click the timeline to place a keyframe'
-                  : 'Zoom tool -- click to arm, then click the timeline to place a keyframe'
+                  ? 'Zoom tool active (Z or Esc to exit) -- click the timeline to place a keyframe'
+                  : 'Zoom tool (Z) -- click to arm, then click the timeline to place a keyframe'
               }
               className={cn(
                 'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',

@@ -15,6 +15,7 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "knip": "knip",
     "knip:fix": "knip --fix",
+    "test": "vitest run",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
@@ -29,7 +30,7 @@
     "release:win": "electron-vite build && electron-builder --win --publish always",
     "release:mac": "electron-vite build && electron-builder --mac --publish always",
     "release:linux": "electron-vite build && electron-builder --linux --publish always",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run knip"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run knip && npm run test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",

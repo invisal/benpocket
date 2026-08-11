@@ -22,7 +22,6 @@ import {
 import { useSyncSelectedSegment } from './hooks/use-sync-selected-segment';
 import { useApplySeekRequest } from './hooks/use-apply-seek-request';
 import { useInitializeTimelineForRecording } from './hooks/use-initialize-timeline-for-recording';
-import { useUndoRedoShortcuts } from './hooks/use-undo-redo-shortcuts';
 import { useEditorKeyboardShortcuts } from './hooks/use-editor-keyboard-shortcuts';
 
 export function EditorPage(): JSX.Element {
@@ -63,8 +62,7 @@ export function EditorPage(): JSX.Element {
     durationSec: duration,
     initializeFromDuration
   });
-  useUndoRedoShortcuts({ undo, redo });
-  useEditorKeyboardShortcuts({ videoRef });
+  useEditorKeyboardShortcuts({ videoRef, undo, redo });
 
   // Imported footage never has recorded cursor/click samples, so the Cursor
   // tool has nothing real to show or control -- its tab is hidden below.

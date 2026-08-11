@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import type { PreviewVideoController } from '@screen-recorder/types/editor';
+import { useAppStore } from '../../../app/app-store';
 import {
   useTimelineStore,
   MIN_TIMELINE_ZOOM,
@@ -15,24 +16,54 @@ const TIMELINE_ZOOM_STEP = 0.5;
 
 interface UseEditorKeyboardShortcutsOptions {
   videoRef: RefObject<PreviewVideoController | null>;
+  undo: () => void;
+  redo: () => void;
 }
 
 /**
- * Global (window-level) keyboard shortcuts for the editor page: playback,
- * scrubbing, and the cut/zoom tools. Reads/writes `useTimelineStore`
- * directly rather than taking its state as props, matching how CutTimeline
- * (rendered independently of EditorPage) already shares this same state --
- * see timeline-store.ts's doc comments on `activeTool`/`isCutToolActive`.
+ * Every editor keyboard shortcut lives in this one hook -- playback,
+ * scrubbing, the cut/zoom tools, undo/redo, and save -- rather than spread
+ * across separate hooks/components, so there's one place to check for
+ * conflicts between bindings. Reads/writes `useTimelineStore` directly
+ * rather than taking its state as props, matching how CutTimeline (rendered
+ * independently of EditorPage) already shares this same state -- see
+ * timeline-store.ts's doc comments on `activeTool`/`isCutToolActive`.
  */
-export function useEditorKeyboardShortcuts({ videoRef }: UseEditorKeyboardShortcutsOptions): void {
+export function useEditorKeyboardShortcuts({
+  videoRef,
+  undo,
+  redo
+}: UseEditorKeyboardShortcutsOptions): void {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
       const target = event.target as HTMLElement | null;
       const isEditingText =
         target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
       if (isEditingText) return;
-      // Leave OS/browser shortcuts (and undo/redo, handled by its own hook) alone.
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // Cmd/Ctrl-modified bindings (undo/redo/save) first, and returned
+      // from immediately -- every binding below this is a bare key and must
+      // never also fire while a modifier's held (e.g. Cmd+Z must not *also*
+      // toggle the Zoom tool, which plain "z" does).
+      if (event.metaKey || event.ctrlKey) {
+        const key = event.key.toLowerCase();
+        if (key === 'z' && !event.shiftKey) {
+          event.preventDefault();
+          undo();
+        } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+          event.preventDefault();
+          redo();
+        } else if (key === 's') {
+          event.preventDefault();
+          // Delegates to ScreenRecorderApp's own `handleSaveClick` -- see
+          // app-store.ts's `requestSave` doc for why this can't just call a
+          // save function directly from here.
+          useAppStore.getState().requestSave();
+        }
+        return;
+      }
+      // Leave every other OS/browser Alt-modified shortcut alone.
+      if (event.altKey) return;
 
       const video = videoRef.current;
       const store = useTimelineStore.getState();
@@ -133,5 +164,5 @@ export function useEditorKeyboardShortcuts({ videoRef }: UseEditorKeyboardShortc
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [videoRef]);
+  }, [videoRef, undo, redo]);
 }

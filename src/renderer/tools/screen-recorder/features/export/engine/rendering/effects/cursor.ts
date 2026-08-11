@@ -11,148 +11,239 @@ interface CustomGlyphSubPath {
 }
 
 /**
- * Per-gesture glyph outlines, authored in the same 24x24 box as
- * CursorStyleIcon.tsx's SVG. Both are a single closed contour. Covers both
- * hovering and dragging -- there's no separate grab glyph, see
- * `CursorGesture`.
- *
- * `hover`'s contour isn't hand-authored -- CursorStyleIcon.tsx's pointer.svg
- * source uses curves PixiJS's `Graphics` has no direct equivalent for, so
- * these points were sampled off that already-verified SVG (via
- * `path.getPointAtLength()`) rather than re-derived by hand, to guarantee
- * the export matches the live preview's glyph exactly.
+ * The plain arrow's outline, authored in the same 24x24 box as
+ * CursorStyleIcon.tsx's SVG -- a single closed contour, recolored at
+ * draw time via `drawCursorIconInto`'s `fill`/`stroke` params.
  */
-const CURSOR_GLYPHS: Record<CursorGesture, SubPath[]> = {
-  idle: [
+const CURSOR_IDLE_GLYPH: SubPath[] = [
+  [
+    [5, 3],
+    [5, 20.5],
+    [9.5, 16.2],
+    [12.3, 21.8],
+    [15, 20.4],
+    [12.1, 14.8],
+    [18.5, 14.5]
+  ]
+];
+
+/**
+ * The pointing-hand glyph -- covers both hovering something clickable and
+ * dragging, there's no separate grab glyph (see `CursorGesture`). Fixed
+ * white/black artwork, same as CursorStyleIcon.tsx's hover branch: `fill`
+ * is the hand body (drawn white, then re-stroked black for its outline),
+ * `lines` are the three finger-crease strokes drawn on top. None of this is
+ * recolored via `drawCursorIconInto`'s `fill`/`stroke` params, unlike the
+ * arrow above.
+ *
+ * `fill`'s contour isn't hand-authored -- CursorStyleIcon.tsx's source path
+ * uses curves PixiJS's `Graphics` has no direct equivalent for, so these
+ * points were flattened off that same path data (cubic bezier sampling)
+ * rather than re-derived by hand, to guarantee the export matches the live
+ * preview's glyph exactly.
+ */
+const CURSOR_HOVER_GLYPH: { fill: SubPath[]; lines: [SubPath[number], SubPath[number]][] } = {
+  fill: [
     [
-      [5, 3],
-      [5, 20.5],
-      [9.5, 16.2],
-      [12.3, 21.8],
-      [15, 20.4],
-      [12.1, 14.8],
-      [18.5, 14.5]
+      [5.83, 17.77],
+      [5.53, 17.31],
+      [5.19, 16.71],
+      [4.78, 15.98],
+      [4.26, 15.15],
+      [3.84, 14.56],
+      [3.27, 13.85],
+      [2.71, 13.18],
+      [2.29, 12.66],
+      [2.14, 12.3],
+      [2.07, 12],
+      [2.08, 11.7],
+      [2.16, 11.34],
+      [2.37, 10.79],
+      [2.78, 10.33],
+      [3.34, 10.01],
+      [3.99, 9.9],
+      [4.48, 9.99],
+      [4.96, 10.21],
+      [5.41, 10.51],
+      [5.83, 10.82],
+      [6.05, 11.06],
+      [6.29, 11.34],
+      [6.53, 11.63],
+      [6.75, 11.87],
+      [6.91, 12.05],
+      [7.01, 12.2],
+      [7.12, 12.35],
+      [7.28, 12.52],
+      [7.45, 12.79],
+      [7.55, 12.94],
+      [7.59, 12.91],
+      [7.54, 12.66],
+      [7.44, 12.1],
+      [7.32, 11.43],
+      [7.19, 10.68],
+      [7.01, 9.9],
+      [6.91, 9.42],
+      [6.82, 9.08],
+      [6.72, 8.79],
+      [6.62, 8.46],
+      [6.52, 8.01],
+      [6.42, 7.6],
+      [6.32, 7.2],
+      [6.22, 6.75],
+      [6.13, 6.35],
+      [6.03, 5.81],
+      [5.93, 5.25],
+      [5.83, 4.78],
+      [5.76, 4.21],
+      [5.78, 3.55],
+      [5.92, 2.92],
+      [6.22, 2.42],
+      [6.58, 2.17],
+      [7.03, 2.04],
+      [7.5, 2.03],
+      [7.93, 2.16],
+      [8.37, 2.53],
+      [8.72, 3.01],
+      [8.96, 3.49],
+      [9.11, 3.86],
+      [9.31, 4.4],
+      [9.49, 5.03],
+      [9.65, 5.73],
+      [9.77, 6.49],
+      [9.98, 7.56],
+      [10.2, 8.67],
+      [10.36, 9.61],
+      [10.43, 10.16],
+      [10.41, 9.71],
+      [10.38, 9.18],
+      [10.37, 8.65],
+      [10.43, 8.19],
+      [10.55, 7.88],
+      [10.74, 7.57],
+      [11, 7.31],
+      [11.34, 7.14],
+      [11.64, 7.07],
+      [11.93, 7.03],
+      [12.23, 7.01],
+      [12.52, 7.01],
+      [12.82, 7.13],
+      [13.1, 7.29],
+      [13.36, 7.47],
+      [13.57, 7.67],
+      [13.88, 8.39],
+      [14.03, 9.19],
+      [14.09, 9.83],
+      [14.1, 10.03],
+      [14.18, 9.56],
+      [14.25, 8.98],
+      [14.34, 8.41],
+      [14.49, 7.93],
+      [14.66, 7.74],
+      [14.9, 7.55],
+      [15.18, 7.4],
+      [15.41, 7.28],
+      [15.73, 7.2],
+      [16.07, 7.18],
+      [16.41, 7.2],
+      [16.72, 7.28],
+      [16.96, 7.34],
+      [17.23, 7.5],
+      [17.48, 7.72],
+      [17.64, 7.93],
+      [17.82, 8.37],
+      [17.96, 9],
+      [18.07, 9.65],
+      [18.17, 10.16],
+      [18.19, 10.13],
+      [18.27, 9.9],
+      [18.39, 9.57],
+      [18.56, 9.24],
+      [19.16, 8.78],
+      [19.96, 8.65],
+      [20.69, 9.02],
+      [21.06, 10.03],
+      [21.06, 10.55],
+      [21.06, 10.85],
+      [21.06, 11.1],
+      [21.06, 11.48],
+      [21.06, 11.92],
+      [21.06, 12.31],
+      [21.06, 12.67],
+      [21.06, 13.05],
+      [21.03, 13.55],
+      [20.97, 14.17],
+      [20.89, 14.78],
+      [20.79, 15.28],
+      [20.65, 15.66],
+      [20.43, 16.15],
+      [20.17, 16.67],
+      [19.87, 17.12],
+      [19.65, 17.38],
+      [19.14, 18],
+      [18.6, 18.78],
+      [18.3, 19.48],
+      [18.22, 19.94],
+      [18.19, 20.24],
+      [18.17, 20.48],
+      [18.17, 20.79],
+      [18.19, 21.2],
+      [18.23, 21.58],
+      [18.28, 21.86],
+      [18.3, 21.97],
+      [17.89, 21.75],
+      [17.5, 21.35],
+      [17.17, 20.9],
+      [16.99, 20.53],
+      [16.77, 20.31],
+      [16.53, 20.24],
+      [16.29, 20.31],
+      [16.07, 20.53],
+      [15.81, 20.98],
+      [15.45, 21.45],
+      [15.04, 21.82],
+      [14.62, 21.97],
+      [13.79, 22.03],
+      [12.74, 22.02],
+      [11.62, 21.99],
+      [10.56, 21.97],
+      [10.59, 21.76],
+      [10.62, 21.25],
+      [10.56, 20.65],
+      [10.29, 20.14],
+      [9.96, 19.8],
+      [9.57, 19.42],
+      [9.19, 19.03],
+      [8.85, 18.69]
     ]
   ],
-  hover: [
+  lines: [
     [
-      [10.03, 0.19],
-      [10.64, 0.73],
-      [11, 1.46],
-      [11.03, 2.27],
-      [11.03, 3.09],
-      [11.04, 3.9],
-      [11.04, 4.72],
-      [11.05, 5.54],
-      [11.05, 6.35],
-      [11.06, 7.17],
-      [11.28, 7.06],
-      [11.82, 6.47],
-      [12.56, 6.14],
-      [13.37, 6.12],
-      [14.12, 6.43],
-      [14.69, 7.01],
-      [14.97, 7.77],
-      [15.03, 8.58],
-      [15.13, 9.09],
-      [15.62, 8.45],
-      [16.34, 8.07],
-      [17.15, 8.02],
-      [17.91, 8.28],
-      [18.49, 8.86],
-      [18.8, 9.61],
-      [18.82, 10.42],
-      [18.84, 11.24],
-      [19.15, 10.9],
-      [19.75, 10.36],
-      [20.52, 10.12],
-      [21.33, 10.2],
-      [22.02, 10.62],
-      [22.5, 11.28],
-      [22.65, 12.07],
-      [22.65, 12.89],
-      [22.66, 13.71],
-      [22.66, 14.52],
-      [22.66, 15.34],
-      [22.66, 16.16],
-      [22.66, 16.97],
-      [22.65, 17.79],
-      [22.58, 18.6],
-      [22.42, 19.4],
-      [22.15, 20.17],
-      [21.78, 20.9],
-      [21.33, 21.58],
-      [20.79, 22.19],
-      [20.17, 22.73],
-      [19.49, 23.18],
-      [18.76, 23.54],
-      [17.99, 23.81],
-      [17.2, 23.98],
-      [16.38, 24.02],
-      [15.56, 24.02],
-      [14.75, 24.02],
-      [13.93, 24.02],
-      [13.12, 24.02],
-      [12.3, 24.02],
-      [11.48, 24.02],
-      [10.67, 23.96],
-      [9.87, 23.8],
-      [9.09, 23.54],
-      [8.36, 23.19],
-      [7.68, 22.74],
-      [7.05, 22.22],
-      [6.47, 21.64],
-      [5.96, 21.01],
-      [5.5, 20.33],
-      [5.08, 19.63],
-      [4.7, 18.91],
-      [4.34, 18.18],
-      [3.98, 17.44],
-      [3.62, 16.71],
-      [3.26, 15.98],
-      [2.89, 15.25],
-      [2.53, 14.52],
-      [2.17, 13.79],
-      [1.82, 13.05],
-      [1.48, 12.31],
-      [1.35, 11.51],
-      [1.54, 10.72],
-      [2.03, 10.08],
-      [2.74, 9.68],
-      [3.54, 9.61],
-      [4.31, 9.87],
-      [4.96, 10.37],
-      [5.5, 10.98],
-      [5.96, 11.65],
-      [6.36, 12.36],
-      [6.72, 13.09],
-      [7.05, 13.84],
-      [7.13, 13.39],
-      [7.13, 12.57],
-      [7.13, 11.76],
-      [7.13, 10.94],
-      [7.13, 10.13],
-      [7.13, 9.31],
-      [7.14, 8.49],
-      [7.14, 7.68],
-      [7.14, 6.86],
-      [7.14, 6.04],
-      [7.14, 5.23],
-      [7.14, 4.41],
-      [7.14, 3.59],
-      [7.15, 2.78],
-      [7.15, 1.96],
-      [7.29, 1.16],
-      [7.75, 0.5],
-      [8.45, 0.09],
-      [9.25, -0.04]
+      [16.73, 18.17],
+      [16.73, 13.71]
+    ],
+    [
+      [14.1, 18.17],
+      [13.97, 13.71]
+    ],
+    [
+      [11.47, 13.71],
+      [11.47, 18.17]
     ]
   ]
 };
 
 /**
+ * Authored stroke width (0.75, in the hand's own 32x32 box), rescaled to the
+ * shared 24x24 box and boosted by the same 1.75x `CursorStyleIcon.tsx` uses
+ * to size the whole glyph up -- keeps the outline/finger-crease thickness
+ * proportional to the enlarged body instead of reading as comparatively
+ * thin.
+ */
+const CURSOR_HOVER_STROKE_WIDTH = 0.75 * (24 / 32) * 1.75;
+
+/**
  * Per-`customIcon` glyph outlines for the 5 fully custom, fixed-color
- * illustrations (features/cursor/svg/*.svg) -- unlike `CURSOR_GLYPHS`,
+ * illustrations (features/cursor/svg/*.svg) -- unlike `CURSOR_IDLE_GLYPH`,
  * each entry here is a *list of independently-colored subpaths* (one path
  * keeps its own fill from the source SVG, not the shared `fill`/`stroke`
  * every other glyph takes as draw-time params) -- these presets aren't
@@ -2724,24 +2815,53 @@ function drawCursorIconInto(
     return;
   }
 
-  const hotspot = CURSOR_GESTURE_HOTSPOTS[gesture];
+  if (gesture === 'hover') {
+    // Fixed white/black artwork -- not recolored via `fill`/`stroke`
+    // (unlike the arrow below), matching CursorStyleIcon.tsx's hover
+    // branch exactly so the export stays pixel-identical to the live
+    // preview regardless of which cursor color preset is active.
+    const hotspot = CURSOR_GESTURE_HOTSPOTS.hover;
+    const strokeWidth = CURSOR_HOVER_STROKE_WIDTH * s;
+    for (const subPath of CURSOR_HOVER_GLYPH.fill) {
+      const pts = subPath.map((p) => toScreenPoint(p, hotspot, x, y, s, clickScale));
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.closePath();
+    }
+    g.fill({ color: '#ffffff', alpha });
+    // Re-stroke the same contour(s) for the hand's black outline, then the
+    // three finger-crease lines on top -- both fixed black, same as the
+    // source art.
+    for (const subPath of CURSOR_HOVER_GLYPH.fill) {
+      const pts = subPath.map((p) => toScreenPoint(p, hotspot, x, y, s, clickScale));
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.closePath();
+      g.stroke({ color: '#000000', width: strokeWidth, alpha });
+    }
+    for (const [start, end] of CURSOR_HOVER_GLYPH.lines) {
+      const [sx, sy] = toScreenPoint(start, hotspot, x, y, s, clickScale);
+      const [ex, ey] = toScreenPoint(end, hotspot, x, y, s, clickScale);
+      g.moveTo(sx, sy);
+      g.lineTo(ex, ey);
+      g.stroke({ color: '#000000', width: strokeWidth, alpha });
+    }
+    return;
+  }
+
+  // Only the plain arrow reaches here (idle, no customIcon).
+  const hotspot = CURSOR_GESTURE_HOTSPOTS.idle;
   // Anchored so the glyph's own hotspot (not the path's local (0,0) corner)
   // lands exactly on (x, y) -- the actual recorded cursor/click position --
   // rather than offsetting the whole icon down-right by hotspot*s.
-  for (const subPath of CURSOR_GLYPHS[gesture]) {
+  for (const subPath of CURSOR_IDLE_GLYPH) {
     const pts = subPath.map((p) => toScreenPoint(p, hotspot, x, y, s, clickScale));
     g.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
     g.closePath();
   }
   g.fill({ color: fill, alpha });
-  // Only the arrow gets an outline -- the hand glyph (hand-pointer.svg) is
-  // fill-only in its source art (its "outline" look already comes from the
-  // two contours above, not a stroke), and a stroke here would be
-  // disproportionately thick next to its fine details.
-  if (gesture === 'idle') {
-    g.stroke({ color: stroke, width: 1.4 * s, alpha });
-  }
+  g.stroke({ color: stroke, width: 1.4 * s, alpha });
 }
 
 /** Recorded cursor + motion-blur ghost trail + click-bounce, redrawn into one `Graphics` per frame. */

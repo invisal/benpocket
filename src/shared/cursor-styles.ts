@@ -11,16 +11,16 @@ export type CursorCustomIconId = 'cursor-1' | 'cursor-2' | 'cursor-3' | 'cursor-
  */
 export interface CursorStylePreset {
   id: string;
-  /** Arrow fill color -- also what the shared hover-hand icon and click-ripple use, even for a `customIcon` preset (its own idle glyph is fixed-color and ignores this). */
+  /** Arrow fill color -- also what click-ripple uses, even for a `customIcon` preset (its own idle glyph is fixed-color and ignores this). The shared hover-hand icon is fixed white/black artwork and ignores this too, same as a `customIcon`'s idle glyph. */
   fill: string;
-  /** Arrow outline color. Unused by `customIcon` presets (their idle glyph has no separate stroke pass -- its look comes entirely from its own per-path fill colors) and by the hover-hand icon (fill-only), but kept for type uniformity. */
+  /** Arrow outline color. Unused by `customIcon` presets (their idle glyph has no separate stroke pass -- its look comes entirely from its own per-path fill colors) and by the hover-hand icon (own fixed black outline, not this color), but kept for type uniformity. */
   stroke: string;
   /**
    * When set, `idle` draws this fully custom, fixed-color illustration
    * instead of the shared plain arrow -- `hover` still swaps to the one
-   * shared hand icon regardless, colored via `fill` same as every other
-   * preset, so hover/drag/click-bounce/ripple behavior stays identical
-   * across every style.
+   * shared hand icon regardless (itself fixed-color, same as every
+   * `customIcon`'s idle glyph), so hover/drag/click-bounce/ripple behavior
+   * stays identical across every style.
    */
   customIcon?: CursorCustomIconId;
 }
@@ -53,7 +53,7 @@ export const CURSOR_SIZE_UNIT_PX = 5;
  * Anchor point, in each gesture icon's shared 24x24 authoring box, that
  * should land exactly on the recorded cursor position -- `idle`'s arrow
  * corner tip, and `hover`'s hand fingertip (its own glyph's topmost point,
- * sampled via `getPointAtLength()` rather than eyeballed -- see
+ * found by flattening its source curves rather than eyeballed -- see
  * CursorStyleIcon.tsx). Both the live-preview SVG (CursorStyleIcon.tsx) and
  * the export renderer (features/export/engine/rendering/effects/cursor.ts)
  * translate around this instead of the box's own (0,0) corner, so the glyph
@@ -61,7 +61,7 @@ export const CURSOR_SIZE_UNIT_PX = 5;
  */
 export const CURSOR_GESTURE_HOTSPOTS: Record<CursorGesture, { x: number; y: number }> = {
   idle: { x: 5, y: 3 },
-  hover: { x: 9.25, y: 0 }
+  hover: { x: 7.5, y: 2.03 }
 };
 
 /**

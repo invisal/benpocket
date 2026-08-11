@@ -1,3 +1,4 @@
+import { MetricsSection } from './metrics';
 import { Age } from '../../Age';
 import type React from 'react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -8,7 +9,6 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
 import { type K8sResource } from '../../../types/K8sResource';
-import { MoreVertical, Cpu, Layers, ArrowUpDown, Database, Flag } from 'lucide-react';
 
 interface ApplicationDetailProps {
   payload: ApplicationData;
@@ -36,29 +36,6 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
     (K8sResource & { kind: string })[]
   >([]);
 
-  // Metric options
-  const [timeRange, setTimeRange] = useState('1h');
-  const [selectedMetric, setSelectedMetric] = useState<'cpu' | 'memory' | 'network' | 'disk'>(
-    'cpu'
-  );
-
-  const metricLabel = {
-    cpu: 'CPU Usage',
-    memory: 'Memory Usage',
-    network: 'Network Traffic',
-    disk: 'Disk I/O'
-  }[selectedMetric];
-
-  // Mock bar charts
-  const mockBars = useMemo(() => {
-    // Generate some wave-like bar heights
-    const seed = selectedMetric === 'cpu' ? 12 : selectedMetric === 'memory' ? 24 : 8;
-    return Array.from({ length: 44 }, (_, i) => {
-      const h = Math.abs(Math.sin((i + seed) * 0.2)) * 60 + 5;
-      return Math.min(100, Math.max(5, h));
-    });
-  }, [selectedMetric]);
-
   const handleNamespaceClick = useCallback(
     (ns: string) => {
       if (ns && activeInstanceId) {
@@ -82,6 +59,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
           { kind: 'Deployment', resource: 'deployments' },
           { kind: 'StatefulSet', resource: 'statefulsets' },
           { kind: 'DaemonSet', resource: 'daemonsets' },
+          { kind: 'Pod', resource: 'pods' },
           { kind: 'ConfigMap', resource: 'configmaps' },
           { kind: 'Secret', resource: 'secrets' },
           { kind: 'ServiceAccount', resource: 'serviceaccounts' },
@@ -161,6 +139,11 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
       return false;
     });
   }, [allRelatedResources, payload.instance]);
+
+  const primaryPodName = useMemo(() => {
+    const podItem = matchedResources.find((item) => item.kind === 'Pod');
+    return podItem?.metadata?.name || '';
+  }, [matchedResources]);
 
   // Split into Workload Resources vs Other Resources
   const workloadResources = useMemo<ResourceItem[]>(() => {
@@ -328,134 +311,15 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
       {/* Metrics Section */}
-      <div className="flex flex-col bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        <div className="flex justify-between items-center pb-2 border-b border-border/40 mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">
-              Metrics
-            </span>
-            <MoreVertical className="size-3.5 text-zinc-600" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="bg-surface-3 border border-border/60 rounded text-[10px] px-1 py-0.5 text-zinc-300 focus:outline-none focus:ring-0 cursor-pointer"
-            >
-              <option value="1h">1h</option>
-              <option value="6h">6h</option>
-              <option value="24h">24h</option>
-              <option value="7d">7d</option>
-            </select>
-
-            <span className="h-4 w-px bg-border/40 mx-1" />
-
-            <button
-              onClick={() => setSelectedMetric('cpu')}
-              title="CPU"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'cpu'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Cpu className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setSelectedMetric('memory')}
-              title="Memory"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'memory'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Layers className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setSelectedMetric('network')}
-              title="Network"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'network'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <ArrowUpDown className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setSelectedMetric('disk')}
-              title="Disk"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'disk'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Database className="size-3.5" />
-            </button>
-
-            <span className="h-4 w-px bg-border/40 mx-1" />
-
-            <button
-              title="Filter"
-              className="p-1 rounded cursor-pointer border-none bg-transparent text-zinc-555"
-            >
-              <Flag className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="text-[10px] text-zinc-500 mb-2 pl-0.5">
-          Displaying metrics from Prometheus:{' '}
-          <span className="text-accent/80 hover:underline cursor-pointer">monitoring</span> /{' '}
-          <span className="text-accent/80 hover:underline cursor-pointer">
-            prometheus-operated:9090
-          </span>
-        </div>
-
-        <div className="h-32 w-full bg-black/10 rounded border border-border-dark/30 relative flex flex-col justify-end p-2 pr-4">
-          <div className="absolute left-2 top-2 bottom-6 flex flex-col justify-between text-[8px] font-mono text-zinc-650 select-none">
-            <span>1.000</span>
-            <span>0.800</span>
-            <span>0.600</span>
-            <span>0.400</span>
-            <span>0.200</span>
-            <span>0</span>
-          </div>
-
-          <div className="ml-10 flex-1 relative border-b border-l border-zinc-800/60 flex items-end justify-between px-0.5">
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-            </div>
-
-            {mockBars.map((val, idx) => (
-              <div
-                key={idx}
-                className="w-1.5 bg-accent/60 rounded-t hover:bg-accent transition-colors"
-                style={{ height: `${val}%` }}
-                title={`${metricLabel}: ${val}%`}
-              />
-            ))}
-          </div>
-
-          <div className="ml-10 flex justify-between text-[8px] font-mono text-zinc-650 pt-1 select-none">
-            <span>10:55</span>
-            <span>11:02</span>
-            <span>11:08</span>
-            <span>11:14</span>
-            <span>11:20</span>
-            <span>11:26</span>
-            <span>11:32</span>
-            <span>11:38</span>
-            <span>11:44</span>
-            <span>11:50</span>
-          </div>
-        </div>
+      <div className="flex flex-col gap-2">
+        <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
+          Metrics
+        </span>
+        <MetricsSection
+          namespace={payload.namespace}
+          podName={primaryPodName}
+          resourceLabel="application"
+        />
       </div>
 
       {/* Properties Section */}

@@ -114,6 +114,7 @@ export const useLayoutStore = create<LayoutState>()(
 
           if (tabExists) {
             return {
+              openTabs: state.openTabs.map((t) => (t.id === tab.id ? { ...t, ...tab } : t)),
               activeTabId: tab.id
             };
           }

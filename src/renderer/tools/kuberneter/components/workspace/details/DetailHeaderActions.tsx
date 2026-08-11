@@ -18,6 +18,11 @@ export const DetailHeaderActions: React.FC<DetailHeaderActionsProps> = ({
   payload
 }) => {
   switch (contentType) {
+    case 'application':
+    case 'applications':
+    case 'app':
+    case 'apps':
+      return null;
     case 'pod':
     case 'pods':
       return <PodHeaderActions payload={payload as PodData} />;

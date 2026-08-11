@@ -42,8 +42,25 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export const KuberneterSettings: FC = () => {
-  const [activeId, setActiveId] = useState(SETTINGS_SECTIONS[0].id);
+export interface KuberneterSettingsProps {
+  section?: string;
+}
+
+export const KuberneterSettings: FC<KuberneterSettingsProps> = ({ section }) => {
+  const [activeId, setActiveId] = useState(() => {
+    if (section && SETTINGS_SECTIONS.some((s) => s.id === section)) {
+      return section;
+    }
+    return SETTINGS_SECTIONS[0].id;
+  });
+  const [prevSection, setPrevSection] = useState(section);
+
+  if (section !== prevSection) {
+    setPrevSection(section);
+    if (section && SETTINGS_SECTIONS.some((s) => s.id === section)) {
+      setActiveId(section);
+    }
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-0">

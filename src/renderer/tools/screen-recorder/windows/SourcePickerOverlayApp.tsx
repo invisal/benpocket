@@ -58,6 +58,7 @@ export function SourcePickerOverlayApp(): JSX.Element | null {
   const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasConfirmedRef = useRef(false);
 
   useEffect(() => {
     window.screenRecorder.recording
@@ -100,6 +101,7 @@ export function SourcePickerOverlayApp(): JSX.Element | null {
       countdownIntervalRef.current = null;
     }
     setCountdownRemaining(null);
+    hasConfirmedRef.current = false;
   }
 
   // Same call the toolbar's own Record button makes (beginRecording in
@@ -131,19 +133,22 @@ export function SourcePickerOverlayApp(): JSX.Element | null {
   // whatever the toolbar has configured.
   function confirmSelection(source: CaptureSource, countdownSecondsOverride?: number): void {
     if (!init) return;
+    if (hasConfirmedRef.current) return;
+    hasConfirmedRef.current = true;
     const countdownSeconds = countdownSecondsOverride ?? init.countdownSeconds;
     if (countdownSeconds > 0) {
-      setCountdownRemaining(countdownSeconds);
+      let remaining = countdownSeconds;
+      setCountdownRemaining(remaining);
       countdownIntervalRef.current = setInterval(() => {
-        setCountdownRemaining((remaining) => {
-          if (remaining === null || remaining <= 1) {
-            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-            startRecording(init, source);
-            return null;
-          }
-          return remaining - 1;
-        });
+        remaining -= 1;
+        if (remaining <= 0) {
+          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+          setCountdownRemaining(null);
+          startRecording(init, source);
+          return;
+        }
+        setCountdownRemaining(remaining);
       }, 1000);
       return;
     }

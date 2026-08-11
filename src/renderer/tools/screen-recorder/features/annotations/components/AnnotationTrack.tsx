@@ -5,6 +5,7 @@ import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/t
 import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useAnnotationsStore } from '../store/annotations-store';
+import { selectAnnotation } from '../../../app/selection-coordinator';
 
 const MIN_ANNOTATION_DURATION_MS = 300;
 
@@ -35,7 +36,6 @@ export function AnnotationTrack(): JSX.Element | null {
   const removeAnnotation = useAnnotationsStore((s) => s.removeAnnotation);
   const duplicateAnnotation = useAnnotationsStore((s) => s.duplicateAnnotation);
   const selectedAnnotationId = useAnnotationsStore((s) => s.selectedAnnotationId);
-  const setSelectedAnnotationId = useAnnotationsStore((s) => s.setSelectedAnnotationId);
 
   return (
     <PillTrack
@@ -52,6 +52,8 @@ export function AnnotationTrack(): JSX.Element | null {
       // in pink instead of purple -- ZoomTrack claimed purple/violet, so
       // this moved off it to stay visually distinguishable.
       colorClassName="border-pink-900/40 text-pink-950"
+      ringClassName="ring-pink-600"
+      hoverRingClassName="hover:ring-pink-400"
       handleClassName="bg-black/10 hover:bg-black/25"
       laneHeightPx={CLIP_ROW_HEIGHT_PX}
       renderContent={(a) => {
@@ -73,7 +75,7 @@ export function AnnotationTrack(): JSX.Element | null {
       onSelect={(a) => {
         requestSeek(a.atMs);
         setActiveTool('annotations');
-        setSelectedAnnotationId(a.id);
+        selectAnnotation(a.id);
       }}
       onMove={(a, atMs) => updateAnnotation(a.id, { atMs })}
       onResizeStart={(a, newAtMs) => {
@@ -97,7 +99,7 @@ export function AnnotationTrack(): JSX.Element | null {
         if (!newId) return;
         requestSeek(a.atMs + a.durationMs);
         setActiveTool('annotations');
-        setSelectedAnnotationId(newId);
+        selectAnnotation(newId);
       }}
     />
   );

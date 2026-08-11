@@ -7,6 +7,10 @@ import {
   MIN_TIMELINE_ZOOM,
   MAX_TIMELINE_ZOOM
 } from '../../../features/timeline/store/timeline-store';
+import { useZoomStore } from '../../../features/zoom/store/zoom-store';
+import { useAnnotationsStore } from '../../../features/annotations/store/annotations-store';
+import { useBlurMaskStore } from '../../../features/blur-mask/store/blur-mask-store';
+import { clearSelection } from '../../../app/selection-coordinator';
 
 // ~1 frame at 30fps -- there's no source framerate available here, so this is
 // a reasonable fixed approximation rather than a true frame-accurate step.
@@ -18,6 +22,47 @@ interface UseEditorKeyboardShortcutsOptions {
   videoRef: RefObject<PreviewVideoController | null>;
   undo: () => void;
   redo: () => void;
+}
+
+/**
+ * Deletes whichever "tracking pill" (zoom keyframe / annotation / blur-mask
+ * region) is currently selected, checked in that order and stopping at the
+ * first match -- the same delete each one's own context-menu "Delete" item
+ * already does, just reachable without opening it. Falls back to the main
+ * clip row's `selectedSegmentId` last, deliberately: unlike the others,
+ * that field auto-selects the first clip whenever nothing else is (see
+ * use-sync-selected-segment.ts), so it's rarely a deliberate "yes, delete
+ * this" the way an explicitly-clicked pill is -- checking it last means a
+ * genuinely-selected pill always wins over that leftover default. Returns
+ * whether anything was actually deleted, so the caller only calls
+ * `preventDefault()` when this really did something.
+ */
+function deleteSelectedTrackingPillOrSegment(): boolean {
+  const zoom = useZoomStore.getState();
+  if (zoom.selectedKeyframeId) {
+    zoom.removeKeyframe(zoom.selectedKeyframeId);
+    return true;
+  }
+
+  const annotations = useAnnotationsStore.getState();
+  if (annotations.selectedAnnotationId) {
+    annotations.removeAnnotation(annotations.selectedAnnotationId);
+    return true;
+  }
+
+  const blurMask = useBlurMaskStore.getState();
+  if (blurMask.selectedRegionId) {
+    blurMask.removeRegion(blurMask.selectedRegionId);
+    return true;
+  }
+
+  const timeline = useTimelineStore.getState();
+  if (timeline.selectedSegmentId) {
+    timeline.deleteSegment(timeline.selectedSegmentId);
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -59,6 +104,10 @@ export function useEditorKeyboardShortcuts({
           // app-store.ts's `requestSave` doc for why this can't just call a
           // save function directly from here.
           useAppStore.getState().requestSave();
+        } else if (key === 'x') {
+          // Cmd/Ctrl+X as an alternate delete binding, alongside the bare
+          // Delete/Backspace case below -- same priority order, same guard.
+          if (deleteSelectedTrackingPillOrSegment()) event.preventDefault();
         }
         return;
       }
@@ -79,15 +128,22 @@ export function useEditorKeyboardShortcuts({
 
         case 'Escape': {
           // Cascade: disarm the cut/zoom pointer tool first, then close the
-          // open tool panel, then clear clip selection -- one Escape per step,
-          // so it never discards more context than the single most-recent one.
+          // open tool panel, then clear whatever's selected (clip or
+          // tracking pill -- see selection-coordinator.ts) -- one Escape per
+          // step, so it never discards more context than the single
+          // most-recent one.
           if (store.isCutToolActive || store.isZoomToolActive) {
             store.setCutToolActive(false);
             store.setZoomToolActive(false);
           } else if (store.activeTool) {
             store.setActiveTool(null);
-          } else if (store.selectedSegmentId) {
-            store.setSelectedSegmentId(null);
+          } else if (
+            store.selectedSegmentId ||
+            useZoomStore.getState().selectedKeyframeId ||
+            useAnnotationsStore.getState().selectedAnnotationId ||
+            useBlurMaskStore.getState().selectedRegionId
+          ) {
+            clearSelection();
           }
           (document.activeElement as HTMLElement | null)?.blur();
           return;
@@ -119,9 +175,7 @@ export function useEditorKeyboardShortcuts({
 
         case 'Delete':
         case 'Backspace': {
-          if (!store.selectedSegmentId) return;
-          event.preventDefault();
-          store.deleteSegment(store.selectedSegmentId);
+          if (deleteSelectedTrackingPillOrSegment()) event.preventDefault();
           return;
         }
 

@@ -34,6 +34,8 @@ export function CaptionTrack(): JSX.Element | null {
       // ZoomTrack (see ZoomTrack.tsx and CutTimeline.tsx's clip segments),
       // in yellow instead of purple so tracks stay visually distinguishable.
       colorClassName="border-yellow-900/40 text-yellow-950"
+      ringClassName="ring-yellow-600"
+      hoverRingClassName="hover:ring-yellow-400"
       handleClassName="bg-black/10 hover:bg-black/25"
       laneHeightPx={CLIP_ROW_HEIGHT_PX}
       renderContent={(caption) => (

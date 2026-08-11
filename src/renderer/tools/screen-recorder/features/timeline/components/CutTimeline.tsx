@@ -28,6 +28,7 @@ import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { useAppStore, EMPTY_CURSOR_PATH } from '../../../app/app-store';
+import { selectClipSegment, selectZoomKeyframe } from '../../../app/selection-coordinator';
 import { useHistoryStore } from '../../history/store/history-store';
 import { useTimelineStore, MIN_TIMELINE_ZOOM, MAX_TIMELINE_ZOOM } from '../store/timeline-store';
 import { useWaveformStore } from '../store/waveform-store';
@@ -182,7 +183,6 @@ export function CutTimeline(): JSX.Element {
     (s) => s.tracks.find((t) => t.id === 'video-1')?.segments ?? []
   );
   const selectedSegmentId = useTimelineStore((s) => s.selectedSegmentId);
-  const setSelectedSegmentId = useTimelineStore((s) => s.setSelectedSegmentId);
   const zoom = useTimelineStore((s) => s.timelineZoom);
   const setTimelineZoom = useTimelineStore((s) => s.setTimelineZoom);
   const requestSeek = useTimelineStore((s) => s.requestSeek);
@@ -219,7 +219,6 @@ export function CutTimeline(): JSX.Element {
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const addZoomKeyframe = useZoomStore((s) => s.addKeyframe);
   const updateZoomKeyframe = useZoomStore((s) => s.updateKeyframe);
-  const setSelectedZoomKeyframeId = useZoomStore((s) => s.setSelectedKeyframeId);
   const setActiveTool = useTimelineStore((s) => s.setActiveTool);
   // Any "arm a tool, then click the timeline" mode currently active -- both
   // suppress the clip row's normal select/drag/resize/double-click-to-split
@@ -434,7 +433,7 @@ export function CutTimeline(): JSX.Element {
           position: resolveFixedPosition(clickPath, cursorPath, created.atMs, created.durationMs)
         });
       }
-      setSelectedZoomKeyframeId(id);
+      selectZoomKeyframe(id);
       setActiveTool('zoom');
     },
     [
@@ -445,7 +444,6 @@ export function CutTimeline(): JSX.Element {
       updateZoomKeyframe,
       clickPath,
       cursorPath,
-      setSelectedZoomKeyframeId,
       setActiveTool
     ]
   );
@@ -873,7 +871,7 @@ export function CutTimeline(): JSX.Element {
                                   placeZoomKeyframeFromClientX(e.clientX);
                                   return;
                                 }
-                                setSelectedSegmentId(segment.id);
+                                selectClipSegment(segment.id);
                               }}
                               onDoubleClick={(e) => handleDoubleClick(segment, index, e)}
                               className={cn(

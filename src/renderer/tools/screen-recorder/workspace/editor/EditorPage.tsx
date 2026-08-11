@@ -6,6 +6,9 @@ import {
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
 import { useHistoryStore } from '../../features/history/store/history-store';
+import { useZoomStore } from '../../features/zoom/store/zoom-store';
+import { useAnnotationsStore } from '../../features/annotations/store/annotations-store';
+import { useBlurMaskStore } from '../../features/blur-mask/store/blur-mask-store';
 import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
@@ -45,6 +48,13 @@ export function EditorPage(): JSX.Element {
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
   const crop = useCropStore((s) => s.rect);
+  // Whether a zoom keyframe/annotation/blur-mask region is explicitly
+  // selected instead of a clip -- see use-sync-selected-segment.ts's
+  // `hasOtherSelection` doc for why this has to suppress its auto-select
+  // fallback.
+  const selectedKeyframeId = useZoomStore((s) => s.selectedKeyframeId);
+  const selectedAnnotationId = useAnnotationsStore((s) => s.selectedAnnotationId);
+  const selectedRegionId = useBlurMaskStore((s) => s.selectedRegionId);
 
   const [duration, setDuration] = useState(0);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
@@ -53,7 +63,12 @@ export function EditorPage(): JSX.Element {
   const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<PreviewVideoController>(null);
 
-  useSyncSelectedSegment({ segments, selectedSegmentId, setSelectedSegmentId });
+  useSyncSelectedSegment({
+    segments,
+    selectedSegmentId,
+    setSelectedSegmentId,
+    hasOtherSelection: Boolean(selectedKeyframeId || selectedAnnotationId || selectedRegionId)
+  });
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) ?? null;
 
   useApplySeekRequest({ videoRef, seekRequestMs, clearSeekRequest });

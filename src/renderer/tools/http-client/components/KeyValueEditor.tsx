@@ -56,6 +56,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
               onChange={(key) => onUpdate(row.id, { key })}
               suggestions={keySuggestions}
               placeholder={keyPlaceholder}
+              className="h-8 w-full outline-none px-2 text-xs"
             />
           ) : (
             <input
@@ -64,7 +65,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
               placeholder={keyPlaceholder}
               autoCorrect="false"
               spellCheck="false"
-              className="h-8 outline-none px-2 text-xs"
+              className="h-8 w-full outline-none px-2 text-xs"
               onChange={(e) => onUpdate(row.id, { key: e.target.value })}
             />
           )}

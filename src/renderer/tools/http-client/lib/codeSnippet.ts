@@ -1,5 +1,11 @@
-import type { HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
+import type {
+  HttpAuth,
+  HttpBodyType,
+  HttpMethod,
+  KeyValuePair
+} from '../../../../preload/http-client/types';
 import type { KeyValueRow } from './keyValueRows';
+import { authToHeader, resolveAuth } from './auth';
 
 export type SnippetLanguage = 'curl' | 'javascript-fetch' | 'javascript-axios' | 'python-requests';
 
@@ -16,6 +22,11 @@ export interface SnippetInput {
   headers: KeyValueRow[];
   bodyType: HttpBodyType;
   body: string;
+  /** Resolved (variables already substituted) the same way as at send time - see
+   * useHttp.ts's send(). Omit to skip auth entirely, e.g. no active binding to inherit
+   * from yet. */
+  auth?: HttpAuth;
+  variables: KeyValuePair[];
 }
 
 interface ResolvedRequest {
@@ -29,29 +40,59 @@ interface ResolvedRequest {
 
 const NO_BODY_METHODS = new Set<HttpMethod>(['GET', 'HEAD']);
 
-// Mirrors what main/http-client/ipc/http.ts actually sends, so the generated
-// snippet matches the real request: body is only included for methods that
-// allow one and a non-empty bodyType, and a JSON content-type is only added
-// when the user hasn't already set their own Content-Type header.
+// Kept in sync with the same-named map in src/renderer/tools/http-client/lib/autoHeaders.ts
+// and src/main/http-client/ipc/http.ts. 'multipart' isn't here: its Content-Type needs a
+// boundary, and none of these four languages' snippets construct a real multipart body yet
+// (that would need curl -F / FormData per language, not a generic header injection) - a
+// known gap, not attempted here.
+const BODY_CONTENT_TYPES: Partial<Record<HttpBodyType, string>> = {
+  json: 'application/json',
+  text: 'text/plain',
+  form: 'application/x-www-form-urlencoded'
+};
+
+// Mirrors what main/http-client/ipc/http.ts actually sends, so the generated snippet
+// matches the real request: body is only included for methods that allow one and a
+// non-empty bodyType, an explicit user header always wins over an auto one, and auth
+// resolves to the same Authorization header (or query param, for an apikey in the query)
+// that would actually be sent - without it, a pasted snippet for an authenticated
+// request would silently fail with 401/403.
 function resolveRequest(input: SnippetInput): ResolvedRequest {
   const headers = input.headers
     .filter((h) => h.enabled && h.key.trim().length > 0)
     .map((h) => ({ key: h.key, value: h.value }));
+  const hasHeader = (name: string): boolean =>
+    headers.some((h) => h.key.toLowerCase() === name.toLowerCase());
+
+  let url = input.url.trim() || 'https://';
+
+  if (input.auth) {
+    const resolved = resolveAuth(input.auth, input.variables);
+    if (resolved.type === 'apikey' && resolved.apikey?.in === 'query' && resolved.apikey.key) {
+      try {
+        const parsed = new URL(url);
+        parsed.searchParams.set(resolved.apikey.key, resolved.apikey.value ?? '');
+        url = parsed.toString();
+      } catch {
+        // Incomplete/invalid URL - leave it as typed rather than throw building a snippet.
+      }
+    } else {
+      const authHeader = authToHeader(resolved);
+      if (authHeader && !hasHeader(authHeader.key)) headers.push(authHeader);
+    }
+  }
 
   const hasBody =
     !NO_BODY_METHODS.has(input.method) && input.bodyType !== 'none' && input.body.trim().length > 0;
 
-  if (
-    hasBody &&
-    input.bodyType === 'json' &&
-    !headers.some((h) => h.key.toLowerCase() === 'content-type')
-  ) {
-    headers.push({ key: 'Content-Type', value: 'application/json' });
+  if (hasBody && !hasHeader('content-type')) {
+    const contentType = BODY_CONTENT_TYPES[input.bodyType];
+    if (contentType) headers.push({ key: 'Content-Type', value: contentType });
   }
 
   return {
     method: input.method,
-    url: input.url.trim() || 'https://',
+    url,
     headers,
     bodyType: input.bodyType,
     hasBody,

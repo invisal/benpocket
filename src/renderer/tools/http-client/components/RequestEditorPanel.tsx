@@ -1,9 +1,10 @@
-﻿import type React from 'react';
+import type React from 'react';
 import { useMemo, useState } from 'react';
 import { PillTab } from '@renderer/components/ui/Tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
+import type { MultipartRow } from '../lib/multipartRows';
 import type { SavedBinding } from '../types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
@@ -11,6 +12,7 @@ import { getAutoHeaders } from '../lib/autoHeaders';
 import { authTypeLabel } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
 import { KeyValueEditor } from './KeyValueEditor';
+import { MultipartBodyEditor } from './MultipartBodyEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
 import { AuthEditor } from './AuthEditor';
@@ -21,7 +23,8 @@ const BODY_TYPES: { value: HttpBodyType; label: string }[] = [
   { value: 'none', label: 'None' },
   { value: 'json', label: 'JSON' },
   { value: 'text', label: 'Text' },
-  { value: 'form', label: 'Form (urlencoded)' }
+  { value: 'form', label: 'Form (urlencoded)' },
+  { value: 'multipart', label: 'Form (multipart)' }
 ];
 
 interface RequestEditorPanelProps {
@@ -41,6 +44,13 @@ interface RequestEditorPanelProps {
   onBodyTypeChange: (type: HttpBodyType) => void;
   body: string;
   onBodyChange: (body: string) => void;
+  bodyRows: KeyValueRow[];
+  onUpdateBodyRow: (id: string, patch: Partial<KeyValueRow>) => void;
+  onRemoveBodyRow: (id: string) => void;
+  multipartRows: MultipartRow[];
+  onUpdateMultipartRow: (id: string, patch: Partial<MultipartRow>) => void;
+  onRemoveMultipartRow: (id: string) => void;
+  onPickMultipartFile: (id: string) => void;
 }
 
 export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
@@ -58,7 +68,14 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
   bodyType,
   onBodyTypeChange,
   body,
-  onBodyChange
+  onBodyChange,
+  bodyRows,
+  onUpdateBodyRow,
+  onRemoveBodyRow,
+  multipartRows,
+  onUpdateMultipartRow,
+  onRemoveMultipartRow,
+  onPickMultipartFile
 }) => {
   const [activeTab, setActiveTab] = useState<RequestTabValue>('params');
   const [showAutoHeaders, setShowAutoHeaders] = useState(false);
@@ -123,7 +140,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           <div className="mt-2 pt-2 border-t border-border">
             <button
               onClick={() => setShowAutoHeaders((v) => !v)}
-              className="flex items-center gap-1 text-[10px] font-semibold text-zinc-555 hover:text-zinc-350 cursor-pointer transition-colors"
+              className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
               {showAutoHeaders ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               {autoHeaders.length} auto-generated header{autoHeaders.length === 1 ? '' : 's'}{' '}
@@ -134,7 +151,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
                 {autoHeaders.map((h) => (
                   <div
                     key={h.key}
-                    className="grid grid-cols-[20px_1fr_1fr_24px] gap-2 items-center"
+                    className="grid grid-cols-[34px_1fr_2fr_24px] gap-2 items-center"
                     title="Automatically generated from the URL/body - not editable here."
                   >
                     <input
@@ -180,7 +197,24 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
             </label>
           ))}
         </div>
-        {bodyType !== 'none' && (
+        {bodyType === 'form' && (
+          <KeyValueEditor
+            rows={bodyRows}
+            onUpdate={onUpdateBodyRow}
+            onRemove={onRemoveBodyRow}
+            keyPlaceholder="Key"
+            valuePlaceholder="Value or {{var}}"
+          />
+        )}
+        {bodyType === 'multipart' && (
+          <MultipartBodyEditor
+            rows={multipartRows}
+            onUpdate={onUpdateMultipartRow}
+            onRemove={onRemoveMultipartRow}
+            onPickFile={onPickMultipartFile}
+          />
+        )}
+        {bodyType !== 'none' && bodyType !== 'form' && bodyType !== 'multipart' && (
           <BodyEditor
             value={body}
             onChange={onBodyChange}

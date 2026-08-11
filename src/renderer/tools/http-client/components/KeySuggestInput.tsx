@@ -69,7 +69,7 @@ export const KeySuggestInput: React.FC<KeySuggestInputProps> = ({
   };
 
   return (
-    <div className="relative border-border border-b">
+    <div className="relative h-8">
       <input
         ref={inputRef}
         type="text"

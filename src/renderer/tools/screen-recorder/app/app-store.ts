@@ -82,6 +82,17 @@ interface AppStoreState {
   /** CutTimeline's own drag-resized height, px -- see ResizablePanel in CutTimeline.tsx. */
   timelinePanelHeight: number;
   setTimelinePanelHeight: (timelinePanelHeight: number) => void;
+  /**
+   * Bumped by the Cmd/Ctrl+S shortcut (see use-editor-keyboard-shortcuts.ts)
+   * to ask ScreenRecorderApp to run its own `handleSaveClick` -- a one-shot
+   * "request" (like timeline-store's `seekRequestMs`) rather than the
+   * shortcut calling a save function directly, since the actual save flow
+   * (opening SaveProjectDialog the first time, the quick-save toast) is
+   * local state owned by ScreenRecorderApp, not something this store or the
+   * editor-page-scoped shortcut hook has access to.
+   */
+  saveRequestToken: number;
+  requestSave: () => void;
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
@@ -107,5 +118,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   toolPanelWidth: 280,
   setToolPanelWidth: (toolPanelWidth) => set({ toolPanelWidth }),
   timelinePanelHeight: 180,
-  setTimelinePanelHeight: (timelinePanelHeight) => set({ timelinePanelHeight })
+  setTimelinePanelHeight: (timelinePanelHeight) => set({ timelinePanelHeight }),
+  saveRequestToken: 0,
+  requestSave: () => set((state) => ({ saveRequestToken: state.saveRequestToken + 1 }))
 }));

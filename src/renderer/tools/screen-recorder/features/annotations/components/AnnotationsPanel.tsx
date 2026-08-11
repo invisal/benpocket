@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { useRef } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useAnnotationsStore } from '../store/annotations-store';
+import { selectAnnotation } from '../../../app/selection-coordinator';
 import { annotationLabel } from '../lib/annotation-label';
 import { AddAnnotationButtons } from './AddAnnotationButtons';
 import { AnnotationList } from './AnnotationList';
@@ -17,7 +18,6 @@ interface AnnotationsPanelProps {
 export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.Element {
   const annotations = useAnnotationsStore((s) => s.annotations);
   const selectedAnnotationId = useAnnotationsStore((s) => s.selectedAnnotationId);
-  const setSelectedAnnotationId = useAnnotationsStore((s) => s.setSelectedAnnotationId);
   const addTextAnnotation = useAnnotationsStore((s) => s.addTextAnnotation);
   const addArrowAnnotation = useAnnotationsStore((s) => s.addArrowAnnotation);
   const addImageAnnotation = useAnnotationsStore((s) => s.addImageAnnotation);
@@ -62,7 +62,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
       <AnnotationList
         annotations={sorted}
         selectedId={selectedAnnotationId}
-        onSelect={setSelectedAnnotationId}
+        onSelect={selectAnnotation}
       />
 
       {selected && (

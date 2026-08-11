@@ -37,6 +37,10 @@ export interface PillTrackProps<T extends { id: string }> {
   getTitle: (item: T) => string;
   /** Pill border/background/text color classes, e.g. `'border-emerald-400/50 bg-emerald-600/30 text-emerald-100 hover:bg-emerald-600/45'`. */
   colorClassName: string;
+  /** Selected-pill ring color -- defaults to `ring-accent`, but should normally be set to a saturated shade of the same color family as `colorClassName` (e.g. `'ring-purple-600'` alongside a purple-toned pill) so the selected state reads as "this same pill, emphasized" rather than an unrelated highlight color. */
+  ringClassName?: string;
+  /** Unselected-pill hover ring -- defaults to `hover:ring-white/50`, which washes out against these gradient-filled pills in light mode. Should normally be set to a *lighter* shade of the same family as `ringClassName` (e.g. `'hover:ring-purple-400'` alongside `'ring-purple-600'`) so hover reads as a subtler preview of the selected state, not a different color entirely. */
+  hoverRingClassName?: string;
   /** Edge-resize grip color classes -- defaults to a light overlay that reads against the usual dark/translucent pill fills. Override for a pill whose `colorClassName` is light (e.g. a gradient fill) where a white overlay would wash out. */
   handleClassName?: string;
   /** Pill height in px -- defaults to `LANE_HEIGHT_PX` (the compact single-line height every other pill track uses). Override for content that needs more room (e.g. a title row above the icon row), scoped to just that track's own lane stack. */
@@ -62,6 +66,8 @@ export function PillTrack<T extends { id: string }>({
   isSelected,
   getTitle,
   colorClassName,
+  ringClassName = 'ring-accent',
+  hoverRingClassName = 'hover:ring-white/50',
   handleClassName = 'bg-white/15 hover:bg-white/30',
   laneHeightPx = LANE_HEIGHT_PX,
   renderContent,
@@ -135,8 +141,8 @@ export function PillTrack<T extends { id: string }>({
                         'group absolute flex cursor-grab items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 transition-shadow duration-150 ease-out active:cursor-grabbing',
                         colorClassName,
                         isSelected?.(item)
-                          ? 'ring-2 ring-purple-200'
-                          : 'hover:ring-2 hover:ring-white/50'
+                          ? ['ring-2', ringClassName]
+                          : ['hover:ring-2', hoverRingClassName]
                       )}
                       style={{
                         left: `${position.leftPercent}%`,

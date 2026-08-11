@@ -14,7 +14,24 @@ import {
   showRecordingRegionFrame
 } from './recording-region-frame-window';
 
-const TOOLBAR_WIDTH = 880;
+// Wide enough for the setup pill's full row at once -- grip handle, Cancel,
+// Display/Window/Area/Device, Camera, Mic (icon + device label + level
+// meter), System audio, the Settings dropdown, and Record. The window has a
+// fixed size (Electron doesn't auto-grow a BrowserWindow to fit its content),
+// so this has to be re-checked any time a control is added to that row --
+// too narrow and the row has nowhere to go but shrink its children below
+// their natural size, which reads as buttons overlapping/stacking rather
+// than a clean single line.
+const TOOLBAR_WIDTH = 1040;
+// Fixed for the window's whole lifetime -- headroom above the pill's own
+// footprint for the Camera/Device popovers to open into (RecorderToolbarApp.tsx),
+// PILL_FOOTER_HEIGHT below still only describes the pill's own distance from
+// the bottom. Tried dynamically growing/shrinking this around whether a
+// popover was open (smaller most of the time, grown only when needed) --
+// resizing a transparent frameless BrowserWindow visibly flickers on macOS
+// regardless of animate:true/false (Chromium's repaint of the newly-revealed
+// area lags the bounds change by a frame or two), so a fixed height that's
+// already tall enough wins over a smaller one that has to resize.
 const TOOLBAR_HEIGHT = 280;
 
 // exact amount of headroom added.
@@ -262,6 +279,21 @@ export function registerRecorderToolbarHandlers(): void {
 
   ipcMain.on(IpcChannels.RecorderToolbarRecordingStopped, () => {
     closeRecorderToolbar();
+  });
+
+  // Restart discards the in-progress recording and starts a fresh one --
+  // unlike Stop, the toolbar stays open (it reports back on the same
+  // RecorderToolbarRecordingStarted channel Start uses), so this doesn't
+  // touch closeRecorderToolbar().
+  ipcMain.on(IpcChannels.RecorderToolbarRestart, () => {
+    ownerWindow?.webContents.send(IpcChannels.RecorderToolbarRestartRequested);
+  });
+
+  // Delete discards the in-progress recording entirely and closes the
+  // toolbar -- the owner window reports back on RecorderToolbarRecordingStopped
+  // same as a normal Stop, since "close back to idle" is the desired result either way.
+  ipcMain.on(IpcChannels.RecorderToolbarDelete, () => {
+    ownerWindow?.webContents.send(IpcChannels.RecorderToolbarDeleteRequested);
   });
 }
 

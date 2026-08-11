@@ -5,14 +5,14 @@ import type {
   SourcePickerOverlayInit,
   SourcePickerOverlayOpenOptions
 } from '@shared/source-picker-overlay';
+import type { RecorderToolbarRecordingResult } from '@shared/recorder-toolbar';
 import { preloadScriptPath } from '../lib/preload-path';
 import { hideCaptureWindow, restoreCaptureWindow } from './window-visibility';
 
 let overlayWindow: BrowserWindow | null = null;
 // The recorder-toolbar window that requested the overlay -- hidden while it's
-// open (so the two aren't fighting for the topmost spot) and the one a pick
-// gets relayed back to, since it owns the audio/webcam config a pick needs
-// to actually start a recording.
+// open (so the two aren't fighting for the topmost spot), restored once the
+// overlay closes (see closeSourcePickerOverlay).
 let toolbarWindow: BrowserWindow | null = null;
 
 /**
@@ -124,15 +124,24 @@ function closeSourcePickerOverlay(): void {
 export function registerSourcePickerOverlayHandlers(): void {
   ipcMain.handle(IpcChannels.SourcePickerOverlayOpen, openSourcePickerOverlay);
 
-  ipcMain.on(IpcChannels.SourcePickerOverlayPick, (_event, sourceId: string) => {
-    const toolbar = toolbarWindow;
-    closeSourcePickerOverlay();
-    toolbar?.webContents.send(IpcChannels.SourcePickerOverlayPicked, sourceId);
-  });
-
   ipcMain.on(IpcChannels.SourcePickerOverlayCancel, () => {
     closeSourcePickerOverlay();
   });
+
+  // A pick calls recorderToolbar.requestStart directly (see
+  // SourcePickerOverlayApp.tsx's confirmSelection) -- that request is
+  // relayed to the main window exactly like the toolbar's own Record button
+  // (recorder-toolbar-window.ts's RecorderToolbarStart handler doesn't care
+  // which window sent it). This is the other half: once the main window's
+  // attempt settles, the toolbar's own listener updates its (still hidden)
+  // UI as usual, and this one lets the overlay -- which owns visibly
+  // showing "Starting..." during that wait -- know it can close itself.
+  ipcMain.on(
+    IpcChannels.RecorderToolbarRecordingStarted,
+    (_event, result: RecorderToolbarRecordingResult) => {
+      overlayWindow?.webContents.send(IpcChannels.RecorderToolbarRecordingStarted, result);
+    }
+  );
 }
 
 /** Best-effort cleanup on app quit -- mirrors destroyTray()/destroyRecorderToolbar(). */

@@ -237,9 +237,9 @@ const STILLNESS_EPS = 0.004;
  * still appear the instant the cursor actually settles, only leaving it
  * is debounced.
  */
-const HOVER_EXIT_CONFIRM_MS = 140;
+const HOVER_EXIT_CONFIRM_MS = 60;
 /** Sampling step across `HOVER_EXIT_CONFIRM_MS` -- checks several points spanning the window, not just its two ends, so a brief pause in the middle can't cancel out against a big enough displacement at the edges. */
-const HOVER_EXIT_CONFIRM_STEP_MS = 40;
+const HOVER_EXIT_CONFIRM_STEP_MS = 20;
 /**
  * How long after a click the icon keeps holding "hover" through subsequent
  * movement that isn't a drag -- e.g. clicking through a row of tightly

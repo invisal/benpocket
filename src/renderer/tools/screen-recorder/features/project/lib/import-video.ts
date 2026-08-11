@@ -1,6 +1,7 @@
 import { toRecordingMediaUrl } from '@shared/media-protocol';
 import { useAppStore } from '../../../app/app-store';
 import { useZoomStore } from '../../zoom/store/zoom-store';
+import { resetContentStoresForNewRecording } from './reset-content-stores-for-new-recording';
 
 function baseNameWithoutExtension(filePath: string): string {
   const base = filePath.split(/[\\/]/).pop() ?? filePath;
@@ -25,6 +26,11 @@ export async function importVideoFile(): Promise<boolean> {
   const sizeBytes = await window.screenRecorder.export.getFileSize(filePath);
 
   useZoomStore.getState().setKeyframes([]);
+  // Same reasoning as useRecordingController.ts's `stop()` -- an imported
+  // video is a new, blank project too, so whatever the previously open
+  // project's background/cursor/captions/annotations/blur-mask/crop stores
+  // held must not carry over into this one.
+  resetContentStoresForNewRecording();
   useAppStore.setState({
     currentProjectId: null,
     projectName: baseNameWithoutExtension(filePath),

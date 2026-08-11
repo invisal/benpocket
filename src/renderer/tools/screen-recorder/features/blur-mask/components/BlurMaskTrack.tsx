@@ -5,6 +5,7 @@ import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/t
 import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useBlurMaskStore } from '../store/blur-mask-store';
+import { selectBlurMaskRegion } from '../../../app/selection-coordinator';
 
 const MIN_REGION_DURATION_MS = 300;
 
@@ -32,7 +33,6 @@ export function BlurMaskTrack(): JSX.Element | null {
   const updateRegion = useBlurMaskStore((s) => s.updateRegion);
   const removeRegion = useBlurMaskStore((s) => s.removeRegion);
   const selectedRegionId = useBlurMaskStore((s) => s.selectedRegionId);
-  const setSelectedRegionId = useBlurMaskStore((s) => s.setSelectedRegionId);
 
   return (
     <PillTrack
@@ -48,6 +48,8 @@ export function BlurMaskTrack(): JSX.Element | null {
       // ZoomTrack (see ZoomTrack.tsx and CutTimeline.tsx's clip segments),
       // in sky instead of purple so tracks stay visually distinguishable.
       colorClassName="border-sky-900/40 text-sky-950"
+      ringClassName="ring-sky-600"
+      hoverRingClassName="hover:ring-sky-400"
       handleClassName="bg-black/10 hover:bg-black/25"
       laneHeightPx={CLIP_ROW_HEIGHT_PX}
       renderContent={(r) => {
@@ -69,7 +71,7 @@ export function BlurMaskTrack(): JSX.Element | null {
       onSelect={(r) => {
         requestSeek(r.atMs);
         setActiveTool('blur-mask');
-        setSelectedRegionId(r.id);
+        selectBlurMaskRegion(r.id);
       }}
       onMove={(r, atMs) => updateRegion(r.id, { atMs })}
       onResizeStart={(r, newAtMs) => {

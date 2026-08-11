@@ -1,9 +1,10 @@
 import type { JSX } from 'react';
 import { type RefObject } from 'react';
-import { Crop, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { Crop, Pause, Play, SkipBack, SkipForward, Space } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import type { PreviewVideoController } from '@screen-recorder/types/editor';
 import { Select } from '@renderer/components/ui/Select';
+import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { useExportStore } from '../../features/export/store/export-store';
 import { cn } from '../../lib/utils';
 import { ASPECT_LABELS } from './editorTools';
@@ -80,13 +81,25 @@ export function EditorTransportBar({
         >
           <SkipBack size={15} />
         </button>
-        <button
-          onClick={togglePlay}
-          title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2"
-        >
-          {isPlaying ? <Pause size={15} /> : <Play size={15} />}
-        </button>
+        <Tooltip.Provider delay={300} closeDelay={0}>
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              render={
+                <button
+                  onClick={togglePlay}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-2"
+                >
+                  {isPlaying ? <Pause size={15} /> : <Play size={15} />}
+                </button>
+              }
+            />
+            <Tooltip.Content>
+              <span className="flex items-center gap-1">
+                {isPlaying ? 'Pause' : 'Play'} (Space)
+              </span>
+            </Tooltip.Content>
+          </Tooltip.Root>
+        </Tooltip.Provider>
         <button
           onClick={() =>
             videoRef.current && (videoRef.current.currentTime = videoRef.current.duration || 0)

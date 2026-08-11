@@ -26,6 +26,7 @@ import {
 } from '@screen-recorder/types/timeline';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
+import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { useAppStore, EMPTY_CURSOR_PATH } from '../../../app/app-store';
 import { useHistoryStore } from '../../history/store/history-store';
 import { useTimelineStore, MIN_TIMELINE_ZOOM, MAX_TIMELINE_ZOOM } from '../store/timeline-store';
@@ -601,61 +602,87 @@ export function CutTimeline(): JSX.Element {
     >
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
         <div ref={toolbarRowRef} className="flex shrink-0 items-center gap-1">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              title="Undo"
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
-            >
-              <Undo2 size={14} />
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              title="Redo"
-              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
-            >
-              <Redo2 size={14} />
-            </button>
+          <Tooltip.Provider delay={300} closeDelay={0}>
+            <div className="flex items-center gap-1">
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={undo}
+                      disabled={!canUndo}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
+                    >
+                      <Undo2 size={14} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>Undo</Tooltip.Content>
+              </Tooltip.Root>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={redo}
+                      disabled={!canRedo}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 disabled:opacity-30"
+                    >
+                      <Redo2 size={14} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>Redo</Tooltip.Content>
+              </Tooltip.Root>
 
-            <div className="mx-1 h-4 w-px bg-line" />
+              <div className="mx-1 h-4 w-px bg-line" />
 
-            <button
-              onClick={() => setCutToolActive(!isCutToolActive)}
-              title={
-                isCutToolActive
-                  ? 'Cut tool active (C or Esc to exit) -- click the timeline to trim'
-                  : 'Cut tool (C) -- click to arm, then click the timeline to trim'
-              }
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                isCutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
-              )}
-            >
-              <Scissors size={13} />
-            </button>
-            <button
-              onClick={() => setZoomToolActive(!isZoomToolActive)}
-              title={
-                isZoomToolActive
-                  ? 'Zoom tool active (Z or Esc to exit) -- click the timeline to place a keyframe'
-                  : 'Zoom tool (Z) -- click to arm, then click the timeline to place a keyframe'
-              }
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                isZoomToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
-              )}
-            >
-              <ZoomIn size={13} />
-            </button>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={() => setCutToolActive(!isCutToolActive)}
+                      className={cn(
+                        'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                        isCutToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
+                      )}
+                    >
+                      <Scissors size={13} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>
+                  {isCutToolActive
+                    ? 'Cut tool active (C or Esc to exit) -- click the timeline to trim'
+                    : 'Cut tool (C) -- click to arm, then click the timeline to trim'}
+                </Tooltip.Content>
+              </Tooltip.Root>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <button
+                      onClick={() => setZoomToolActive(!isZoomToolActive)}
+                      className={cn(
+                        'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
+                        isZoomToolActive ? 'bg-accent/15 text-accent' : 'hover:bg-surface-2'
+                      )}
+                    >
+                      <ZoomIn size={13} />
+                    </button>
+                  }
+                />
+                <Tooltip.Content>
+                  {isZoomToolActive
+                    ? 'Zoom tool active (Z or Esc to exit) -- click the timeline to place a keyframe'
+                    : 'Zoom tool (Z) -- click to arm, then click the timeline to place a keyframe'}
+                </Tooltip.Content>
+              </Tooltip.Root>
 
-            <div className="mx-1 h-4 w-px bg-line" />
+              <div className="mx-1 h-4 w-px bg-line" />
 
-            <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
-            </span>
-          </div>
+              <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clapperboard size={12} /> {segments.length} clip{segments.length === 1 ? '' : 's'}
+              </span>
+            </div>
+          </Tooltip.Provider>
 
           <div className="ml-auto flex items-center gap-2">
             <button

@@ -86,7 +86,16 @@ function pickMajorTickIntervalMs(totalDurationMs: number): number {
 // Sized to comfortably fit the ruler+clip row plus the Zoom/Caption/Speed/Crop
 // pill tracks beneath it without squishing (each track is a fixed h-9, `shrink-0`).
 const MIN_PANEL_HEIGHT_PX = 150;
+// Also caps how far the auto-grow effect below will stretch the panel --
+// a pathological number of overlapping pills still can't squeeze the
+// preview stage down to nothing (see ScreenRecorderApp.tsx's layout: this
+// panel's height is taken directly out of the preview area's).
 const MAX_PANEL_HEIGHT_PX = 300;
+// The content wrapper's own `py-3` padding (24px) plus its `gap-2` (8px)
+// between the toolbar row and the scrollable track area -- the only part of
+// the panel's required height that isn't covered by measuring
+// `toolbarRowRef`/`trackAreaRef` directly (see the auto-grow effect below).
+const PANEL_CONTENT_CHROME_PX = 24 + 8;
 
 // Taller than a plain pill track (`CLIP_ROW_HEIGHT_PX`) -- clips carry a
 // two-line label (name + duration/speed), not just a single corner badge.
@@ -249,9 +258,41 @@ export function CutTimeline(): JSX.Element {
   } = useEdgeResize();
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const toolbarRowRef = useRef<HTMLDivElement>(null);
   const playheadDraggingRef = useRef(false);
   const dragRafIdRef = useRef<number | null>(null);
   const pendingDragClientXRef = useRef<number | null>(null);
+
+  // Auto-grows the panel to fit its content as tracks (Zoom/Caption/
+  // Annotation/Blur-Mask) gain pills or their pills stack into more lanes --
+  // `trackAreaRef` isn't itself height-constrained (only `scrollContainerRef`
+  // around it is, via `overflow-auto`), so its `offsetHeight` always reflects
+  // the *true* content height regardless of how much of it currently fits.
+  // Grow-only and driven by `getState()`/`setState()` rather than the
+  // subscribed `panelHeightPx` value, so back-to-back ResizeObserver firings
+  // (e.g. several pills mounting in the same frame) each compare against the
+  // latest committed height instead of a stale render's closure -- and so a
+  // track shrinking (a pill deleted) never yanks the panel back down under
+  // whatever the user's still looking at; only manually dragging the handle
+  // does that.
+  useEffect(() => {
+    const trackArea = trackAreaRef.current;
+    const toolbarRow = toolbarRowRef.current;
+    if (!trackArea || !toolbarRow) return;
+
+    function recalcAutoHeight(): void {
+      const requiredPx =
+        toolbarRow!.offsetHeight + trackArea!.offsetHeight + PANEL_CONTENT_CHROME_PX;
+      const clampedPx = Math.min(MAX_PANEL_HEIGHT_PX, Math.max(MIN_PANEL_HEIGHT_PX, requiredPx));
+      const currentPx = useAppStore.getState().timelinePanelHeight;
+      if (clampedPx > currentPx) useAppStore.getState().setTimelinePanelHeight(clampedPx);
+    }
+
+    const observer = new ResizeObserver(recalcAutoHeight);
+    observer.observe(trackArea);
+    recalcAutoHeight();
+    return () => observer.disconnect();
+  }, []);
 
   // A second, gray playhead that tracks the cursor while it's over the
   // ruler and live-seeks the preview video to that position -- scrubbing by
@@ -559,7 +600,7 @@ export function CutTimeline(): JSX.Element {
       handleClassName="z-40"
     >
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
-        <div className="flex shrink-0 items-center gap-1">
+        <div ref={toolbarRowRef} className="flex shrink-0 items-center gap-1">
           <div className="flex items-center gap-1">
             <button
               onClick={undo}

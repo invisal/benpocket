@@ -90,6 +90,12 @@ export const UpdateStatus: React.FC = () => {
         {status.state === 'downloaded' && (
           <p>Update downloaded -- restarting to install version {status.version}...</p>
         )}
+
+        {status.state === 'not-available' && (
+          <p className="text-muted-foreground">
+            You&apos;re on the latest version (v{__APP_VERSION__}).
+          </p>
+        )}
       </Popover.Content>
     </Popover.Root>
   );

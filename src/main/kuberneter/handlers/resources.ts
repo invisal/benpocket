@@ -68,4 +68,22 @@ export function registerResourcesHandler(): void {
       return result;
     }
   );
+
+  ipcMain.handle(
+    'kuberneter:cordon-node',
+    async (
+      _,
+      kubeconfigPath: string | undefined,
+      contextName: string | undefined,
+      nodeName: string,
+      unschedulable: boolean
+    ) => {
+      return KubeClientService.cordonNodeDirect(
+        kubeconfigPath,
+        contextName,
+        nodeName,
+        unschedulable
+      );
+    }
+  );
 }

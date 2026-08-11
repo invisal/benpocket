@@ -158,6 +158,66 @@ export class KubeClientService {
   }
 
   /**
+   * Cordons or uncordons a Node by updating spec.unschedulable via strategic merge patch.
+   */
+  public static async cordonNodeDirect(
+    configPath: string | undefined,
+    contextName: string | undefined,
+    nodeName: string,
+    unschedulable: boolean
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const kc = KubeConfigService.loadKubeConfig(configPath, contextName);
+      const cluster = kc.getCurrentCluster();
+      if (!cluster || !cluster.server) {
+        return { success: false, error: 'No active cluster configuration' };
+      }
+
+      const fullUrl = `${cluster.server.replace(/\/$/, '')}/api/v1/nodes/${nodeName}`;
+      const urlObj = new URL(fullUrl);
+      const patchBody = JSON.stringify({ spec: { unschedulable } });
+
+      const requestOptions: https.RequestOptions = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path: `${urlObj.pathname}${urlObj.search}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/strategic-merge-patch+json',
+          'Content-Length': Buffer.byteLength(patchBody)
+        }
+      };
+
+      await kc.applyToHTTPSOptions(requestOptions);
+      if (cluster.skipTLSVerify) {
+        requestOptions.rejectUnauthorized = false;
+      }
+
+      const response = await new Promise<{ status: number; data: string }>((resolve, reject) => {
+        const req = https.request(requestOptions, (res) => {
+          let body = '';
+          res.on('data', (chunk) => {
+            body += chunk.toString('utf8');
+          });
+          res.on('end', () => resolve({ status: res.statusCode || 500, data: body }));
+        });
+        req.on('error', reject);
+        req.write(patchBody);
+        req.end();
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        const action = unschedulable ? 'cordoned' : 'uncordoned';
+        return { success: true, message: `Node ${nodeName} ${action} successfully` };
+      } else {
+        return { success: false, error: `HTTP ${response.status}: ${response.data}` };
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  /**
    * Sanitizes a Kubernetes manifest for applying by stripping server-managed/read-only fields.
    */
   public static sanitizeManifestForApply(spec: KubernetesObject): KubernetesObject {

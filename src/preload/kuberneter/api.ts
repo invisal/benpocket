@@ -239,6 +239,13 @@ export interface KuberneterApi {
     filesystem: { usage: number[]; limit: number[] };
     error?: string;
   }>;
+  /** Cordon or uncordon a Node in the cluster. */
+  cordonNode: (
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    nodeName: string,
+    unschedulable: boolean
+  ) => Promise<{ success: boolean; message?: string; error?: string }>;
   /** Spawn a PTY-backed shell session for the given terminal id. */
   terminalCreate: (
     id: string,
@@ -395,6 +402,14 @@ export const kuberneterApi: KuberneterApi = {
     ipcRenderer.invoke('kuberneter:query-pod-metrics-range', params),
   queryNodeMetricsRange: (params) =>
     ipcRenderer.invoke('kuberneter:query-node-metrics-range', params),
+  cordonNode: (kubeconfigPath, contextName, nodeName, unschedulable) =>
+    ipcRenderer.invoke(
+      'kuberneter:cordon-node',
+      kubeconfigPath,
+      contextName,
+      nodeName,
+      unschedulable
+    ),
   terminalCreate: (id, options) => ipcRenderer.invoke('kuberneter:terminal-create', id, options),
   terminalInput: (id, data) => ipcRenderer.send('kuberneter:terminal-input', id, data),
   terminalResize: (id, cols, rows) =>

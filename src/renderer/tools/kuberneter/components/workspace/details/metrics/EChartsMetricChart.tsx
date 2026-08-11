@@ -15,6 +15,7 @@ export interface EChartsMetricChartProps {
   series: ChartSeries[];
   unit?: string;
   height?: number;
+  showLegend?: boolean;
 }
 
 export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
@@ -22,7 +23,8 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
   timeLabels,
   series,
   unit = '',
-  height = 160
+  height = 160,
+  showLegend = true
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
@@ -43,6 +45,7 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
 
     const option: EChartsOption = {
       backgroundColor: 'transparent',
+      color: series.map((s) => s.color),
       title: title
         ? {
             text: title,
@@ -74,16 +77,18 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
           return res;
         }
       },
-      legend: {
-        top: 0,
-        right: 0,
-        icon: 'rect',
-        itemWidth: 10,
-        itemHeight: 6,
-        textStyle: { color: textColor, fontSize: 9, fontFamily: 'monospace' }
-      },
+      legend: showLegend
+        ? {
+            top: 0,
+            right: 0,
+            icon: 'rect',
+            itemWidth: 10,
+            itemHeight: 6,
+            textStyle: { color: textColor, fontSize: 9, fontFamily: 'monospace' }
+          }
+        : { show: false },
       grid: {
-        top: 26,
+        top: title || showLegend ? 26 : 12,
         left: 42,
         right: 12,
         bottom: 24,
@@ -112,6 +117,7 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
         type: 'line',
         smooth: true,
         showSymbol: false,
+        itemStyle: { color: s.color },
         lineStyle: { width: 1.5, color: s.color },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -123,7 +129,7 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
       }))
     };
 
-    chartInstance.current.setOption(option);
+    chartInstance.current.setOption(option, { notMerge: true });
 
     const handleResize = () => {
       chartInstance.current?.resize();
@@ -137,7 +143,7 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = ({
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
-  }, [title, timeLabels, series, unit]);
+  }, [title, timeLabels, series, unit, showLegend]);
 
   return <div ref={chartRef} style={{ width: '100%', height }} />;
 };

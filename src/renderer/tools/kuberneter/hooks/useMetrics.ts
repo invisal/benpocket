@@ -114,6 +114,29 @@ export interface PodMetricsRange {
   filesystem: { usage: number[]; limit: number[] };
 }
 
+export interface NodeMetricsRange {
+  source?: string;
+  timeLabels: string[];
+  cpu: {
+    usage: number[];
+    workloadUsage?: number[];
+    requests: number[];
+    limits: number[];
+    allocatable?: number[];
+    capacity?: number[];
+  };
+  memory: {
+    usage: number[];
+    workloadUsage?: number[];
+    requests: number[];
+    limits: number[];
+    allocatable?: number[];
+    capacity?: number[];
+  };
+  network: { rx: number[]; tx: number[] };
+  filesystem: { usage: number[]; limit: number[] };
+}
+
 const EMPTY_RANGE: PodMetricsRange = {
   timeLabels: [],
   cpu: { usage: [], requests: [], limits: [] },
@@ -326,6 +349,196 @@ export function usePodMetricsRange(
     queryFn: () =>
       fetchPodMetricsRange(metricsConfig.source, promConfig, namespace, podName, timeRange),
     enabled: enabled && !!cluster && !!namespace && !!podName,
+    staleTime: isLiveMetricsServer ? 1_500 : 60_000,
+    refetchInterval: isLiveMetricsServer ? 3_000 : false,
+    gcTime: 120_000
+  });
+}
+
+async function fetchNodeMetricsRange(
+  source: string,
+  promConfig: {
+    kubeconfigPath: string | undefined;
+    contextName: string | undefined;
+    provider: string;
+    filterEmptyContainers: boolean;
+    useHttps: boolean;
+    pathPrefix: string;
+  },
+  nodeName: string,
+  timeRange: '1h' | '6h' | '24h'
+): Promise<NodeMetricsRange> {
+  if (source === 'none') return EMPTY_RANGE;
+
+  if (source === 'metrics-server') {
+    try {
+      const topRes = await window.kuberneter.getTopNodes(
+        promConfig.kubeconfigPath,
+        promConfig.contextName
+      );
+      if (topRes && topRes.items) {
+        const nodeItem = topRes.items.find((n: { name: string }) => n.name === nodeName);
+        if (nodeItem) {
+          const nowStr = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          let cpuVal = 0;
+          if (nodeItem.cpu.endsWith('m')) {
+            cpuVal = (parseFloat(nodeItem.cpu.slice(0, -1)) || 0) / 1000;
+          } else if (nodeItem.cpu.endsWith('n')) {
+            cpuVal = (parseFloat(nodeItem.cpu.slice(0, -1)) || 0) / 1e9;
+          } else {
+            cpuVal = parseFloat(nodeItem.cpu) || 0;
+          }
+
+          let memVal = 0;
+          if (nodeItem.memory.endsWith('Mi')) {
+            memVal = parseFloat(nodeItem.memory.slice(0, -2)) || 0;
+          } else if (nodeItem.memory.endsWith('Gi')) {
+            memVal = (parseFloat(nodeItem.memory.slice(0, -2)) || 0) * 1024;
+          } else if (nodeItem.memory.endsWith('Ki')) {
+            memVal = (parseFloat(nodeItem.memory.slice(0, -2)) || 0) / 1024;
+          } else {
+            memVal = parseFloat(nodeItem.memory) || 0;
+          }
+
+          const cacheKey = `node:${promConfig.contextName ?? 'default'}:${nodeName}`;
+          let buffer = liveMetricsBuffer.get(cacheKey);
+          if (!buffer) {
+            buffer = { timeLabels: [], cpuUsage: [], memUsage: [] };
+            liveMetricsBuffer.set(cacheKey, buffer);
+          }
+
+          buffer.timeLabels.push(nowStr);
+          buffer.cpuUsage.push(cpuVal);
+          buffer.memUsage.push(memVal);
+
+          if (buffer.timeLabels.length > MAX_LIVE_SAMPLES) {
+            buffer.timeLabels.shift();
+            buffer.cpuUsage.shift();
+            buffer.memUsage.shift();
+          }
+
+          return {
+            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            timeLabels: [...buffer.timeLabels],
+            cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
+            memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
+            network: { rx: [], tx: [] },
+            filesystem: { usage: [], limit: [] }
+          };
+        }
+      }
+    } catch {
+      // Fall through
+    }
+    return EMPTY_RANGE;
+  }
+
+  try {
+    const res = await window.kuberneter.queryNodeMetricsRange({
+      ...promConfig,
+      nodeName,
+      timeRange
+    });
+
+    if (!res.error && res.timeLabels.length > 0) return res;
+  } catch {
+    // Fall back to metrics-server if auto
+  }
+
+  if (source === 'auto') {
+    try {
+      const topRes = await window.kuberneter.getTopNodes(
+        promConfig.kubeconfigPath,
+        promConfig.contextName
+      );
+      if (topRes && topRes.items) {
+        const nodeItem = topRes.items.find((n: { name: string }) => n.name === nodeName);
+        if (nodeItem) {
+          const nowStr = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          let cpuVal = 0;
+          if (nodeItem.cpu.endsWith('m')) {
+            cpuVal = (parseFloat(nodeItem.cpu.slice(0, -1)) || 0) / 1000;
+          } else if (nodeItem.cpu.endsWith('n')) {
+            cpuVal = (parseFloat(nodeItem.cpu.slice(0, -1)) || 0) / 1e9;
+          } else {
+            cpuVal = parseFloat(nodeItem.cpu) || 0;
+          }
+
+          let memVal = 0;
+          if (nodeItem.memory.endsWith('Mi')) {
+            memVal = parseFloat(nodeItem.memory.slice(0, -2)) || 0;
+          } else if (nodeItem.memory.endsWith('Gi')) {
+            memVal = (parseFloat(nodeItem.memory.slice(0, -2)) || 0) * 1024;
+          } else if (nodeItem.memory.endsWith('Ki')) {
+            memVal = (parseFloat(nodeItem.memory.slice(0, -2)) || 0) / 1024;
+          } else {
+            memVal = parseFloat(nodeItem.memory) || 0;
+          }
+
+          const cacheKey = `node:${promConfig.contextName ?? 'default'}:${nodeName}`;
+          let buffer = liveMetricsBuffer.get(cacheKey);
+          if (!buffer) {
+            buffer = { timeLabels: [], cpuUsage: [], memUsage: [] };
+            liveMetricsBuffer.set(cacheKey, buffer);
+          }
+
+          buffer.timeLabels.push(nowStr);
+          buffer.cpuUsage.push(cpuVal);
+          buffer.memUsage.push(memVal);
+
+          if (buffer.timeLabels.length > MAX_LIVE_SAMPLES) {
+            buffer.timeLabels.shift();
+            buffer.cpuUsage.shift();
+            buffer.memUsage.shift();
+          }
+
+          return {
+            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            timeLabels: [...buffer.timeLabels],
+            cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
+            memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
+            network: { rx: [], tx: [] },
+            filesystem: { usage: [], limit: [] }
+          };
+        }
+      }
+    } catch {
+      // Fall through
+    }
+  }
+
+  return EMPTY_RANGE;
+}
+
+export function useNodeMetricsRange(
+  nodeName: string,
+  timeRange: '1h' | '6h' | '24h',
+  enabled: boolean
+) {
+  const { cluster, configPath, metricsConfig, promConfig, metricsConfigKey } = useMetricsContext();
+
+  const isLiveMetricsServer =
+    metricsConfig.source === 'metrics-server' || metricsConfig.source === 'auto';
+
+  return useQuery({
+    queryKey: metricsKeys.range(
+      configPath ?? 'default',
+      cluster,
+      'node',
+      nodeName,
+      timeRange,
+      metricsConfigKey
+    ),
+    queryFn: () => fetchNodeMetricsRange(metricsConfig.source, promConfig, nodeName, timeRange),
+    enabled: enabled && !!cluster && !!nodeName,
     staleTime: isLiveMetricsServer ? 1_500 : 60_000,
     refetchInterval: isLiveMetricsServer ? 3_000 : false,
     gcTime: 120_000

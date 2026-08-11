@@ -157,11 +157,7 @@ async function resolvePrometheusService(
   provider = 'auto',
   kubectlPath?: string
 ): Promise<DiscoveredPromService> {
-  if (provider !== 'auto' && PROVIDER_PRESETS[provider]) {
-    return PROVIDER_PRESETS[provider];
-  }
-
-  const cacheKey = `${kubeconfigPath ?? 'default'}:${contextName ?? 'default'}`;
+  const cacheKey = `${kubeconfigPath ?? 'default'}:${contextName ?? 'default'}:${provider}`;
   const cached = discoveredPromCache.get(cacheKey);
   if (cached) return cached;
 
@@ -186,6 +182,37 @@ async function resolvePrometheusService(
             spec?: { ports?: Array<{ name?: string; port?: number }> };
           }>;
 
+          // Check if specific provider preset matches exact or fuzzy service in provider namespace
+          if (provider !== 'auto' && PROVIDER_PRESETS[provider]) {
+            const preset = PROVIDER_PRESETS[provider];
+            const exactMatch = items.find(
+              (item) =>
+                item.metadata?.namespace === preset.namespace && item.metadata?.name === preset.name
+            );
+            if (exactMatch) {
+              const targetPort = findPromPort(exactMatch.spec?.ports, preset.port);
+              const result = { namespace: preset.namespace, name: preset.name, port: targetPort };
+              discoveredPromCache.set(cacheKey, result);
+              return resolve(result);
+            }
+
+            const nsMatch = items.find(
+              (item) =>
+                item.metadata?.namespace === preset.namespace &&
+                (item.metadata?.name?.includes('prom') ||
+                  item.metadata?.labels?.['app']?.includes('prom') ||
+                  item.metadata?.labels?.['app.kubernetes.io/name']?.includes('prom'))
+            );
+            if (nsMatch) {
+              const name = nsMatch.metadata?.name ?? preset.name;
+              const targetPort = findPromPort(nsMatch.spec?.ports, preset.port);
+              const result = { namespace: preset.namespace, name, port: targetPort };
+              discoveredPromCache.set(cacheKey, result);
+              return resolve(result);
+            }
+          }
+
+          // Auto-detect priority scan
           for (const def of AUTO_DETECT_PRIORITY) {
             const match = items.find(
               (item) =>
@@ -199,12 +226,14 @@ async function resolvePrometheusService(
             }
           }
 
+          // Fuzzy search across all namespaces
           for (const item of items) {
             const name = item.metadata?.name ?? '';
             const ns = item.metadata?.namespace ?? 'default';
             const labels = item.metadata?.labels ?? {};
             const isProm =
               name.includes('prometheus') ||
+              ns.includes('lens-metrics') ||
               labels['app'] === 'prometheus' ||
               labels['app.kubernetes.io/name'] === 'prometheus' ||
               labels['app.kubernetes.io/instance']?.includes('prometheus');
@@ -221,10 +250,14 @@ async function resolvePrometheusService(
         }
       }
 
-      resolve(AUTO_DETECT_PRIORITY[0]);
+      const defaultPreset = PROVIDER_PRESETS[provider] || AUTO_DETECT_PRIORITY[0];
+      resolve(defaultPreset);
     });
 
-    proc.on('error', () => resolve(AUTO_DETECT_PRIORITY[0]));
+    proc.on('error', () => {
+      const defaultPreset = PROVIDER_PRESETS[provider] || AUTO_DETECT_PRIORITY[0];
+      resolve(defaultPreset);
+    });
   });
 }
 
@@ -861,9 +894,361 @@ export function registerPrometheusHandlers(): void {
     }
   };
 
+  const handleNodeMetrics = async (
+    _: unknown,
+    params: {
+      kubeconfigPath?: string;
+      contextName?: string;
+      nodeName: string;
+      timeRange?: '1h' | '6h' | '24h';
+      provider?: string;
+      useHttps?: boolean;
+      pathPrefix?: string;
+      kubectlPath?: string;
+    }
+  ) => {
+    const {
+      kubeconfigPath,
+      contextName,
+      nodeName,
+      timeRange = '1h',
+      provider = 'auto',
+      useHttps = false,
+      pathPrefix = '',
+      kubectlPath
+    } = params;
+
+    if (!nodeName) {
+      return {
+        timeLabels: [],
+        cpu: { usage: [], requests: [], limits: [] },
+        memory: { usage: [], requests: [], limits: [] },
+        network: { rx: [], tx: [] },
+        filesystem: { usage: [], limit: [] },
+        error: 'Missing nodeName'
+      };
+    }
+
+    let portForwardProc: ChildProcess | null = null;
+
+    try {
+      const svc = await resolvePrometheusService(
+        kubeconfigPath,
+        contextName,
+        provider,
+        kubectlPath
+      );
+      const { localPort, proc } = await openPortForward(
+        svc,
+        kubeconfigPath,
+        contextName,
+        kubectlPath
+      );
+      portForwardProc = proc;
+
+      const baseUrl = buildPromBaseUrl(localPort, useHttps, pathPrefix);
+
+      const now = Math.floor(Date.now() / 1000);
+      const rangeSeconds = timeRange === '24h' ? 86400 : timeRange === '6h' ? 21600 : 3600;
+      const stepSec = Math.max(15, Math.floor(rangeSeconds / 60));
+      const startUnix = now - rangeSeconds;
+      const endUnix = now;
+
+      const [
+        rawCpuUsage,
+        rawCpuWorkload,
+        rawCpuReq,
+        rawCpuLim,
+        rawCpuAlloc,
+        rawCpuCap,
+        rawMemUsage,
+        rawMemWorkload,
+        rawMemReq,
+        rawMemLim,
+        rawMemAlloc,
+        rawMemCap,
+        rawNetRx,
+        rawNetTx,
+        rawFsUsage,
+        rawFsCap
+      ] = await Promise.all([
+        // CPU Usage (total node cores)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(rate(node_cpu_seconds_total{node="${nodeName}",mode!="idle"}[5m]))`,
+            `sum(rate(node_cpu_seconds_total{instance=~"^${nodeName}(:.*)?$",mode!="idle"}[5m]))`,
+            `sum(rate(node_cpu_seconds_total{kubernetes_node="${nodeName}",mode!="idle"}[5m]))`,
+            `instance:node_cpu_utilisation:rate5m{node="${nodeName}"} * instance:node_num_cpu:sum{node="${nodeName}"}`,
+            `100 - (avg by (node) (rate(node_cpu_seconds_total{node="${nodeName}",mode="idle"}[5m])) * 100)`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Workload CPU Usage (cores)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(rate(container_cpu_usage_seconds_total{node="${nodeName}",container!="",container!="POD"}[5m]))`,
+            `sum(rate(container_cpu_usage_seconds_total{instance=~"^${nodeName}(:.*)?$",container!="",container!="POD"}[5m]))`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // CPU Requests (cores)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(kube_pod_container_resource_requests{resource="cpu"} * on(pod, namespace) group_left(node) kube_pod_info{node="${nodeName}"})`,
+            `sum(kube_pod_container_resource_requests{resource="cpu"} * on(pod, namespace) group_left(node) kube_pod_info{node=~"^${nodeName}.*"})`,
+            `sum(kube_pod_container_resource_requests{node="${nodeName}",resource="cpu"})`,
+            `sum(kube_pod_container_resource_requests{node=~"^${nodeName}.*",resource="cpu"})`,
+            `sum(kube_pod_container_resource_requests{kubernetes_node="${nodeName}",resource="cpu"})`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // CPU Limits (cores)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(kube_pod_container_resource_limits{resource="cpu"} * on(pod, namespace) group_left(node) kube_pod_info{node="${nodeName}"})`,
+            `sum(kube_pod_container_resource_limits{resource="cpu"} * on(pod, namespace) group_left(node) kube_pod_info{node=~"^${nodeName}.*"})`,
+            `sum(kube_pod_container_resource_limits{node="${nodeName}",resource="cpu"})`,
+            `sum(kube_pod_container_resource_limits{node=~"^${nodeName}.*",resource="cpu"})`,
+            `sum(kube_pod_container_resource_limits{kubernetes_node="${nodeName}",resource="cpu"})`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // CPU Allocatable (cores)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `kube_node_status_allocatable{node="${nodeName}",resource="cpu"}`,
+            `kube_node_status_allocatable{node=~"^${nodeName}.*",resource="cpu"}`,
+            `kube_node_status_allocatable{kubernetes_node="${nodeName}",resource="cpu"}`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // CPU Capacity (cores)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `kube_node_status_capacity{node="${nodeName}",resource="cpu"}`,
+            `kube_node_status_capacity{node=~"^${nodeName}.*",resource="cpu"}`,
+            `kube_node_status_capacity{kubernetes_node="${nodeName}",resource="cpu"}`,
+            `machine_cpu_cores{node="${nodeName}"}`,
+            `machine_cpu_cores{instance=~"^${nodeName}(:.*)?"}`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Memory Usage (total node bytes)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `node_memory_MemTotal_bytes{node="${nodeName}"} - node_memory_MemAvailable_bytes{node="${nodeName}"}`,
+            `node_memory_MemTotal_bytes{instance=~"^${nodeName}(:.*)?"} - node_memory_MemAvailable_bytes{instance=~"^${nodeName}(:.*)?"}`,
+            `node_memory_MemTotal_bytes{kubernetes_node="${nodeName}"} - node_memory_MemAvailable_bytes{kubernetes_node="${nodeName}"}`,
+            `node_memory_MemTotal{node="${nodeName}"} - node_memory_MemAvailable{node="${nodeName}"}`,
+            `instance:node_memory_utilisation:ratio{node="${nodeName}"} * instance:node_memory_MemTotal_bytes:sum{node="${nodeName}"}`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Workload Memory Usage (bytes)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(container_memory_working_set_bytes{node="${nodeName}",container!="",container!="POD"})`,
+            `sum(container_memory_working_set_bytes{instance=~"^${nodeName}(:.*)?$",container!="",container!="POD"})`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Memory Requests (bytes)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(kube_pod_container_resource_requests{resource="memory"} * on(pod, namespace) group_left(node) kube_pod_info{node="${nodeName}"})`,
+            `sum(kube_pod_container_resource_requests{resource="memory"} * on(pod, namespace) group_left(node) kube_pod_info{node=~"^${nodeName}.*"})`,
+            `sum(kube_pod_container_resource_requests{node="${nodeName}",resource="memory"})`,
+            `sum(kube_pod_container_resource_requests{node=~"^${nodeName}.*",resource="memory"})`,
+            `sum(kube_pod_container_resource_requests{kubernetes_node="${nodeName}",resource="memory"})`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Memory Limits (bytes)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(kube_pod_container_resource_limits{resource="memory"} * on(pod, namespace) group_left(node) kube_pod_info{node="${nodeName}"})`,
+            `sum(kube_pod_container_resource_limits{resource="memory"} * on(pod, namespace) group_left(node) kube_pod_info{node=~"^${nodeName}.*"})`,
+            `sum(kube_pod_container_resource_limits{node="${nodeName}",resource="memory"})`,
+            `sum(kube_pod_container_resource_limits{node=~"^${nodeName}.*",resource="memory"})`,
+            `sum(kube_pod_container_resource_limits{kubernetes_node="${nodeName}",resource="memory"})`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Memory Allocatable (bytes)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `kube_node_status_allocatable{node="${nodeName}",resource="memory"}`,
+            `kube_node_status_allocatable{node=~"^${nodeName}.*",resource="memory"}`,
+            `kube_node_status_allocatable{kubernetes_node="${nodeName}",resource="memory"}`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Memory Capacity (bytes)
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `kube_node_status_capacity{node="${nodeName}",resource="memory"}`,
+            `kube_node_status_capacity{node=~"^${nodeName}.*",resource="memory"}`,
+            `kube_node_status_capacity{kubernetes_node="${nodeName}",resource="memory"}`,
+            `node_memory_MemTotal_bytes{node="${nodeName}"}`,
+            `node_memory_MemTotal_bytes{instance=~"^${nodeName}(:.*)?"}`,
+            `machine_memory_bytes{node="${nodeName}"}`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Network Rx
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(rate(node_network_receive_bytes_total{node="${nodeName}",device!="lo"}[5m]))`,
+            `sum(rate(node_network_receive_bytes_total{instance=~"^${nodeName}(:.*)?$",device!="lo"}[5m]))`,
+            `sum(rate(node_network_receive_bytes_total{kubernetes_node="${nodeName}",device!="lo"}[5m]))`,
+            `sum(rate(container_network_receive_bytes_total{node="${nodeName}"}[5m]))`,
+            `sum(rate(container_network_receive_bytes_total{node=~"^${nodeName}.*"}[5m]))`,
+            `instance:node_network_receive_bytes_excluding_lo:rate5m{node="${nodeName}"}`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // Network Tx
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(rate(node_network_transmit_bytes_total{node="${nodeName}",device!="lo"}[5m]))`,
+            `sum(rate(node_network_transmit_bytes_total{instance=~"^${nodeName}(:.*)?$",device!="lo"}[5m]))`,
+            `sum(rate(node_network_transmit_bytes_total{kubernetes_node="${nodeName}",device!="lo"}[5m]))`,
+            `sum(rate(container_network_transmit_bytes_total{node="${nodeName}"}[5m]))`,
+            `sum(rate(container_network_transmit_bytes_total{node=~"^${nodeName}.*"}[5m]))`,
+            `instance:node_network_transmit_bytes_excluding_lo:rate5m{node="${nodeName}"}`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // FS Usage
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(node_filesystem_size_bytes{node="${nodeName}",fstype!~"tmpfs|overlay"}) - sum(node_filesystem_free_bytes{node="${nodeName}",fstype!~"tmpfs|overlay"})`,
+            `sum(node_filesystem_size_bytes{instance=~"^${nodeName}(:.*)?$",fstype!~"tmpfs|overlay"}) - sum(node_filesystem_free_bytes{instance=~"^${nodeName}(:.*)?$",fstype!~"tmpfs|overlay"})`,
+            `sum(node_filesystem_size_bytes{kubernetes_node="${nodeName}",fstype!~"tmpfs|overlay"}) - sum(node_filesystem_free_bytes{kubernetes_node="${nodeName}",fstype!~"tmpfs|overlay"})`,
+            `sum(container_fs_usage_bytes{node="${nodeName}"})`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        ),
+        // FS Capacity
+        fetchRangeWithFallback(
+          baseUrl,
+          [
+            `sum(node_filesystem_size_bytes{node="${nodeName}",fstype!~"tmpfs|overlay"})`,
+            `sum(node_filesystem_size_bytes{instance=~"^${nodeName}(:.*)?$",fstype!~"tmpfs|overlay"})`,
+            `sum(node_filesystem_size_bytes{kubernetes_node="${nodeName}",fstype!~"tmpfs|overlay"})`,
+            `sum(container_fs_limit_bytes{node="${nodeName}"})`
+          ],
+          startUnix,
+          endUnix,
+          stepSec
+        )
+      ]);
+
+      const referenceSeries =
+        rawCpuUsage.length > 0 ? rawCpuUsage : rawMemUsage.length > 0 ? rawMemUsage : rawNetRx;
+
+      const timeLabels = referenceSeries.map(([ts]) =>
+        new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      );
+
+      const alignSeries = (target: Array<[number, string]>) => {
+        if (target.length === 0) return referenceSeries.map(() => 0);
+        const map = new Map(target.map(([ts, val]) => [ts, parseFloat(val) || 0]));
+        return referenceSeries.map(([ts]) => map.get(ts) ?? 0);
+      };
+
+      const toNum = (raw: Array<[number, string]>) => alignSeries(raw);
+      const toMiB = (raw: Array<[number, string]>) =>
+        alignSeries(raw).map((v) => (v || 0) / (1024 * 1024));
+      const toKBs = (raw: Array<[number, string]>) => alignSeries(raw).map((v) => (v || 0) / 1024);
+
+      return {
+        source: `${svc.namespace} / ${svc.name}:${svc.port}`,
+        timeLabels,
+        cpu: {
+          usage: toNum(rawCpuUsage),
+          workloadUsage: toNum(rawCpuWorkload),
+          requests: toNum(rawCpuReq),
+          limits: toNum(rawCpuLim),
+          allocatable: toNum(rawCpuAlloc),
+          capacity: toNum(rawCpuCap)
+        },
+        memory: {
+          usage: toMiB(rawMemUsage),
+          workloadUsage: toMiB(rawMemWorkload),
+          requests: toMiB(rawMemReq),
+          limits: toMiB(rawMemLim),
+          allocatable: toMiB(rawMemAlloc),
+          capacity: toMiB(rawMemCap)
+        },
+        network: { rx: toKBs(rawNetRx), tx: toKBs(rawNetTx) },
+        filesystem: { usage: toMiB(rawFsUsage), limit: toMiB(rawFsCap) }
+      };
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : String(err),
+        timeLabels: [],
+        cpu: { usage: [], requests: [], limits: [] },
+        memory: { usage: [], requests: [], limits: [] },
+        network: { rx: [], tx: [] },
+        filesystem: { usage: [], limit: [] }
+      };
+    } finally {
+      if (portForwardProc && !portForwardProc.killed) portForwardProc.kill('SIGTERM');
+    }
+  };
+
   // Register under both channel names
   ipcMain.handle('kuberneter:query-pod-metrics-range', handlePodMetrics);
   ipcMain.handle('kuberneter:get-pod-metrics', handlePodMetrics);
+
+  ipcMain.handle('kuberneter:query-node-metrics-range', handleNodeMetrics);
+  ipcMain.handle('kuberneter:get-node-metrics', handleNodeMetrics);
 
   ipcMain.handle('kuberneter:test-prometheus', async (_, config: PrometheusQueryConfig) => {
     const {

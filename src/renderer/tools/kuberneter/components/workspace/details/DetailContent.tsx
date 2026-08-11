@@ -154,6 +154,7 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       return <RoleBindingDetail payload={payload as RoleBindingData} isTab={isTab} />;
     case 'application':
       return <ApplicationDetail payload={payload as ApplicationData} isTab={isTab} />;
+    case 'node':
     case 'nodes':
       return <NodeDetail payload={payload as NodeData} isTab={isTab} />;
     case 'event':

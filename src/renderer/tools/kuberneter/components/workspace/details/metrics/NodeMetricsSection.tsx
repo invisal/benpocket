@@ -1,12 +1,11 @@
 import type React from 'react';
 import { useState } from 'react';
 import {
-  RefreshCw,
-  BarChart2,
   Cpu,
   MemoryStick,
   Network,
   HardDrive,
+  RefreshCw,
   MoreVertical,
   Settings
 } from 'lucide-react';
@@ -14,26 +13,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { EChartsMetricChart, type ChartSeries } from './EChartsMetricChart';
 import { useLayoutStore } from '../../../../../../src/store/layout.store';
 import { useKuberneterStore, DEFAULT_METRICS_CONFIG } from '../../../../store/kuberneter.store';
-import { usePodMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
+import { useNodeMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
 import { Menu } from '@renderer/components/ui/Menu';
 
-export type MetricCategory = 'cpu' | 'memory' | 'network' | 'filesystem';
+export type NodeMetricCategory = 'cpu' | 'memory' | 'network' | 'filesystem';
 
-export interface MetricsSectionProps {
-  podName?: string;
-  podNs?: string;
-  namespace?: string;
-  resourceLabel?: string;
+export interface NodeMetricsSectionProps {
+  nodeName: string;
 }
 
-export const MetricsSection: React.FC<MetricsSectionProps> = ({
-  podName,
-  podNs,
-  namespace,
-  resourceLabel = 'resource'
-}) => {
-  const targetNs = namespace || podNs || '';
-  const [category, setCategory] = useState<MetricCategory>('cpu');
+export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName }) => {
+  const [category, setCategory] = useState<NodeMetricCategory>('cpu');
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
 
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
@@ -72,16 +62,9 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
 
   const queryClient = useQueryClient();
 
-  const { data, isFetching } = usePodMetricsRange(
-    targetNs,
-    podName || '',
-    timeRange,
-    !!podName && !!targetNs
-  );
+  const { data, isFetching } = useNodeMetricsRange(nodeName, timeRange, !!nodeName);
 
-  const targetName = podName || '';
-
-  const ALL_CATEGORIES: MetricCategory[] = ['cpu', 'memory', 'network', 'filesystem'];
+  const ALL_CATEGORIES: NodeMetricCategory[] = ['cpu', 'memory', 'network', 'filesystem'];
   const hiddenSet = new Set(metricsConfig.hiddenMetrics || []);
   const visibleCategories = ALL_CATEGORIES.filter((cat) => !hiddenSet.has(cat) || cat === 'cpu');
 
@@ -90,12 +73,12 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
     : (visibleCategories[0] ?? 'cpu');
 
   function handleRefresh() {
-    if (!targetName || !targetNs) return;
+    if (!nodeName) return;
     const key = metricsKeys.range(
       configPath ?? 'default',
       cluster,
-      targetNs,
-      targetName,
+      'node',
+      nodeName,
       timeRange,
       metricsConfigKey
     );
@@ -109,24 +92,23 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
       <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground font-mono">
           <RefreshCw className="size-4 animate-spin text-accent" />
-          <span>Loading metrics...</span>
+          <span>Loading node metrics...</span>
         </div>
       </div>
     );
   }
 
-  if (!targetName || !data?.timeLabels.length) {
+  if (!nodeName || !data?.timeLabels.length) {
     return (
       <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
         <div className="flex items-center justify-between gap-2 py-2 text-xs text-muted-foreground font-mono">
           <div className="flex items-center gap-2">
-            <BarChart2 className="size-4 text-muted-foreground" />
             <span>
-              No metric points available for this {resourceLabel} (Source:{' '}
+              No node metrics available for <b className="text-foreground">{nodeName}</b> (source:{' '}
               <span className="text-accent font-medium">{metricsConfig.provider}</span>)
             </span>
           </div>
-          {targetName && (
+          {nodeName && (
             <button
               onClick={handleRefresh}
               className="flex items-center gap-1 px-2 py-1 rounded bg-surface-3 border border-border text-[10px] text-foreground hover:bg-surface-2 cursor-pointer transition-colors"
@@ -146,16 +128,34 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
   if (activeCategory === 'cpu') {
     activeUnit = 'cores';
     activeSeries = [
-      { name: 'CPU Usage', color: '#3b82f6', data: data?.cpu.usage ?? [] },
-      { name: 'CPU Requests', color: '#10b981', data: data?.cpu.requests ?? [] },
-      { name: 'CPU Limits', color: '#6b7280', data: data?.cpu.limits ?? [] }
+      { name: 'CPU Usage', color: '#c084fc', data: data?.cpu.usage ?? [] },
+      ...(data?.cpu.workloadUsage?.some((v) => v > 0)
+        ? [{ name: 'Workload CPU Usage', color: '#38bdf8', data: data.cpu.workloadUsage }]
+        : []),
+      { name: 'CPU Requests', color: '#4ade80', data: data?.cpu.requests ?? [] },
+      { name: 'CPU Limits', color: '#a855f7', data: data?.cpu.limits ?? [] },
+      ...(data?.cpu.allocatable?.some((v) => v > 0)
+        ? [{ name: 'CPU Allocatable Capacity', color: '#1d4ed8', data: data.cpu.allocatable }]
+        : []),
+      ...(data?.cpu.capacity?.some((v) => v > 0)
+        ? [{ name: 'CPU Capacity', color: '#9ca3af', data: data.cpu.capacity }]
+        : [])
     ];
   } else if (activeCategory === 'memory') {
     activeUnit = 'MiB';
     activeSeries = [
-      { name: 'Memory Usage', color: '#a855f7', data: data?.memory.usage ?? [] },
-      { name: 'Memory Requests', color: '#10b981', data: data?.memory.requests ?? [] },
-      { name: 'Memory Limits', color: '#6b7280', data: data?.memory.limits ?? [] }
+      { name: 'Memory Usage', color: '#c084fc', data: data?.memory.usage ?? [] },
+      ...(data?.memory.workloadUsage?.some((v) => v > 0)
+        ? [{ name: 'Workload Memory Usage', color: '#38bdf8', data: data.memory.workloadUsage }]
+        : []),
+      { name: 'Memory Requests', color: '#4ade80', data: data?.memory.requests ?? [] },
+      { name: 'Memory Limits', color: '#a855f7', data: data?.memory.limits ?? [] },
+      ...(data?.memory.allocatable?.some((v) => v > 0)
+        ? [{ name: 'Memory Allocatable Capacity', color: '#1d4ed8', data: data.memory.allocatable }]
+        : []),
+      ...(data?.memory.capacity?.some((v) => v > 0)
+        ? [{ name: 'Memory Capacity', color: '#9ca3af', data: data.memory.capacity }]
+        : [])
     ];
   } else if (activeCategory === 'network') {
     activeUnit = 'KB/s';
@@ -182,7 +182,7 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
             const isNet = cat === 'network';
             const isFs = cat === 'filesystem';
 
-            const labelMap: Record<MetricCategory, string> = {
+            const labelMap: Record<NodeMetricCategory, string> = {
               cpu: 'CPU',
               memory: 'Memory',
               network: 'Network',
@@ -214,7 +214,7 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value as '1h' | '6h' | '24h')}
-            className="bg-surface-3 border border-border text-foreground rounded px-1.5 py-0.5 text-[10px] outline-none cursor-pointer font-mono font-medium"
+            className="bg-surface-3 border border-border rounded text-[10px] px-1.5 py-0.5 text-foreground focus:outline-none cursor-pointer"
           >
             <option value="1h">1h</option>
             <option value="6h">6h</option>
@@ -222,22 +222,26 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
           </select>
           <button
             onClick={handleRefresh}
-            disabled={isFetching}
-            className="p-1 text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-none transition-colors"
             title="Refresh metrics"
+            disabled={isFetching}
+            className="p-1 rounded bg-surface-3 border border-border text-foreground hover:bg-surface-2 disabled:opacity-50 cursor-pointer transition-colors flex items-center justify-center"
           >
-            <RefreshCw className={`size-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-3 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
           <Menu.Root>
             <Menu.Trigger
-              className="p-1 text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-none transition-colors outline-none flex items-center justify-center rounded"
-              title="Metrics options"
-            >
-              <MoreVertical className="size-3.5" />
-            </Menu.Trigger>
-            <Menu.Content align="end">
-              <Menu.Item onClick={handleOpenMetricsSettings}>
-                <Settings className="size-3.5 text-muted-foreground mr-1.5" />
+              render={
+                <button
+                  title="More actions"
+                  className="p-1 rounded bg-surface-3 border border-border text-foreground hover:bg-surface-2 cursor-pointer transition-colors flex items-center justify-center"
+                >
+                  <MoreVertical className="size-3" />
+                </button>
+              }
+            />
+            <Menu.Content side="bottom" align="end" className="w-40">
+              <Menu.Item onSelect={handleOpenMetricsSettings} className="gap-2 text-xs">
+                <Settings className="size-3.5 text-muted-foreground" />
                 <span>Metrics Settings</span>
               </Menu.Item>
             </Menu.Content>
@@ -245,19 +249,14 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono truncate min-w-0 pt-2 pb-1">
-        <BarChart2 className="size-3 text-muted-foreground shrink-0" />
-        <span className="truncate">
-          Resource: <span className="text-accent font-medium">{data?.source ?? '—'}</span>
-        </span>
-      </div>
-
-      <div className="w-full pt-1 min-w-0">
+      <div className="pt-2 min-w-0">
         <EChartsMetricChart
-          timeLabels={data?.timeLabels ?? []}
+          title={data.source ? `Resource: ${data.source}` : undefined}
+          timeLabels={data.timeLabels}
           series={activeSeries}
           unit={activeUnit}
-          height={150}
+          showLegend={false}
+          height={170}
         />
       </div>
     </div>

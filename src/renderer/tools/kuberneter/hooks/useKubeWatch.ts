@@ -26,12 +26,17 @@ export function useKubeWatch(queryResource: string, enabled: boolean) {
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const isInstanceActive = activeTab ? activeTab.instanceId === activeInstanceId : true;
 
+  const isAppsView =
+    activeResource.toLowerCase() === 'apps' &&
+    ['deployments', 'statefulsets', 'daemonsets'].includes(queryResource.toLowerCase());
+
   // Watch should ONLY be active when the user is currently viewing this resource
   const isResourceMatch =
     !queryResource ||
     !activeResource ||
     queryResource.toLowerCase() === activeResource.toLowerCase() ||
-    activeResource.toLowerCase().includes(queryResource.toLowerCase());
+    activeResource.toLowerCase().includes(queryResource.toLowerCase()) ||
+    isAppsView;
 
   const shouldWatch = enabled && isInstanceActive && isResourceMatch && !!kuberneterSelectedCluster;
 

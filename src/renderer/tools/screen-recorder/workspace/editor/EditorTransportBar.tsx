@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { type RefObject } from 'react';
-import { Crop, Pause, Play, SkipBack, SkipForward, Space } from 'lucide-react';
+import { Crop, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import type { AspectRatio } from '@screen-recorder/types/export';
 import type { PreviewVideoController } from '@screen-recorder/types/editor';
 import { Select } from '@renderer/components/ui/Select';

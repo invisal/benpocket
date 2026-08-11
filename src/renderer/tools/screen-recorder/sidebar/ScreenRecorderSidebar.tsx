@@ -13,6 +13,7 @@ import { useAppStore, type ScreenRecorderRoute } from '../app/app-store';
 import { useToastStore } from '../app/toast-store';
 import { useExportStore } from '../features/export/store/export-store';
 import { useOpenProject } from '../features/project/hooks/useOpenProject';
+import { DiscardChangesDialog } from '../features/project/components/DiscardChangesDialog';
 import { importVideoFile } from '../features/project/lib/import-video';
 import { groupProjectsBySource } from '../features/project/lib/group-projects-by-source';
 import { formatTimeAgo } from '../lib/format';
@@ -45,7 +46,8 @@ export const ScreenRecorderSidebar: React.FC = () => {
 
   const [recentProjects, setRecentProjects] = useState<ProjectSummary[]>([]);
   const [isImporting, setIsImporting] = useState(false);
-  const { loadingProjectId, openProject } = useOpenProject();
+  const { loadingProjectId, openProject, pendingProject, confirmDiscard, cancelDiscard } =
+    useOpenProject();
   const hasAutoSelectedRef = useRef(false);
 
   // Recent-projects list is separate from `lastRecording`'s persisted
@@ -149,6 +151,11 @@ export const ScreenRecorderSidebar: React.FC = () => {
 
   return (
     <div className="flex h-full w-full">
+      <DiscardChangesDialog
+        open={pendingProject !== null}
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
       <Tooltip.Provider delay={200} closeDelay={0}>
         <nav className="flex w-11 shrink-0 flex-col items-center gap-0.5 border-r border-line py-3">
           {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon, requiresRecording }) => {

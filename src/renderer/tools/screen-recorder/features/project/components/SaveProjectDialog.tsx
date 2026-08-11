@@ -6,6 +6,7 @@ import { Button } from '@renderer/components/ui/Button';
 import { useAppStore } from '../../../app/app-store';
 import { useToastStore } from '../../../app/toast-store';
 import { buildProjectSnapshot } from '../lib/build-project-snapshot';
+import { resetHistory } from '../../history/store/history-store';
 
 interface SaveProjectDialogProps {
   open: boolean;
@@ -54,6 +55,7 @@ function SaveProjectForm({ initialName, onOpenChange }: SaveProjectFormProps): J
       setProjectName(trimmed);
       setCurrentProjectId(project.id);
       bumpProjectsVersion();
+      resetHistory();
       showToast('Project saved');
       onOpenChange(false);
     } finally {

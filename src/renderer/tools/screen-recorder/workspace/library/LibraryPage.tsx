@@ -4,6 +4,7 @@ import type { ProjectSummary } from '@screen-recorder/types/project';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useAppStore } from '../../app/app-store';
 import { useOpenProject } from '../../features/project/hooks/useOpenProject';
+import { DiscardChangesDialog } from '../../features/project/components/DiscardChangesDialog';
 import { ProjectVideoThumbnail } from '../../features/project/components/ProjectVideoThumbnail';
 import { groupProjectsBySource } from '../../features/project/lib/group-projects-by-source';
 import { formatTimeAgo } from '../../lib/format';
@@ -19,7 +20,14 @@ export function LibraryPage(): JSX.Element {
   const projectsVersion = useAppStore((state) => state.projectsVersion);
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const { loadingProjectId, error: loadError, openProject } = useOpenProject();
+  const {
+    loadingProjectId,
+    error: loadError,
+    openProject,
+    pendingProject,
+    confirmDiscard,
+    cancelDiscard
+  } = useOpenProject();
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +82,11 @@ export function LibraryPage(): JSX.Element {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-8">
+      <DiscardChangesDialog
+        open={pendingProject !== null}
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
       <h1 className="text-xl font-semibold">Library</h1>
 
       {loadError && <p className="text-xs text-danger">{loadError}</p>}

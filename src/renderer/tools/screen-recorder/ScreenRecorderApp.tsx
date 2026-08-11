@@ -15,6 +15,7 @@ import { ExportDialogButton } from './features/export/components/ExportDialog';
 import { LaunchRecorderButton } from './features/recording/components/LaunchRecorderButton';
 import { SaveProjectDialog } from './features/project/components/SaveProjectDialog';
 import { buildProjectSnapshot } from './features/project/lib/build-project-snapshot';
+import { resetHistory } from './features/history/store/history-store';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { Button } from '@renderer/components/ui/Button';
 import { ToastViewport } from './components/ui/toast';
@@ -61,6 +62,7 @@ export function ScreenRecorderApp(): JSX.Element {
       if (ok) {
         setCurrentProjectId(project.id);
         bumpProjectsVersion();
+        resetHistory();
         showToast('Project saved');
       } else {
         showToast('Failed to save project', 'error');

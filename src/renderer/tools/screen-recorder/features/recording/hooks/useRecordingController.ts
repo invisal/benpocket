@@ -9,6 +9,7 @@ import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useCursorStore } from '../../cursor/store/cursor-store';
 import { parseWindowSourceId } from '@shared/window-source-id';
 import { toRecordingMediaUrl } from '@shared/media-protocol';
+import { resetContentStoresForNewRecording } from '../../project/lib/reset-content-stores-for-new-recording';
 
 export interface LiveCounts {
   cursorCount: number;
@@ -315,6 +316,12 @@ export function useRecordingController(): RecordingController {
     // import-video.ts does for imports, so "Save" can't silently overwrite
     // it instead of creating a new one.
     useAppStore.setState({ currentProjectId: null, projectName: 'Untitled Recording' });
+    // Also clear whatever the previous project's background/cursor/captions/
+    // annotations/blur-mask/crop stores held -- without this they'd silently
+    // carry over into this new recording's editor session instead of
+    // starting blank. After `finalize()` (already reset zoom's keyframes
+    // above) so it doesn't disturb that decision.
+    resetContentStoresForNewRecording();
     setRoute('editor');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finalize]);

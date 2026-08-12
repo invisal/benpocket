@@ -10,18 +10,19 @@ BenPocket — a personal multi-purpose toolkit (Swiss Army knife) combining smal
 
 ## Workflow
 
-Every change must pass format, lint, typecheck, and knip before it's considered done:
+Every change must pass format, lint, typecheck, knip, and tests before it's considered done:
 
 ```bash
-npm run format       # prettier --write . (auto-fixes formatting)
-npm run lint          # eslint --cache .
-npm run typecheck     # tsc --noEmit for both node and web targets
-npm run knip          # dead code: unused files, exports, dependencies
+npm run check    # format:check + lint + typecheck + knip + test
 ```
 
-- Run all four after finishing a change. If `lint` have error or warning in files and fix them .
+- Run this after finishing a change. If it fails on formatting, run `npm run format` (prettier --write, auto-fixes) and re-run `npm run check`. If `lint` has errors or warnings, fix them.
 - If `knip` reports an unused export, prefer deleting the dead code over adding it to `knip.jsonc` ignores. Only extend `knip.jsonc` for false positives (e.g. system binaries invoked via `spawn`).
+
+## Guidelines
+
 - Use `cn` from `cnfast` to combine class names — not manual string template concatenation.
+- Write tests for pure logic — parsers, data transforms, store/sync logic — where input and expected output are obvious and the test would fail if the logic broke. Skip tests that need heavy mocking of internal collaborators; if a test needs 3+ stubs to set up, decompose the function instead. A small fake at a real I/O boundary (network, fs, IPC) is fine — see `src/main/store/syncProvider.test.ts`. Don't write component tests for coverage's sake.
 
 ## Receipts
 

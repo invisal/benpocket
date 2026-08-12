@@ -164,6 +164,26 @@ export function MetricsSettings() {
         </p>
       </div>
 
+      {/* ── Refresh Interval ── */}
+      <div className="flex flex-col gap-2">
+        <SectionLabel>Refresh Interval</SectionLabel>
+        <SettingsSelect
+          value={String(metricsConfig.refreshInterval ?? 3)}
+          options={[
+            { value: '3', label: 'Every 3 seconds (Default)' },
+            { value: '5', label: 'Every 5 seconds' },
+            { value: '10', label: 'Every 10 seconds' },
+            { value: '30', label: 'Every 30 seconds' },
+            { value: '60', label: 'Every 1 minute' },
+            { value: '0', label: 'Off (Manual refresh)' }
+          ]}
+          onChange={(v) => patch({ refreshInterval: parseInt(v, 10) })}
+        />
+        <p className="text-xs text-muted-foreground">
+          How frequently live metric charts (Pod & Node metrics) poll for updates.
+        </p>
+      </div>
+
       {/* ── Prometheus section (hidden for metrics-server / none) ── */}
       {usesPrometheus && (
         <>

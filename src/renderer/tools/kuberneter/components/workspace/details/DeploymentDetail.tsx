@@ -1,5 +1,6 @@
 import { Age } from '../../Age';
 import type React from 'react';
+import { useState } from 'react';
 import {
   type DeployData,
   type DeployRevision,
@@ -9,6 +10,12 @@ import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+import { MetricsSection } from './metrics';
+import {
+  useInstantMetrics,
+  formatInstantCpu,
+  formatInstantMemory
+} from '../../../hooks/useMetrics';
 
 interface DeploymentDetailProps {
   payload: DeployData;
@@ -50,6 +57,19 @@ interface DeployRawResource {
 export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const pods = payload?.podsList || [];
+  const [selectedTarget, setSelectedTarget] = useState<string>('all');
+
+  const metricsQuery = useInstantMetrics(true);
+  const metricItems = metricsQuery.data ?? [];
+
+  const allPodNames = pods.map((p) => p.name);
+  const targetPodNames =
+    selectedTarget === 'all'
+      ? allPodNames
+      : pods.some((p) => p.name === selectedTarget)
+        ? [selectedTarget]
+        : allPodNames;
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No deployment details available.</div>;
@@ -233,48 +253,31 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
       {/* Metrics Section */}
-      <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3">
-        <div className="flex justify-between items-center text-[10px] font-bold text-zinc-450 uppercase tracking-wider">
-          <span>Metrics</span>
-          <span className="text-zinc-500 font-normal">1h</span>
-        </div>
-        <div className="text-[10px] text-zinc-500">
-          Displaying metrics from Prometheus:{' '}
-          <span className="text-accent underline cursor-pointer">monitoring</span> /{' '}
-          <span className="text-accent underline cursor-pointer">prometheus-operated:9090</span>
-        </div>
-        {/* Simple Premium Area Sparkline Mockup */}
-        <div className="h-24 w-full bg-black/10 rounded border border-border-dark/30 relative flex flex-col justify-end p-1 select-none">
-          <svg
-            className="w-full h-full absolute inset-0 overflow-hidden"
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M 0 85 Q 20 60 40 85 T 80 50 T 120 70 T 160 40 T 200 65 T 240 30 T 280 55 T 320 80 T 360 40 L 400 40 L 400 100 L 0 100 Z"
-              fill="url(#cpuGrad)"
-              stroke="#3b82f6"
-              strokeWidth="1.5"
-            />
-            {/* Highlighted metric bar */}
-            <rect x="220" y="0" width="3" height="96" fill="#3b82f6" opacity="0.6" />
-          </svg>
-          <div className="absolute right-2 top-1 text-[9px] font-mono text-zinc-500 text-right">
-            0.0008
-            <br />
-            0.0004
-            <br />0
+      <div className="flex flex-col gap-2">
+        {pods.length > 0 && (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">
+              Pod Metrics Target
+            </span>
+            <select
+              value={selectedTarget}
+              onChange={(e) => setSelectedTarget(e.target.value)}
+              className="bg-surface-3 border border-border/60 rounded text-[10px] font-mono px-2 py-0.5 text-foreground outline-none cursor-pointer"
+            >
+              <option value="all">All Pods ({pods.length} aggregated)</option>
+              {pods.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="absolute left-2 top-2 text-[10px] font-mono text-zinc-400">CPU Usage</div>
-        </div>
-        <div className="flex justify-center items-center gap-1.5 text-[9px] font-mono text-zinc-500">
-          <span className="size-1.5 rounded-full bg-blue-500"></span> CPU Usage
-        </div>
+        )}
+        <MetricsSection
+          namespace={payload.ns}
+          podNames={targetPodNames}
+          resourceLabel="deployment"
+        />
       </div>
 
       {/* Properties Section */}
@@ -386,12 +389,34 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
                 {
                   key: 'cpu',
                   header: 'CPU',
-                  className: 'py-2 px-3 text-zinc-300'
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  render: (row) => {
+                    const podMetric = metricItems.find(
+                      (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
+                    );
+                    const cpuStr = podMetric?.cpu
+                      ? formatInstantCpu(podMetric.cpu)
+                      : row.cpu && row.cpu !== 'N/A'
+                        ? row.cpu
+                        : 'N/A';
+                    return <span>{cpuStr}</span>;
+                  }
                 },
                 {
                   key: 'memory',
                   header: 'Memory',
-                  className: 'py-2 px-3 text-zinc-300'
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  render: (row) => {
+                    const podMetric = metricItems.find(
+                      (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
+                    );
+                    const memStr = podMetric?.memory
+                      ? formatInstantMemory(podMetric.memory)
+                      : row.memory && row.memory !== 'N/A'
+                        ? row.memory
+                        : 'N/A';
+                    return <span>{memStr}</span>;
+                  }
                 },
                 {
                   key: 'status',

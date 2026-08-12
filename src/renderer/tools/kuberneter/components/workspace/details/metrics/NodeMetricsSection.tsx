@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   Cpu,
   MemoryStick,
-  Network,
+  ArrowUpDown,
   HardDrive,
   RefreshCw,
   MoreVertical,
@@ -57,7 +57,8 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
     metricsConfig.provider,
     metricsConfig.filterEmptyContainers,
     metricsConfig.useHttps,
-    metricsConfig.pathPrefix
+    metricsConfig.pathPrefix,
+    metricsConfig.refreshInterval ?? 3
   ].join(':');
 
   const queryClient = useQueryClient();
@@ -202,7 +203,7 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
               >
                 {isCpu && <Cpu className="size-3.5 shrink-0" />}
                 {isMem && <MemoryStick className="size-3.5 shrink-0" />}
-                {isNet && <Network className="size-3.5 shrink-0" />}
+                {isNet && <ArrowUpDown className="size-3.5 shrink-0" />}
                 {isFs && <HardDrive className="size-3.5 shrink-0" />}
               </button>
             );
@@ -240,7 +241,7 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
               }
             />
             <Menu.Content side="bottom" align="end" className="w-40">
-              <Menu.Item onSelect={handleOpenMetricsSettings} className="gap-2 text-xs">
+              <Menu.Item onClick={handleOpenMetricsSettings} className="gap-2 text-xs">
                 <Settings className="size-3.5 text-muted-foreground" />
                 <span>Metrics Settings</span>
               </Menu.Item>

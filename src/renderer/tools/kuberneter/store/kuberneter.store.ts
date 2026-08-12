@@ -26,6 +26,7 @@ export interface MetricsConfig {
   useHttps: boolean;
   pathPrefix: string;
   hiddenMetrics: MetricCategory[];
+  refreshInterval: number;
 }
 
 export interface KuberneterBottomPanelTab {
@@ -42,7 +43,8 @@ export const DEFAULT_METRICS_CONFIG: MetricsConfig = {
   filterEmptyContainers: true,
   useHttps: false,
   pathPrefix: '',
-  hiddenMetrics: []
+  hiddenMetrics: [],
+  refreshInterval: 3
 };
 
 interface KuberneterState {

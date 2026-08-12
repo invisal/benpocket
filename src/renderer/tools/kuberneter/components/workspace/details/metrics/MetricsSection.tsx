@@ -1,11 +1,11 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   RefreshCw,
   BarChart2,
   Cpu,
   MemoryStick,
-  Network,
+  ArrowUpDown,
   HardDrive,
   MoreVertical,
   Settings
@@ -14,13 +14,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { EChartsMetricChart, type ChartSeries } from './EChartsMetricChart';
 import { useLayoutStore } from '../../../../../../src/store/layout.store';
 import { useKuberneterStore, DEFAULT_METRICS_CONFIG } from '../../../../store/kuberneter.store';
-import { usePodMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
+import { useMultiPodMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
 import { Menu } from '@renderer/components/ui/Menu';
 
 export type MetricCategory = 'cpu' | 'memory' | 'network' | 'filesystem';
 
 export interface MetricsSectionProps {
   podName?: string;
+  podNames?: string[];
   podNs?: string;
   namespace?: string;
   resourceLabel?: string;
@@ -28,11 +29,18 @@ export interface MetricsSectionProps {
 
 export const MetricsSection: React.FC<MetricsSectionProps> = ({
   podName,
+  podNames,
   podNs,
   namespace,
   resourceLabel = 'resource'
 }) => {
   const targetNs = namespace || podNs || '';
+  const effectivePodNames = useMemo(() => {
+    if (podNames && podNames.length > 0) return podNames;
+    if (podName) return [podName];
+    return [];
+  }, [podNames, podName]);
+
   const [category, setCategory] = useState<MetricCategory>('cpu');
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
 
@@ -67,19 +75,20 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
     metricsConfig.provider,
     metricsConfig.filterEmptyContainers,
     metricsConfig.useHttps,
-    metricsConfig.pathPrefix
+    metricsConfig.pathPrefix,
+    metricsConfig.refreshInterval ?? 3
   ].join(':');
 
   const queryClient = useQueryClient();
 
-  const { data, isFetching } = usePodMetricsRange(
+  const { data, isFetching } = useMultiPodMetricsRange(
     targetNs,
-    podName || '',
+    effectivePodNames,
     timeRange,
-    !!podName && !!targetNs
+    !!targetNs && effectivePodNames.length > 0
   );
 
-  const targetName = podName || '';
+  const targetName = effectivePodNames[0] || '';
 
   const ALL_CATEGORIES: MetricCategory[] = ['cpu', 'memory', 'network', 'filesystem'];
   const hiddenSet = new Set(metricsConfig.hiddenMetrics || []);
@@ -202,7 +211,7 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
               >
                 {isCpu && <Cpu className="size-3.5 shrink-0" />}
                 {isMem && <MemoryStick className="size-3.5 shrink-0" />}
-                {isNet && <Network className="size-3.5 shrink-0" />}
+                {isNet && <ArrowUpDown className="size-3.5 shrink-0" />}
                 {isFs && <HardDrive className="size-3.5 shrink-0" />}
               </button>
             );

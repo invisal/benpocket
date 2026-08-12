@@ -59,7 +59,7 @@ function resolveShadow(intensity: number, scale: number): ShadowSceneData | null
   return {
     radiusPx: 0, // filled in by caller (shares cornerRadiusPx)
     blurPx: intensity * 0.7 * scale,
-    offsetYPx: intensity * 0.3 * scale,
+    spreadPx: intensity * 0.3 * scale,
     alpha: 0.15 + (intensity / 100) * 0.45
   };
 }

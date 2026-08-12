@@ -40,12 +40,16 @@ export class ShadowCornerEffect {
       this.shadowGraphics.filters = [];
       return;
     }
+    // Grown by `spreadPx` on every edge (not shifted down by an offset) so
+    // the blur pokes out symmetrically on all four sides instead of reading
+    // as a bottom-only directional shadow -- the opaque content drawn on
+    // top still occludes the shadow rect everywhere but that overhang.
     this.shadowGraphics
       .roundRect(
-        innerRect.x,
-        innerRect.y + shadow.offsetYPx,
-        innerRect.width,
-        innerRect.height,
+        innerRect.x - shadow.spreadPx,
+        innerRect.y - shadow.spreadPx,
+        innerRect.width + shadow.spreadPx * 2,
+        innerRect.height + shadow.spreadPx * 2,
         radiusPx
       )
       .fill({ color: 0x000000, alpha: shadow.alpha });

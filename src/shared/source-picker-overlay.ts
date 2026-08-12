@@ -1,4 +1,8 @@
-import type { CaptureTargetType } from '@screen-recorder/types/recording';
+import type {
+  AudioInputOptions,
+  CaptureTargetType,
+  WebcamOptions
+} from '@screen-recorder/types/recording';
 
 /**
  * The click-to-record overlay opened from the focus toolbar's Display/Window
@@ -17,6 +21,17 @@ import type { CaptureTargetType } from '@screen-recorder/types/recording';
  */
 export interface SourcePickerOverlayOpenOptions {
   type: CaptureTargetType;
+  /** Seconds to count down (visibly, in this overlay) before a confirmed pick actually starts recording. 0 skips it. Mirrors useRecordingStore.countdownSeconds. */
+  countdownSeconds: number;
+  /**
+   * The toolbar's current audio/webcam/cursor settings, so a pick here can
+   * call `recorderToolbar.requestStart` directly with a complete payload
+   * instead of relaying a bare source id back through the (hidden) toolbar
+   * window to build it -- see SourcePickerOverlayApp.tsx's confirmSelection.
+   */
+  audio: AudioInputOptions;
+  webcam: WebcamOptions;
+  cursorSettings: { visible: boolean; clickRippleEnabled: boolean };
 }
 
 export interface SourcePickerOverlayInit extends SourcePickerOverlayOpenOptions {

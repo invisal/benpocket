@@ -166,7 +166,11 @@ export function PreviewStage({
   const contentBorderRadius = background.cornerRadius * previewScale;
   const contentBoxShadow =
     background.shadow > 0
-      ? `0 ${Math.round(background.shadow * 0.3 * previewScale)}px ${Math.round(background.shadow * 0.7 * previewScale)}px rgba(0, 0, 0, ${(0.15 + (background.shadow / 100) * 0.45).toFixed(2)})`
+      ? // No offset -- 4th value is spread, growing the shadow rect evenly on
+        // every edge (matching shadow-corner.ts's export render) instead of
+        // the 2nd/3rd-value directional offset this used to read as, which
+        // only ever poked out from underneath the content.
+        `0 0 ${Math.round(background.shadow * 0.7 * previewScale)}px ${Math.round(background.shadow * 0.3 * previewScale)}px rgba(0, 0, 0, ${(0.15 + (background.shadow / 100) * 0.45).toFixed(2)})`
       : 'none';
 
   return (

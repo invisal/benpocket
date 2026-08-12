@@ -38,6 +38,11 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
     skipNextAutoInit: true
   });
   useZoomStore.setState({
+    // `mode` isn't part of a saved `Project` (only the resulting
+    // `zoomKeyframes` are) -- reset it to the store's own default rather
+    // than leaving whatever the previously open project's Zoom panel had it
+    // set to, which would otherwise silently carry over into this one.
+    mode: 'auto',
     keyframes: project.zoomKeyframes,
     selectedKeyframeId: null
   });

@@ -248,6 +248,10 @@ export const screenRecorderApi = {
       ipcRenderer.send(IpcChannels.RecorderToolbarStart, payload),
     /** Called by the toolbar window's Stop button once recording. */
     requestStop: (): void => ipcRenderer.send(IpcChannels.RecorderToolbarStop),
+    /** Called by the toolbar window's Restart button once recording. */
+    requestRestart: (): void => ipcRenderer.send(IpcChannels.RecorderToolbarRestart),
+    /** Called by the toolbar window's Delete button once recording. */
+    requestDelete: (): void => ipcRenderer.send(IpcChannels.RecorderToolbarDelete),
     /** Called by the main window once its start attempt settles. */
     reportRecordingStarted: (result: RecorderToolbarRecordingResult): void =>
       ipcRenderer.send(IpcChannels.RecorderToolbarRecordingStarted, result),
@@ -273,6 +277,19 @@ export const screenRecorderApi = {
       ipcRenderer.on(IpcChannels.RecorderToolbarStopRequested, listener);
       return () => ipcRenderer.removeListener(IpcChannels.RecorderToolbarStopRequested, listener);
     },
+    /** Main window: the toolbar's Restart button was clicked. */
+    onRestartRequested: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.RecorderToolbarRestartRequested, listener);
+      return () =>
+        ipcRenderer.removeListener(IpcChannels.RecorderToolbarRestartRequested, listener);
+    },
+    /** Main window: the toolbar's Delete button was clicked. */
+    onDeleteRequested: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.RecorderToolbarDeleteRequested, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.RecorderToolbarDeleteRequested, listener);
+    },
     /** Toolbar window: whether the main window's start attempt succeeded. */
     onRecordingResult: (
       callback: (result: RecorderToolbarRecordingResult) => void
@@ -285,19 +302,10 @@ export const screenRecorderApi = {
     },
     /** Called by the toolbar window's Display/Window tabs to open the click-to-record overlay. */
     openSourcePicker: (options: SourcePickerOverlayOpenOptions): Promise<void> =>
-      ipcRenderer.invoke(IpcChannels.SourcePickerOverlayOpen, options),
-    /** Toolbar window: a source was picked in the overlay -- apply it and start recording. */
-    onSourcePicked: (callback: (sourceId: string) => void): (() => void) => {
-      const listener = (_event: unknown, sourceId: string): void => callback(sourceId);
-      ipcRenderer.on(IpcChannels.SourcePickerOverlayPicked, listener);
-      return () => ipcRenderer.removeListener(IpcChannels.SourcePickerOverlayPicked, listener);
-    }
+      ipcRenderer.invoke(IpcChannels.SourcePickerOverlayOpen, options)
   },
   sourcePickerOverlay: {
-    /** Called by the overlay window itself when a display/window card is clicked. */
-    pick: (sourceId: string): void =>
-      ipcRenderer.send(IpcChannels.SourcePickerOverlayPick, sourceId),
-    /** Called by the overlay window itself (Esc / click outside a card). */
+    /** Called by the overlay window itself (Esc / click outside a card, or once a started recording's result has been handled -- see SourcePickerOverlayApp.tsx). Closes the overlay and restores the toolbar window either way. */
     cancel: (): void => ipcRenderer.send(IpcChannels.SourcePickerOverlayCancel)
   }
 };

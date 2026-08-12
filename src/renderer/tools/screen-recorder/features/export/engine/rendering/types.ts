@@ -28,7 +28,8 @@ export type BackgroundSceneData =
 export interface ShadowSceneData {
   radiusPx: number;
   blurPx: number;
-  offsetYPx: number;
+  /** How far the shadow rect extends past `innerRect` on every edge -- symmetric, unlike a directional offset, so the shadow reads the same on all four sides. */
+  spreadPx: number;
   /** 0-1 alpha of the (solid black) shadow fill. */
   alpha: number;
 }

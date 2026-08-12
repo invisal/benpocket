@@ -43,6 +43,7 @@ import { registerTelemetryHandlers } from './telemetry/ipc';
 import { telemetryStore } from './telemetry/telemetry-store';
 import { flushOnQuit, startTelemetrySender } from './telemetry/sender';
 import { startHeapLogger } from './heapLogger';
+import { registerZoomShortcuts } from './zoom';
 
 // Must run before app.whenReady(): app.requestSingleInstanceLock() has to be
 // called this early for `second-instance` (Windows/Linux deep-link delivery,
@@ -115,6 +116,10 @@ if (gotSingleInstanceLock) {
       shell.openExternal(details.url);
       return { action: 'deny' };
     });
+
+    // Ctrl/Cmd+scroll, trackpad pinch, and Ctrl/Cmd +/-/0 -- Electron doesn't
+    // wire any of this up on its own.
+    registerZoomShortcuts(mainWindow);
 
     mainWindow.webContents.on('context-menu', (event, params) => {
       // Chromium doesn't build a menu on its own for plain (non-editable)

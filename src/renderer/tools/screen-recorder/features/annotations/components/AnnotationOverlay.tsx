@@ -13,6 +13,7 @@ import { resolveTextAnimationPreset } from '../presets/text-animation-presets';
 import { applySnapOffset, computeDragBBoxPx, snapAxis, type DragPatch } from '../lib/drag-snap';
 import { RESIZE_HANDLES, handlePointPx, resizeImage } from '../lib/image-resize';
 import { beginGesture, endGesture } from '../../history/store/history-store';
+import { selectAnnotation } from '../../../app/selection-coordinator';
 import { cn } from '../../../lib/utils';
 
 interface AnnotationOverlayProps {
@@ -68,7 +69,6 @@ export function AnnotationOverlay({
 }: AnnotationOverlayProps): JSX.Element {
   const annotations = useAnnotationsStore((s) => s.annotations);
   const selectedAnnotationId = useAnnotationsStore((s) => s.selectedAnnotationId);
-  const setSelectedAnnotationId = useAnnotationsStore((s) => s.setSelectedAnnotationId);
   const updateAnnotation = useAnnotationsStore((s) => s.updateAnnotation);
 
   const scale = stageWidthPx > 0 ? stageWidthPx / REFERENCE_CANVAS_WIDTH : 1;
@@ -132,7 +132,7 @@ export function AnnotationOverlay({
     return (event: React.PointerEvent): void => {
       event.preventDefault();
       event.stopPropagation();
-      setSelectedAnnotationId(id);
+      selectAnnotation(id);
       beginGesture();
       const el = elRefs.current.get(id);
       const measuredSizePx = el
@@ -188,7 +188,7 @@ export function AnnotationOverlay({
     return (event: React.PointerEvent): void => {
       event.preventDefault();
       event.stopPropagation();
-      setSelectedAnnotationId(annotation.id);
+      selectAnnotation(annotation.id);
       beginGesture();
       resizeState.current = {
         id: annotation.id,

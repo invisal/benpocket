@@ -99,6 +99,8 @@ export interface CaptureHandle {
   stream: MediaStream;
   /** `Date.now()` at the exact moment the recorder started -- the true t=0 of the output file's timeline, for anything (cursor tracking) that needs to line up samples against it. */
   startedAt: number;
+  /** Whether this is the native helper-subprocess path (ScreenCaptureKit/WGC) rather than the legacy desktopCapturer+MediaRecorder fallback -- only the native path supports pause/resume (see recording-helper.ts's pauseNativeRecording/resumeNativeRecording), so callers use this to decide whether Pause is safe to offer at all. */
+  native: boolean;
   /** Stops all tracks and both recorders, resolving with the final recording(s). */
   stop: () => Promise<StopResult>;
 }
@@ -474,6 +476,7 @@ async function tryStartNativeRecording(request: CaptureRequest): Promise<Capture
     return {
       stream: new MediaStream(),
       startedAt,
+      native: true,
       stop: async (): Promise<StopResult> => {
         const [stopResult, webcamBlob] = await Promise.all([
           window.screenRecorder.nativeRecording.stop(),
@@ -572,6 +575,7 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
   return {
     stream: finalStream,
     startedAt,
+    native: false,
     stop: async (): Promise<StopResult> => {
       if (recorder.state !== 'inactive') recorder.stop();
       const [rawBlob, webcamBlob] = await Promise.all([

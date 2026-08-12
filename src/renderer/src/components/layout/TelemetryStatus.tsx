@@ -22,14 +22,14 @@ export const TelemetryStatus: React.FC = () => {
         )}
       >
         <ActivityIcon size={12} className={optIn ? 'text-green-500' : undefined} />
-        <span>{optIn ? 'Sending usage data' : 'Usage data off'}</span>
+        <span>{optIn ? 'Usage data' : 'Usage data off'}</span>
       </Popover.Trigger>
 
       <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-xs">
         <h2 className="font-medium">Usage tracking</h2>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Anonymous, coarse usage (which tools get opened) -- never file paths, request content, or
-          anything you type. On by default, one click to disable.
+          We only send which tools get used -- never file paths, request content, or anything you
+          type. Free to opt out anytime.
         </p>
 
         <button

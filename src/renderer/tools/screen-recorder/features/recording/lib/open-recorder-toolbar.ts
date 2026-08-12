@@ -1,6 +1,7 @@
 import type { CaptureSource } from '@screen-recorder/types/recording';
 import { useRecordingStore } from '../store/recording-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
+import { useCursorStore } from '../../cursor/store/cursor-store';
 import { useAppStore } from '../../../app/app-store';
 
 /**
@@ -20,8 +21,9 @@ import { useAppStore } from '../../../app/app-store';
  */
 export async function openRecorderToolbarFor(source?: CaptureSource): Promise<void> {
   if (source) useRecordingStore.getState().setSelectedSource(source);
-  const { audio } = useRecordingStore.getState();
+  const { audio, countdownSeconds } = useRecordingStore.getState();
   const { enabled, deviceId, shape, mirrored, position, size } = useWebcamStore.getState();
+  const { visible, clickRippleEnabled } = useCursorStore.getState();
   // Set before the IPC round-trip (not after) so "Launch Recorder" disables
   // immediately on click -- see ScreenRecorderSidebar.tsx -- rather than
   // staying clickable for the moment it takes the main process to minimize
@@ -31,7 +33,9 @@ export async function openRecorderToolbarFor(source?: CaptureSource): Promise<vo
     await window.screenRecorder.recorderToolbar.open({
       sourceId: source?.id,
       audio,
-      webcam: { enabled, deviceId, shape, mirrored, position, size }
+      webcam: { enabled, deviceId, shape, mirrored, position, size },
+      cursorSettings: { visible, clickRippleEnabled },
+      countdownSeconds
     });
   } catch (err) {
     // The toolbar never actually opened, so it'll never send back the

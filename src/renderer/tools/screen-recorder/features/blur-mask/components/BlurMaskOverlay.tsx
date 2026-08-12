@@ -5,6 +5,7 @@ import type { CropRect } from '@screen-recorder/types/timeline';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { useBlurMaskStore } from '../store/blur-mask-store';
 import { beginGesture, endGesture } from '../../history/store/history-store';
+import { selectBlurMaskRegion } from '../../../app/selection-coordinator';
 import { cn } from '../../../lib/utils';
 
 const MIN_SIZE = 0.04;
@@ -44,7 +45,6 @@ export function BlurMaskOverlay({
 }: BlurMaskOverlayProps): JSX.Element {
   const regions = useBlurMaskStore((s) => s.regions);
   const selectedRegionId = useBlurMaskStore((s) => s.selectedRegionId);
-  const setSelectedRegionId = useBlurMaskStore((s) => s.setSelectedRegionId);
   const updateRegion = useBlurMaskStore((s) => s.updateRegion);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,7 +112,7 @@ export function BlurMaskOverlay({
       (event: React.PointerEvent): void => {
         event.preventDefault();
         event.stopPropagation();
-        setSelectedRegionId(regionId);
+        selectBlurMaskRegion(regionId);
         beginGesture();
         dragState.current = {
           regionId,
@@ -124,7 +124,7 @@ export function BlurMaskOverlay({
         window.addEventListener('pointermove', handlePointerMove);
         window.addEventListener('pointerup', stopDragging, { once: true });
       },
-    [handlePointerMove, stopDragging, setSelectedRegionId]
+    [handlePointerMove, stopDragging]
   );
 
   const scale = stageWidthPx > 0 ? stageWidthPx / REFERENCE_CANVAS_WIDTH : 1;
@@ -139,7 +139,7 @@ export function BlurMaskOverlay({
           <div
             key={region.id}
             onPointerDown={editable ? startDragging(region.id, 'move', region.rect) : undefined}
-            onClick={() => editable && setSelectedRegionId(region.id)}
+            onClick={() => editable && selectBlurMaskRegion(region.id)}
             className={cn(
               'absolute',
               // The redaction effect itself always renders (it's not an

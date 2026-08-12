@@ -36,7 +36,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
       {rows.map((row) => (
         <div
           key={row.id}
-          className="group grid grid-cols-[34px_1fr_2fr] items-center divide-x divide-border-light [&>*:last-child]:!border-l-0"
+          className="group grid grid-cols-[34px_1fr_2fr] items-center divide-x divide-border-light [&>*:last-child]:border-l-0!"
         >
           <div
             className="h-8 w-full flex items-center justify-center"

@@ -59,7 +59,8 @@ function useMetricsContext() {
     metricsConfig.provider,
     metricsConfig.filterEmptyContainers,
     metricsConfig.useHttps,
-    metricsConfig.pathPrefix
+    metricsConfig.pathPrefix,
+    metricsConfig.refreshInterval ?? 3
   ].join(':');
 
   return { cluster, configPath, metricsConfig, promConfig, metricsConfigKey };
@@ -336,6 +337,15 @@ export function usePodMetricsRange(
 
   const isLiveMetricsServer =
     metricsConfig.source === 'metrics-server' || metricsConfig.source === 'auto';
+  const refreshIntervalSec = metricsConfig.refreshInterval ?? 3;
+  const refetchInterval =
+    refreshIntervalSec > 0 && isLiveMetricsServer ? refreshIntervalSec * 1000 : false;
+  const staleTime =
+    refreshIntervalSec > 0 && isLiveMetricsServer
+      ? Math.min(1_500, Math.floor((refreshIntervalSec * 1000) / 2))
+      : isLiveMetricsServer
+        ? 1_500
+        : 60_000;
 
   return useQuery({
     queryKey: metricsKeys.range(
@@ -349,8 +359,8 @@ export function usePodMetricsRange(
     queryFn: () =>
       fetchPodMetricsRange(metricsConfig.source, promConfig, namespace, podName, timeRange),
     enabled: enabled && !!cluster && !!namespace && !!podName,
-    staleTime: isLiveMetricsServer ? 1_500 : 60_000,
-    refetchInterval: isLiveMetricsServer ? 3_000 : false,
+    staleTime,
+    refetchInterval,
     gcTime: 120_000
   });
 }
@@ -527,6 +537,15 @@ export function useNodeMetricsRange(
 
   const isLiveMetricsServer =
     metricsConfig.source === 'metrics-server' || metricsConfig.source === 'auto';
+  const refreshIntervalSec = metricsConfig.refreshInterval ?? 3;
+  const refetchInterval =
+    refreshIntervalSec > 0 && isLiveMetricsServer ? refreshIntervalSec * 1000 : false;
+  const staleTime =
+    refreshIntervalSec > 0 && isLiveMetricsServer
+      ? Math.min(1_500, Math.floor((refreshIntervalSec * 1000) / 2))
+      : isLiveMetricsServer
+        ? 1_500
+        : 60_000;
 
   return useQuery({
     queryKey: metricsKeys.range(
@@ -539,8 +558,8 @@ export function useNodeMetricsRange(
     ),
     queryFn: () => fetchNodeMetricsRange(metricsConfig.source, promConfig, nodeName, timeRange),
     enabled: enabled && !!cluster && !!nodeName,
-    staleTime: isLiveMetricsServer ? 1_500 : 60_000,
-    refetchInterval: isLiveMetricsServer ? 3_000 : false,
+    staleTime,
+    refetchInterval,
     gcTime: 120_000
   });
 }

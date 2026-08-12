@@ -5,7 +5,7 @@ import {
   BarChart2,
   Cpu,
   MemoryStick,
-  Network,
+  ArrowUpDown,
   HardDrive,
   MoreVertical,
   Settings
@@ -67,7 +67,8 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
     metricsConfig.provider,
     metricsConfig.filterEmptyContainers,
     metricsConfig.useHttps,
-    metricsConfig.pathPrefix
+    metricsConfig.pathPrefix,
+    metricsConfig.refreshInterval ?? 3
   ].join(':');
 
   const queryClient = useQueryClient();
@@ -202,7 +203,7 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
               >
                 {isCpu && <Cpu className="size-3.5 shrink-0" />}
                 {isMem && <MemoryStick className="size-3.5 shrink-0" />}
-                {isNet && <Network className="size-3.5 shrink-0" />}
+                {isNet && <ArrowUpDown className="size-3.5 shrink-0" />}
                 {isFs && <HardDrive className="size-3.5 shrink-0" />}
               </button>
             );

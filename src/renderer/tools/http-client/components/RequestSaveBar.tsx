@@ -161,7 +161,7 @@ export const RequestSaveBar = forwardRef<RequestSaveBarHandle, RequestSaveBarPro
     const selectedCollectionName = collections.find((c) => c.id === collectionId)?.name;
 
     return (
-      <div className="text-xs px-4 pb-3 pt-3 flex justify-between items-center gap-3">
+      <div className="text-xs px-3 pb-3 pt-3 flex justify-between items-center gap-3">
         <div className="flex items-center gap-1 min-w-0">
           {isCreatingCollection ? (
             <span className="flex items-center gap-1">

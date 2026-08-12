@@ -8,10 +8,13 @@ import { readTabSeed } from '../lib/readTabSeed';
 
 export type WsStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'ERROR';
 export type WsLogDirection = 'IN' | 'OUT' | 'SYSTEM';
+/** Only meaningful when direction is 'SYSTEM' - picks which icon/color the log row renders with. */
+export type WsSystemKind = 'connected' | 'disconnected' | 'error' | 'info';
 
 export interface WsLogEntry {
   id: string;
   direction: WsLogDirection;
+  systemKind?: WsSystemKind;
   timestamp: number;
   message: string;
 }
@@ -42,8 +45,13 @@ const wsStore = createTabScopedStore<WsState>(createDefaultWsState, {
   }
 });
 
-function appendLog(state: WsState, direction: WsLogDirection, message: string): WsState {
-  const entry: WsLogEntry = { id: makeId(), direction, timestamp: Date.now(), message };
+function appendLog(
+  state: WsState,
+  direction: WsLogDirection,
+  message: string,
+  systemKind?: WsSystemKind
+): WsState {
+  const entry: WsLogEntry = { id: makeId(), direction, systemKind, timestamp: Date.now(), message };
   return { ...state, log: [...state.log, entry] };
 }
 
@@ -62,7 +70,12 @@ function ensureWsListenerRegistered(): void {
         case 'connecting':
           return { ...prev, status: 'CONNECTING' };
         case 'open':
-          return appendLog({ ...prev, status: 'CONNECTED' }, 'SYSTEM', 'Connection established.');
+          return appendLog(
+            { ...prev, status: 'CONNECTED' },
+            'SYSTEM',
+            `Connected to ${prev.url}.`,
+            'connected'
+          );
         case 'message':
           return appendLog(
             prev,
@@ -70,12 +83,18 @@ function ensureWsListenerRegistered(): void {
             event.isBinary ? `[binary, base64] ${event.data}` : event.data
           );
         case 'error':
-          return appendLog({ ...prev, status: 'ERROR' }, 'SYSTEM', `Error: ${event.message}`);
+          return appendLog(
+            { ...prev, status: 'ERROR' },
+            'SYSTEM',
+            `Error: ${event.message}`,
+            'error'
+          );
         case 'close':
           return appendLog(
             { ...prev, status: 'DISCONNECTED' },
             'SYSTEM',
-            `Connection closed (code ${event.code}${event.reason ? `, ${event.reason}` : ''}).`
+            `Disconnected from ${prev.url}${event.reason ? ` (${event.reason})` : ''} (code ${event.code}).`,
+            'disconnected'
           );
         default:
           return prev;
@@ -113,7 +132,12 @@ export function useWebSocket(tabId: string): UseWebSocketResult {
 
     const resolvedUrl = resolveVariables(url, getActiveEnvironmentVariables());
     setState((prev) =>
-      appendLog({ ...prev, status: 'CONNECTING' }, 'SYSTEM', `Connecting to ${resolvedUrl} ...`)
+      appendLog(
+        { ...prev, status: 'CONNECTING' },
+        'SYSTEM',
+        `Connecting to ${resolvedUrl} ...`,
+        'info'
+      )
     );
 
     window.api.ws.connect({ connectionId: tabId, url: resolvedUrl }).then((ack) => {
@@ -122,7 +146,8 @@ export function useWebSocket(tabId: string): UseWebSocketResult {
           appendLog(
             { ...prev, status: 'ERROR' },
             'SYSTEM',
-            `Failed to connect: ${ack.error ?? 'unknown error'}`
+            `Failed to connect: ${ack.error ?? 'unknown error'}`,
+            'error'
           )
         );
       }
@@ -147,7 +172,7 @@ export function useWebSocket(tabId: string): UseWebSocketResult {
         );
       } else {
         wsStore.setSnapshot(tabId, (prev) =>
-          appendLog(prev, 'SYSTEM', `Failed to send: ${ack.error ?? 'unknown error'}`)
+          appendLog(prev, 'SYSTEM', `Failed to send: ${ack.error ?? 'unknown error'}`, 'error')
         );
       }
     });

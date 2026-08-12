@@ -9,6 +9,7 @@ import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Check, ChevronDownIcon, Code2, Copy, X } from 'lucide-react';
 import { Drawer } from '@renderer/components/ui/Drawer';
 import { Menu } from '@renderer/components/ui/Menu';
+import { Button } from '@renderer/components/ui/Button';
 import { useThemeStore } from '@renderer/store/theme.store';
 import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
 import type { KeyValueRow } from '../lib/keyValueRows';
@@ -83,9 +84,9 @@ export const CodeSnippetDrawer: React.FC<CodeSnippetDrawerProps> = ({
     <Drawer.Root open={open} onOpenChange={setOpen}>
       <Drawer.Trigger
         title="Generate code snippet"
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 border border-border-dark hover:border-accent text-zinc-300 hover:text-foreground text-xs font-semibold rounded cursor-pointer transition-colors"
+        render={<Button variant="secondary" size="md" />}
       >
-        <Code2 size={12} />
+        <Code2 size={14} />
         <span>Code</span>
       </Drawer.Trigger>
       <Drawer.Content side="right" className="w-md" showClose={false}>

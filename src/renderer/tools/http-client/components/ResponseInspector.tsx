@@ -47,7 +47,7 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({ response, 
               {response.status === 0 ? 'ERROR' : `${response.status} ${response.statusText}`}
             </span>
             <span className="text-zinc-500">TIME: {response.durationMs} ms</span>
-            <span className="text-zinc-550">SIZE: {formatBytes(response.sizeBytes)}</span>
+            <span className="text-zinc-500">SIZE: {formatBytes(response.sizeBytes)}</span>
           </div>
         )}
       </div>

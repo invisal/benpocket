@@ -20,6 +20,8 @@ import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
 const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
 const DEFAULT_RESPONSE_PANEL_HEIGHT = 40;
+const WS_LOG_HEIGHT_KEY = 'craftbox-http-client-ws-log-height';
+const DEFAULT_WS_LOG_HEIGHT = 50;
 const SIDEBAR_WIDTH_KEY = 'craftbox-http-client-sidebar-width';
 const DEFAULT_SIDEBAR_WIDTH = 256;
 
@@ -27,6 +29,12 @@ function readStoredResponsePanelHeight(): number {
   const stored = window.localStorage.getItem(RESPONSE_PANEL_HEIGHT_KEY);
   const parsed = stored ? Number(stored) : NaN;
   return Number.isFinite(parsed) ? parsed : DEFAULT_RESPONSE_PANEL_HEIGHT;
+}
+
+function readStoredWsLogHeight(): number {
+  const stored = window.localStorage.getItem(WS_LOG_HEIGHT_KEY);
+  const parsed = stored ? Number(stored) : NaN;
+  return Number.isFinite(parsed) ? parsed : DEFAULT_WS_LOG_HEIGHT;
 }
 
 function readStoredSidebarWidth(): number {
@@ -128,6 +136,11 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   const handleResponsePanelResize = (size: number): void => {
     setResponsePanelHeight(size);
     window.localStorage.setItem(RESPONSE_PANEL_HEIGHT_KEY, String(size));
+  };
+  const [wsLogHeight, setWsLogHeight] = useState<number>(readStoredWsLogHeight);
+  const handleWsLogResize = (size: number): void => {
+    setWsLogHeight(size);
+    window.localStorage.setItem(WS_LOG_HEIGHT_KEY, String(size));
   };
 
   useEffect(() => {
@@ -358,14 +371,30 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           </>
         ) : (
           <>
-            <WebSocketComposer
-              messageInput={client.ws.state.messageInput}
-              onMessageInputChange={client.ws.setMessageInput}
-              onSendMessage={client.ws.sendMessage}
-              disabled={client.ws.state.status !== 'CONNECTED'}
-            />
+            <div className="flex-1 min-h-0 flex flex-col gap-3 mt-3">
+              <WebSocketComposer
+                messageInput={client.ws.state.messageInput}
+                onMessageInputChange={client.ws.setMessageInput}
+                onSendMessage={client.ws.sendMessage}
+                disabled={client.ws.state.status !== 'CONNECTED'}
+              />
+            </div>
 
-            <WebSocketLog log={client.ws.state.log} onClear={client.ws.clearLog} />
+            <ResizablePanel
+              edge="top"
+              size={wsLogHeight}
+              onResize={handleWsLogResize}
+              min={15}
+              max={75}
+              unit="%"
+              className="flex flex-col min-h-0"
+            >
+              <WebSocketLog
+                log={client.ws.state.log}
+                status={client.ws.state.status}
+                onClear={client.ws.clearLog}
+              />
+            </ResizablePanel>
           </>
         )}
       </div>

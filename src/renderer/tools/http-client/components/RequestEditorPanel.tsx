@@ -127,7 +127,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         />
       </PillTab.Panel>
 
-      <PillTab.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-2">
+      <PillTab.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-3">
         <KeyValueEditor
           rows={headers}
           onUpdate={onUpdateHeader}
@@ -175,11 +175,11 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         )}
       </PillTab.Panel>
 
-      <PillTab.Panel value="auth" className="flex-1 min-h-0 overflow-auto p-2">
+      <PillTab.Panel value="auth" className="flex-1 min-h-0 overflow-auto p-3">
         <AuthEditor auth={auth} onChange={onAuthChange} />
       </PillTab.Panel>
 
-      <PillTab.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2 p-2 overflow-auto">
+      <PillTab.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2 p-3 overflow-auto">
         <div className="flex gap-3 text-[11px] shrink-0">
           {BODY_TYPES.map((bt) => (
             <label

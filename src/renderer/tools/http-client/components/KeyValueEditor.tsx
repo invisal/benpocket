@@ -83,7 +83,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                 disabled={isLastRow(row.id)}
                 tabIndex={-1}
                 title="Remove row"
-                className=" p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-default cursor-pointer transition justify-self-center"
+                className="p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-default cursor-pointer transition justify-self-center"
               >
                 <Trash2 size={12} />
               </button>

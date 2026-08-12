@@ -55,9 +55,9 @@ export const ResponseHeadersTable: React.FC<ResponseHeadersTableProps> = ({ head
             className="p-0.5 text-zinc-600 hover:text-foreground cursor-pointer transition-colors justify-self-center"
           >
             {copiedKey === key ? (
-              <Check size={11} className="text-emerald-400" />
+              <Check size={10} className="text-emerald-400" />
             ) : (
-              <Copy size={11} />
+              <Copy size={10} />
             )}
           </button>
         </div>

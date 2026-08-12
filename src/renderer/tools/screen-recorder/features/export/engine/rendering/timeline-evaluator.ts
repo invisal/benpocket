@@ -18,6 +18,7 @@ import {
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
 import { resolveZoom } from '@shared/zoom-resolve';
+import { clampWebcamPosition } from '@shared/webcam-position';
 import { computeInnerRect } from './inner-rect';
 import type {
   AnnotationSceneData,
@@ -133,13 +134,19 @@ function resolveCursor(
 function resolveWebcam(
   project: Project,
   referenceScale: number,
+  referenceHeight: number,
   webcamHidden: boolean
 ): WebcamSceneData | null {
   if (!project.webcam.enabled || webcamHidden) return null;
   const { webcam } = project;
+  // Same clamp the live preview applies (see `clampWebcamPosition`'s own
+  // doc) -- keeps a position that only reads as out-of-bounds because the
+  // project's aspect ratio changed since it was last set from exporting a
+  // webcam that's invisible in the editor's own preview too.
+  const position = clampWebcamPosition(webcam.position, webcam.size, referenceHeight);
   return {
-    xPx: webcam.position.x * referenceScale,
-    yPx: webcam.position.y * referenceScale,
+    xPx: position.x * referenceScale,
+    yPx: position.y * referenceScale,
     sizePx: webcam.size * referenceScale,
     shape: webcam.shape,
     mirrored: webcam.mirrored,
@@ -310,7 +317,12 @@ export function evaluateSceneAtMs(
       cursorHidden
     ),
     blurMasks: resolveBlurMasks(project, innerRect, atMs),
-    webcam: resolveWebcam(project, referenceScale, webcamHidden),
+    webcam: resolveWebcam(
+      project,
+      referenceScale,
+      REFERENCE_CANVAS_WIDTH / (outputWidth / outputHeight),
+      webcamHidden
+    ),
     annotations: resolveAnnotations(project, referenceScale, atMs),
     caption: resolveCaption(project, atMs)
   };

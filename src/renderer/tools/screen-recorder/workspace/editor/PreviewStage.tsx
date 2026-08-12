@@ -264,6 +264,7 @@ export function PreviewStage({
           stageRef={stageRef}
           webcamVideoRef={webcamVideoRef}
           previewScale={previewScale}
+          referenceHeight={REFERENCE_CANVAS_WIDTH / stageAspectRatio}
           webcamHidden={activeSegment?.webcamHidden ?? false}
         />
 

@@ -43,14 +43,19 @@ export class ShadowCornerEffect {
     // Grown by `spreadPx` on every edge (not shifted down by an offset) so
     // the blur pokes out symmetrically on all four sides instead of reading
     // as a bottom-only directional shadow -- the opaque content drawn on
-    // top still occludes the shadow rect everywhere but that overhang.
+    // top still occludes the shadow rect everywhere but that overhang. The
+    // corner radius grows by the same `spreadPx` too, matching the CSS
+    // `box-shadow` spec's own corner-radius-plus-spread rule (PreviewStage.
+    // tsx gets this for free from the browser) -- passing `radiusPx`
+    // through unchanged here left the export's shadow corners visibly
+    // sharper/smaller than the live preview's at any real spread amount.
     this.shadowGraphics
       .roundRect(
         innerRect.x - shadow.spreadPx,
         innerRect.y - shadow.spreadPx,
         innerRect.width + shadow.spreadPx * 2,
         innerRect.height + shadow.spreadPx * 2,
-        radiusPx
+        radiusPx + shadow.spreadPx
       )
       .fill({ color: 0x000000, alpha: shadow.alpha });
     // `shadow.blurPx` is a CSS-`box-shadow`-style blur *radius* in px (see

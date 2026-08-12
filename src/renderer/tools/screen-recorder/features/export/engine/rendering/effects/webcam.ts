@@ -1,15 +1,23 @@
 import { BlurFilter, Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { WebcamSceneData } from '../types';
 
+/** `rounded-square`'s own corner radius, proportional to its (un-inflated) size -- shared so the shadow pass below can grow this by `spreadPx` explicitly instead of letting a bigger `size` recompute a smaller proportional radius than that. */
+function roundedSquareRadius(size: number): number {
+  return size * 0.16;
+}
+
 function traceShape(
   g: Graphics,
   x: number,
   y: number,
   size: number,
-  shape: WebcamSceneData['shape']
+  shape: WebcamSceneData['shape'],
+  radiusOverride?: number
 ): Graphics {
   if (shape === 'circle') return g.circle(x + size / 2, y + size / 2, size / 2);
-  if (shape === 'rounded-square') return g.roundRect(x, y, size, size, size * 0.16);
+  if (shape === 'rounded-square') {
+    return g.roundRect(x, y, size, size, radiusOverride ?? roundedSquareRadius(size));
+  }
   return g.rect(x, y, size, size);
 }
 
@@ -56,9 +64,13 @@ export class WebcamEffect {
 
     if (webcam.shadow) {
       // Grown by `spreadPx` on every edge (not shifted), same symmetric
-      // treatment as shadow-corner.ts, reusing `traceShape` at an inflated
-      // size/position so the shadow keeps the webcam's own shape (circle
-      // stays a circle, rounded-square keeps a proportional corner radius).
+      // treatment as shadow-corner.ts. `rounded-square`'s corner radius is
+      // grown by that same `spreadPx` explicitly (CSS `box-shadow`'s own
+      // corner-radius-plus-spread rule -- WebcamPip.tsx gets this for free
+      // from the browser) rather than left to `traceShape`'s usual
+      // recompute-from-size, which would only grow the radius ~32% as fast
+      // as the box itself and read as smaller/sharper than the preview at
+      // any real spread amount.
       this.shadowGraphics.visible = true;
       const spread = webcam.shadow.spreadPx;
       traceShape(
@@ -66,7 +78,8 @@ export class WebcamEffect {
         webcam.xPx - spread,
         webcam.yPx - spread,
         webcam.sizePx + spread * 2,
-        webcam.shape
+        webcam.shape,
+        webcam.shape === 'rounded-square' ? roundedSquareRadius(webcam.sizePx) + spread : undefined
       ).fill({ color: 0x000000, alpha: webcam.shadow.alpha });
       // See shadow-corner.ts's comment on why `blurPx` (a CSS-style blur
       // radius) is halved for Pixi's `BlurFilter.strength` (a std. deviation).

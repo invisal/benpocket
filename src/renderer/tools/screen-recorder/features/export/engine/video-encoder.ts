@@ -36,21 +36,33 @@ export function resolveCodecCandidate(format: ExportFormat, codec: ExportCodec):
  * `VideoEncoder` is bitrate-controlled (no CRF-equivalent constant-quality
  * mode exposed), same constraint the previous pipeline's hardware encoders
  * (VideoToolbox/NVENC/QSV/AMF) had.
+ *
+ * These tiers are tuned against typical screen-recording content -- mostly
+ * static UI, text, and cursor movement, which compresses efficiently even
+ * at a low bpp target. A composited webcam PiP is ordinary high-motion
+ * natural video (a face, hair, background) layered into the same single
+ * frame the encoder rate-controls as a whole; when the overall budget is
+ * screen-content-sized, the codec spends it where the frame actually needs
+ * it (the moving/detailed webcam region) and the static desktop background
+ * barely costs anything either way -- so a shared budget that already reads
+ * as "fine" for a screen-only export visibly starves just the webcam PiP
+ * once one is composited in, not the recording as a whole. `hasWebcam`
+ * bumps every tier by 1.5x to cover that extra complexity instead of
+ * penalizing screen-only exports with the same higher budget.
  */
-function qualityToBitsPerPixel(quality: number): number {
-  if (quality <= 25) return 0.06;
-  if (quality <= 60) return 0.1;
-  if (quality <= 90) return 0.14;
-  return 0.2;
+function qualityToBitsPerPixel(quality: number, hasWebcam: boolean): number {
+  const base = quality <= 25 ? 0.06 : quality <= 60 ? 0.1 : quality <= 90 ? 0.14 : 0.2;
+  return hasWebcam ? base * 1.5 : base;
 }
 
 export function computeBitrate(
   width: number,
   height: number,
   frameRate: number,
-  quality: number
+  quality: number,
+  hasWebcam: boolean
 ): number {
-  return Math.round(width * height * frameRate * qualityToBitsPerPixel(quality));
+  return Math.round(width * height * frameRate * qualityToBitsPerPixel(quality, hasWebcam));
 }
 
 export interface CreateVideoEncoderOptions {
@@ -60,6 +72,7 @@ export interface CreateVideoEncoderOptions {
   height: number;
   frameRate: number;
   quality: number;
+  hasWebcam: boolean;
   onChunk: (chunk: EncodedVideoChunk, meta: EncodedVideoChunkMetadata | undefined) => void;
   onFatalError: (error: Error) => void;
 }
@@ -88,7 +101,13 @@ export async function createVideoEncoder(
   hardwareAcceleration: HardwareAcceleration
 ): Promise<VideoEncoderSession> {
   const candidate = resolveCodecCandidate(opts.format, opts.codec);
-  const bitrate = computeBitrate(opts.width, opts.height, opts.frameRate, opts.quality);
+  const bitrate = computeBitrate(
+    opts.width,
+    opts.height,
+    opts.frameRate,
+    opts.quality,
+    opts.hasWebcam
+  );
 
   const encoderConfig: VideoEncoderConfig = {
     codec: candidate.webCodecsCodec,

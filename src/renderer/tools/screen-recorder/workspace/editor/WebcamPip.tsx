@@ -37,6 +37,14 @@ export default function WebcamPip({
     webcam.shadow > 0
       ? `0 0 ${Math.round(webcam.shadow * 0.7 * previewScale)}px ${Math.round(webcam.shadow * 0.3 * previewScale)}px rgba(0, 0, 0, ${(0.15 + (webcam.shadow / 100) * 0.45).toFixed(2)})`
       : 'none';
+  // Matches webcam.ts's `traceShape` (`size * 0.16`) exactly -- the fixed
+  // Tailwind `rounded-2xl` this used to be (16px regardless of `webcam.size`
+  // or `previewScale`) doesn't scale the way every other radius in this app
+  // does, so its corner grew relatively sharper than the export's at larger
+  // sizes and was never in the same place at all once a shadow started
+  // tracing around it.
+  const webcamBorderRadius =
+    webcam.shape === 'rounded-square' ? webcam.size * previewScale * 0.16 : undefined;
 
   return (
     <div
@@ -44,7 +52,6 @@ export default function WebcamPip({
       className={cn(
         'absolute cursor-grab overflow-hidden border border-white/10 bg-black/40 active:cursor-grabbing',
         webcam.shape === 'circle' && 'rounded-full',
-        webcam.shape === 'rounded-square' && 'rounded-2xl',
         webcam.shape === 'square' && 'rounded-none'
       )}
       style={{
@@ -52,6 +59,7 @@ export default function WebcamPip({
         top: webcam.position.y * previewScale,
         width: webcam.size * previewScale,
         height: webcam.size * previewScale,
+        borderRadius: webcamBorderRadius,
         boxShadow: webcamBoxShadow
       }}
     >

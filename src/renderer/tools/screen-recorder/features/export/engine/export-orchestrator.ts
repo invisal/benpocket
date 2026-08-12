@@ -180,6 +180,7 @@ async function runOnce(
         height: options.resolution.height,
         frameRate: options.frameRate,
         quality: options.quality,
+        hasWebcam: options.project.webcam.enabled && Boolean(webcamFile),
         onChunk: (chunk, meta) => chunks.push({ chunk, meta }),
         onFatalError: (error) => {
           fatalError = error;

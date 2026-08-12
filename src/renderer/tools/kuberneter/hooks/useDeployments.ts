@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import { useKubeQuery } from './useKubeQuery';
 import { K8S_RESOURCE_KEYS } from '../constants/k8sResources';
+import {
+  useInstantMetrics,
+  formatInstantCpu,
+  formatInstantMemory,
+  type InstantPodMetric
+} from './useMetrics';
 import { type DeployData } from '../types/DeployData';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
@@ -8,6 +14,7 @@ import { formatAge } from '../utils/formatAge';
 interface DeploymentsExtraData {
   replicaSets?: K8sResource[];
   pods?: K8sResource[];
+  topPods?: InstantPodMetric[];
 }
 
 interface RelatedOwnerRef {
@@ -47,9 +54,17 @@ interface RelatedPod {
 }
 
 export function useDeployments(enabled: boolean) {
+  const metricsQuery = useInstantMetrics(enabled);
+
   const transform = useMemo(
     () => (items: K8sResource[], extraData?: unknown) => {
-      const extra = (extraData as DeploymentsExtraData) || { replicaSets: [], pods: [] };
+      const extra = (extraData as DeploymentsExtraData) || {
+        replicaSets: [],
+        pods: [],
+        topPods: []
+      };
+      const metricItems =
+        (extra.topPods && extra.topPods.length > 0 ? extra.topPods : metricsQuery.data) ?? [];
 
       const rawReplicaSets = (extra.replicaSets || []) as unknown as RelatedReplicaSet[];
       const rawPods = (extra.pods || []) as unknown as RelatedPod[];
@@ -111,7 +126,7 @@ export function useDeployments(enabled: boolean) {
           );
         });
 
-        // Map Pods
+        // Map Pods with live CPU & Memory usage
         const podsList = matchedPods.map((pod) => {
           const podName = pod.metadata?.name || '';
           const node = pod.spec?.nodeName || '—';
@@ -122,13 +137,19 @@ export function useDeployments(enabled: boolean) {
           const phase = pod.status?.phase || 'Unknown';
           const hasPodWarning = phase !== 'Running' && phase !== 'Succeeded';
 
+          const podMetric = metricItems.find(
+            (p) => p.name === podName && (!p.namespace || p.namespace === ns)
+          );
+          const cpu = podMetric?.cpu ? formatInstantCpu(podMetric.cpu) : 'N/A';
+          const memory = podMetric?.memory ? formatInstantMemory(podMetric.memory) : 'N/A';
+
           return {
             name: podName,
             node,
             ns,
             ready: readyStr,
-            cpu: '0.000',
-            memory: '35.0MiB',
+            cpu,
+            memory,
             status: phase,
             hasWarning: hasPodWarning
           };
@@ -155,23 +176,25 @@ export function useDeployments(enabled: boolean) {
         };
       });
     },
-    []
+    [metricsQuery.data]
   );
 
   const fetchExtraData = useMemo(
     () => async (configPath: string | undefined, cluster: string, ns: string) => {
       try {
-        const [replicaSetsRes, podsRes] = await Promise.all([
+        const [replicaSetsRes, podsRes, topPodsRes] = await Promise.all([
           window.kuberneter.getResources(configPath, cluster, K8S_RESOURCE_KEYS.REPLICA_SETS, ns),
-          window.kuberneter.getResources(configPath, cluster, K8S_RESOURCE_KEYS.PODS, ns)
+          window.kuberneter.getResources(configPath, cluster, K8S_RESOURCE_KEYS.PODS, ns),
+          window.kuberneter.getTopPods(configPath, cluster, ns)
         ]);
         return {
           replicaSets: replicaSetsRes?.items || [],
-          pods: podsRes?.items || []
+          pods: podsRes?.items || [],
+          topPods: topPodsRes?.items || []
         };
       } catch (e) {
         console.warn('Failed to fetch deployments extra data', e);
-        return { replicaSets: [], pods: [] };
+        return { replicaSets: [], pods: [], topPods: [] };
       }
     },
     []

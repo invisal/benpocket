@@ -327,9 +327,212 @@ async function fetchPodMetricsRange(
   return EMPTY_RANGE;
 }
 
-export function usePodMetricsRange(
+interface PromQueryConfig {
+  kubeconfigPath: string | undefined;
+  contextName: string | undefined;
+  provider: string;
+  filterEmptyContainers: boolean;
+  useHttps: boolean;
+  pathPrefix: string;
+}
+
+export async function fetchMultiPodMetricsRange(
+  source: string,
+  promConfig: PromQueryConfig,
   namespace: string,
-  podName: string,
+  podNames: string[],
+  timeRange: '1h' | '6h' | '24h'
+): Promise<PodMetricsRange> {
+  if (podNames.length === 0) return EMPTY_RANGE;
+  if (podNames.length === 1) {
+    return fetchPodMetricsRange(source, promConfig, namespace, podNames[0], timeRange);
+  }
+
+  const podNamesRegex = podNames.join('|');
+
+  if (source === 'metrics-server') {
+    try {
+      const topRes = await window.kuberneter.getTopPods(
+        promConfig.kubeconfigPath,
+        promConfig.contextName,
+        namespace
+      );
+      if (topRes && topRes.items) {
+        const podSet = new Set(podNames);
+        const matchedItems = topRes.items.filter((p: { name: string; namespace: string }) =>
+          podSet.has(p.name)
+        );
+
+        if (matchedItems.length > 0) {
+          const nowStr = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+
+          let totalCpuVal = 0;
+          let totalMemVal = 0;
+
+          for (const item of matchedItems) {
+            let cpuVal = 0;
+            if (item.cpu.endsWith('m')) {
+              cpuVal = (parseFloat(item.cpu.slice(0, -1)) || 0) / 1000;
+            } else if (item.cpu.endsWith('n')) {
+              cpuVal = (parseFloat(item.cpu.slice(0, -1)) || 0) / 1e9;
+            } else {
+              cpuVal = parseFloat(item.cpu) || 0;
+            }
+
+            let memVal = 0;
+            if (item.memory.endsWith('Mi')) {
+              memVal = parseFloat(item.memory.slice(0, -2)) || 0;
+            } else if (item.memory.endsWith('Gi')) {
+              memVal = (parseFloat(item.memory.slice(0, -2)) || 0) * 1024;
+            } else if (item.memory.endsWith('Ki')) {
+              memVal = (parseFloat(item.memory.slice(0, -2)) || 0) / 1024;
+            } else {
+              memVal = parseFloat(item.memory) || 0;
+            }
+
+            totalCpuVal += cpuVal;
+            totalMemVal += memVal;
+          }
+
+          const groupKey = [...podNames].sort().join(',');
+          const cacheKey = `${promConfig.contextName ?? 'default'}:${namespace}:multi:${groupKey}`;
+          let buffer = liveMetricsBuffer.get(cacheKey);
+          if (!buffer) {
+            buffer = { timeLabels: [], cpuUsage: [], memUsage: [] };
+            liveMetricsBuffer.set(cacheKey, buffer);
+          }
+
+          buffer.timeLabels.push(nowStr);
+          buffer.cpuUsage.push(totalCpuVal);
+          buffer.memUsage.push(totalMemVal);
+
+          if (buffer.timeLabels.length > MAX_LIVE_SAMPLES) {
+            buffer.timeLabels.shift();
+            buffer.cpuUsage.shift();
+            buffer.memUsage.shift();
+          }
+
+          return {
+            source: `metrics-server (aggregated across ${matchedItems.length} pods)`,
+            timeLabels: [...buffer.timeLabels],
+            cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
+            memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
+            network: { rx: [], tx: [] },
+            filesystem: { usage: [], limit: [] }
+          };
+        }
+      }
+    } catch {
+      // Fall through to EMPTY_RANGE
+    }
+    return EMPTY_RANGE;
+  }
+
+  // Prometheus (or auto mode)
+  try {
+    const res = await window.kuberneter.queryPodMetricsRange({
+      ...promConfig,
+      namespace,
+      podName: podNamesRegex,
+      timeRange
+    });
+
+    if (!res.error && res.timeLabels.length > 0) return res;
+  } catch {
+    // Fall back to metrics-server below
+  }
+
+  if (source === 'auto') {
+    try {
+      const topRes = await window.kuberneter.getTopPods(
+        promConfig.kubeconfigPath,
+        promConfig.contextName,
+        namespace
+      );
+      if (topRes && topRes.items) {
+        const podSet = new Set(podNames);
+        const matchedItems = topRes.items.filter((p: { name: string; namespace: string }) =>
+          podSet.has(p.name)
+        );
+
+        if (matchedItems.length > 0) {
+          const nowStr = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+
+          let totalCpuVal = 0;
+          let totalMemVal = 0;
+
+          for (const item of matchedItems) {
+            let cpuVal = 0;
+            if (item.cpu.endsWith('m')) {
+              cpuVal = (parseFloat(item.cpu.slice(0, -1)) || 0) / 1000;
+            } else if (item.cpu.endsWith('n')) {
+              cpuVal = (parseFloat(item.cpu.slice(0, -1)) || 0) / 1e9;
+            } else {
+              cpuVal = parseFloat(item.cpu) || 0;
+            }
+
+            let memVal = 0;
+            if (item.memory.endsWith('Mi')) {
+              memVal = parseFloat(item.memory.slice(0, -2)) || 0;
+            } else if (item.memory.endsWith('Gi')) {
+              memVal = (parseFloat(item.memory.slice(0, -2)) || 0) * 1024;
+            } else if (item.memory.endsWith('Ki')) {
+              memVal = (parseFloat(item.memory.slice(0, -2)) || 0) / 1024;
+            } else {
+              memVal = parseFloat(item.memory) || 0;
+            }
+
+            totalCpuVal += cpuVal;
+            totalMemVal += memVal;
+          }
+
+          const groupKey = [...podNames].sort().join(',');
+          const cacheKey = `${promConfig.contextName ?? 'default'}:${namespace}:multi:${groupKey}`;
+          let buffer = liveMetricsBuffer.get(cacheKey);
+          if (!buffer) {
+            buffer = { timeLabels: [], cpuUsage: [], memUsage: [] };
+            liveMetricsBuffer.set(cacheKey, buffer);
+          }
+
+          buffer.timeLabels.push(nowStr);
+          buffer.cpuUsage.push(totalCpuVal);
+          buffer.memUsage.push(totalMemVal);
+
+          if (buffer.timeLabels.length > MAX_LIVE_SAMPLES) {
+            buffer.timeLabels.shift();
+            buffer.cpuUsage.shift();
+            buffer.memUsage.shift();
+          }
+
+          return {
+            source: `metrics-server (aggregated across ${matchedItems.length} pods)`,
+            timeLabels: [...buffer.timeLabels],
+            cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
+            memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
+            network: { rx: [], tx: [] },
+            filesystem: { usage: [], limit: [] }
+          };
+        }
+      }
+    } catch {
+      // Return EMPTY_RANGE
+    }
+  }
+
+  return EMPTY_RANGE;
+}
+
+export function useMultiPodMetricsRange(
+  namespace: string,
+  podNames: string[],
   timeRange: '1h' | '6h' | '24h',
   enabled: boolean
 ) {
@@ -347,18 +550,20 @@ export function usePodMetricsRange(
         ? 1_500
         : 60_000;
 
+  const podKey = [...podNames].sort().join(',');
+
   return useQuery({
     queryKey: metricsKeys.range(
       configPath ?? 'default',
       cluster,
       namespace,
-      podName,
+      `multi:${podKey}`,
       timeRange,
       metricsConfigKey
     ),
     queryFn: () =>
-      fetchPodMetricsRange(metricsConfig.source, promConfig, namespace, podName, timeRange),
-    enabled: enabled && !!cluster && !!namespace && !!podName,
+      fetchMultiPodMetricsRange(metricsConfig.source, promConfig, namespace, podNames, timeRange),
+    enabled: enabled && !!cluster && !!namespace && podNames.length > 0,
     staleTime,
     refetchInterval,
     gcTime: 120_000

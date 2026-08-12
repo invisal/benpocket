@@ -47,7 +47,8 @@ export function buildProjectSnapshot(name: string): Project | null {
       shape: webcamState.shape,
       mirrored: webcamState.mirrored,
       position: webcamState.position,
-      size: webcamState.size
+      size: webcamState.size,
+      shadow: webcamState.shadow
     },
     webcamVideoPath: lastRecording.webcamFilePath,
     webcamOffsetMs: lastRecording.webcamOffsetMs,

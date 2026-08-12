@@ -1,4 +1,4 @@
-import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { BlurFilter, Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { WebcamSceneData } from '../types';
 
 function traceShape(
@@ -23,6 +23,13 @@ export class WebcamEffect {
   private readonly maskGraphics = new Graphics();
   private readonly sprite = new Sprite();
   private readonly placeholder = new Graphics();
+  // Sibling of `container`, not a child of it -- `container.mask` clips
+  // everything inside `container`, which would clip away a shadow drawn
+  // there too. Added to `parent` right before `container` so it renders
+  // behind the PiP instead, same split `shadow-corner.ts` uses for the
+  // background shadow vs. its own mask.
+  private readonly shadowGraphics = new Graphics();
+  private readonly blurFilter = new BlurFilter({ strength: 0 });
 
   constructor(parent: Container) {
     // See shadow-corner.ts's constructor comment: `includeInBuild = false`,
@@ -30,20 +37,44 @@ export class WebcamEffect {
     this.maskGraphics.includeInBuild = false;
     this.container.addChild(this.maskGraphics, this.placeholder, this.sprite);
     this.container.mask = this.maskGraphics;
-    parent.addChild(this.container);
+    parent.addChild(this.shadowGraphics, this.container);
   }
 
   update(webcam: WebcamSceneData | null, texture: Texture | undefined): void {
     this.maskGraphics.clear();
     this.placeholder.clear();
+    this.shadowGraphics.clear();
     if (!webcam) {
       this.container.visible = false;
+      this.shadowGraphics.visible = false;
       return;
     }
     this.container.visible = true;
     traceShape(this.maskGraphics, webcam.xPx, webcam.yPx, webcam.sizePx, webcam.shape).fill(
       0xffffff
     );
+
+    if (webcam.shadow) {
+      // Grown by `spreadPx` on every edge (not shifted), same symmetric
+      // treatment as shadow-corner.ts, reusing `traceShape` at an inflated
+      // size/position so the shadow keeps the webcam's own shape (circle
+      // stays a circle, rounded-square keeps a proportional corner radius).
+      this.shadowGraphics.visible = true;
+      const spread = webcam.shadow.spreadPx;
+      traceShape(
+        this.shadowGraphics,
+        webcam.xPx - spread,
+        webcam.yPx - spread,
+        webcam.sizePx + spread * 2,
+        webcam.shape
+      ).fill({ color: 0x000000, alpha: webcam.shadow.alpha });
+      // See shadow-corner.ts's comment on why `blurPx` (a CSS-style blur
+      // radius) is halved for Pixi's `BlurFilter.strength` (a std. deviation).
+      this.blurFilter.strength = webcam.shadow.blurPx / 2;
+      this.shadowGraphics.filters = webcam.shadow.blurPx > 0 ? [this.blurFilter] : [];
+    } else {
+      this.shadowGraphics.visible = false;
+    }
 
     if (texture) {
       this.placeholder.visible = false;

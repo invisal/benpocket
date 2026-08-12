@@ -28,6 +28,16 @@ export default function WebcamPip({
 
   if (!webcam.enabled || !webcamPreviewUrl || webcamHidden) return null;
 
+  // Same formula as PreviewStage.tsx's `contentBoxShadow` -- CSS box-shadow
+  // isn't clipped by this same element's own `overflow-hidden` (that only
+  // clips its content, not shadows the box itself casts), so no extra
+  // unclipped layer is needed here the way the PixiJS export renderer
+  // (webcam.ts's `shadowGraphics`) needs one to get around `container.mask`.
+  const webcamBoxShadow =
+    webcam.shadow > 0
+      ? `0 0 ${Math.round(webcam.shadow * 0.7 * previewScale)}px ${Math.round(webcam.shadow * 0.3 * previewScale)}px rgba(0, 0, 0, ${(0.15 + (webcam.shadow / 100) * 0.45).toFixed(2)})`
+      : 'none';
+
   return (
     <div
       onPointerDown={startWebcamDrag}
@@ -41,7 +51,8 @@ export default function WebcamPip({
         left: webcam.position.x * previewScale,
         top: webcam.position.y * previewScale,
         width: webcam.size * previewScale,
-        height: webcam.size * previewScale
+        height: webcam.size * previewScale,
+        boxShadow: webcamBoxShadow
       }}
     >
       <video

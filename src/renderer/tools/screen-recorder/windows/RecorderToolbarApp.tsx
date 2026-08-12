@@ -52,7 +52,8 @@ const DEFAULT_WEBCAM: WebcamOptions = {
   shape: 'circle',
   mirrored: true,
   position: { x: 24, y: 24 },
-  size: 180
+  size: 180,
+  shadow: 40
 };
 
 function parseInit(): RecorderToolbarOpenPayload | null {

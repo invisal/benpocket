@@ -142,7 +142,8 @@ function resolveWebcam(
     yPx: webcam.position.y * referenceScale,
     sizePx: webcam.size * referenceScale,
     shape: webcam.shape,
-    mirrored: webcam.mirrored
+    mirrored: webcam.mirrored,
+    shadow: resolveShadow(webcam.shadow, referenceScale)
   };
 }
 

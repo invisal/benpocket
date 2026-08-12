@@ -5,7 +5,7 @@ import { type NodeData } from '../types/NodeData';
 import { type TopNodeItem } from '../types/TopNodeItem';
 import { type K8sResource } from '../types/K8sResource';
 import { formatAge } from '../utils/formatAge';
-import { parseK8sCapacity, formatCapacity } from '../utils/formatCapacity';
+import { parseK8sCapacity, formatCapacity, parseCpu } from '../utils/formatCapacity';
 
 export function useNodes(enabled: boolean) {
   const transform = useMemo(
@@ -47,7 +47,9 @@ export function useNodes(enabled: boolean) {
         const topNode = topNodesItems.find((tn) => tn.name === name);
 
         const cpuCapRaw = item.status?.capacity?.cpu || '0';
+        const cpuAllocRaw = item.status?.allocatable?.cpu || cpuCapRaw;
         const memCapRaw = item.status?.capacity?.memory || '0';
+        const memAllocRaw = item.status?.allocatable?.memory || memCapRaw;
         const diskCapRaw = item.status?.capacity?.['ephemeral-storage'] || '0';
 
         const cpuCapCores = parseK8sCapacity(cpuCapRaw);
@@ -55,14 +57,40 @@ export function useNodes(enabled: boolean) {
         const memoryCapacity = formatCapacity(parseK8sCapacity(memCapRaw));
         const diskCapacity = formatCapacity(parseK8sCapacity(diskCapRaw));
 
+        let cpuPercent = 0;
+        let memoryPercent = 0;
+
+        if (topNode) {
+          const cpuUsage = parseCpu(topNode.cpu);
+          const cpuAlloc = parseCpu(cpuAllocRaw);
+          if (cpuAlloc > 0) {
+            cpuPercent = Math.round((cpuUsage / cpuAlloc) * 100);
+          } else {
+            const parsedCpuPct = parseFloat(topNode.cpuPct);
+            if (!isNaN(parsedCpuPct)) {
+              cpuPercent = Math.round(parsedCpuPct);
+            }
+          }
+
+          const memUsage = parseK8sCapacity(topNode.memory);
+          const memAlloc = parseK8sCapacity(memAllocRaw);
+          if (memAlloc > 0) {
+            memoryPercent = Math.round((memUsage / memAlloc) * 100);
+          } else {
+            const parsedMemPct = parseFloat(topNode.memoryPct);
+            if (!isNaN(parsedMemPct)) {
+              memoryPercent = Math.round(parsedMemPct);
+            }
+          }
+        }
+
+        if (isNaN(cpuPercent)) cpuPercent = 0;
+        if (isNaN(memoryPercent)) memoryPercent = 0;
+
         let hash = 0;
         for (let i = 0; i < name.length; i++) {
           hash = name.charCodeAt(i) + ((hash << 5) - hash);
         }
-        const cpuPercent = topNode ? parseInt(topNode.cpuPct || '0') : Math.abs(hash % 40) + 10;
-        const memoryPercent = topNode
-          ? parseInt(topNode.memoryPct || '0')
-          : Math.abs((hash >> 2) % 50) + 20;
         const diskPercent = Math.abs((hash >> 4) % 30) + 10;
 
         return {

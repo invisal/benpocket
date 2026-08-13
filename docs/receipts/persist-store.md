@@ -145,7 +145,7 @@ How it works, step by step:
 2. A fresh, throwaway `Y.Doc` is created and the snapshot applied to it with
    `Y.applyUpdate`. This doc only exists for the duration of the function call --
    nothing keeps it alive or observes it afterwards.
-3. Fields are read off the doc's `Y.Map` with the *same key names* the renderer's
+3. Fields are read off the doc's `Y.Map` with the _same key names_ the renderer's
    `usePersistStore`-based hook uses for that doc (`CLOUDFLARE_SETTINGS_KEY` here), so
    the two sides agree on shape without sharing code.
 4. It returns a plain typed object (or `null` if required fields aren't set yet) instead

@@ -113,13 +113,21 @@ export interface UseWebSocketResult {
   clearLog: () => void;
 }
 
-/** The WebSocket engine for a Postman tab: connection state + streaming log, fully independent of the HTTP engine. */
-export function useWebSocket(tabId: string): UseWebSocketResult {
+/** The WebSocket engine for a Postman tab: connection state + streaming log, fully independent
+ * of the HTTP engine. `onEdit` (if given) fires when the URL is edited - e.g. to promote a
+ * preview tab to a permanent one on first edit, mirroring useHttp's `onEdit`. */
+export function useWebSocket(tabId: string, onEdit?: () => void): UseWebSocketResult {
   ensureWsListenerRegistered();
 
   const [state, setState] = useTabScopedState(wsStore, tabId);
 
-  const setUrl = useCallback((url: string) => setState((prev) => ({ ...prev, url })), [setState]);
+  const setUrl = useCallback(
+    (url: string) => {
+      onEdit?.();
+      setState((prev) => ({ ...prev, url }));
+    },
+    [setState, onEdit]
+  );
   const setMessageInput = useCallback(
     (messageInput: string) => setState((prev) => ({ ...prev, messageInput })),
     [setState]

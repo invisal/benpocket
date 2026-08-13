@@ -3,14 +3,8 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { ChevronDown, Plus, X } from 'lucide-react';
 import { cn } from 'cnfast';
 import { useCollectionsStore } from '../store/collections.store';
-import type {
-  HttpAuth,
-  HttpBodyType,
-  HttpMethod,
-  RequestProtocol,
-  SavedRequest
-} from '../../../../preload/http-client/types';
-import type { KeyValueRow } from '../lib/keyValueRows';
+import type { RequestProtocol, SavedRequest } from '../../../../preload/http-client/types';
+import type { HttpState } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { DEFAULT_HTTP_AUTH } from '../lib/auth';
 import { makeId } from '../lib/makeId';
@@ -27,12 +21,7 @@ interface RequestSaveBarProps {
   protocol: RequestProtocol;
   url: string;
   /** HTTP-only. */
-  method?: HttpMethod;
-  headers?: KeyValueRow[];
-  params?: KeyValueRow[];
-  bodyType?: HttpBodyType;
-  body?: string;
-  auth?: HttpAuth;
+  request?: HttpState;
   binding: SavedBinding | null;
   /** Pre-select this collection on first load, e.g. when the tab was opened via "new request in folder". Ignored once `binding` is set. */
   defaultCollectionId?: string;
@@ -47,13 +36,8 @@ export const RequestSaveBar = forwardRef<RequestSaveBarHandle, RequestSaveBarPro
     {
       tabTitle,
       protocol,
-      method,
       url,
-      headers,
-      params,
-      bodyType,
-      body,
-      auth,
+      request,
       binding,
       defaultCollectionId,
       onSaved,
@@ -104,19 +88,19 @@ export const RequestSaveBar = forwardRef<RequestSaveBarHandle, RequestSaveBarPro
           binding && binding.collectionId === targetCollectionId
             ? binding.requestId
             : makeId('req');
-        const request: SavedRequest =
+        const savedRequest: SavedRequest =
           protocol === 'HTTP'
             ? {
                 id: requestId,
                 name: trimmedName,
                 protocol: 'HTTP',
-                method: method ?? 'GET',
+                method: request?.method ?? 'GET',
                 url,
-                headers: headers ?? [],
-                params: params ?? [],
-                bodyType: bodyType ?? 'none',
-                body: body ?? '',
-                auth: auth ?? DEFAULT_HTTP_AUTH,
+                headers: request?.headers ?? [],
+                params: request?.params ?? [],
+                bodyType: request?.bodyType ?? 'none',
+                body: request?.body ?? '',
+                auth: request?.auth ?? DEFAULT_HTTP_AUTH,
                 updatedAt: Date.now()
               }
             : {
@@ -131,7 +115,7 @@ export const RequestSaveBar = forwardRef<RequestSaveBarHandle, RequestSaveBarPro
                 body: '',
                 updatedAt: Date.now()
               };
-        await saveRequest(targetCollectionId, request, null);
+        await saveRequest(targetCollectionId, savedRequest, null);
         setCollectionId(targetCollectionId);
         setIsCreatingCollection(false);
         onSaved({ collectionId: targetCollectionId, requestId }, trimmedName);

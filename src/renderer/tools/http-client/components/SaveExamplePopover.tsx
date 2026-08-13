@@ -4,13 +4,8 @@ import { Popover } from '@base-ui/react/popover';
 import { Bookmark } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
 import { useCollectionsStore } from '../store/collections.store';
-import type {
-  HttpAuth,
-  HttpBodyType,
-  HttpMethod,
-  HttpResponsePayload
-} from '../../../../preload/http-client/types';
-import type { KeyValueRow } from '../lib/keyValueRows';
+import type { HttpResponsePayload } from '../../../../preload/http-client/types';
+import type { HttpState } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { makeId } from '../lib/makeId';
 
@@ -18,26 +13,15 @@ interface SaveExamplePopoverProps {
   /** Which saved request to attach the example to - the trigger is disabled without one. */
   binding: SavedBinding | null;
   response: HttpResponsePayload | null;
-  method: HttpMethod;
-  url: string;
-  headers: KeyValueRow[];
-  params: KeyValueRow[];
-  bodyType: HttpBodyType;
-  body: string;
-  auth: HttpAuth;
+  request: HttpState;
 }
 
 export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
   binding,
   response,
-  method,
-  url,
-  headers,
-  params,
-  bodyType,
-  body,
-  auth
+  request
 }) => {
+  const { method, url, headers, params, bodyType, body, auth } = request;
   const saveExample = useCollectionsStore((s) => s.saveExample);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');

@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { applyPatches, enablePatches, produceWithPatches } from 'immer';
 import type {
   HttpAuth,
   HttpBodyType,
@@ -26,6 +27,17 @@ import { resolveInheritedAuth } from '../lib/authInheritance';
 import { getOrFetchOAuth2Token } from '../lib/oauth2TokenCache';
 import { readTabSeed } from '../lib/readTabSeed';
 import { bindingStore } from '../lib/bindingStore';
+import {
+  EMPTY_HISTORY,
+  popRedo,
+  popUndo,
+  pushHistoryEntry,
+  type RequestHistoryState
+} from '../lib/requestHistory';
+
+// Immer's patch generation (produceWithPatches/applyPatches, used below for undo/redo) is an
+// opt-in plugin - must be enabled once before either is called.
+enablePatches();
 
 export interface HttpState {
   method: HttpMethod;
@@ -189,6 +201,26 @@ const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
   }
 });
 
+// Undo/redo history for the draft above - deliberately not persisted, so a restart starts
+// with a clean history rather than trying to serialize immer Patch objects across reloads.
+const historyStore = createTabScopedStore<RequestHistoryState>(() => EMPTY_HISTORY);
+
+/** Applies an immer recipe to the draft, and (unless it was a no-op) records the resulting
+ * patches as one undo step and notifies `onEdit` - the single choke point every user-facing
+ * edit in this file goes through, so undo/redo and preview-tab-pinning both fall out of it
+ * for free instead of needing to be wired at each call site. */
+function updateHttpState(
+  tabId: string,
+  recipe: (draft: HttpState) => void,
+  onEdit?: () => void
+): void {
+  const [next, patches, inversePatches] = produceWithPatches(httpStore.getSnapshot(tabId), recipe);
+  if (patches.length === 0) return;
+  onEdit?.();
+  httpStore.setSnapshot(tabId, next);
+  historyStore.setSnapshot(tabId, (h) => pushHistoryEntry(h, patches, inversePatches));
+}
+
 export interface UseHttpResult {
   state: HttpState;
   setMethod: (method: HttpMethod) => void;
@@ -209,138 +241,187 @@ export interface UseHttpResult {
   importCurl: (parsed: ParsedCurlRequest) => void;
   setAuth: (auth: HttpAuth) => void;
   send: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
-/** The HTTP engine for a Postman tab: request draft state + sending, fully independent of the WebSocket engine. */
-export function useHttp(tabId: string): UseHttpResult {
+/** The HTTP engine for a Postman tab: request draft state + sending, fully independent of the
+ * WebSocket engine. `onEdit` (if given) fires once per actual draft edit - not on send() or
+ * undo/redo - e.g. to promote a preview tab to a permanent one on first edit. */
+export function useHttp(tabId: string, onEdit?: () => void): UseHttpResult {
   const [state, setState] = useTabScopedState(httpStore, tabId);
+  const [history] = useTabScopedState(historyStore, tabId);
 
   const setMethod = useCallback(
-    (method: HttpMethod) => setState((prev) => ({ ...prev, method })),
-    [setState]
+    (method: HttpMethod) =>
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.method = method;
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const setUrl = useCallback(
     (url: string) =>
-      setState((prev) => ({ ...prev, url, params: mergeParamsFromUrl(url, prev.params) })),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.url = url;
+          draft.params = mergeParamsFromUrl(url, draft.params);
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const setBodyType = useCallback(
     (bodyType: HttpBodyType) =>
-      setState((prev) => {
-        // Switching into a row-edited body type: resync `body` from whatever rows were
-        // last built (possibly from a previous form/multipart session) so the
-        // Content-Type/preview reflect rows rather than stale leftover text.
-        if (bodyType === 'form') {
-          return { ...prev, bodyType, body: serializeBodyRows(bodyType, prev.bodyRows) };
-        }
-        if (bodyType === 'multipart') {
-          const rows = withTrailingMultipartRow(prev.multipartRows);
-          return {
-            ...prev,
-            bodyType,
-            multipartRows: rows,
-            body: serializeMultipartRows(rows, prev.body)
-          };
-        }
-        return { ...prev, bodyType };
-      }),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          // Switching into a row-edited body type: resync `body` from whatever rows were
+          // last built (possibly from a previous form/multipart session) so the
+          // Content-Type/preview reflect rows rather than stale leftover text.
+          if (bodyType === 'form') {
+            draft.body = serializeBodyRows(bodyType, draft.bodyRows);
+          } else if (bodyType === 'multipart') {
+            draft.multipartRows = withTrailingMultipartRow(draft.multipartRows);
+            draft.body = serializeMultipartRows(draft.multipartRows, draft.body);
+          }
+          draft.bodyType = bodyType;
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
+
   const setBody = useCallback(
-    (body: string) => setState((prev) => ({ ...prev, body })),
-    [setState]
+    (body: string) =>
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.body = body;
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const updateHeaderRow = useCallback(
     (id: string, patch: Partial<KeyValueRow>) =>
-      setState((prev) => ({
-        ...prev,
-        headers: withTrailingRow(
-          prev.headers.map((row) => (row.id === id ? { ...row, ...patch } : row))
-        )
-      })),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.headers = withTrailingRow(
+            draft.headers.map((row) => (row.id === id ? { ...row, ...patch } : row))
+          );
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const removeHeaderRow = useCallback(
     (id: string) =>
-      setState((prev) => ({
-        ...prev,
-        headers: withTrailingRow(prev.headers.filter((row) => row.id !== id))
-      })),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.headers = withTrailingRow(draft.headers.filter((row) => row.id !== id));
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const updateParamRow = useCallback(
     (id: string, patch: Partial<KeyValueRow>) =>
-      setState((prev) => {
-        const nextParams = withTrailingRow(
-          prev.params.map((row) => (row.id === id ? { ...row, ...patch } : row))
-        );
-        return { ...prev, params: nextParams, url: buildUrlWithParams(prev.url, nextParams) };
-      }),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.params = withTrailingRow(
+            draft.params.map((row) => (row.id === id ? { ...row, ...patch } : row))
+          );
+          draft.url = buildUrlWithParams(draft.url, draft.params);
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const removeParamRow = useCallback(
     (id: string) =>
-      setState((prev) => {
-        const nextParams = withTrailingRow(prev.params.filter((row) => row.id !== id));
-        return { ...prev, params: nextParams, url: buildUrlWithParams(prev.url, nextParams) };
-      }),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.params = withTrailingRow(draft.params.filter((row) => row.id !== id));
+          draft.url = buildUrlWithParams(draft.url, draft.params);
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const updateBodyRow = useCallback(
     (id: string, patch: Partial<KeyValueRow>) =>
-      setState((prev) => {
-        const nextRows = withTrailingRow(
-          prev.bodyRows.map((row) => (row.id === id ? { ...row, ...patch } : row))
-        );
-        return { ...prev, bodyRows: nextRows, body: serializeBodyRows(prev.bodyType, nextRows) };
-      }),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.bodyRows = withTrailingRow(
+            draft.bodyRows.map((row) => (row.id === id ? { ...row, ...patch } : row))
+          );
+          draft.body = serializeBodyRows(draft.bodyType, draft.bodyRows);
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const removeBodyRow = useCallback(
     (id: string) =>
-      setState((prev) => {
-        const nextRows = withTrailingRow(prev.bodyRows.filter((row) => row.id !== id));
-        return { ...prev, bodyRows: nextRows, body: serializeBodyRows(prev.bodyType, nextRows) };
-      }),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.bodyRows = withTrailingRow(draft.bodyRows.filter((row) => row.id !== id));
+          draft.body = serializeBodyRows(draft.bodyType, draft.bodyRows);
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const updateMultipartRow = useCallback(
     (id: string, patch: Partial<MultipartRow>) =>
-      setState((prev) => {
-        const nextRows = withTrailingMultipartRow(
-          prev.multipartRows.map((row) => (row.id === id ? { ...row, ...patch } : row))
-        );
-        return {
-          ...prev,
-          multipartRows: nextRows,
-          body: serializeMultipartRows(nextRows, prev.body)
-        };
-      }),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.multipartRows = withTrailingMultipartRow(
+            draft.multipartRows.map((row) => (row.id === id ? { ...row, ...patch } : row))
+          );
+          draft.body = serializeMultipartRows(draft.multipartRows, draft.body);
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const removeMultipartRow = useCallback(
     (id: string) =>
-      setState((prev) => {
-        const nextRows = withTrailingMultipartRow(
-          prev.multipartRows.filter((row) => row.id !== id)
-        );
-        return {
-          ...prev,
-          multipartRows: nextRows,
-          body: serializeMultipartRows(nextRows, prev.body)
-        };
-      }),
-    [setState]
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.multipartRows = withTrailingMultipartRow(
+            draft.multipartRows.filter((row) => row.id !== id)
+          );
+          draft.body = serializeMultipartRows(draft.multipartRows, draft.body);
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const pickMultipartFile = useCallback(
@@ -358,49 +439,57 @@ export function useHttp(tabId: string): UseHttpResult {
 
   const importCurl = useCallback(
     (parsed: ParsedCurlRequest) =>
-      setState((prev) => {
-        const headers = withTrailingRow(
-          parsed.headers.map((h) => ({ id: makeId(), key: h.key, value: h.value, enabled: true }))
-        );
-        const bodyRows = hydrateBodyRows(parsed.bodyType, parsed.body, []);
-        const multipartRows =
-          parsed.bodyType === 'multipart' && parsed.multipartFields
-            ? withTrailingMultipartRow(
-                parsed.multipartFields.map((f) => ({
-                  id: makeId(),
-                  key: f.key,
-                  enabled: true,
-                  fieldType: f.type,
-                  value: f.type === 'text' ? f.value : '',
-                  file:
-                    f.type === 'file'
-                      ? { filePath: f.filePath, fileName: f.fileName, size: 0 }
-                      : undefined
-                }))
-              )
-            : withTrailingMultipartRow([]);
+      updateHttpState(
+        tabId,
+        (draft) => {
+          const headers = withTrailingRow(
+            parsed.headers.map((h) => ({ id: makeId(), key: h.key, value: h.value, enabled: true }))
+          );
+          const bodyRows = hydrateBodyRows(parsed.bodyType, parsed.body, []);
+          const multipartRows =
+            parsed.bodyType === 'multipart' && parsed.multipartFields
+              ? withTrailingMultipartRow(
+                  parsed.multipartFields.map((f) => ({
+                    id: makeId(),
+                    key: f.key,
+                    enabled: true,
+                    fieldType: f.type,
+                    value: f.type === 'text' ? f.value : '',
+                    file:
+                      f.type === 'file'
+                        ? { filePath: f.filePath, fileName: f.fileName, size: 0 }
+                        : undefined
+                  }))
+                )
+              : withTrailingMultipartRow([]);
 
-        return {
-          ...prev,
-          method: parsed.method,
-          url: parsed.url,
-          params: mergeParamsFromUrl(parsed.url, []),
-          headers,
+          draft.method = parsed.method;
+          draft.url = parsed.url;
+          draft.params = mergeParamsFromUrl(parsed.url, []);
+          draft.headers = headers;
           // Only overwrite auth when the curl actually had credentials (-u, or a
           // Bearer/Basic Authorization header) - otherwise leave whatever was configured.
-          auth: parsed.auth ?? prev.auth,
-          bodyType: parsed.bodyType,
-          body: parsed.body,
-          bodyRows,
-          multipartRows
-        };
-      }),
-    [setState]
+          if (parsed.auth) draft.auth = parsed.auth;
+          draft.bodyType = parsed.bodyType;
+          draft.body = parsed.body;
+          draft.bodyRows = bodyRows;
+          draft.multipartRows = multipartRows;
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const setAuth = useCallback(
-    (auth: HttpAuth) => setState((prev) => ({ ...prev, auth })),
-    [setState]
+    (auth: HttpAuth) =>
+      updateHttpState(
+        tabId,
+        (draft) => {
+          draft.auth = auth;
+        },
+        onEdit
+      ),
+    [tabId, onEdit]
   );
 
   const send = useCallback(() => {
@@ -468,6 +557,20 @@ export function useHttp(tabId: string): UseHttpResult {
     })();
   }, [setState, tabId]);
 
+  const undo = useCallback(() => {
+    const popped = popUndo(historyStore.getSnapshot(tabId));
+    if (!popped) return;
+    httpStore.setSnapshot(tabId, (prev) => applyPatches(prev, popped.entry.inversePatches));
+    historyStore.setSnapshot(tabId, popped.next);
+  }, [tabId]);
+
+  const redo = useCallback(() => {
+    const popped = popRedo(historyStore.getSnapshot(tabId));
+    if (!popped) return;
+    httpStore.setSnapshot(tabId, (prev) => applyPatches(prev, popped.entry.patches));
+    historyStore.setSnapshot(tabId, popped.next);
+  }, [tabId]);
+
   return {
     state,
     setMethod,
@@ -485,11 +588,16 @@ export function useHttp(tabId: string): UseHttpResult {
     pickMultipartFile,
     importCurl,
     setAuth,
-    send
+    send,
+    undo,
+    redo,
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0
   };
 }
 
 /** Releases this tab's cached HTTP draft state. Call when the tab is closed. */
 export function disposeHttpTab(tabId: string): void {
   httpStore.remove(tabId);
+  historyStore.remove(tabId);
 }

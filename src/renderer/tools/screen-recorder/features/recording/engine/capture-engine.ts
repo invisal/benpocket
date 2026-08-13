@@ -189,9 +189,21 @@ async function getMicrophoneStream(deviceId?: string): Promise<MediaStream> {
   });
 }
 
+/**
+ * Without an explicit resolution constraint, `getUserMedia` leaves the
+ * actual negotiated resolution up to the browser/driver's own default,
+ * which is frequently far below what the camera can actually do (commonly
+ * 640x480) -- unlike `getDesktopStream` right above, which always sizes to
+ * the display's own resolution. `ideal` (not `min`/`exact`) still lets
+ * Chromium fall back gracefully on cameras that can't do 1080p.
+ */
 async function getCameraStream(deviceId?: string): Promise<MediaStream> {
   return navigator.mediaDevices.getUserMedia({
-    video: deviceId ? { deviceId: { exact: deviceId } } : true
+    video: {
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    }
   });
 }
 
@@ -209,9 +221,14 @@ interface WebcamRecorder {
  * and legacy main-recording paths.
  */
 function startWebcamRecorder(stream: MediaStream): WebcamRecorder {
+  // Actual negotiated resolution (not the `ideal` request) -- same
+  // resolution-aware bitrate as `getDesktopStream`'s recorder instead of
+  // MediaRecorder's flat 2.5 Mbps default, which was otherwise squashing
+  // even a genuinely 1080p webcam stream down to 480p-webcam bitrate.
+  const { width, height } = stream.getVideoTracks()[0]?.getSettings() ?? {};
   const recorder = new MediaRecorder(stream, {
     mimeType: pickSupportedMimeType(),
-    videoBitsPerSecond: 2_500_000
+    videoBitsPerSecond: videoBitsPerSecondFor(width ?? 1920, height ?? 1080)
   });
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = (event): void => {

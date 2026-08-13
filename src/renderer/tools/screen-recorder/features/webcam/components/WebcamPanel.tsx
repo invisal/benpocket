@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { Circle, Maximize2, Square, SquareUser } from 'lucide-react';
+import { Blend, Circle, Maximize2, Square, SquareUser } from 'lucide-react';
 import { useAppStore } from '../../../app/app-store';
 import { useWebcamStore } from '../store/webcam-store';
 import { SliderRow } from '../../../components/ui/slider-row';
@@ -27,11 +27,13 @@ export function WebcamPanel(): JSX.Element {
     mirrored,
     size,
     position,
+    shadow,
     toggleEnabled,
     setShape,
     setMirrored,
     setSize,
-    setPosition
+    setPosition,
+    setShadow
   } = useWebcamStore();
   // Nothing to overlay if the camera wasn't on when this recording started
   // -- see useRecordingController.ts's `stop()`, which only sets this when
@@ -77,11 +79,11 @@ export function WebcamPanel(): JSX.Element {
 
         <label className="flex items-center justify-between text-xs">
           <span className="font-medium text-muted-foreground">Mirror</span>
-          <input
-            type="checkbox"
+          <Switch
             checked={mirrored}
-            onChange={(e) => setMirrored(e.target.checked)}
-            className="h-4 w-4 accent-accent"
+            onChange={(checked) => setMirrored(checked)}
+            label="Mirror webcam"
+            disabled={!hasWebcamFootage}
           />
         </label>
 
@@ -94,6 +96,17 @@ export function WebcamPanel(): JSX.Element {
           max={360}
           step={4}
           onChange={setSize}
+        />
+
+        <SliderRow
+          icon={Blend}
+          label="Drop shadow"
+          value={shadow}
+          displayValue={`${shadow}`}
+          min={0}
+          max={100}
+          step={1}
+          onChange={setShadow}
         />
 
         <div className="grid grid-cols-2 gap-2">

@@ -50,6 +50,8 @@ export interface WebcamOptions {
   mirrored: boolean;
   position: { x: number; y: number };
   size: number;
+  /** 0-100 intensity of the drop shadow cast by the webcam overlay; 0 disables it. Same scale as `BackgroundSettings.shadow`. */
+  shadow: number;
 }
 
 export interface RecordingRequest {

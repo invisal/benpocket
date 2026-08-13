@@ -15,6 +15,7 @@ interface EstimateExportOptions {
   quality: number;
   includeAudio: boolean;
   format: ExportFormat;
+  hasWebcam: boolean;
 }
 
 /**
@@ -32,7 +33,8 @@ export function estimateExport(options: EstimateExportOptions): ExportEstimate {
     options.width,
     options.height,
     options.frameRate,
-    options.quality
+    options.quality,
+    options.hasWebcam
   );
   const audioBitrate = options.includeAudio && options.format !== 'gif' ? AUDIO_BITRATE : 0;
   const fileSizeBytes = ((videoBitrate + audioBitrate) / 8) * durationSec;

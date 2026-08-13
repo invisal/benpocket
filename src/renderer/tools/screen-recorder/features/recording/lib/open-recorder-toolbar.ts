@@ -22,7 +22,7 @@ import { useAppStore } from '../../../app/app-store';
 export async function openRecorderToolbarFor(source?: CaptureSource): Promise<void> {
   if (source) useRecordingStore.getState().setSelectedSource(source);
   const { audio, countdownSeconds } = useRecordingStore.getState();
-  const { enabled, deviceId, shape, mirrored, position, size } = useWebcamStore.getState();
+  const { enabled, deviceId, shape, mirrored, position, size, shadow } = useWebcamStore.getState();
   const { visible, clickRippleEnabled } = useCursorStore.getState();
   // Set before the IPC round-trip (not after) so "Launch Recorder" disables
   // immediately on click -- see ScreenRecorderSidebar.tsx -- rather than
@@ -33,7 +33,7 @@ export async function openRecorderToolbarFor(source?: CaptureSource): Promise<vo
     await window.screenRecorder.recorderToolbar.open({
       sourceId: source?.id,
       audio,
-      webcam: { enabled, deviceId, shape, mirrored, position, size },
+      webcam: { enabled, deviceId, shape, mirrored, position, size, shadow },
       cursorSettings: { visible, clickRippleEnabled },
       countdownSeconds
     });

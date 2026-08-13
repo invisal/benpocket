@@ -43,7 +43,8 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
       shape: webcamState.shape,
       mirrored: webcamState.mirrored,
       position: webcamState.position,
-      size: webcamState.size
+      size: webcamState.size,
+      shadow: webcamState.shadow
     },
     webcamVideoPath: lastRecording?.webcamFilePath ?? null,
     webcamOffsetMs: lastRecording?.webcamOffsetMs ?? 0,

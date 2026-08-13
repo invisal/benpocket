@@ -5,6 +5,7 @@ import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { looksLikeCurlCommand, parseCurlCommand, type ParsedCurlRequest } from '../lib/curlImport';
 import { VariableSuggestInput } from './VariableSuggestInput';
 import { Menu } from '@renderer/components/ui/Menu';
+import { Button } from '@renderer/components/ui/Button';
 
 /** The address bar's method selector doubles as the HTTP/WebSocket protocol switch. */
 export type ComposerMethod = HttpMethod | 'WEBSOCKET';
@@ -94,17 +95,17 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
             placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
           />
         </div>
-
-        <button
-          onClick={action.onClick}
-          disabled={action.disabled}
-          title={action.label}
-          className={`px-3 text-xs flex gap-1 items-center justify-center font-medium disabled:opacity-50 ${action.className ?? 'text-accent'}`}
-        >
-          {action.icon}
-          <span>{action.label}</span>
-        </button>
       </div>
+      <Button
+        variant="primary"
+        onClick={action.onClick}
+        disabled={action.disabled}
+        title={action.label}
+        className="h-full"
+      >
+        {action.icon}
+        <span>{action.label}</span>
+      </Button>
     </div>
   );
 };

@@ -115,18 +115,41 @@ export function lockDragEnd(
 
 export type RectCorner = 'nw' | 'ne' | 'sw' | 'se';
 
-/** Resize `start` by dragging `corner` by (dx, dy), keeping the opposite corner fixed and the size at least `minSize`. */
+/** Resize `start` by dragging `corner` by (dx, dy), keeping the opposite corner fixed and the size at least `minSize`. With `lockAspect`, preserves start's width/height ratio (Cmd/Ctrl). */
 export function resizeRect(
   start: Rect,
   corner: RectCorner,
   dx: number,
   dy: number,
-  minSize: number
+  minSize: number,
+  lockAspect = false
 ): Rect {
   const movesLeft = corner === 'nw' || corner === 'sw';
   const movesTop = corner === 'nw' || corner === 'ne';
-  const width = Math.max(minSize, movesLeft ? start.width - dx : start.width + dx);
-  const height = Math.max(minSize, movesTop ? start.height - dy : start.height + dy);
+  let width = Math.max(minSize, movesLeft ? start.width - dx : start.width + dx);
+  let height = Math.max(minSize, movesTop ? start.height - dy : start.height + dy);
+
+  if (lockAspect && start.width > 0 && start.height > 0) {
+    const aspect = start.width / start.height;
+    const relW = Math.abs(width - start.width) / start.width;
+    const relH = Math.abs(height - start.height) / start.height;
+    if (relW >= relH) {
+      height = Math.max(minSize, width / aspect);
+      width = height * aspect;
+    } else {
+      width = Math.max(minSize, height * aspect);
+      height = width / aspect;
+    }
+    if (width < minSize) {
+      width = minSize;
+      height = width / aspect;
+    }
+    if (height < minSize) {
+      height = minSize;
+      width = height * aspect;
+    }
+  }
+
   return {
     x: movesLeft ? start.x + start.width - width : start.x,
     y: movesTop ? start.y + start.height - height : start.y,

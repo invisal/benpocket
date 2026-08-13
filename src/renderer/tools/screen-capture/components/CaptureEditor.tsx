@@ -74,7 +74,7 @@ interface PenDraft {
   lineCap: 'round' | 'square';
 }
 
-type DragMove = (dxImg: number, dyImg: number) => void;
+type DragMove = (dxImg: number, dyImg: number, event: PointerEvent) => void;
 
 /**
  * Inline editor for a text annotation. Keystrokes stream into the store live
@@ -467,7 +467,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
       const startClientX = event.clientX;
       const startClientY = event.clientY;
       const move = (e: PointerEvent): void =>
-        onMove((e.clientX - startClientX) / scale, (e.clientY - startClientY) / scale);
+        onMove((e.clientX - startClientX) / scale, (e.clientY - startClientY) / scale, e);
       const up = (): void => {
         window.removeEventListener('pointermove', move);
         activeDrag.current = null;
@@ -489,10 +489,30 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
       width: annotation.width,
       height: annotation.height
     };
-    return (dx, dy) =>
+    return (dx, dy, event) =>
       store.getState().moveAnnotation(annotation.id, {
-        ...resizeRect(start, corner, dx, dy, MIN_DRAG_PX * 2)
+        ...resizeRect(start, corner, dx, dy, MIN_DRAG_PX * 2, event.ctrlKey || event.metaKey)
       });
+  }
+
+  /** Endpoint drag for arrow/line — Cmd/Ctrl snaps to 45° like creation. */
+  function endpointDragMove(
+    annotation: { id: string; x1: number; y1: number; x2: number; y2: number },
+    keyX: 'x1' | 'x2',
+    keyY: 'y1' | 'y2'
+  ): DragMove {
+    const fixedX = keyX === 'x1' ? annotation.x2 : annotation.x1;
+    const fixedY = keyY === 'y1' ? annotation.y2 : annotation.y1;
+    return (dx, dy, event) => {
+      let x = annotation[keyX] + dx;
+      let y = annotation[keyY] + dy;
+      if (event.ctrlKey || event.metaKey) {
+        const locked = lockDragEnd('arrow', fixedX, fixedY, x, y);
+        x = locked.x;
+        y = locked.y;
+      }
+      store.getState().moveAnnotation(annotation.id, { [keyX]: x, [keyY]: y });
+    };
   }
 
   /** Move or resize the pending crop selection (local state, not the store). */
@@ -904,12 +924,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
                   interactive && 'pointer-events-auto cursor-grab active:cursor-grabbing'
                 )}
                 strokeWidth={1.5}
-                onPointerDown={startDrag(annotation.id, (dx, dy) =>
-                  store.getState().moveAnnotation(annotation.id, {
-                    [keyX]: annotation[keyX] + dx,
-                    [keyY]: annotation[keyY] + dy
-                  })
-                )}
+                onPointerDown={startDrag(annotation.id, endpointDragMove(annotation, keyX, keyY))}
               />
             ))}
         </svg>
@@ -981,12 +996,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
                   interactive && 'pointer-events-auto cursor-grab active:cursor-grabbing'
                 )}
                 strokeWidth={1.5}
-                onPointerDown={startDrag(annotation.id, (dx, dy) =>
-                  store.getState().moveAnnotation(annotation.id, {
-                    [keyX]: annotation[keyX] + dx,
-                    [keyY]: annotation[keyY] + dy
-                  })
-                )}
+                onPointerDown={startDrag(annotation.id, endpointDragMove(annotation, keyX, keyY))}
               />
             ))}
         </svg>

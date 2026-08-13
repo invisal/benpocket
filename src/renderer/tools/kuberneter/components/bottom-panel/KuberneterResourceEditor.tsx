@@ -135,7 +135,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
       </div>
 
       {/* CodeMirror Editor Container */}
-      <div className={`flex-1 min-h-0 relative ${theme === 'dark' ? 'bg-[#1e1e1e]' : 'bg-white'}`}>
+      <div className={`flex-1 min-h-0 relative ${theme === 'dark' ? 'bg-surface' : 'bg-white'}`}>
         <CodeMirror
           value={currentContent}
           height="100%"

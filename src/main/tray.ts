@@ -10,7 +10,7 @@ import { IpcChannels } from '@shared/ipc-channels';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 /**
- * App-lifetime tray with a single menu: New Recording, Screen Capture, Quit.
+ * App-lifetime tray menu: Open, New Recording, Screen Capture, Quit.
  * On Linux, StatusNotifierItem does not emit `right-click` and
  * `popUpContextMenu` is a no-op — menus only work via `setContextMenu`.
  * Kept as module state because Electron destroys the OS tray icon if the
@@ -44,6 +44,8 @@ function sendToMainWindow(channel: string, ...args: unknown[]): void {
 
 function trayMenuTemplate(): MenuItemConstructorOptions[] {
   return [
+    { label: 'Open benpocket', click: () => showMainWindow() },
+    { type: 'separator' },
     {
       label: 'New Recording',
       // Deliberately doesn't show/focus the main window first -- opening the

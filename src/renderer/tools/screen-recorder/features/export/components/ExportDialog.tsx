@@ -6,6 +6,7 @@ import { Button } from '@renderer/components/ui/Button';
 import { UnderlineTab } from '@renderer/components/ui/Tabs';
 import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
+import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useExportStore } from '../store/export-store';
 import { useExportAction } from '../hooks/useExportAction';
 import { estimateExport } from '../lib/estimate-export';
@@ -106,6 +107,7 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
   // No separate global toggle -- the export just skips audio entirely when
   // every kept clip is muted (see useExportAction.ts), same as this estimate.
   const includeAudio = segments.some((s) => !s.audioMuted);
+  const hasWebcam = useWebcamStore((s) => s.enabled);
 
   const selectedOutputSize = closestByLongEdge(
     OUTPUT_SIZE_CHOICES,
@@ -120,7 +122,8 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
     frameRate: store.frameRate,
     quality: store.quality,
     includeAudio,
-    format: store.format
+    format: store.format,
+    hasWebcam
   });
 
   return (
@@ -132,6 +135,12 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
         // deliberate close (X, Cancel, or a completed export) dismisses it.
         if (!next && (details.reason === 'outside-press' || details.reason === 'escape-key'))
           return;
+        // Opening the dialog over a still-playing preview leaves the video
+        // running (and audible) behind it -- pause it the same way
+        // EditorTransportBar/Space do, via the request token since this
+        // button lives in ScreenRecorderApp's nav, not inside EditorPage
+        // where `videoRef` actually lives.
+        if (next) useTimelineStore.getState().requestPause();
         setOpen(next);
       }}
     >

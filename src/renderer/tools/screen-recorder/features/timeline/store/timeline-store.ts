@@ -95,6 +95,15 @@ interface TimelineStoreState {
    */
   seekRequestMs: number | null;
   /**
+   * Bumped to ask EditorPage's video to pause -- same one-shot cross-tree
+   * request shape as `saveRequestToken` (app-store.ts), needed because
+   * callers like ExportDialogButton (rendered as ScreenRecorderApp's nav
+   * sibling, not inside EditorPage) can't reach `videoRef` directly. A
+   * counter (not a boolean) so repeated requests each fire their own
+   * subscription callback even if playback never resumed in between.
+   */
+  pauseRequestToken: number;
+  /**
    * One-shot flag set by project-load hydration (see
    * features/project/lib/apply-project-snapshot.ts) so EditorPage's "a
    * different recording loaded" effect skips clobbering the just-restored
@@ -130,6 +139,7 @@ interface TimelineStoreState {
    */
   previewSeek: (ms: number) => void;
   clearSeekRequest: () => void;
+  requestPause: () => void;
   initializeFromDuration: (durationMs: number) => void;
   /** Splits whichever kept segment covers `atOutputMs` (in the ripple/output timeline) into two. */
   splitAt: (atOutputMs: number) => void;
@@ -207,6 +217,7 @@ export const useTimelineStore = create<TimelineStoreState>(
       isCutToolActive: false,
       isZoomToolActive: false,
       seekRequestMs: null,
+      pauseRequestToken: 0,
       skipNextAutoInit: false,
       setPlayhead: (playheadMs, isJump) =>
         set((state) => ({
@@ -236,6 +247,7 @@ export const useTimelineStore = create<TimelineStoreState>(
       requestSeek: (ms) => set({ seekRequestMs: ms, playheadMs: ms }),
       previewSeek: (ms) => set({ seekRequestMs: ms }),
       clearSeekRequest: () => set({ seekRequestMs: null }),
+      requestPause: () => set((state) => ({ pauseRequestToken: state.pauseRequestToken + 1 })),
 
       initializeFromDuration: (durationMs) => {
         const track = primaryTrack(get().tracks);

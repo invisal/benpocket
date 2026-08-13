@@ -76,6 +76,7 @@ export interface WebcamSceneData {
   sizePx: number;
   shape: 'circle' | 'rounded-square' | 'square';
   mirrored: boolean;
+  shadow: ShadowSceneData | null;
 }
 
 export interface BlurMaskSceneData {

@@ -72,6 +72,17 @@ export function EditorPage(): JSX.Element {
   const selectedSegment = segments.find((s) => s.id === selectedSegmentId) ?? null;
 
   useApplySeekRequest({ videoRef, seekRequestMs, clearSeekRequest });
+  // `pauseRequestToken` (bumped by e.g. ExportDialogButton, a nav-bar
+  // sibling of this page that can't reach `videoRef` directly) -- same
+  // subscribe-not-read shape as ScreenRecorderApp.tsx's `saveRequestToken`
+  // handling, so the pause fires from within the subscription callback
+  // rather than needing this whole component to re-render on every bump.
+  useEffect(() => {
+    return useTimelineStore.subscribe((state, prevState) => {
+      if (state.pauseRequestToken === prevState.pauseRequestToken) return;
+      videoRef.current?.pause();
+    });
+  }, []);
   useInitializeTimelineForRecording({
     previewUrl: lastRecording?.previewUrl,
     durationSec: duration,

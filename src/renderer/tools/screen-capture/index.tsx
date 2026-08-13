@@ -406,9 +406,13 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           <ScreenRecordingPermissionBanner />
 
           {phase === 'idle' && !isCapturing && (
-            <div className="flex min-h-[12rem] flex-1 flex-col items-center justify-center gap-4">
-              <p className="max-w-md text-center text-sm text-text-dim">
-                Capture a screen, window, or area — or paste an image to edit.
+            <div className="bg-dotted flex min-h-[12rem] flex-1 flex-col items-center justify-center rounded-xl bg-surface select-none">
+              <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-border bg-surface-2 text-accent">
+                <Camera size={26} />
+              </div>
+              <h2 className="text-sm font-semibold text-foreground">Ready to capture</h2>
+              <p className="mt-1 mb-6 max-w-xs text-center text-xs leading-5 text-muted-foreground">
+                Screen, window, or area — or paste an image to edit.
               </p>
               <input
                 ref={fileInputRef}
@@ -426,7 +430,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
                 <Button
                   variant="secondary"
                   size="md"
-                  title="Browse for an image to edit — you can also paste one (Ctrl+V)"
+                  title="Browse for an image to edit — you can also paste one"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <ImageUp size={16} />
@@ -445,8 +449,14 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
                   </Button>
                 )}
               </div>
+              <p className="mt-4 text-[11px] text-muted-foreground">
+                Paste with{' '}
+                <kbd className="rounded bg-surface-3 px-1.5 py-0.5 font-medium">
+                  {window.api?.platform === 'darwin' ? '⌘V' : 'Ctrl+V'}
+                </kbd>
+              </p>
               {usesOsPicker && (
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
+                <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={hideApp}

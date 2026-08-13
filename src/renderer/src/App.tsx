@@ -8,7 +8,7 @@ function App(): React.JSX.Element {
   return (
     <ErrorBoundary>
       <TrayBridge />
-      <CaptureToolbarBridge />
+      {!window.api?.usesOsCapturePicker && <CaptureToolbarBridge />}
       <AppShell />
     </ErrorBoundary>
   );

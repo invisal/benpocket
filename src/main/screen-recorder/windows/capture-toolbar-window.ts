@@ -3,6 +3,7 @@ import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
 import type { CaptureToolbarCapturePayload } from '@shared/capture-toolbar';
 import type { ScreenRect } from '@shared/capture-region';
+import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 import { preloadScriptPath } from '../lib/preload-path';
 import {
   hideCaptureWindow,
@@ -87,6 +88,7 @@ function createToolbarWindow(): BrowserWindow {
 }
 
 async function openCaptureToolbar(event: Electron.IpcMainInvokeEvent): Promise<void> {
+  if (usesOsCapturePicker()) return;
   const owner = BrowserWindow.fromWebContents(event.sender);
   if (!owner) return;
   ownerWindow = owner;

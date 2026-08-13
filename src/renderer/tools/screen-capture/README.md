@@ -5,13 +5,13 @@ Take a single PNG screenshot of a screen, window, or screen region. Preview the 
 **Source selection is platform-dependent:**
 
 - **macOS / Windows / Linux X11:** floating mini toolbar (Display / Window / Area) plus a click-to-capture overlay. Capture minimizes BenPocket; re-open from the dock / taskbar to include it in the shot.
-- **Linux Wayland:** no toolbar — pixels come straight from the OS via the xdg-desktop-portal `Screenshot` D-Bus interface (not PipeWire/`getDisplayMedia`, which round-trips through a video frame and loses quality; see `capture/portal-screenshot.ts`)
+- **Linux Wayland:** no toolbar — `desktopCapturer.getSources` cannot list screens/windows under PipeWire, so pixels come from the OS via the xdg-desktop-portal `Screenshot` D-Bus interface (not PipeWire/`getDisplayMedia`; see `capture/portal-screenshot.ts`).
 
 ## How it's mounted into CraftBox
 
 ```
 App
-├─ CaptureToolbarBridge     always-mounted; runs captureFromSource in the owner renderer
+├─ CaptureToolbarBridge     macOS/Windows/X11; runs captureFromSource in the owner renderer
 ├─ AppShell
 │  ├─ ActivityBar           camera icon → activates screen-capture tab (opens the pill)
 │  ├─ ToolDialog / Home     shortcuts to openTab('screen-capture', {})
@@ -67,9 +67,9 @@ When `window.api.usesOsCapturePicker` is true (Linux Wayland), the toolbar is sk
 
 Errors (clipboard copy, region capture, save) are logged to the console — no notifications. Permission issues are surfaced only via `ScreenRecordingPermissionBanner` — no inline error text.
 
-The pill/overlay are separate renderer processes. A pick sends `capture-toolbar:capture`; `CaptureToolbarBridge` (always mounted — hidden tabs tear down effects via React `Activity`) runs `captureFromSource` / `captureSelectedRegion` in the **owner** window (`screenshot.capture` hides `event.sender`, which must be the main window, not the pill).
+The pill/overlay are separate renderer processes (macOS/Windows/X11). A pick sends `capture-toolbar:capture`; `CaptureToolbarBridge` (mounted only when the OS picker is off — hidden tabs tear down effects via React `Activity`) runs `captureFromSource` / `captureSelectedRegion` in the **owner** window (`screenshot.capture` hides `event.sender`, which must be the main window, not the pill).
 
-## Source picking (macOS / Windows / X11)
+## Source picking (macOS / Windows / Linux X11)
 
 The pill fetches `getCaptureSources()` itself (do not block window open on thumbnails). Display/Window open a single-display overlay (cursor's monitor). Area reuses `screenshot.selectRegion()` and completes on mouse-up (no confirm button). BenPocket is **not** filtered from the window list.
 
@@ -90,7 +90,7 @@ Wayland **Capture** still calls `selectAndCaptureRegion` (portal). On macOS/Wind
 
 ### Linux Wayland
 
-1. Main process hides the window (same as the non-Wayland full-display hide — otherwise CraftBox sits on top of GNOME's picker)
+1. Main process hides the window (otherwise CraftBox sits on top of GNOME's picker)
 2. `screenshot.capturePortal()` — GNOME shows its own screen/window/selection picker UI
 3. User picks and confirms in that native UI (Esc cancels — resolves `null`, no error); main process restores and focuses the window
 4. Portal writes the file, we read it and return the bytes directly — **no overlay, no crop**
@@ -206,7 +206,7 @@ Screen Capture lives under `tools/screen-capture/` but reuses the **`window.scre
 | `content-security-policy.ts`           | Preview images                         | Recording preview (`blob:` URLs)                          | **Low** — added `blob:` to `img-src` (allows blob preview images app-wide; does not loosen scripts) |
 | `usesOsCapturePicker` on `window.api`  | UI routing                             | **Not read** by other tools                               | **None** — read-only flag                                                                           |
 
-**Screen Recorder on Linux Wayland:** still uses the in-app `getCaptureSources` grid (PipeWire source enumeration is limited — pre-existing constraint, not introduced by Screen Capture). Screen Capture skips the grid on Wayland and uses OS portals instead.
+**Screen Recorder on Linux Wayland:** still uses its own floating recorder pill + overlay (unchanged; PipeWire source enumeration is limited). Screen Capture skips listing sources on Wayland and uses the OS screenshot portal instead.
 
 ## Shared global hooks (affects other tools)
 
@@ -219,13 +219,13 @@ Registered once in `src/main/index.ts`:
 | `screen-recorder/capture/screen-source-provider.ts`   | Shared with Screen Recorder    | Lists screens/windows for the in-app thumbnail grid        |
 | `screen-recorder/capture/portal-screenshot.ts`        | Wayland only                   | `screenshot.capturePortal` — the only Wayland capture path |
 
-Screen Capture and Screen Recorder share **`getCaptureSources`** and hide/restore IPC. Screen Capture uses **main-process `desktopCapturer`** for full-display stills; **renderer `getUserMedia`** for window stills and Wayland portal streams. Screen Recorder video capture stays renderer-only (`capture-engine.ts`).
+Screen Capture and Screen Recorder share **`getCaptureSources`** and hide/restore IPC. Screen Capture uses **main-process `desktopCapturer`** for full-display stills on macOS/Windows/X11; **OS portal** on Wayland. Screen Recorder video capture stays renderer-only (`capture-engine.ts`).
 
 ## Differences from Screen Recorder
 
 |                   | Screen Capture                                                                        | Screen Recorder                |
 | ----------------- | ------------------------------------------------------------------------------------- | ------------------------------ |
-| Source selection  | Floating pill + overlay (most platforms); OS picker on Linux Wayland                  | Floating pill + overlay        |
+| Source selection  | Floating pill + overlay (macOS/Windows/X11); OS picker on Linux Wayland               | Floating pill + overlay        |
 | Output            | Single PNG                                                                            | Video (`MediaRecorder`)        |
 | Full display grab | Main-process `desktopCapturer` thumbnail at display resolution                        | Renderer `getUserMedia` stream |
 | Hide window       | Yes on full display (`source.type === 'screen'` or OS `displaySurface === 'monitor'`) | No                             |
@@ -236,7 +236,7 @@ Screen Capture and Screen Recorder share **`getCaptureSources`** and hide/restor
 
 - **macOS:** full-display capture uses atomic main-process IPC with `mainOnly` hide; region overlay uses `hide({ mainOnly: true })`
 - **Windows / Linux X11:** toolbar overlay + main-process full-display capture
-- **Linux Wayland:** no toolbar; full capture and region both go through the xdg-desktop-portal `Screenshot` D-Bus call (`capture/portal-screenshot.ts`), not PipeWire/`getDisplayMedia`; clipboard needs main-process write + focus wait on non-macOS
+- **Linux Wayland:** no capture toolbar; full capture and region both go through the xdg-desktop-portal `Screenshot` D-Bus call (`capture/portal-screenshot.ts`), not PipeWire/`getDisplayMedia`; clipboard needs main-process write + focus wait on non-macOS
 - **`region-select.ts`** is a separate renderer entry (`tsconfig.web.json`, `electron.vite.config.ts`)
 
 ## Type-checking

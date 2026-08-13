@@ -7,6 +7,7 @@ import { useCaptureResultStore } from '../store/capture-result.store';
  * the toolbar so this invoke isn't blocked on thumbnails.
  */
 export async function openCaptureToolbarFor(): Promise<void> {
+  if (window.api?.usesOsCapturePicker) return;
   if (useCaptureResultStore.getState().isToolbarOpen) return;
   useCaptureResultStore.getState().setToolbarOpen(true);
   try {

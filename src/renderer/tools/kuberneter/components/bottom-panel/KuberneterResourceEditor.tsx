@@ -3,9 +3,10 @@ import { useState, useEffect, useRef } from 'react';
 import CodeMirror, { EditorView } from '@uiw/react-codemirror';
 import { yaml as yamlLang } from '@codemirror/lang-yaml';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { Save, Check, AlertCircle } from 'lucide-react';
+import { Save, Check } from 'lucide-react';
 import { DEFAULT_TEMPLATES } from './types';
 import { useThemeStore } from '@renderer/store/theme.store';
+import { useKuberneterStore } from '../../store/kuberneter.store';
 import { Button } from '@renderer/components/ui/Button';
 
 interface KuberneterResourceEditorProps {
@@ -23,9 +24,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
   onChangeYaml,
   onApply
 }) => {
-  const [resourceStatus, setResourceStatus] = useState<{ text: string; isError?: boolean } | null>(
-    null
-  );
+  const [resourceStatus, setResourceStatus] = useState<{ text: string } | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const theme = useThemeStore((s) => s.theme);
   const isEditMode = Boolean(initialYaml);
@@ -45,7 +44,11 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
   const handleApply = async () => {
     const content = yaml || initialYaml || '';
     if (!content || !content.trim()) {
-      setResourceStatus({ text: 'Error: YAML content is empty.', isError: true });
+      useKuberneterStore.getState().addToast({
+        type: 'error',
+        title: 'Apply Resource Failed',
+        message: 'YAML content is empty.'
+      });
       return;
     }
     setIsApplying(true);
@@ -53,16 +56,24 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
     try {
       const res = await onApply(content);
       if (res && res.error) {
-        setResourceStatus({ text: `Apply failed: ${res.error}`, isError: true });
+        useKuberneterStore.getState().addToast({
+          type: 'error',
+          title: 'Apply Resource Failed',
+          message: res.error
+        });
       } else {
         if (res && res.yaml) {
           onChangeYaml(res.yaml);
         }
-        setResourceStatus({ text: 'Resource applied successfully to cluster.', isError: false });
+        setResourceStatus({ text: 'Resource applied successfully to cluster.' });
         setTimeout(() => setResourceStatus(null), 4000);
       }
     } catch (e) {
-      setResourceStatus({ text: `Apply failed: ${(e as Error).message}`, isError: true });
+      useKuberneterStore.getState().addToast({
+        type: 'error',
+        title: 'Apply Resource Failed',
+        message: (e as Error).message
+      });
     } finally {
       setIsApplying(false);
     }
@@ -95,16 +106,8 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
           </Button>
 
           {resourceStatus && (
-            <span
-              className={`text-[10px] font-sans flex items-center gap-1 ml-2 ${
-                resourceStatus.isError ? 'text-rose-400' : 'text-emerald-400'
-              }`}
-            >
-              {resourceStatus.isError ? (
-                <AlertCircle className="size-3" />
-              ) : (
-                <Check className="size-3" />
-              )}
+            <span className="text-[10px] font-sans flex items-center gap-1 ml-2 text-emerald-400">
+              <Check className="size-3" />
               {resourceStatus.text}
             </span>
           )}

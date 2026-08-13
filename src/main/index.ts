@@ -40,6 +40,7 @@ import { handleGithubDeepLink } from './auth/githubAuth';
 import { registerAuthHandlers } from './auth/ipc';
 import { registerUpdaterHandlers } from './updater/ipc';
 import { registerTelemetryHandlers } from './telemetry/ipc';
+import { registerSystemHandlers } from './system/ipc';
 import { telemetryStore } from './telemetry/telemetry-store';
 import { flushOnQuit, startTelemetrySender } from './telemetry/sender';
 import { startHeapLogger } from './heapLogger';
@@ -310,6 +311,10 @@ if (gotSingleInstanceLock) {
     registerTelemetryHandlers();
     startTelemetrySender();
     telemetryStore.enqueue({ event: 'app_opened' });
+
+    // Process memory metrics for the status bar's MemoryStatus popover --
+    // app.getAppMetrics() covers main, renderer, GPU, and utility processes.
+    registerSystemHandlers();
 
     if (is.dev) {
       if (process.platform === 'darwin') {

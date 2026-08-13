@@ -21,6 +21,7 @@ import { LayerPanel } from './components/LayerPanel';
 import { useCaptureEditorStore } from './store/editor.store';
 import { useCaptureResultStore } from './store/capture-result.store';
 import { flattenImage } from './lib/flatten';
+import { addImageLayerFromBlob } from './lib/image-layer';
 import {
   blobToDataUrl,
   CAPTURE_EXPORT_FORMATS,
@@ -168,17 +169,32 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     confirmTimer.current = window.setTimeout(() => setConfirmed(null), 1500);
   };
 
-  // Pasting an image on the main screen opens it in the editor.
+  // Idle: paste opens a new capture. Result: paste adds an image layer
+  // unless the user is typing in a field or editing text on the stage.
   useEffect(() => {
-    if (phase !== 'idle') return;
+    if (phase !== 'idle' && phase !== 'result') return;
     function onPaste(event: ClipboardEvent): void {
       const item = Array.from(event.clipboardData?.items ?? []).find((i) =>
         i.type.startsWith('image/')
       );
       const file = item?.getAsFile();
       if (!file) return;
+      if (phase === 'idle') {
+        event.preventDefault();
+        void openImage(file);
+        return;
+      }
+      if (useCaptureEditorStore.getState().editingId) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
       event.preventDefault();
-      void openImage(file);
+      void addImageLayerFromBlob(file);
     }
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);

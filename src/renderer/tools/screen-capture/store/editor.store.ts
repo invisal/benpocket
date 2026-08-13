@@ -561,7 +561,7 @@ export const useCaptureEditorStore = create<EditorState>()((set, get) => ({
         target && isStyleTool(target.kind) ? target.kind : key,
         { color }
       );
-      if (!target || target.kind === 'blur') {
+      if (!target || target.kind === 'blur' || target.kind === 'image') {
         return { ...working, toolStyles, ...(target ? { selectedId: target.id } : {}) };
       }
       return {

@@ -26,6 +26,7 @@ import type {
   BlurAnnotation,
   CaptureAnnotation,
   CircleAnnotation,
+  ImageAnnotation,
   PenAnnotation,
   RectAnnotation,
   TextAnnotation
@@ -479,7 +480,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   }
 
   function cornerDragMove(
-    annotation: RectAnnotation | CircleAnnotation | BlurAnnotation,
+    annotation: RectAnnotation | CircleAnnotation | BlurAnnotation | ImageAnnotation,
     corner: Corner
   ): DragMove {
     const start = {
@@ -774,7 +775,12 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
   function renderAnnotation(annotation: CaptureAnnotation): JSX.Element {
     const isSelected = selectedId === annotation.id;
 
-    if (annotation.kind === 'blur' || annotation.kind === 'rect' || annotation.kind === 'circle') {
+    if (
+      annotation.kind === 'blur' ||
+      annotation.kind === 'rect' ||
+      annotation.kind === 'circle' ||
+      annotation.kind === 'image'
+    ) {
       return (
         <div
           key={annotation.id}
@@ -798,12 +804,22 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
                   backdropFilter: `blur(${annotation.blurRadius * scale}px)`,
                   WebkitBackdropFilter: `blur(${annotation.blurRadius * scale}px)`
                 }
-              : {
-                  border: `${Math.max(1, annotation.strokeWidth * scale)}px solid ${annotation.color}`,
-                  ...(annotation.kind === 'circle' ? { borderRadius: '50%' } : {})
-                })
+              : annotation.kind === 'image'
+                ? undefined
+                : {
+                    border: `${Math.max(1, annotation.strokeWidth * scale)}px solid ${annotation.color}`,
+                    ...(annotation.kind === 'circle' ? { borderRadius: '50%' } : {})
+                  })
           }}
         >
+          {annotation.kind === 'image' && (
+            <img
+              src={annotation.src}
+              alt=""
+              draggable={false}
+              className="pointer-events-none h-full w-full object-fill"
+            />
+          )}
           {isSelected && (
             <>
               <div className="pointer-events-none absolute -inset-px border border-dashed border-accent" />

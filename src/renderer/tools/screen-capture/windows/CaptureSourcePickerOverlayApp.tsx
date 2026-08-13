@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { cn } from 'cnfast';
 import { Button } from '@renderer/components/ui/Button';
+import { useSyncDocumentTheme } from '@renderer/store/theme.store';
 import type { CaptureSource } from '@screen-recorder/types/recording';
 import type { CaptureSourcePickerOverlayInit } from '@shared/capture-source-picker-overlay';
 
@@ -19,6 +20,7 @@ function parseInit(): CaptureSourcePickerOverlayInit | null {
  * (no countdown) and the overlay is closed by main before the grab.
  */
 export function CaptureSourcePickerOverlayApp(): JSX.Element | null {
+  useSyncDocumentTheme();
   const init = useMemo(() => parseInit(), []);
   const [sources, setSources] = useState<CaptureSource[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -111,8 +113,8 @@ export function CaptureSourcePickerOverlayApp(): JSX.Element | null {
                 }}
                 title={source.name}
                 className={cn(
-                  'group relative overflow-hidden rounded-xl border bg-zinc-900 text-left',
-                  targetSource?.id === source.id ? 'border-accent' : 'border-white/10'
+                  'group relative overflow-hidden rounded-xl border bg-surface text-left',
+                  targetSource?.id === source.id ? 'border-accent' : 'border-border'
                 )}
               >
                 <img
@@ -120,11 +122,15 @@ export function CaptureSourcePickerOverlayApp(): JSX.Element | null {
                   alt={source.name}
                   className="aspect-video w-full object-cover opacity-80 transition-opacity group-hover:opacity-30"
                 />
-                <p className="truncate px-2 py-1.5 text-[11px] text-white/70">{source.name}</p>
+                <p className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">
+                  {source.name}
+                </p>
               </button>
             ))}
             {matching.length === 0 && (
-              <p className="col-span-4 text-center text-sm text-white/50">No windows available.</p>
+              <p className="col-span-4 text-center text-sm text-muted-foreground">
+                No windows available.
+              </p>
             )}
           </div>
         </div>

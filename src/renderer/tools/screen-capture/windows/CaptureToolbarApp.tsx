@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { AppWindow, Crop, GripVertical, Monitor, X } from 'lucide-react';
 import { cn } from 'cnfast';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
+import { useSyncDocumentTheme } from '@renderer/store/theme.store';
 import type { CaptureSource, CaptureTargetType } from '@screen-recorder/types/recording';
 import { pickDefaultCaptureSource } from '@screen-recorder/features/recording/lib/pick-default-capture-source';
 import { findScreenSourceForRegion } from '../lib/capture-frame';
@@ -15,6 +16,7 @@ const DRAG = '[-webkit-app-region:drag]';
 const NO_DRAG = '[-webkit-app-region:no-drag]';
 
 export function CaptureToolbarApp(): JSX.Element {
+  useSyncDocumentTheme();
   const [sources, setSources] = useState<CaptureSource[]>([]);
   const [activeTab, setActiveTab] = useState<CaptureTargetType | null>(null);
 
@@ -67,24 +69,22 @@ export function CaptureToolbarApp(): JSX.Element {
         <div
           className={cn(
             DRAG,
-            'flex items-center gap-1 rounded-full border border-white/10 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur'
+            'flex items-center gap-1 rounded-full border border-border bg-surface/95 p-1.5 shadow-2xl backdrop-blur'
           )}
         >
-          <GripVertical size={13} className="mx-1 shrink-0 text-white/25" />
+          <GripVertical size={13} className="mx-1 shrink-0 text-muted-foreground/50" />
 
           <Tooltip.Root>
             <Tooltip.Trigger
               onClick={() => window.screenRecorder.captureToolbar.cancel()}
               className={cn(
                 NO_DRAG,
-                'flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white'
+                'flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-surface-3 hover:text-foreground'
               )}
             >
               <X size={14} />
             </Tooltip.Trigger>
-            <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
-              Cancel (Esc)
-            </Tooltip.Content>
+            <Tooltip.Content side="top">Cancel (Esc)</Tooltip.Content>
           </Tooltip.Root>
 
           <div className="ml-1 flex items-center gap-1">
@@ -100,8 +100,8 @@ export function CaptureToolbarApp(): JSX.Element {
                   NO_DRAG,
                   'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
                   activeTab === type
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                    ? 'bg-surface-3 text-strong'
+                    : 'text-muted-foreground hover:bg-surface-3 hover:text-foreground'
                 )}
               >
                 <Icon size={15} />
@@ -117,7 +117,7 @@ export function CaptureToolbarApp(): JSX.Element {
               }}
               className={cn(
                 NO_DRAG,
-                'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px] text-white/50 hover:bg-white/10 hover:text-white/80'
+                'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px] text-muted-foreground hover:bg-surface-3 hover:text-foreground'
               )}
             >
               <Crop size={15} />

@@ -380,11 +380,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           {phase === 'idle' && !isCapturing ? (
             <div>
               <h1 className="text-base font-medium">Screen Capture</h1>
-              <p className="mt-0.5 text-xs text-text-dim">
-                {usesOsPicker
-                  ? 'Capture a full screen or window, or drag a region. You can also paste (Ctrl+V) or open an image to edit it.'
-                  : 'Click Capture to hide this window and open the toolbar. Re-open BenPocket from the dock or taskbar if you need it in the shot. You can also paste (Ctrl+V) or open an image to edit it.'}
-              </p>
+              <p className="mt-0.5 text-xs text-text-dim">Take a screenshot or edit an image.</p>
             </div>
           ) : (
             <div>
@@ -409,6 +405,59 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         >
           <ScreenRecordingPermissionBanner />
 
+          {phase === 'idle' && !isCapturing && (
+            <div className="flex min-h-[12rem] flex-1 flex-col items-center justify-center gap-4">
+              <p className="max-w-md text-center text-sm text-text-dim">
+                Capture a screen, window, or area — or paste an image to edit.
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  // Reset so picking the same file again still fires onChange.
+                  e.target.value = '';
+                  if (file) void openImage(file);
+                }}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  title="Browse for an image to edit — you can also paste one (Ctrl+V)"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImageUp size={16} />
+                  Browse
+                </Button>
+                {!usesOsPicker && !isToolbarOpen && (
+                  <Button variant="primary" size="md" onClick={handleCapture}>
+                    <Camera size={16} />
+                    Capture
+                  </Button>
+                )}
+                {usesOsPicker && (
+                  <Button variant="primary" size="md" onClick={() => void runRegionCapture()}>
+                    <Camera size={16} />
+                    Capture
+                  </Button>
+                )}
+              </div>
+              {usesOsPicker && (
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
+                  <input
+                    type="checkbox"
+                    checked={hideApp}
+                    onChange={(e) => toggleHideApp(e.target.checked)}
+                    className="accent-(--color-accent)"
+                  />
+                  Hide this app while capturing
+                </label>
+              )}
+            </div>
+          )}
           {isCapturing && (
             <div className="flex min-h-[12rem] flex-1 items-center justify-center">
               <p className="text-sm text-text-dim">{capturingMessage}</p>
@@ -486,55 +535,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
             <Camera size={14} />
             Capture again
           </Button>
-        </footer>
-      )}
-
-      {phase === 'idle' && !isCapturing && (
-        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border-dark bg-surface px-6 py-4">
-          {usesOsPicker && (
-            <label className="mr-auto flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
-              <input
-                type="checkbox"
-                checked={hideApp}
-                onChange={(e) => toggleHideApp(e.target.checked)}
-                className="accent-(--color-accent)"
-              />
-              Hide this app while capturing
-            </label>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              // Reset so picking the same file again still fires onChange.
-              e.target.value = '';
-              if (file) void openImage(file);
-            }}
-          />
-          <Button
-            variant="secondary"
-            size="sm"
-            title="Open an image to edit — you can also paste one (Ctrl+V)"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <ImageUp size={14} />
-            Open image
-          </Button>
-          {!usesOsPicker && !isToolbarOpen && (
-            <Button variant="primary" size="sm" onClick={handleCapture}>
-              <Camera size={14} />
-              Capture
-            </Button>
-          )}
-          {usesOsPicker && (
-            <Button variant="primary" size="sm" onClick={() => void runRegionCapture()}>
-              <Camera size={14} />
-              Capture
-            </Button>
-          )}
         </footer>
       )}
     </div>

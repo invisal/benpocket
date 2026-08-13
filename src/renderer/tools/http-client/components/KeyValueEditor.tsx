@@ -36,7 +36,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
       {rows.map((row) => (
         <div
           key={row.id}
-          className="group grid grid-cols-[34px_1fr_2fr] items-center divide-x divide-border-light [&>*:last-child]:!border-l-0"
+          className="group grid grid-cols-[34px_1fr_2fr] items-center divide-x divide-border-light [&>*:last-child]:border-l-0!"
         >
           <div
             className="h-8 w-full flex items-center justify-center"
@@ -83,7 +83,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                 disabled={isLastRow(row.id)}
                 tabIndex={-1}
                 title="Remove row"
-                className=" p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-default cursor-pointer transition justify-self-center"
+                className="p-1 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-default cursor-pointer transition justify-self-center"
               >
                 <Trash2 size={12} />
               </button>

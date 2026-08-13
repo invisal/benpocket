@@ -20,6 +20,8 @@ import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
 const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
 const DEFAULT_RESPONSE_PANEL_HEIGHT = 40;
+const WS_LOG_HEIGHT_KEY = 'craftbox-http-client-ws-log-height';
+const DEFAULT_WS_LOG_HEIGHT = 50;
 const SIDEBAR_WIDTH_KEY = 'craftbox-http-client-sidebar-width';
 const DEFAULT_SIDEBAR_WIDTH = 256;
 
@@ -27,6 +29,12 @@ function readStoredResponsePanelHeight(): number {
   const stored = window.localStorage.getItem(RESPONSE_PANEL_HEIGHT_KEY);
   const parsed = stored ? Number(stored) : NaN;
   return Number.isFinite(parsed) ? parsed : DEFAULT_RESPONSE_PANEL_HEIGHT;
+}
+
+function readStoredWsLogHeight(): number {
+  const stored = window.localStorage.getItem(WS_LOG_HEIGHT_KEY);
+  const parsed = stored ? Number(stored) : NaN;
+  return Number.isFinite(parsed) ? parsed : DEFAULT_WS_LOG_HEIGHT;
 }
 
 function readStoredSidebarWidth(): number {
@@ -109,7 +117,6 @@ export const HttpClientWorkspace: React.FC = () => {
 };
 
 const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
-  const client = useApiClient(tabId);
   const tab = usePostmanTabsStore((s) => s.tabs.find((t) => t.id === tabId));
   const renameTab = usePostmanTabsStore((s) => s.renameTab);
   const isPreviewTab = usePostmanTabsStore((s) => s.previewTabId === tabId);
@@ -119,6 +126,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   const pinIfPreview = (): void => {
     if (isPreviewTab) pinTab(tabId);
   };
+  const client = useApiClient(tabId, { onEdit: pinIfPreview });
   const seed = tab?.meta as PostmanTabSeed | undefined;
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveBarRef = useRef<RequestSaveBarHandle>(null);
@@ -129,6 +137,11 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
     setResponsePanelHeight(size);
     window.localStorage.setItem(RESPONSE_PANEL_HEIGHT_KEY, String(size));
   };
+  const [wsLogHeight, setWsLogHeight] = useState<number>(readStoredWsLogHeight);
+  const handleWsLogResize = (size: number): void => {
+    setWsLogHeight(size);
+    window.localStorage.setItem(WS_LOG_HEIGHT_KEY, String(size));
+  };
 
   useEffect(() => {
     if (!saveError) return;
@@ -136,17 +149,23 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
     return () => clearTimeout(timer);
   }, [saveError]);
 
-  // Cmd/Ctrl+Enter to send, Cmd/Ctrl+S to save using whatever collection/name
-  // is currently set in the save bar (same action the visible Save button runs).
+  // Cmd/Ctrl+Enter to send, Cmd/Ctrl+S to save using whatever collection/name is currently set
+  // in the save bar (same action the visible Save button runs), Cmd/Ctrl+Z to undo and
+  // Cmd/Ctrl+Shift+Z or Ctrl+Y to redo the last HTTP draft edit.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (!e.metaKey && !e.ctrlKey) return;
+      const key = e.key.toLowerCase();
       if (e.key === 'Enter' && client.protocol === 'HTTP') {
         e.preventDefault();
         client.http.send();
-      } else if (e.key.toLowerCase() === 's') {
+      } else if (key === 's') {
         e.preventDefault();
         saveBarRef.current?.save();
+      } else if (client.protocol === 'HTTP' && (key === 'z' || key === 'y')) {
+        e.preventDefault();
+        if (key === 'y' || (key === 'z' && e.shiftKey)) client.http.redo();
+        else client.http.undo();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -166,12 +185,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         tabTitle={tab?.title ?? 'New API Request'}
         protocol={client.protocol}
         url={client.protocol === 'HTTP' ? client.http.state.url : client.ws.state.url}
-        method={client.protocol === 'HTTP' ? client.http.state.method : undefined}
-        headers={client.protocol === 'HTTP' ? client.http.state.headers : undefined}
-        params={client.protocol === 'HTTP' ? client.http.state.params : undefined}
-        bodyType={client.protocol === 'HTTP' ? client.http.state.bodyType : undefined}
-        body={client.protocol === 'HTTP' ? client.http.state.body : undefined}
-        auth={client.protocol === 'HTTP' ? client.http.state.auth : undefined}
+        request={client.protocol === 'HTTP' ? client.http.state : undefined}
         binding={client.binding}
         defaultCollectionId={seed?.defaultCollectionId}
         onSaved={(binding, name) => {
@@ -182,25 +196,11 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         extraActions={
           client.protocol === 'HTTP' ? (
             <>
-              <CodeSnippetDrawer
-                method={client.http.state.method}
-                url={client.http.state.url}
-                headers={client.http.state.headers}
-                bodyType={client.http.state.bodyType}
-                body={client.http.state.body}
-                auth={client.http.state.auth}
-                binding={client.binding}
-              />
+              <CodeSnippetDrawer request={client.http.state} binding={client.binding} />
               <SaveExamplePopover
                 binding={client.binding}
                 response={client.http.state.response}
-                method={client.http.state.method}
-                url={client.http.state.url}
-                headers={client.http.state.headers}
-                params={client.http.state.params}
-                bodyType={client.http.state.bodyType}
-                body={client.http.state.body}
-                auth={client.http.state.auth}
+                request={client.http.state}
               />
             </>
           ) : undefined
@@ -211,8 +211,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         <RequestComposer
           method={client.protocol === 'WEBSOCKET' ? 'WEBSOCKET' : client.http.state.method}
           onMethodChange={(value) => {
-            pinIfPreview();
             if (value === 'WEBSOCKET') {
+              pinIfPreview();
               client.setProtocol('WEBSOCKET');
             } else {
               client.setProtocol('HTTP');
@@ -221,7 +221,6 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           }}
           url={client.protocol === 'WEBSOCKET' ? client.ws.state.url : client.http.state.url}
           onUrlChange={(url) => {
-            pinIfPreview();
             if (client.protocol === 'WEBSOCKET') client.ws.setUrl(url);
             else client.http.setUrl(url);
           }}
@@ -229,14 +228,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
             client.protocol === 'WEBSOCKET' &&
             (client.ws.state.status === 'CONNECTED' || client.ws.state.status === 'CONNECTING')
           }
-          onImportCurl={
-            client.protocol === 'HTTP'
-              ? (parsed) => {
-                  pinIfPreview();
-                  client.http.importCurl(parsed);
-                }
-              : undefined
-          }
+          onImportCurl={client.protocol === 'HTTP' ? client.http.importCurl : undefined}
           action={
             client.protocol === 'WEBSOCKET'
               ? {
@@ -279,66 +271,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         {client.protocol === 'HTTP' ? (
           <>
             <div className="flex-1 min-h-0 flex flex-col gap-3 mt-3">
-              <RequestEditorPanel
-                method={client.http.state.method}
-                url={client.http.state.url}
-                params={client.http.state.params}
-                onUpdateParam={(id, patch) => {
-                  pinIfPreview();
-                  client.http.updateParamRow(id, patch);
-                }}
-                onRemoveParam={(id) => {
-                  pinIfPreview();
-                  client.http.removeParamRow(id);
-                }}
-                headers={client.http.state.headers}
-                onUpdateHeader={(id, patch) => {
-                  pinIfPreview();
-                  client.http.updateHeaderRow(id, patch);
-                }}
-                onRemoveHeader={(id) => {
-                  pinIfPreview();
-                  client.http.removeHeaderRow(id);
-                }}
-                auth={client.http.state.auth}
-                onAuthChange={(auth) => {
-                  pinIfPreview();
-                  client.http.setAuth(auth);
-                }}
-                binding={client.binding}
-                bodyType={client.http.state.bodyType}
-                onBodyTypeChange={(bodyType) => {
-                  pinIfPreview();
-                  client.http.setBodyType(bodyType);
-                }}
-                body={client.http.state.body}
-                onBodyChange={(body) => {
-                  pinIfPreview();
-                  client.http.setBody(body);
-                }}
-                bodyRows={client.http.state.bodyRows}
-                onUpdateBodyRow={(id, patch) => {
-                  pinIfPreview();
-                  client.http.updateBodyRow(id, patch);
-                }}
-                onRemoveBodyRow={(id) => {
-                  pinIfPreview();
-                  client.http.removeBodyRow(id);
-                }}
-                multipartRows={client.http.state.multipartRows}
-                onUpdateMultipartRow={(id, patch) => {
-                  pinIfPreview();
-                  client.http.updateMultipartRow(id, patch);
-                }}
-                onRemoveMultipartRow={(id) => {
-                  pinIfPreview();
-                  client.http.removeMultipartRow(id);
-                }}
-                onPickMultipartFile={(id) => {
-                  pinIfPreview();
-                  void client.http.pickMultipartFile(id);
-                }}
-              />
+              <RequestEditorPanel http={client.http} binding={client.binding} />
             </div>
 
             <ResizablePanel
@@ -358,14 +291,30 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           </>
         ) : (
           <>
-            <WebSocketComposer
-              messageInput={client.ws.state.messageInput}
-              onMessageInputChange={client.ws.setMessageInput}
-              onSendMessage={client.ws.sendMessage}
-              disabled={client.ws.state.status !== 'CONNECTED'}
-            />
+            <div className="flex-1 min-h-0 flex flex-col gap-3 mt-3">
+              <WebSocketComposer
+                messageInput={client.ws.state.messageInput}
+                onMessageInputChange={client.ws.setMessageInput}
+                onSendMessage={client.ws.sendMessage}
+                disabled={client.ws.state.status !== 'CONNECTED'}
+              />
+            </div>
 
-            <WebSocketLog log={client.ws.state.log} onClear={client.ws.clearLog} />
+            <ResizablePanel
+              edge="top"
+              size={wsLogHeight}
+              onResize={handleWsLogResize}
+              min={15}
+              max={75}
+              unit="%"
+              className="flex flex-col min-h-0"
+            >
+              <WebSocketLog
+                log={client.ws.state.log}
+                status={client.ws.state.status}
+                onClear={client.ws.clearLog}
+              />
+            </ResizablePanel>
           </>
         )}
       </div>

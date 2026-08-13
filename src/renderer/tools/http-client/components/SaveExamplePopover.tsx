@@ -2,14 +2,10 @@ import type React from 'react';
 import { useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Bookmark } from 'lucide-react';
+import { Button } from '@renderer/components/ui/Button';
 import { useCollectionsStore } from '../store/collections.store';
-import type {
-  HttpAuth,
-  HttpBodyType,
-  HttpMethod,
-  HttpResponsePayload
-} from '../../../../preload/http-client/types';
-import type { KeyValueRow } from '../lib/keyValueRows';
+import type { HttpResponsePayload } from '../../../../preload/http-client/types';
+import type { HttpState } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { makeId } from '../lib/makeId';
 
@@ -17,26 +13,15 @@ interface SaveExamplePopoverProps {
   /** Which saved request to attach the example to - the trigger is disabled without one. */
   binding: SavedBinding | null;
   response: HttpResponsePayload | null;
-  method: HttpMethod;
-  url: string;
-  headers: KeyValueRow[];
-  params: KeyValueRow[];
-  bodyType: HttpBodyType;
-  body: string;
-  auth: HttpAuth;
+  request: HttpState;
 }
 
 export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
   binding,
   response,
-  method,
-  url,
-  headers,
-  params,
-  bodyType,
-  body,
-  auth
+  request
 }) => {
+  const { method, url, headers, params, bodyType, body, auth } = request;
   const saveExample = useCollectionsStore((s) => s.saveExample);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -90,9 +75,9 @@ export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
             ? 'Save the request to a collection and send it first.'
             : 'Save this response as an example on the saved request'
         }
-        className="px-3 py-1.5 bg-surface-2 border border-border-dark hover:border-accent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border-dark text-zinc-300 hover:text-foreground text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors"
+        render={<Button variant="secondary" size="md" />}
       >
-        <Bookmark size={12} />
+        <Bookmark size={14} />
         <span>Save Example</span>
       </Popover.Trigger>
       <Popover.Portal>
@@ -114,16 +99,15 @@ export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
             </label>
 
             <div className="flex justify-end gap-2 mt-1">
-              <Popover.Close className="px-3 py-1.5 text-zinc-400 hover:text-foreground text-xs cursor-pointer">
-                Cancel
-              </Popover.Close>
-              <button
+              <Popover.Close render={<Button variant="ghost" size="sm" />}>Cancel</Popover.Close>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleConfirm}
                 disabled={!name.trim() || isSaving}
-                className="px-3 py-1.5 bg-accent/80 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-emphasis-text rounded cursor-pointer font-semibold transition-colors"
               >
                 {isSaving ? 'Saving...' : 'Save'}
-              </button>
+              </Button>
             </div>
           </Popover.Popup>
         </Popover.Positioner>

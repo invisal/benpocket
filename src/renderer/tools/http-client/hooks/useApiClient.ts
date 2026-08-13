@@ -31,18 +31,25 @@ export interface UseApiClientResult {
   bindTo: (binding: SavedBinding) => void;
 }
 
+export interface UseApiClientOptions {
+  /** Fires once per actual draft edit (HTTP fields or the WS URL) - not on send/connect or
+   * undo/redo. Lets a caller collapse e.g. preview-tab-pinning into one place instead of
+   * wrapping every individual setter. */
+  onEdit?: () => void;
+}
+
 /**
  * Composes a Postman tab's independent HTTP and WebSocket engines behind one
  * protocol switch + saved-request binding. Neither engine depends on the
  * other; this hook only wires the shared "which protocol tab is active" and
  * "which saved request is this bound to" concerns on top.
  */
-export function useApiClient(tabId: string): UseApiClientResult {
+export function useApiClient(tabId: string, options?: UseApiClientOptions): UseApiClientResult {
   const [protocol, setProtocol] = useTabScopedState(protocolStore, tabId);
   const [binding, setBinding] = useTabScopedState(bindingStore, tabId);
 
-  const http = useHttp(tabId);
-  const ws = useWebSocket(tabId);
+  const http = useHttp(tabId, options?.onEdit);
+  const ws = useWebSocket(tabId, options?.onEdit);
 
   const bindTo = useCallback((next: SavedBinding) => setBinding(next), [setBinding]);
 

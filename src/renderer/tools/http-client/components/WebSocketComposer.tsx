@@ -1,5 +1,11 @@
 import type React from 'react';
+import { useMemo } from 'react';
+import CodeMirror, { EditorView, keymap, Prec } from '@uiw/react-codemirror';
+import { insertNewlineAndIndent } from '@codemirror/commands';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Send } from 'lucide-react';
+import { Button } from '@renderer/components/ui/Button';
+import { useThemeStore } from '@renderer/store/theme.store';
 
 interface WebSocketComposerProps {
   messageInput: string;
@@ -15,35 +21,67 @@ export const WebSocketComposer: React.FC<WebSocketComposerProps> = ({
   onSendMessage,
   disabled
 }) => {
-  return (
-    <div className="flex flex-col gap-2 shrink-0 px-3">
-      <div className="flex gap-2 items-end">
-        <textarea
-          value={messageInput}
-          onChange={(e) => onMessageInputChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
+  const theme = useThemeStore((s) => s.theme);
+
+  // Enter sends the message, Shift+Enter still inserts a newline - same behavior as the
+  // textarea this replaced. Prec.highest so it wins over CodeMirror's own Enter binding.
+  const extensions = useMemo(
+    () => [
+      Prec.highest(
+        keymap.of([
+          {
+            key: 'Enter',
+            run: () => {
+              if (disabled) return false;
               onSendMessage();
-            }
-          }}
+              return true;
+            },
+            shift: insertNewlineAndIndent
+          }
+        ])
+      ),
+      EditorView.lineWrapping
+    ],
+    [disabled, onSendMessage]
+  );
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col gap-2 px-3 pb-3">
+      <div
+        className={`relative flex flex-1 min-h-14 bg-surface-2 border border-border rounded overflow-hidden focus-within:border-accent ${disabled ? 'opacity-50' : ''}`}
+      >
+        <CodeMirror
+          value={messageInput}
+          onChange={onMessageInputChange}
+          editable={!disabled}
           placeholder={
             disabled
               ? 'Connect to send a message'
               : 'Type a message... (Enter to send, Shift+Enter for newline)'
           }
-          disabled={disabled}
-          rows={2}
-          className="flex-1 bg-surface-2 border border-border rounded px-3 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-accent disabled:opacity-50 resize-none"
+          height="100%"
+          className="flex-1 min-h-0 text-xs font-mono [&_.cm-editor]:h-full"
+          theme={theme === 'dark' ? vscodeDark : vscodeLight}
+          extensions={extensions}
+          basicSetup={{
+            lineNumbers: false,
+            foldGutter: false,
+            highlightActiveLine: false,
+            highlightActiveLineGutter: false,
+            autocompletion: false
+          }}
         />
-        <button
+      </div>
+
+      <div className="flex justify-end shrink-0">
+        <Button
+          variant="primary"
           onClick={onSendMessage}
           disabled={disabled || !messageInput.trim()}
-          className="px-4 py-2 bg-accent/80 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-emphasis-text text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
         >
-          <Send size={12} />
+          <Send size={14} />
           <span>Send</span>
-        </button>
+        </Button>
       </div>
     </div>
   );

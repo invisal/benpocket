@@ -31,6 +31,7 @@ import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolb
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
 import {
   destroyCaptureToolbar,
+  getCaptureToolbarOwner,
   isCaptureToolbarSessionActive
 } from './screen-recorder/windows/capture-toolbar-window';
 import { destroyCaptureSourcePickerOverlay } from './screen-recorder/windows/capture-source-picker-overlay-window';
@@ -75,10 +76,18 @@ if (gotSingleInstanceLock) {
 
   /** Show/focus the existing main window (second launch, dock activate, etc.). */
   function focusMainWindow(): void {
-    // Visible capture chrome must not resurrect/focus the owner — clicking
-    // the empty desktop (no other app window) otherwise comes through
-    // `activate` and `show()`s BenPocket back over the wallpaper.
-    if (isCaptureToolbarSessionActive()) return;
+    if (isCaptureToolbarSessionActive()) {
+      const owner = getCaptureToolbarOwner();
+      if (!owner) return;
+      // Dock / taskbar: user wants BenPocket back in the shot. Already
+      // visible: don't steal z-order from an empty-desktop click.
+      if (!owner.isMinimized() && owner.isVisible()) return;
+      if (owner.isMinimized()) owner.restore();
+      owner.show();
+      owner.focus();
+      setTrayMainWindow(owner);
+      return;
+    }
     const win = BrowserWindow.getAllWindows()[0];
     if (!win || win.isDestroyed()) return;
     if (win.isMinimized()) win.restore();

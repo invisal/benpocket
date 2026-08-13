@@ -7,6 +7,7 @@ import { preloadScriptPath } from '../lib/preload-path';
 import {
   hideCaptureWindow,
   isCursorOverWindow,
+  minimizeCaptureWindow,
   restoreCaptureWindow,
   suppressWindowActivation
 } from './window-visibility';
@@ -73,6 +74,7 @@ function createToolbarWindow(): BrowserWindow {
   win.once('ready-to-show', () => win.showInactive());
   win.on('blur', () => {
     if (toolbarWindow !== win || !ownerWindow || ownerWindow.isDestroyed()) return;
+    if (ownerWindow.isMinimized() || !ownerWindow.isVisible()) return;
     if (isCursorOverWindow(ownerWindow)) return;
     const release = suppressWindowActivation(ownerWindow);
     setImmediate(release);
@@ -84,10 +86,13 @@ function createToolbarWindow(): BrowserWindow {
   return win;
 }
 
-function openCaptureToolbar(event: Electron.IpcMainInvokeEvent): void {
+async function openCaptureToolbar(event: Electron.IpcMainInvokeEvent): Promise<void> {
   const owner = BrowserWindow.fromWebContents(event.sender);
   if (!owner) return;
   ownerWindow = owner;
+
+  owner.webContents.setBackgroundThrottling(false);
+  await minimizeCaptureWindow(owner);
 
   if (!toolbarWindow) toolbarWindow = createToolbarWindow();
   loadToolbarPage(toolbarWindow);
@@ -95,6 +100,7 @@ function openCaptureToolbar(event: Electron.IpcMainInvokeEvent): void {
 
 function closeCaptureToolbar(options?: { restoreOwner?: boolean }): void {
   if (ownerWindow && !ownerWindow.isDestroyed()) {
+    ownerWindow.webContents.setBackgroundThrottling(true);
     ownerWindow.webContents.send(IpcChannels.CaptureToolbarClosed);
     if (options?.restoreOwner) {
       void restoreCaptureWindow(ownerWindow, { focus: true });
@@ -114,6 +120,10 @@ export function isCaptureToolbarSessionActive(): boolean {
   return Boolean(toolbarWindow && !toolbarWindow.isDestroyed());
 }
 
+export function getCaptureToolbarOwner(): BrowserWindow | null {
+  return ownerWindow && !ownerWindow.isDestroyed() ? ownerWindow : null;
+}
+
 export function registerCaptureToolbarHandlers(): void {
   ipcMain.handle(IpcChannels.CaptureToolbarOpen, openCaptureToolbar);
 
@@ -123,7 +133,7 @@ export function registerCaptureToolbarHandlers(): void {
   });
 
   ipcMain.on(IpcChannels.CaptureToolbarCancel, () => {
-    closeCaptureToolbar();
+    closeCaptureToolbar({ restoreOwner: true });
   });
 
   ipcMain.on(IpcChannels.CaptureSourcePickerOverlayCancel, () => {

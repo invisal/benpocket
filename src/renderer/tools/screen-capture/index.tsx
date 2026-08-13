@@ -383,7 +383,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
               <p className="mt-0.5 text-xs text-text-dim">
                 {usesOsPicker
                   ? 'Capture a full screen or window, or drag a region. You can also paste (Ctrl+V) or open an image to edit it.'
-                  : 'Click Capture to open the toolbar, then pick a screen, window, or area. Switch to another tool first if you want to capture it. You can also paste (Ctrl+V) or open an image to edit it.'}
+                  : 'Click Capture to hide this window and open the toolbar. Re-open BenPocket from the dock or taskbar if you need it in the shot. You can also paste (Ctrl+V) or open an image to edit it.'}
               </p>
             </div>
           ) : (

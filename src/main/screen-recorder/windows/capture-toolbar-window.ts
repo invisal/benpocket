@@ -1,7 +1,11 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
-import type { CaptureToolbarCapturePayload } from '@shared/capture-toolbar';
+import type {
+  CaptureToolbarCapturePayload,
+  CaptureToolbarOpenPayload
+} from '@shared/capture-toolbar';
+import { normalizeCaptureDelay } from '@shared/capture-delay';
 import type { ScreenRect } from '@shared/capture-region';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 import { preloadScriptPath } from '../lib/preload-path';
@@ -14,23 +18,27 @@ import {
 } from './window-visibility';
 import { closeCaptureSourcePickerOverlay } from './capture-source-picker-overlay-window';
 
-// Sized to the pill itself (grip, Cancel, Display/Window/Area).
+// Sized to the pill itself (grip, Cancel, Display/Window/Area, delay chips).
 // No popover headroom -- unlike the recorder toolbar -- so the window can
 // sit on top without a click-through poll for empty chrome.
-const TOOLBAR_WIDTH = 480;
+const TOOLBAR_WIDTH = 620;
 const TOOLBAR_HEIGHT = 72;
 const BOTTOM_MARGIN = 48;
 
 let toolbarWindow: BrowserWindow | null = null;
 let ownerWindow: BrowserWindow | null = null;
 
-function loadToolbarPage(win: BrowserWindow): void {
+function loadToolbarPage(win: BrowserWindow, payload: CaptureToolbarOpenPayload): void {
+  const init = JSON.stringify(payload);
+
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-    void win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/capture-toolbar.html`);
+    void win.loadURL(
+      `${process.env['ELECTRON_RENDERER_URL']}/capture-toolbar.html?init=${encodeURIComponent(init)}`
+    );
     return;
   }
 
-  void win.loadFile(join(__dirname, '../renderer/capture-toolbar.html'));
+  void win.loadFile(join(__dirname, '../renderer/capture-toolbar.html'), { query: { init } });
 }
 
 function computePosition(): { x: number; y: number } {
@@ -87,7 +95,10 @@ function createToolbarWindow(): BrowserWindow {
   return win;
 }
 
-async function openCaptureToolbar(event: Electron.IpcMainInvokeEvent): Promise<void> {
+async function openCaptureToolbar(
+  event: Electron.IpcMainInvokeEvent,
+  payload: CaptureToolbarOpenPayload
+): Promise<void> {
   if (usesOsCapturePicker()) return;
   const owner = BrowserWindow.fromWebContents(event.sender);
   if (!owner) return;
@@ -97,7 +108,9 @@ async function openCaptureToolbar(event: Electron.IpcMainInvokeEvent): Promise<v
   await minimizeCaptureWindow(owner);
 
   if (!toolbarWindow) toolbarWindow = createToolbarWindow();
-  loadToolbarPage(toolbarWindow);
+  loadToolbarPage(toolbarWindow, {
+    delaySeconds: normalizeCaptureDelay(payload?.delaySeconds)
+  });
 }
 
 function closeCaptureToolbar(options?: { restoreOwner?: boolean }): void {
@@ -138,16 +151,36 @@ export function registerCaptureToolbarHandlers(): void {
     closeCaptureToolbar({ restoreOwner: true });
   });
 
+  ipcMain.on(IpcChannels.CaptureToolbarDelayChanged, (_event, delaySeconds: unknown) => {
+    ownerWindow?.webContents.send(
+      IpcChannels.CaptureToolbarDelayChanged,
+      normalizeCaptureDelay(delaySeconds)
+    );
+  });
+
   ipcMain.on(IpcChannels.CaptureSourcePickerOverlayCancel, () => {
     const release = suppressWindowActivation(ownerWindow);
     closeCaptureSourcePickerOverlay();
     setImmediate(release);
   });
 
-  // Overlay / Area pick -- close the overlay without restoring the pill so
-  // neither chrome window is in the shot, then relay to the owner renderer
-  // (captureFromSource hides `event.sender`, which must be the main window).
+  // Overlay / Area pick. A delay restores the pill so it can count down over
+  // the real desktop (the overlay must not stay up -- it would hide the UI
+  // the user is arranging). Delay 0 hides chrome immediately, then relays to
+  // the owner renderer (captureFromSource hides `event.sender`, which must
+  // be the main window).
   ipcMain.on(IpcChannels.CaptureToolbarCapture, (_event, payload: CaptureToolbarCapturePayload) => {
+    const delaySeconds = normalizeCaptureDelay(payload.delaySeconds);
+    if (delaySeconds > 0) {
+      closeCaptureSourcePickerOverlay({ restoreToolbar: true });
+      if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+        toolbarWindow.webContents.send(IpcChannels.CaptureToolbarCountdown, {
+          ...payload,
+          delaySeconds
+        });
+      }
+      return;
+    }
     closeCaptureSourcePickerOverlay({ restoreToolbar: false });
     void (async () => {
       await hideCaptureWindow(toolbarWindow, { mainOnly: true });

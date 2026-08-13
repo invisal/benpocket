@@ -8,6 +8,8 @@ import type { CaptureTargetType } from '@screen-recorder/types/recording';
  */
 export interface CaptureSourcePickerOverlayOpenOptions {
   type: CaptureTargetType;
+  /** Stamped onto the pick so main can restore the pill for a countdown. */
+  delaySeconds?: number;
 }
 
 export interface CaptureSourcePickerOverlayInit extends CaptureSourcePickerOverlayOpenOptions {

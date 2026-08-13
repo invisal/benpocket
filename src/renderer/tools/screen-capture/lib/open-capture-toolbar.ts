@@ -1,3 +1,4 @@
+import { normalizeCaptureDelay, type CaptureDelaySetting } from '@shared/capture-delay';
 import { useCaptureResultStore } from '../store/capture-result.store';
 
 /**
@@ -6,12 +7,14 @@ import { useCaptureResultStore } from '../store/capture-result.store';
  * Idempotent while the pill is already up -- listing sources happens inside
  * the toolbar so this invoke isn't blocked on thumbnails.
  */
-export async function openCaptureToolbarFor(): Promise<void> {
+export async function openCaptureToolbarFor(delaySeconds: CaptureDelaySetting = 0): Promise<void> {
   if (window.api?.usesOsCapturePicker) return;
   if (useCaptureResultStore.getState().isToolbarOpen) return;
   useCaptureResultStore.getState().setToolbarOpen(true);
   try {
-    await window.screenRecorder.captureToolbar.open();
+    await window.screenRecorder.captureToolbar.open({
+      delaySeconds: normalizeCaptureDelay(delaySeconds)
+    });
   } catch (err) {
     useCaptureResultStore.getState().setToolbarOpen(false);
     throw err;

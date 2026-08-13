@@ -16,8 +16,9 @@ function parseInit(): CaptureSourcePickerOverlayInit | null {
 
 /**
  * Single-display click-to-capture overlay from the capture toolbar's
- * Display/Window tabs. Confirming a pick requests a screenshot immediately
- * (no countdown) and the overlay is closed by main before the grab.
+ * Display/Window tabs. Confirming a pick requests a screenshot (delay is
+ * stamped from the pill) and the overlay is closed by main before the grab
+ * or countdown.
  */
 export function CaptureSourcePickerOverlayApp(): JSX.Element | null {
   useSyncDocumentTheme();
@@ -46,7 +47,8 @@ export function CaptureSourcePickerOverlayApp(): JSX.Element | null {
     if (hasConfirmedRef.current) return;
     hasConfirmedRef.current = true;
     window.screenRecorder.captureToolbar.requestCapture({
-      sourceId: source.id
+      sourceId: source.id,
+      delaySeconds: init.delaySeconds
     });
   }
 

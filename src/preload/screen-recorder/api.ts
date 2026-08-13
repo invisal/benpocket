@@ -26,7 +26,11 @@ import type {
   RecorderToolbarRecordingResult
 } from '@shared/recorder-toolbar';
 import type { SourcePickerOverlayOpenOptions } from '@shared/source-picker-overlay';
-import type { CaptureToolbarCapturePayload } from '@shared/capture-toolbar';
+import type {
+  CaptureToolbarCapturePayload,
+  CaptureToolbarOpenPayload
+} from '@shared/capture-toolbar';
+import type { CaptureDelaySetting } from '@shared/capture-delay';
 import type { CaptureSourcePickerOverlayOpenOptions } from '@shared/capture-source-picker-overlay';
 import type {
   NativeRecordingRequest,
@@ -311,12 +315,21 @@ export const screenRecorderApi = {
     cancel: (): void => ipcRenderer.send(IpcChannels.SourcePickerOverlayCancel)
   },
   captureToolbar: {
-    open: (): Promise<void> => ipcRenderer.invoke(IpcChannels.CaptureToolbarOpen),
+    open: (payload: CaptureToolbarOpenPayload): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.CaptureToolbarOpen, payload),
     cancel: (): void => ipcRenderer.send(IpcChannels.CaptureToolbarCancel),
     getCurrentDisplayBounds: (): Promise<ScreenRect | null> =>
       ipcRenderer.invoke(IpcChannels.CaptureToolbarGetCurrentDisplayBounds),
     requestCapture: (payload: CaptureToolbarCapturePayload): void =>
       ipcRenderer.send(IpcChannels.CaptureToolbarCapture, payload),
+    setDelay: (delaySeconds: CaptureDelaySetting): void =>
+      ipcRenderer.send(IpcChannels.CaptureToolbarDelayChanged, delaySeconds),
+    onCountdown: (callback: (payload: CaptureToolbarCapturePayload) => void): (() => void) => {
+      const listener = (_event: unknown, payload: CaptureToolbarCapturePayload): void =>
+        callback(payload);
+      ipcRenderer.on(IpcChannels.CaptureToolbarCountdown, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarCountdown, listener);
+    },
     reportCaptured: (): void => ipcRenderer.send(IpcChannels.CaptureToolbarCaptured),
     onClosed: (callback: () => void): (() => void) => {
       const listener = (): void => callback();
@@ -330,6 +343,12 @@ export const screenRecorderApi = {
         callback(payload);
       ipcRenderer.on(IpcChannels.CaptureToolbarCaptureRequested, listener);
       return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarCaptureRequested, listener);
+    },
+    onDelayChanged: (callback: (delaySeconds: CaptureDelaySetting) => void): (() => void) => {
+      const listener = (_event: unknown, delaySeconds: CaptureDelaySetting): void =>
+        callback(delaySeconds);
+      ipcRenderer.on(IpcChannels.CaptureToolbarDelayChanged, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarDelayChanged, listener);
     },
     openSourcePicker: (options: CaptureSourcePickerOverlayOpenOptions): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.CaptureSourcePickerOverlayOpen, options)

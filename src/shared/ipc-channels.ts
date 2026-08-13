@@ -91,6 +91,8 @@ export const IpcChannels = {
   CaptureToolbarOpen: 'capture-toolbar:open',
   CaptureToolbarCancel: 'capture-toolbar:cancel',
   CaptureToolbarCapture: 'capture-toolbar:capture',
+  CaptureToolbarCountdown: 'capture-toolbar:countdown',
+  CaptureToolbarDelayChanged: 'capture-toolbar:delay-changed',
   CaptureToolbarCaptureRequested: 'capture-toolbar:capture-requested',
   CaptureToolbarCaptured: 'capture-toolbar:captured',
   CaptureToolbarClosed: 'capture-toolbar:closed',

@@ -14,6 +14,7 @@ import { type ToolComponentProps } from '@renderer/components/providers/createTa
 import { Button } from '@renderer/components/ui/Button';
 import { Menu } from '@renderer/components/ui/Menu';
 import { ScreenRecordingPermissionBanner } from '@screen-recorder/features/recording/components/ScreenRecordingPermissionBanner';
+import { CAPTURE_DELAY_OPTIONS, runCaptureCountdown } from '@shared/capture-delay';
 import { CaptureEditor } from './components/CaptureEditor';
 import { EditorToolbar } from './components/EditorToolbar';
 import { LayerPanel } from './components/LayerPanel';
@@ -95,6 +96,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const isToolbarOpen = useCaptureResultStore((s) => s.isToolbarOpen);
   const confirmTimer = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
+  const countdownAbortRef = useRef<AbortController | null>(null);
   /** Prevents zustand→Y echo when applying remote/local hydrate. */
   const applyingSettingsRef = useRef(false);
   const settingsRef = useRef(settings);
@@ -251,7 +254,26 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     });
   }, [pendingCapture]);
 
-  const runRegionCapture = async (): Promise<void> => {
+  const cancelCaptureCountdown = (): void => {
+    countdownAbortRef.current?.abort();
+    countdownAbortRef.current = null;
+    setCountdownRemaining(null);
+  };
+
+  const runRegionCapture = async (delaySeconds = 0): Promise<void> => {
+    if (countdownAbortRef.current) return;
+
+    if (delaySeconds > 0) {
+      const controller = new AbortController();
+      countdownAbortRef.current = controller;
+      const ok = await runCaptureCountdown(delaySeconds, setCountdownRemaining, {
+        signal: controller.signal
+      });
+      if (countdownAbortRef.current === controller) countdownAbortRef.current = null;
+      if (!ok) return;
+      setCountdownRemaining(null);
+    }
+
     setCaptureMode('region');
     setCaptureStep('picker');
     setPhase('capturing');
@@ -301,8 +323,20 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     return unsubscribe;
   }, [usesOsPicker]);
 
+  useEffect(() => {
+    if (!usesOsPicker) return;
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') cancelCaptureCountdown();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      countdownAbortRef.current?.abort();
+    };
+  }, [usesOsPicker]);
+
   const handleCapture = (): void => {
-    void openCaptureToolbarFor();
+    void openCaptureToolbarFor(settings.delaySeconds);
   };
 
   const handleCaptureAgain = (): void => {
@@ -407,64 +441,114 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
 
           {phase === 'idle' && !isCapturing && (
             <div className="bg-dotted flex min-h-[12rem] flex-1 flex-col items-center justify-center rounded-xl bg-surface select-none">
-              <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-border bg-surface-2 text-accent">
-                <Camera size={26} />
-              </div>
-              <h2 className="text-sm font-semibold text-foreground">Ready to capture</h2>
-              <p className="mt-1 mb-6 max-w-xs text-center text-xs leading-5 text-muted-foreground">
-                Screen, window, or area — or paste an image to edit.
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  // Reset so picking the same file again still fires onChange.
-                  e.target.value = '';
-                  if (file) void openImage(file);
-                }}
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="md"
-                  title="Browse for an image to edit — you can also paste one"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <ImageUp size={16} />
-                  Browse
-                </Button>
-                {!usesOsPicker && !isToolbarOpen && (
-                  <Button variant="primary" size="md" onClick={handleCapture}>
-                    <Camera size={16} />
-                    Capture
+              {countdownRemaining !== null ? (
+                <>
+                  <span className="font-mono text-5xl font-semibold text-foreground">
+                    {countdownRemaining}
+                  </span>
+                  <p className="mt-3 text-xs text-muted-foreground">Capturing in a moment…</p>
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    className="mt-5"
+                    onClick={cancelCaptureCountdown}
+                  >
+                    Cancel
                   </Button>
-                )}
-                {usesOsPicker && (
-                  <Button variant="primary" size="md" onClick={() => void runRegionCapture()}>
-                    <Camera size={16} />
-                    Capture
-                  </Button>
-                )}
-              </div>
-              <p className="mt-4 text-[11px] text-muted-foreground">
-                Paste with{' '}
-                <kbd className="rounded bg-surface-3 px-1.5 py-0.5 font-medium">
-                  {window.api?.platform === 'darwin' ? '⌘V' : 'Ctrl+V'}
-                </kbd>
-              </p>
-              {usesOsPicker && (
-                <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                </>
+              ) : (
+                <>
+                  <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-border bg-surface-2 text-accent">
+                    <Camera size={26} />
+                  </div>
+                  <h2 className="text-sm font-semibold text-foreground">Ready to capture</h2>
+                  <p className="mt-1 mb-6 max-w-xs text-center text-xs leading-5 text-muted-foreground">
+                    Screen, window, or area — or paste an image to edit.
+                  </p>
                   <input
-                    type="checkbox"
-                    checked={hideApp}
-                    onChange={(e) => toggleHideApp(e.target.checked)}
-                    className="accent-(--color-accent)"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      // Reset so picking the same file again still fires onChange.
+                      e.target.value = '';
+                      if (file) void openImage(file);
+                    }}
                   />
-                  Hide this app while capturing
-                </label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      title="Browse for an image to edit — you can also paste one"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <ImageUp size={16} />
+                      Browse
+                    </Button>
+                    {!usesOsPicker && !isToolbarOpen && (
+                      <Button variant="primary" size="md" onClick={handleCapture}>
+                        <Camera size={16} />
+                        Capture
+                      </Button>
+                    )}
+                    {usesOsPicker && (
+                      <div className="inline-flex">
+                        <Button
+                          variant="primary"
+                          size="md"
+                          className="rounded-r-none"
+                          onClick={() => void runRegionCapture()}
+                        >
+                          <Camera size={16} />
+                          Capture
+                        </Button>
+                        <Menu.Root>
+                          <Menu.Trigger
+                            aria-label="Capture after delay"
+                            render={
+                              <Button
+                                variant="primary"
+                                size="md"
+                                className="rounded-l-none border-l border-emphasis-text/25 px-1.5"
+                              />
+                            }
+                          >
+                            <ChevronDown size={14} />
+                          </Menu.Trigger>
+                          <Menu.Content side="top" align="end">
+                            {CAPTURE_DELAY_OPTIONS.map((seconds) => (
+                              <Menu.Item
+                                key={seconds}
+                                onClick={() => void runRegionCapture(seconds)}
+                              >
+                                Wait {seconds} seconds
+                              </Menu.Item>
+                            ))}
+                          </Menu.Content>
+                        </Menu.Root>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-4 text-[11px] text-muted-foreground">
+                    Paste with{' '}
+                    <kbd className="rounded bg-surface-3 px-1.5 py-0.5 font-medium">
+                      {window.api?.platform === 'darwin' ? '⌘V' : 'Ctrl+V'}
+                    </kbd>
+                  </p>
+                  {usesOsPicker && (
+                    <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={hideApp}
+                        onChange={(e) => toggleHideApp(e.target.checked)}
+                        className="accent-(--color-accent)"
+                      />
+                      Hide this app while capturing
+                    </label>
+                  )}
+                </>
               )}
             </div>
           )}

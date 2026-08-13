@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { normalizeCaptureDelay } from '@shared/capture-delay';
 import { useToolTabs } from './providers/ToolProvider';
 import { useCaptureResultStore } from '../../tools/screen-capture/store/capture-result.store';
+import { useScreenCaptureSettings } from '../../tools/screen-capture/lib/use-screen-capture-settings';
 import {
   captureFromSource,
   captureSelectedRegion
@@ -13,6 +15,7 @@ import {
  */
 export function CaptureToolbarBridge(): null {
   const { tabs, openTab, selectTab } = useToolTabs();
+  const { setFields } = useScreenCaptureSettings();
 
   useEffect(() => {
     function focusOrOpenScreenCapture(): void {
@@ -26,6 +29,10 @@ export function CaptureToolbarBridge(): null {
 
     const unsubscribeClosed = window.screenRecorder.captureToolbar.onClosed(() => {
       useCaptureResultStore.getState().setToolbarOpen(false);
+    });
+
+    const unsubscribeDelay = window.screenRecorder.captureToolbar.onDelayChanged((delaySeconds) => {
+      setFields({ delaySeconds: normalizeCaptureDelay(delaySeconds) });
     });
 
     const unsubscribeCapture = window.screenRecorder.captureToolbar.onCaptureRequested(
@@ -51,9 +58,10 @@ export function CaptureToolbarBridge(): null {
 
     return () => {
       unsubscribeClosed();
+      unsubscribeDelay();
       unsubscribeCapture();
     };
-  }, [tabs, openTab, selectTab]);
+  }, [tabs, openTab, selectTab, setFields]);
 
   return null;
 }

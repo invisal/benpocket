@@ -96,9 +96,9 @@ async function openCaptureSourcePickerOverlay(
 }
 
 /**
- * Tears down the overlay. Cancel restores the pill; a confirmed pick leaves it
- * hidden so it isn't in the screenshot -- capture-toolbar-window.ts destroys
- * it after the owner reports the grab.
+ * Tears down the overlay. Cancel restores the pill; a delay-0 pick leaves it
+ * hidden so it isn't in the screenshot. A delayed pick restores it so the
+ * pill can count down over the real desktop.
  */
 export function closeCaptureSourcePickerOverlay(options?: { restoreToolbar?: boolean }): void {
   const toolbar = toolbarWindow;

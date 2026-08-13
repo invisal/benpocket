@@ -1,6 +1,5 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Tabs } from '@base-ui/react/tabs';
 import {
   Camera,
   ChevronDown,
@@ -8,26 +7,22 @@ import {
   ClipboardCopy,
   Download,
   ImageUp,
-  Loader2,
-  Scan
+  Loader2
 } from 'lucide-react';
 import { cn } from 'cnfast';
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { Button } from '@renderer/components/ui/Button';
 import { Menu } from '@renderer/components/ui/Menu';
-import type { CaptureSource } from '@screen-recorder/types/recording';
 import { ScreenRecordingPermissionBanner } from '@screen-recorder/features/recording/components/ScreenRecordingPermissionBanner';
-import { SourcePickerPanels } from './components/SourcePicker';
 import { CaptureEditor } from './components/CaptureEditor';
 import { EditorToolbar } from './components/EditorToolbar';
 import { LayerPanel } from './components/LayerPanel';
 import { useCaptureEditorStore } from './store/editor.store';
+import { useCaptureResultStore } from './store/capture-result.store';
 import { flattenImage } from './lib/flatten';
-import { useCaptureSources, type SourceTab } from './lib/use-capture-sources';
 import {
   blobToDataUrl,
   CAPTURE_EXPORT_FORMATS,
-  captureFromSource,
   encodeCaptureBlob,
   selectAndCaptureRegion,
   screenshotFileName,
@@ -35,6 +30,7 @@ import {
   type CaptureExportFormat,
   type RegionCaptureStep
 } from './lib/capture-frame';
+import { openCaptureToolbarFor } from './lib/open-capture-toolbar';
 import { takeTrayAutoCapture } from './lib/tray-auto-capture';
 import { useScreenCaptureSettings } from './lib/use-screen-capture-settings';
 
@@ -42,13 +38,6 @@ interface Props {}
 
 type Phase = 'idle' | 'capturing' | 'result';
 type CaptureMode = 'source' | 'region';
-
-function headerTabClass(active: boolean): string {
-  return cn(
-    'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-    active ? 'bg-accent/10 text-accent' : 'text-text-dim hover:bg-surface-2 hover:text-text-base'
-  );
-}
 
 async function copyViaRenderer(blob: Blob): Promise<boolean> {
   try {
@@ -93,7 +82,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [phase, setPhase] = useState<Phase>('idle');
   const [captureMode, setCaptureMode] = useState<CaptureMode>('source');
   const [captureStep, setCaptureStep] = useState<RegionCaptureStep>('picker');
-  const [selectedSource, setSelectedSource] = useState<CaptureSource | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [confirmed, setConfirmed] = useState<'copy' | 'save' | null>(null);
@@ -104,6 +92,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     setFields: setSettings
   } = useScreenCaptureSettings();
   const hideApp = settings.hideApp;
+  const isToolbarOpen = useCaptureResultStore((s) => s.isToolbarOpen);
   const confirmTimer = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** Prevents zustand→Y echo when applying remote/local hydrate. */
@@ -176,11 +165,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     confirmTimer.current = window.setTimeout(() => setConfirmed(null), 1500);
   };
 
-  const { screens, windows, sources, activeTab, setActiveTab, loading } = useCaptureSources(
-    setSelectedSource,
-    { enabled: !usesOsPicker }
-  );
-
   // Pasting an image on the main screen opens it in the editor.
   useEffect(() => {
     if (phase !== 'idle') return;
@@ -236,19 +220,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     };
   }, [phase, previewBlob]);
 
-  const handleTabChange = (value: string): void => {
-    const tab = value as SourceTab;
-    setActiveTab(tab);
-    const tabSources = tab === 'screen' ? screens : windows;
-    if (tabSources.length === 0) {
-      setSelectedSource(null);
-      return;
-    }
-    if (!selectedSource || selectedSource.type !== tab) {
-      setSelectedSource(tabSources[0]);
-    }
-  };
-
   const finishCapture = async (blob: Blob | null): Promise<void> => {
     if (!blob) {
       setPhase('idle');
@@ -267,6 +238,19 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     );
   };
 
+  const finishCaptureRef = useRef(finishCapture);
+  useEffect(() => {
+    finishCaptureRef.current = finishCapture;
+  });
+
+  const pendingCapture = useCaptureResultStore((s) => s.pending);
+  useEffect(() => {
+    if (!pendingCapture) return;
+    void finishCaptureRef.current(pendingCapture).finally(() => {
+      useCaptureResultStore.getState().takePending();
+    });
+  }, [pendingCapture]);
+
   const runRegionCapture = async (): Promise<void> => {
     setCaptureMode('region');
     setCaptureStep('picker');
@@ -276,7 +260,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
 
     try {
       const blob = await selectAndCaptureRegion(
-        sources,
+        [],
         usesOsPicker,
         (step) => {
           setCaptureStep(step);
@@ -288,28 +272,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     } catch (err) {
       setPhase('idle');
       console.error('Could not capture region.', err);
-    }
-  };
-
-  // macOS / Windows / Linux X11 only — Linux Wayland always goes through
-  // runRegionCapture's native picker instead (see the merged footer button).
-  const runCapture = async (source = selectedSource): Promise<void> => {
-    if (!source) return;
-
-    setSelectedSource(source);
-    setCaptureMode('source');
-    setCaptureStep('picker');
-    setPhase('capturing');
-    setPreviewDataUrl(null);
-    setPreviewBlob(null);
-
-    try {
-      // Checked = platform default (hide for screen grabs, keep visible for
-      // window grabs); unchecked = never hide.
-      const blob = await captureFromSource(source, hideApp ? undefined : { hideApp: false });
-      await finishCapture(blob);
-    } catch {
-      setPhase('idle');
     }
   };
 
@@ -339,9 +301,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     return unsubscribe;
   }, [usesOsPicker]);
 
-  const handleSourceDoubleClick = (source: CaptureSource): void => {
-    if (loading || phase !== 'idle') return;
-    void runCapture(source);
+  const handleCapture = (): void => {
+    void openCaptureToolbarFor();
   };
 
   const handleCaptureAgain = (): void => {
@@ -399,8 +360,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     }
   };
 
-  const captureDisabled = usesOsPicker ? false : !selectedSource || loading;
-
   const capturingMessage =
     captureMode === 'region' && captureStep === 'processing'
       ? 'Cropping screenshot…'
@@ -412,20 +371,19 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
             ? 'Capturing selected region…'
             : 'Capturing…';
 
+  const isCapturing = phase === 'capturing' || (pendingCapture !== null && phase !== 'result');
+
   return (
-    <Tabs.Root
-      value={activeTab}
-      onValueChange={handleTabChange}
-      className="flex h-full min-h-0 flex-col bg-surface text-text-base"
-    >
-      {phase !== 'capturing' && (
+    <div className="flex h-full min-h-0 flex-col bg-surface text-text-base">
+      {!isCapturing && (
         <header className="shrink-0 border-b border-border-dark px-6 py-4">
-          {phase === 'idle' ? (
+          {phase === 'idle' && !isCapturing ? (
             <div>
               <h1 className="text-base font-medium">Screen Capture</h1>
               <p className="mt-0.5 text-xs text-text-dim">
-                Capture a full screen or window, or drag a region. You can also paste (Ctrl+V) or
-                open an image to edit it.
+                {usesOsPicker
+                  ? 'Capture a full screen or window, or drag a region. You can also paste (Ctrl+V) or open an image to edit it.'
+                  : 'Click Capture to open the toolbar, then pick a screen, window, or area. Switch to another tool first if you want to capture it. You can also paste (Ctrl+V) or open an image to edit it.'}
               </p>
             </div>
           ) : (
@@ -451,32 +409,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         >
           <ScreenRecordingPermissionBanner />
 
-          {phase === 'idle' && !usesOsPicker && (
-            <div className="flex w-full min-w-0 flex-col gap-3">
-              <Tabs.List className="flex items-center gap-1">
-                <Tabs.Tab value="screen" className={headerTabClass(activeTab === 'screen')}>
-                  Entire Screen{screens.length > 0 ? ` (${screens.length})` : ''}
-                </Tabs.Tab>
-                <Tabs.Tab value="window" className={headerTabClass(activeTab === 'window')}>
-                  Window{windows.length > 0 ? ` (${windows.length})` : ''}
-                </Tabs.Tab>
-              </Tabs.List>
-              {loading ? (
-                <p className="text-sm text-text-dim">Loading sources…</p>
-              ) : (
-                <SourcePickerPanels
-                  activeTab={activeTab}
-                  screens={screens}
-                  windows={windows}
-                  selectedSource={selectedSource}
-                  onSelectSource={setSelectedSource}
-                  onCaptureSource={handleSourceDoubleClick}
-                />
-              )}
-            </div>
-          )}
-
-          {phase === 'capturing' && (
+          {isCapturing && (
             <div className="flex min-h-[12rem] flex-1 items-center justify-center">
               <p className="text-sm text-text-dim">{capturingMessage}</p>
             </div>
@@ -556,17 +489,19 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         </footer>
       )}
 
-      {phase === 'idle' && (
+      {phase === 'idle' && !isCapturing && (
         <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border-dark bg-surface px-6 py-4">
-          <label className="mr-auto flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
-            <input
-              type="checkbox"
-              checked={hideApp}
-              onChange={(e) => toggleHideApp(e.target.checked)}
-              className="accent-(--color-accent)"
-            />
-            Hide this app while capturing
-          </label>
+          {usesOsPicker && (
+            <label className="mr-auto flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
+              <input
+                type="checkbox"
+                checked={hideApp}
+                onChange={(e) => toggleHideApp(e.target.checked)}
+                className="accent-(--color-accent)"
+              />
+              Hide this app while capturing
+            </label>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -588,26 +523,21 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
             <ImageUp size={14} />
             Open image
           </Button>
-          {/* Linux Wayland: GNOME's native picker already offers screen / window /
-              selection in one UI, so a separate "Capture region" button is redundant. */}
-          {!usesOsPicker && (
-            <Button variant="secondary" size="sm" onClick={() => void runRegionCapture()}>
-              <Scan size={14} />
-              Capture region
+          {!usesOsPicker && !isToolbarOpen && (
+            <Button variant="primary" size="sm" onClick={handleCapture}>
+              <Camera size={14} />
+              Capture
             </Button>
           )}
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={captureDisabled}
-            onClick={() => void (usesOsPicker ? runRegionCapture() : runCapture())}
-          >
-            <Camera size={14} />
-            Capture
-          </Button>
+          {usesOsPicker && (
+            <Button variant="primary" size="sm" onClick={() => void runRegionCapture()}>
+              <Camera size={14} />
+              Capture
+            </Button>
+          )}
         </footer>
       )}
-    </Tabs.Root>
+    </div>
   );
 }
 

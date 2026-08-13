@@ -39,7 +39,9 @@ export default defineConfig({
           regionSelect: resolve('src/renderer/region-select.html'),
           recorderToolbar: resolve('src/renderer/recorder-toolbar.html'),
           recordingRegionFrame: resolve('src/renderer/recording-region-frame.html'),
-          sourcePickerOverlay: resolve('src/renderer/source-picker-overlay.html')
+          sourcePickerOverlay: resolve('src/renderer/source-picker-overlay.html'),
+          captureToolbar: resolve('src/renderer/capture-toolbar.html'),
+          captureSourcePickerOverlay: resolve('src/renderer/capture-source-picker-overlay.html')
         },
         output: {
           chunkFileNames: (chunk) => {

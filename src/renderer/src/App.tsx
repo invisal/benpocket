@@ -2,11 +2,13 @@ import type React from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TrayBridge } from './components/TrayBridge';
+import { CaptureToolbarBridge } from './components/CaptureToolbarBridge';
 
 function App(): React.JSX.Element {
   return (
     <ErrorBoundary>
       <TrayBridge />
+      <CaptureToolbarBridge />
       <AppShell />
     </ErrorBoundary>
   );

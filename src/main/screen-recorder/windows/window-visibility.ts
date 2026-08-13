@@ -1,4 +1,4 @@
-import { app, type BrowserWindow } from 'electron';
+import { app, screen, type BrowserWindow } from 'electron';
 
 async function waitForWindowHidden(win: BrowserWindow): Promise<void> {
   if (!win.isVisible()) return;
@@ -93,6 +93,31 @@ export async function minimizeCaptureWindow(win: BrowserWindow | null): Promise<
   await minimized;
 }
 
+export function isCursorOverWindow(win: BrowserWindow): boolean {
+  const point = screen.getCursorScreenPoint();
+  const bounds = win.getBounds();
+  return (
+    point.x >= bounds.x &&
+    point.x < bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y < bounds.y + bounds.height
+  );
+}
+
+/**
+ * Temporarily make `win` ineligible as AppKit's next key window. Closing or
+ * blurring a `type: 'panel'` otherwise promotes the owner and brings BenPocket
+ * forward when the user clicked the desktop (no other app to stay in front).
+ */
+export function suppressWindowActivation(win: BrowserWindow | null): () => void {
+  if (!win || win.isDestroyed()) return () => {};
+  win.setFocusable(false);
+  if (win.isFocused()) win.blur();
+  return () => {
+    if (!win.isDestroyed()) win.setFocusable(true);
+  };
+}
+
 export async function restoreCaptureWindow(
   win: BrowserWindow | null,
   options?: { focus?: boolean }
@@ -102,11 +127,16 @@ export async function restoreCaptureWindow(
   const shouldFocus = options?.focus ?? true;
 
   if (process.platform === 'darwin') {
-    app.show();
+    if (shouldFocus) {
+      app.show();
+      if (win.isMinimized()) win.restore();
+      if (!win.isVisible()) win.show();
+      win.focus();
+      return;
+    }
     if (win.isMinimized()) win.restore();
-    if (!win.isVisible()) win.show();
-    if (shouldFocus) win.focus();
-    else if (win.isFocused()) win.blur();
+    if (!win.isVisible()) win.showInactive();
+    if (win.isFocused()) win.blur();
     return;
   }
 

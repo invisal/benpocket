@@ -29,6 +29,11 @@ import {
 } from './screen-recorder/shortcuts/global-shortcuts';
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
+import {
+  destroyCaptureToolbar,
+  isCaptureToolbarSessionActive
+} from './screen-recorder/windows/capture-toolbar-window';
+import { destroyCaptureSourcePickerOverlay } from './screen-recorder/windows/capture-source-picker-overlay-window';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
@@ -70,6 +75,10 @@ if (gotSingleInstanceLock) {
 
   /** Show/focus the existing main window (second launch, dock activate, etc.). */
   function focusMainWindow(): void {
+    // Visible capture chrome must not resurrect/focus the owner — clicking
+    // the empty desktop (no other app window) otherwise comes through
+    // `activate` and `show()`s BenPocket back over the wallpaper.
+    if (isCaptureToolbarSessionActive()) return;
     const win = BrowserWindow.getAllWindows()[0];
     if (!win || win.isDestroyed()) return;
     if (win.isMinimized()) win.restore();
@@ -369,6 +378,8 @@ if (gotSingleInstanceLock) {
     destroyTray();
     destroyRecorderToolbar();
     destroySourcePickerOverlay();
+    destroyCaptureToolbar();
+    destroyCaptureSourcePickerOverlay();
     // Safety net if the renderer never gets to send a normal stop -- kills
     // any still-running native recording helper subprocess rather than
     // leaving it (and, on macOS, the OS-level "recording" indicator) behind.

@@ -234,7 +234,7 @@ export function selectCaptureRegion(
       show: false,
       backgroundColor: hasBackdrop ? '#000000' : '#00000000',
       ...(process.platform === 'darwin'
-        ? { enableLargerThanScreen: true, roundedCorners: false }
+        ? { enableLargerThanScreen: true, roundedCorners: false, type: 'panel' }
         : {}),
       ...(process.platform === 'win32' ? { thickFrame: false } : {}),
       webPreferences: {
@@ -245,7 +245,10 @@ export function selectCaptureRegion(
       }
     });
 
-    regionWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    regionWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true
+    });
     regionWindow.setAlwaysOnTop(true, 'screen-saver');
     regionWindow.once('ready-to-show', () => {
       const win = regionWindow;
@@ -253,7 +256,7 @@ export function selectCaptureRegion(
       if (process.platform === 'darwin' && exclusiveFullscreen) {
         win.setSimpleFullScreen(true);
       }
-      win.show();
+      win.showInactive();
       win.focus();
       if (!exclusiveFullscreen) {
         win.setBounds(bounds);

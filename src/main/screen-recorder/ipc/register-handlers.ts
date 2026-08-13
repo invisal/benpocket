@@ -9,6 +9,8 @@ import { registerSimulatorHandlers } from './simulator-handlers';
 import { registerRegionHandlers } from './region-handlers';
 import { registerRecorderToolbarHandlers } from '../windows/recorder-toolbar-window';
 import { registerSourcePickerOverlayHandlers } from '../windows/source-picker-overlay-window';
+import { registerCaptureToolbarHandlers } from '../windows/capture-toolbar-window';
+import { registerCaptureSourcePickerOverlayHandlers } from '../windows/capture-source-picker-overlay-window';
 
 export function registerIpcHandlers(): void {
   registerRecordingHandlers();
@@ -22,4 +24,6 @@ export function registerIpcHandlers(): void {
   registerRegionHandlers();
   registerRecorderToolbarHandlers();
   registerSourcePickerOverlayHandlers();
+  registerCaptureToolbarHandlers();
+  registerCaptureSourcePickerOverlayHandlers();
 }

@@ -261,6 +261,13 @@ function helperCandidates(adapter: HelperAdapter): string[] {
   const archTag = `${process.platform}-${process.arch}`;
   const appRoot = app.getAppPath();
   const resourcesRoot = app.isPackaged ? process.resourcesPath : appRoot;
+  const packagedPath = join(resourcesRoot, 'native', 'bin', archTag, adapter.helperFileName);
+
+  // A packaged build's appRoot is app.asar -- even with the source/build
+  // trees excluded from packaging (see electron-builder.yml), spawn()
+  // can never execve a path *inside* an asar archive (ENOTDIR), so this
+  // raw-build-output candidate is only ever meaningful for a dev checkout.
+  if (app.isPackaged) return [envPath, packagedPath].filter((c): c is string => Boolean(c));
 
   const localBuildPath =
     process.platform === 'darwin'
@@ -277,11 +284,7 @@ function helperCandidates(adapter: HelperAdapter): string[] {
         ? join(appRoot, 'native', 'linux-recorder', 'build', adapter.helperFileName)
         : join(appRoot, 'native', 'windows-recorder', 'build', 'Release', adapter.helperFileName);
 
-  return [
-    envPath,
-    localBuildPath,
-    join(resourcesRoot, 'native', 'bin', archTag, adapter.helperFileName)
-  ].filter((candidate): candidate is string => Boolean(candidate));
+  return [envPath, localBuildPath, packagedPath].filter((c): c is string => Boolean(c));
 }
 
 function findHelperPath(adapter: HelperAdapter): string | null {

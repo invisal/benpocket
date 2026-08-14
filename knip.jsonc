@@ -1,25 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  // electron-vite plugin auto-detects main/preload from electron.vite.config.ts, but doesn't
-  // resolve the renderer HTML entries' `/src/main.tsx`-style script paths against each HTML
-  // file's directory, so those need to be listed explicitly (see src/renderer/*.html).
-  "entry": [
-    "src/preload/index.d.ts",
-    "src/renderer/src/main.tsx",
-    "src/renderer/recorder-toolbar.tsx",
-    "src/renderer/region-select.ts",
-    "src/renderer/source-picker-overlay.tsx",
-    "src/renderer/capture-toolbar.tsx",
-    "src/renderer/capture-source-picker-overlay.tsx"
-  ],
+  "entry": ["src/preload/index.d.ts"],
   "project": ["src/**/*.{ts,tsx}"],
   // System binaries invoked via spawn/execFile — not npm packages.
   // xclip: Linux X11 clipboard helper.
   // xcrun/osascript: macOS Xcode CLI tools / AppleScript, used for Simulator detection and window bounds.
-  // kubectl: Kubernetes CLI, spawned by the kuberneter tool.
   // swift/cmake: build native/macos-recorder and native/windows-recorder's
   // standalone recording helper subprocesses (see recording-helper.ts).
-  "ignoreBinaries": ["xclip", "xcrun", "osascript", "kubectl", "helm", "swift", "cmake"],
+  // lipo: merges the macOS helper's arm64/x86_64 slices into one universal
+  // binary (see package-native-helper.mjs).
+  "ignoreBinaries": ["xclip", "xcrun", "osascript", "helm", "swift", "cmake", "lipo"],
   // Pulled in via @import 'tailwindcss' in main.css and @tailwindcss/vite plugin
   "ignoreDependencies": ["tailwindcss"],
   // Skip exports that are only referenced within the same file

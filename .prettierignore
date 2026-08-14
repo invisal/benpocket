@@ -1,6 +1,7 @@
 out
 dist
 native/*/build
+native/*/.build
 native/bin
 pnpm-lock.yaml
 LICENSE.md

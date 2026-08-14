@@ -49,7 +49,8 @@ function trayMenuTemplate(): MenuItemConstructorOptions[] {
       // Deliberately doesn't show/focus the main window first -- opening the
       // recorder toolbar minimizes the owner window anyway; showing first
       // just flashed the main window before it got minimized.
-      click: () => sendToMainWindow(IpcChannels.TrayOpenRecordPicker)
+      click: () => sendToMainWindow(IpcChannels.TrayOpenRecordPicker),
+      accelerator: process.platform === 'darwin' ? 'CommandOrControl+Shift+R' : 'Control+Shift+R'
     },
     {
       label: 'Screen Capture',

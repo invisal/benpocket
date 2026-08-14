@@ -71,7 +71,7 @@ export function registerCollectionTransferHandlers(): void {
       const saveOptions = {
         title: 'Export Collection',
         defaultPath: `${sanitizeFilename(collection.name, 'collection')}.postman_collection.json`,
-        filters: [{ name: 'Postman Collection', extensions: ['json'] }]
+        filters: [{ name: 'HTTP Client Collection', extensions: ['json'] }]
       };
       const result = win
         ? await dialog.showSaveDialog(win, saveOptions)
@@ -98,9 +98,9 @@ export function registerCollectionTransferHandlers(): void {
     async (event, workspaceId: string): Promise<ImportCollectionResult> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const openOptions = {
-        title: 'Import Postman Collection (v2.0 / v2.1)',
+        title: 'Import Collection (v2.0 / v2.1)',
         properties: ['openFile' as const],
-        filters: [{ name: 'Postman Collection (v2.0 / v2.1)', extensions: ['json'] }]
+        filters: [{ name: 'HTTP Client Collection (v2.0 / v2.1)', extensions: ['json'] }]
       };
       const result = win
         ? await dialog.showOpenDialog(win, openOptions)
@@ -118,14 +118,14 @@ export function registerCollectionTransferHandlers(): void {
       if (isLegacyCollectionV1File(parsed)) {
         return {
           ok: false,
-          error: `This file looks like a Postman Collection Format v1 export, which isn't supported. Please re-export the collection from Postman as v2.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
+          error: `This file looks like a Collection Format v1 export, which isn't supported. Please re-export the collection as v2.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
         };
       }
 
       if (!isCollectionFile(parsed)) {
         return {
           ok: false,
-          error: `File is not a recognized Postman Collection export. ${SUPPORTED_SCHEMAS_MESSAGE}`
+          error: `File is not a recognized Collection export. ${SUPPORTED_SCHEMAS_MESSAGE}`
         };
       }
 

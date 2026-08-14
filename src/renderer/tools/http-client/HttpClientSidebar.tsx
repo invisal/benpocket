@@ -484,7 +484,7 @@ export const HttpClientSidebar: React.FC = () => {
       });
       const versionLabel =
         result.schemaVersion && result.schemaVersion !== 'unknown'
-          ? ` (Postman Collection v${result.schemaVersion})`
+          ? ` (Collection v${result.schemaVersion})`
           : '';
       const variablesLabel = result.importedVariableCount
         ? `, ${result.importedVariableCount} variable${result.importedVariableCount === 1 ? '' : 's'}`
@@ -583,7 +583,7 @@ export const HttpClientSidebar: React.FC = () => {
           <div className="flex items-center gap-0.5">
             <button
               onClick={handleImportCollection}
-              title="Import Postman Collection — supports Collection Format v2.0 and v2.1 (.json)"
+              title="Import Collection — supports Collection Format v2.0 and v2.1 (.json)"
               className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
             >
               <Upload size={13} />
@@ -642,8 +642,7 @@ export const HttpClientSidebar: React.FC = () => {
         {collections.length === 0 && !isCreatingCollection && (
           <div className="text-[11px] text-zinc-650 italic px-1 py-1 leading-relaxed">
             No collections yet. Collections group related saved requests together, so you can find
-            and re-run them later. Save a request, or import a Postman collection (v2.0 / v2.1
-            .json).
+            and re-run them later. Save a request, or import a collection (v2.0 / v2.1 .json).
           </div>
         )}
 

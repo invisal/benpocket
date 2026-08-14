@@ -40,7 +40,7 @@ export function registerEnvironmentTransferHandlers(): void {
       const saveOptions = {
         title: 'Export Environment',
         defaultPath: `${sanitizeFilename(environment.name, 'environment')}.postman_environment.json`,
-        filters: [{ name: 'Postman Environment', extensions: ['json'] }]
+        filters: [{ name: 'HTTP Client Environment', extensions: ['json'] }]
       };
       const result = win
         ? await dialog.showSaveDialog(win, saveOptions)
@@ -62,9 +62,9 @@ export function registerEnvironmentTransferHandlers(): void {
     async (event, workspaceId: string): Promise<ImportEnvironmentResult> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const openOptions = {
-        title: 'Import Postman Environment',
+        title: 'Import Environment',
         properties: ['openFile' as const],
-        filters: [{ name: 'Postman Environment', extensions: ['json'] }]
+        filters: [{ name: 'HTTP Client Environment', extensions: ['json'] }]
       };
       const result = win
         ? await dialog.showOpenDialog(win, openOptions)
@@ -82,7 +82,8 @@ export function registerEnvironmentTransferHandlers(): void {
       if (!isEnvironmentFile(parsed)) {
         return {
           ok: false,
-          error: 'File is not a recognized Postman Environment export (.postman_environment.json).'
+          error:
+            'File is not a recognized HTTP Client Environment export (.postman_environment.json).'
         };
       }
 

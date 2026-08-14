@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
 import { KuberneterBottomPanelHeader } from './KuberneterBottomPanelHeader';
@@ -22,6 +22,21 @@ export const KuberneterBottomPanel: React.FC = () => {
   const setActiveTabId = useKuberneterStore((s) => s.setKuberneterActiveBottomPanelTabId);
   const addTab = useKuberneterStore((s) => s.addKuberneterBottomPanelTab);
   const closeTab = useKuberneterStore((s) => s.closeKuberneterBottomPanelTab);
+  const closeOtherTabs = useKuberneterStore((s) => s.closeOtherKuberneterBottomPanelTabs);
+  const closeToRightTabs = useKuberneterStore((s) => s.closeToRightKuberneterBottomPanelTabs);
+  const closeAllTabs = useKuberneterStore((s) => s.closeAllKuberneterBottomPanelTabs);
+
+  // If panel is open but has no tabs, create a default terminal tab
+  useEffect(() => {
+    if (tabs.length === 0) {
+      const newId = generateTabId('terminal');
+      addTab({
+        id: newId,
+        type: 'terminal',
+        title: 'Terminal 1'
+      });
+    }
+  }, [tabs.length, addTab]);
 
   // Per-tab YAML state for Create Resource tabs
   const [resourceYamls, setResourceYamls] = useState<Record<string, string>>({});
@@ -44,8 +59,8 @@ export const KuberneterBottomPanel: React.FC = () => {
     }
   };
 
-  const handleCloseTab = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCloseTab = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     closeTab(id);
   };
 
@@ -61,6 +76,10 @@ export const KuberneterBottomPanel: React.FC = () => {
     return res;
   };
 
+  if (tabs.length === 0) {
+    return null;
+  }
+
   return (
     <div className={cn('flex flex-col w-full h-full min-h-0 bg-surface-2 overflow-hidden')}>
       {/* Header Bar */}
@@ -69,6 +88,9 @@ export const KuberneterBottomPanel: React.FC = () => {
         activeTabId={activeTabId}
         onSelectTab={setActiveTabId}
         onCloseTab={handleCloseTab}
+        onCloseOtherTabs={closeOtherTabs}
+        onCloseToRightTabs={closeToRightTabs}
+        onCloseAllTabs={closeAllTabs}
         onAddTab={handleAddTab}
         isMaximized={isMaximized}
         onToggleMaximize={toggleMaximizeBottomPanel}

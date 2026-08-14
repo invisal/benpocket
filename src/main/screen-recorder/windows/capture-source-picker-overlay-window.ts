@@ -107,6 +107,7 @@ export function closeCaptureSourcePickerOverlay(options?: { restoreToolbar?: boo
   // window forward. Re-show the pill without activating the app.
   if (options?.restoreToolbar !== false && toolbar && !toolbar.isDestroyed()) {
     toolbar.showInactive();
+    toolbar.webContents.send(IpcChannels.CaptureSourcePickerOverlayClosed);
   }
 
   const win = overlayWindow;

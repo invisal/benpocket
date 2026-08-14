@@ -141,7 +141,7 @@ export interface ImageAnnotation extends AnnotationBase {
   y: number;
   width: number;
   height: number;
-  /** PNG data URL — undo snapshots keep the same string by reference. */
+  /** PNG object URL (blob:) or legacy data URL — undo snapshots keep the same string by reference. */
   src: string;
 }
 

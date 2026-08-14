@@ -99,6 +99,12 @@ export function CaptureToolbarApp(): JSX.Element {
   }, []);
 
   useEffect(() => {
+    return window.screenRecorder.captureToolbar.onSourcePickerClosed(() => {
+      setActiveTab(null);
+    });
+  }, []);
+
+  useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
 

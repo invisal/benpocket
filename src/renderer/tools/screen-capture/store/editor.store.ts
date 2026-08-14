@@ -223,6 +223,20 @@ function snapshot(state: Pick<EditorState, 'annotations' | 'crop'>): Snapshot {
   return { annotations: state.annotations, crop: state.crop };
 }
 
+/** Revoke blob: object URLs from image layers (deduped across undo snapshots). */
+function revokeImageLayerBlobUrls(...lists: CaptureAnnotation[][]): void {
+  const seen = new Set<string>();
+  for (const list of lists) {
+    for (const annotation of list) {
+      if (annotation.kind !== 'image') continue;
+      if (!annotation.src.startsWith('blob:')) continue;
+      if (seen.has(annotation.src)) continue;
+      seen.add(annotation.src);
+      URL.revokeObjectURL(annotation.src);
+    }
+  }
+}
+
 function pushPast(state: EditorState): Pick<EditorState, 'past' | 'future'> {
   return { past: [...state.past, snapshot(state)].slice(-HISTORY_CAP), future: [] };
 }
@@ -495,6 +509,11 @@ export const useCaptureEditorStore = create<EditorState>()((set, get) => ({
 
   reset: () =>
     set((state) => {
+      revokeImageLayerBlobUrls(
+        state.annotations,
+        ...state.past.map((snap) => snap.annotations),
+        ...state.future.map((snap) => snap.annotations)
+      );
       const prefs = sessionPrefs(state);
       return {
         ...initialState,

@@ -1,4 +1,4 @@
-import { blobToDataUrl, toPngBlob } from './capture-frame';
+import { toPngBlob } from './capture-frame';
 import { useCaptureEditorStore } from '../store/editor.store';
 import type { ImageAnnotation } from '../types/editor';
 import type { Rect } from './flatten';
@@ -26,7 +26,8 @@ export async function addImageLayerFromBlob(source: Blob): Promise<void> {
   try {
     const blob = await toPngBlob(source);
     const bitmap = await createImageBitmap(blob);
-    const src = await blobToDataUrl(blob);
+    // blob: URL — short string shared across undo snapshots; revoked on editor reset.
+    const src = URL.createObjectURL(blob);
     const store = useCaptureEditorStore.getState();
     const view = store.crop ?? {
       x: 0,

@@ -79,9 +79,9 @@ if (gotSingleInstanceLock) {
     if (isCaptureToolbarSessionActive()) {
       const owner = getCaptureToolbarOwner();
       if (!owner) return;
-      // Dock / taskbar: user wants BenPocket back in the shot. Already
-      // visible: don't steal z-order from an empty-desktop click.
-      if (!owner.isMinimized() && owner.isVisible()) return;
+      // Dock / taskbar: bring BenPocket forward for include-in-shot. Re-enable
+      // focus if region-select left the owner non-focusable.
+      owner.setFocusable(true);
       if (owner.isMinimized()) owner.restore();
       owner.show();
       owner.focus();

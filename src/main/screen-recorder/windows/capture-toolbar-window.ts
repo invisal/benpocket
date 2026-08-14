@@ -99,9 +99,13 @@ async function openCaptureToolbar(
   event: Electron.IpcMainInvokeEvent,
   payload: CaptureToolbarOpenPayload
 ): Promise<void> {
-  if (usesOsCapturePicker()) return;
+  if (usesOsCapturePicker()) {
+    throw new Error('Capture toolbar is not available with the OS capture picker.');
+  }
   const owner = BrowserWindow.fromWebContents(event.sender);
-  if (!owner) return;
+  if (!owner) {
+    throw new Error('Capture toolbar requires an owner window.');
+  }
   ownerWindow = owner;
 
   owner.webContents.setBackgroundThrottling(false);
@@ -141,6 +145,8 @@ export function getCaptureToolbarOwner(): BrowserWindow | null {
 
 export function registerCaptureToolbarHandlers(): void {
   ipcMain.handle(IpcChannels.CaptureToolbarOpen, openCaptureToolbar);
+
+  ipcMain.handle(IpcChannels.CaptureToolbarIsSessionActive, () => isCaptureToolbarSessionActive());
 
   ipcMain.handle(IpcChannels.CaptureToolbarGetCurrentDisplayBounds, (): ScreenRect | null => {
     if (!toolbarWindow || toolbarWindow.isDestroyed()) return null;
@@ -195,6 +201,10 @@ export function registerCaptureToolbarHandlers(): void {
 
 export function destroyCaptureToolbar(): void {
   closeCaptureSourcePickerOverlay({ restoreToolbar: false });
+  if (ownerWindow && !ownerWindow.isDestroyed()) {
+    ownerWindow.webContents.setBackgroundThrottling(true);
+    ownerWindow.webContents.send(IpcChannels.CaptureToolbarClosed);
+  }
   const win = toolbarWindow;
   toolbarWindow = null;
   ownerWindow = null;

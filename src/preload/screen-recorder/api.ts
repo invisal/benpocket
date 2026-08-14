@@ -317,6 +317,8 @@ export const screenRecorderApi = {
   captureToolbar: {
     open: (payload: CaptureToolbarOpenPayload): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.CaptureToolbarOpen, payload),
+    isSessionActive: (): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.CaptureToolbarIsSessionActive),
     cancel: (): void => ipcRenderer.send(IpcChannels.CaptureToolbarCancel),
     getCurrentDisplayBounds: (): Promise<ScreenRect | null> =>
       ipcRenderer.invoke(IpcChannels.CaptureToolbarGetCurrentDisplayBounds),
@@ -349,6 +351,12 @@ export const screenRecorderApi = {
         callback(delaySeconds);
       ipcRenderer.on(IpcChannels.CaptureToolbarDelayChanged, listener);
       return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarDelayChanged, listener);
+    },
+    onSourcePickerClosed: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.CaptureSourcePickerOverlayClosed, listener);
+      return () =>
+        ipcRenderer.removeListener(IpcChannels.CaptureSourcePickerOverlayClosed, listener);
     },
     openSourcePicker: (options: CaptureSourcePickerOverlayOpenOptions): Promise<void> =>
       ipcRenderer.invoke(IpcChannels.CaptureSourcePickerOverlayOpen, options)

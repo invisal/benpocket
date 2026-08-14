@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 import { normalizeCaptureDelay } from '@shared/capture-delay';
 import { useToolTabs } from './providers/ToolProvider';
 import { useCaptureResultStore } from '../../tools/screen-capture/store/capture-result.store';
@@ -17,15 +17,19 @@ export function CaptureToolbarBridge(): null {
   const { tabs, openTab, selectTab } = useToolTabs();
   const { setFields } = useScreenCaptureSettings();
 
-  useEffect(() => {
-    function focusOrOpenScreenCapture(): void {
-      const existing = tabs.find((t) => t.type === 'screen-capture');
-      if (existing) {
-        selectTab(existing.id);
-        return;
-      }
-      openTab('screen-capture', {});
+  const focusOrOpenScreenCapture = useEffectEvent((): void => {
+    const existing = tabs.find((t) => t.type === 'screen-capture');
+    if (existing) {
+      selectTab(existing.id);
+      return;
     }
+    openTab('screen-capture', {});
+  });
+
+  useEffect(() => {
+    void window.screenRecorder.captureToolbar.isSessionActive().then((active) => {
+      useCaptureResultStore.getState().setToolbarOpen(active);
+    });
 
     const unsubscribeClosed = window.screenRecorder.captureToolbar.onClosed(() => {
       useCaptureResultStore.getState().setToolbarOpen(false);
@@ -61,7 +65,7 @@ export function CaptureToolbarBridge(): null {
       unsubscribeDelay();
       unsubscribeCapture();
     };
-  }, [tabs, openTab, selectTab, setFields]);
+  }, [setFields]);
 
   return null;
 }

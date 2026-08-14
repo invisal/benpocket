@@ -8,6 +8,7 @@ import type {
   SelectCaptureRegionOptions
 } from '@shared/capture-region';
 import { preloadScriptPath } from '../lib/preload-path';
+import { suppressWindowActivation } from './window-visibility';
 
 export function getVirtualDesktopBounds(): ScreenRect {
   const displays = screen.getAllDisplays();
@@ -46,6 +47,26 @@ let backdropPayload: ArrayBuffer | string | null = null;
 let exclusiveFullscreen = false;
 /** Wayland: map the drag in overlay-local space rather than global screen coords. */
 let overlayRelative = false;
+/** Release AppKit activation guards on minimized siblings (see selectCaptureRegion). */
+let releaseOwnerGuards: (() => void) | null = null;
+
+/**
+ * Focusing the region panel can promote a minimized owner (capture toolbar
+ * session) back onto the desktop mid-drag. Keep those windows non-focusable
+ * until the overlay tears down.
+ */
+function guardMinimizedSiblings(except: BrowserWindow): () => void {
+  const releases: (() => void)[] = [];
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win === except || win.isDestroyed()) continue;
+    if (win.isMinimized() || !win.isVisible()) {
+      releases.push(suppressWindowActivation(win));
+    }
+  }
+  return () => {
+    for (const release of releases) release();
+  };
+}
 
 function finishSelection(value: CaptureRegionSelection | null): void {
   if (selectionFinished) return;
@@ -58,6 +79,9 @@ function finishSelection(value: CaptureRegionSelection | null): void {
   overlayRelative = false;
   const resolve = resolveSelection;
   resolveSelection = null;
+  const releaseGuards = releaseOwnerGuards;
+  releaseOwnerGuards = null;
+  releaseGuards?.();
 
   if (!win) {
     resolve?.(value);
@@ -250,6 +274,8 @@ export function selectCaptureRegion(
       skipTransformProcessType: true
     });
     regionWindow.setAlwaysOnTop(true, 'screen-saver');
+    releaseOwnerGuards?.();
+    releaseOwnerGuards = guardMinimizedSiblings(regionWindow);
     regionWindow.once('ready-to-show', () => {
       const win = regionWindow;
       if (!win) return;

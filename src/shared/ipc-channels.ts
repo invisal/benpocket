@@ -97,8 +97,10 @@ export const IpcChannels = {
   CaptureToolbarCaptured: 'capture-toolbar:captured',
   CaptureToolbarClosed: 'capture-toolbar:closed',
   CaptureToolbarGetCurrentDisplayBounds: 'capture-toolbar:get-current-display-bounds',
+  CaptureToolbarIsSessionActive: 'capture-toolbar:is-session-active',
   CaptureSourcePickerOverlayOpen: 'capture-source-picker-overlay:open',
   CaptureSourcePickerOverlayCancel: 'capture-source-picker-overlay:cancel',
+  CaptureSourcePickerOverlayClosed: 'capture-source-picker-overlay:closed',
   FileExplorerTransferProgress: 'file-explorer:transfer-progress',
   FileExplorerStartNativeDrag: 'file-explorer:start-native-drag',
   FileExplorerWatchEvent: 'file-explorer:watch-event'

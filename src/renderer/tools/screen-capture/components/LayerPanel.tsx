@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   Highlighter,
+  Image as ImageIcon,
   MoveUpRight,
   Minus,
   Pencil,
@@ -40,7 +41,8 @@ const KIND_ICONS = {
   line: Minus,
   pen: Pencil,
   highlight: Highlighter,
-  blur: Droplets
+  blur: Droplets,
+  image: ImageIcon
 } as const;
 
 /** Quick word presets for a chip; anything else counts as custom text. */
@@ -69,6 +71,8 @@ function layerLabel(annotation: CaptureAnnotation): string {
       return 'Highlight';
     case 'blur':
       return 'Blur';
+    case 'image':
+      return 'Image';
   }
 }
 
@@ -168,7 +172,7 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
         />
       )}
 
-      {annotation.kind !== 'blur' && (
+      {annotation.kind !== 'blur' && annotation.kind !== 'image' && (
         <div className="flex items-center gap-1.5">
           {EDITOR_COLORS.map((c) => (
             <button
@@ -424,22 +428,24 @@ export function LayerPanel(): JSX.Element {
                   )}
                   {!isRenaming && (
                     <span className="ml-auto flex shrink-0 items-center">
-                      <button
-                        type="button"
-                        aria-label="Layer properties"
-                        aria-expanded={isExpanded}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedId(annotation.id);
-                          setExpandedId(isExpanded ? null : annotation.id);
-                        }}
-                        className={cn(
-                          'cursor-pointer rounded p-0.5 text-text-dim transition-all hover:text-text-base',
-                          isExpanded && 'rotate-180'
-                        )}
-                      >
-                        <ChevronDown size={12} />
-                      </button>
+                      {annotation.kind !== 'image' && (
+                        <button
+                          type="button"
+                          aria-label="Layer properties"
+                          aria-expanded={isExpanded}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedId(annotation.id);
+                            setExpandedId(isExpanded ? null : annotation.id);
+                          }}
+                          className={cn(
+                            'cursor-pointer rounded p-0.5 text-text-dim transition-all hover:text-text-base',
+                            isExpanded && 'rotate-180'
+                          )}
+                        >
+                          <ChevronDown size={12} />
+                        </button>
+                      )}
                       <button
                         type="button"
                         aria-label="Delete layer"

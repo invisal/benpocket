@@ -8,7 +8,9 @@
     "src/renderer/src/main.tsx",
     "src/renderer/recorder-toolbar.tsx",
     "src/renderer/region-select.ts",
-    "src/renderer/source-picker-overlay.tsx"
+    "src/renderer/source-picker-overlay.tsx",
+    "src/renderer/capture-toolbar.tsx",
+    "src/renderer/capture-source-picker-overlay.tsx"
   ],
   "project": ["src/**/*.{ts,tsx}"],
   // System binaries invoked via spawn/execFile — not npm packages.

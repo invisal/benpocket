@@ -9,6 +9,9 @@ import { registerSimulatorHandlers } from './simulator-handlers';
 import { registerRegionHandlers } from './region-handlers';
 import { registerRecorderToolbarHandlers } from '../windows/recorder-toolbar-window';
 import { registerSourcePickerOverlayHandlers } from '../windows/source-picker-overlay-window';
+import { registerCaptureToolbarHandlers } from '../windows/capture-toolbar-window';
+import { registerCaptureSourcePickerOverlayHandlers } from '../windows/capture-source-picker-overlay-window';
+import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 export function registerIpcHandlers(): void {
   registerRecordingHandlers();
@@ -22,4 +25,9 @@ export function registerIpcHandlers(): void {
   registerRegionHandlers();
   registerRecorderToolbarHandlers();
   registerSourcePickerOverlayHandlers();
+  // Capture pill is skipped on Linux Wayland (no source list). X11 gets it.
+  if (!usesOsCapturePicker()) {
+    registerCaptureToolbarHandlers();
+    registerCaptureSourcePickerOverlayHandlers();
+  }
 }

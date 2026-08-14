@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as Y from 'yjs';
 import { usePersistStore } from '@renderer/hooks/usePersistStore';
+import { normalizeCaptureDelay, type CaptureDelaySetting } from '@shared/capture-delay';
 import {
   DEFAULT_PEN_SNAP_SHAPES,
   defaultToolStyles,
@@ -14,6 +15,7 @@ export const SCREEN_CAPTURE_SETTINGS_KEY = 'screen-capture/settings';
 
 export type ScreenCaptureSettingsFields = PersistedEditorPrefs & {
   hideApp: boolean;
+  delaySeconds: CaptureDelaySetting;
 };
 
 function mapIsEmpty(map: Y.Map<unknown>): boolean {
@@ -89,7 +91,8 @@ function readFields(map: Y.Map<unknown>): ScreenCaptureSettingsFields {
     watermark: sanitized.watermark ?? true,
     background: 'background' in sanitized ? (sanitized.background ?? null) : null,
     cornerRadiusUnits: sanitized.cornerRadiusUnits ?? 0,
-    hideApp: typeof hideAppRaw === 'boolean' ? hideAppRaw : true
+    hideApp: typeof hideAppRaw === 'boolean' ? hideAppRaw : true,
+    delaySeconds: normalizeCaptureDelay(map.get('delaySeconds'))
   };
 }
 
@@ -101,7 +104,7 @@ export interface UseScreenCaptureSettingsResult {
 
 /**
  * Live view over `screen-capture/settings` in the active profile persist store.
- * Portable editor prefs + hideApp; device paths (lastSaveDir) stay local.
+ * Portable editor prefs + hideApp + capture delay; device paths (lastSaveDir) stay local.
  */
 export function useScreenCaptureSettings(): UseScreenCaptureSettingsResult {
   const { isLoading, doc } = usePersistStore(SCREEN_CAPTURE_SETTINGS_KEY, () => new Y.Doc());
@@ -117,14 +120,18 @@ export function useScreenCaptureSettings(): UseScreenCaptureSettingsResult {
     return () => map.unobserve(sync);
   }, [isLoading, map, doc]);
 
-  const setFields = (patch: Partial<ScreenCaptureSettingsFields>): void => {
-    doc.transact(() => {
-      for (const [key, value] of Object.entries(patch)) {
-        if (value === undefined) continue;
-        map.set(key, value);
-      }
-    });
-  };
+  const setFields = useCallback(
+    (patch: Partial<ScreenCaptureSettingsFields>): void => {
+      const next = doc.getMap<unknown>(SCREEN_CAPTURE_SETTINGS_KEY);
+      doc.transact(() => {
+        for (const [key, value] of Object.entries(patch)) {
+          if (value === undefined) continue;
+          next.set(key, value);
+        }
+      });
+    },
+    [doc]
+  );
 
   return { isLoading, fields, setFields };
 }

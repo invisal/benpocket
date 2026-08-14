@@ -6,6 +6,7 @@ import type {
   CaptureAnnotation,
   ChipAnnotation,
   CircleAnnotation,
+  ImageAnnotation,
   LabelAnnotation,
   LineAnnotation,
   PenAnnotation,
@@ -114,18 +115,41 @@ export function lockDragEnd(
 
 export type RectCorner = 'nw' | 'ne' | 'sw' | 'se';
 
-/** Resize `start` by dragging `corner` by (dx, dy), keeping the opposite corner fixed and the size at least `minSize`. */
+/** Resize `start` by dragging `corner` by (dx, dy), keeping the opposite corner fixed and the size at least `minSize`. With `lockAspect`, preserves start's width/height ratio (Cmd/Ctrl). */
 export function resizeRect(
   start: Rect,
   corner: RectCorner,
   dx: number,
   dy: number,
-  minSize: number
+  minSize: number,
+  lockAspect = false
 ): Rect {
   const movesLeft = corner === 'nw' || corner === 'sw';
   const movesTop = corner === 'nw' || corner === 'ne';
-  const width = Math.max(minSize, movesLeft ? start.width - dx : start.width + dx);
-  const height = Math.max(minSize, movesTop ? start.height - dy : start.height + dy);
+  let width = Math.max(minSize, movesLeft ? start.width - dx : start.width + dx);
+  let height = Math.max(minSize, movesTop ? start.height - dy : start.height + dy);
+
+  if (lockAspect && start.width > 0 && start.height > 0) {
+    const aspect = start.width / start.height;
+    const relW = Math.abs(width - start.width) / start.width;
+    const relH = Math.abs(height - start.height) / start.height;
+    if (relW >= relH) {
+      height = Math.max(minSize, width / aspect);
+      width = height * aspect;
+    } else {
+      width = Math.max(minSize, height * aspect);
+      height = width / aspect;
+    }
+    if (width < minSize) {
+      width = minSize;
+      height = width / aspect;
+    }
+    if (height < minSize) {
+      height = minSize;
+      width = height * aspect;
+    }
+  }
+
   return {
     x: movesLeft ? start.x + start.width - width : start.x,
     y: movesTop ? start.y + start.height - height : start.y,
@@ -291,7 +315,8 @@ function composeBackground(
   content: HTMLCanvasElement,
   annotations: CaptureAnnotation[],
   cornerRadius: number,
-  background: BackgroundConfig
+  background: BackgroundConfig,
+  bitmaps: Map<string, ImageBitmap>
 ): HTMLCanvasElement {
   const frame = document.createElement('canvas');
   frame.width = Math.max(1, Math.round(background.width));
@@ -337,7 +362,7 @@ function composeBackground(
   ctx.drawImage(content, inner.x, inner.y, inner.width, inner.height);
   ctx.restore();
 
-  drawAnnotations(ctx, frame, annotations, inner.width / content.width, inner.x, inner.y);
+  drawAnnotations(ctx, frame, annotations, inner.width / content.width, inner.x, inner.y, bitmaps);
   return frame;
 }
 
@@ -519,6 +544,30 @@ function drawText(ctx: CanvasRenderingContext2D, text: TextAnnotation): void {
   ctx.shadowColor = 'transparent';
 }
 
+function drawImageLayer(
+  ctx: CanvasRenderingContext2D,
+  annotation: ImageAnnotation,
+  bitmap: ImageBitmap | undefined
+): void {
+  if (!bitmap) return;
+  ctx.drawImage(bitmap, annotation.x, annotation.y, annotation.width, annotation.height);
+}
+
+async function loadImageLayerBitmaps(
+  annotations: CaptureAnnotation[]
+): Promise<Map<string, ImageBitmap>> {
+  const bitmaps = new Map<string, ImageBitmap>();
+  await Promise.all(
+    annotations
+      .filter((a): a is ImageAnnotation => a.kind === 'image')
+      .map(async (a) => {
+        const blob = await (await fetch(a.src)).blob();
+        bitmaps.set(a.id, await createImageBitmap(blob));
+      })
+  );
+  return bitmaps;
+}
+
 /**
  * Draws annotations onto `surface` with the image origin at (dx, dy) and
  * image px scaled by `k` — the identity for the bare capture, the inner-rect
@@ -536,7 +585,8 @@ function drawAnnotations(
   annotations: CaptureAnnotation[],
   k: number,
   dx: number,
-  dy: number
+  dy: number,
+  bitmaps: Map<string, ImageBitmap>
 ): void {
   for (const a of annotations) {
     ctx.save();
@@ -561,6 +611,7 @@ function drawAnnotations(
       else if (a.kind === 'pen' || a.kind === 'highlight') drawPen(ctx, a);
       else if (a.kind === 'label') drawLabel(ctx, a);
       else if (a.kind === 'chip') drawChip(ctx, a);
+      else if (a.kind === 'image') drawImageLayer(ctx, a, bitmaps.get(a.id));
       else drawText(ctx, a);
     }
     ctx.restore();
@@ -614,20 +665,27 @@ export async function flattenImage(
     .filter((a) => !a.hidden)
     .map((a) => (ox || oy ? shiftAnnotation(a, -ox, -oy) : a));
 
-  // Without a background, annotations bake straight onto the capture (under
-  // the corner-radius clip set above). With one, they draw onto the frame in
-  // composeBackground instead, so they can overhang onto the background.
-  if (!background) drawAnnotations(ctx, canvas, visible, 1, 0, 0);
+  const bitmaps = await loadImageLayerBitmaps(visible);
+  try {
+    // Without a background, annotations bake straight onto the capture (under
+    // the corner-radius clip set above). With one, they draw onto the frame in
+    // composeBackground instead, so they can overhang onto the background.
+    if (!background) drawAnnotations(ctx, canvas, visible, 1, 0, 0, bitmaps);
 
-  const output = background ? composeBackground(canvas, visible, cornerRadius, background) : canvas;
-  if (watermark) {
-    const outCtx = output.getContext('2d');
-    if (outCtx) drawWatermark(outCtx, output.width, output.height);
+    const output = background
+      ? composeBackground(canvas, visible, cornerRadius, background, bitmaps)
+      : canvas;
+    if (watermark) {
+      const outCtx = output.getContext('2d');
+      if (outCtx) drawWatermark(outCtx, output.width, output.height);
+    }
+    return await new Promise<Blob>((resolve, reject) => {
+      output.toBlob(
+        (result) => (result ? resolve(result) : reject(new Error('Could not encode PNG.'))),
+        'image/png'
+      );
+    });
+  } finally {
+    for (const bitmap of bitmaps.values()) bitmap.close();
   }
-  return new Promise((resolve, reject) => {
-    output.toBlob(
-      (result) => (result ? resolve(result) : reject(new Error('Could not encode PNG.'))),
-      'image/png'
-    );
-  });
 }

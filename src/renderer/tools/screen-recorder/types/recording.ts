@@ -40,6 +40,16 @@ export interface CaptureSource {
 export interface AudioInputOptions {
   microphoneEnabled: boolean;
   microphoneDeviceId?: string;
+  /**
+   * The selected device's own label (e.g. "Blue Yeti"), alongside its
+   * browser-assigned `microphoneDeviceId`. The native recording helper's
+   * WASAPI device lookup (native/windows-recorder/src/wasapi_loopback_
+   * capture.cpp) needs this as a fallback -- a Chromium `deviceId` is an
+   * origin-salted hash, not a real OS endpoint ID, so it essentially never
+   * matches a WASAPI device directly; the helper falls back to fuzzy-
+   * matching this name instead.
+   */
+  microphoneDeviceName?: string;
   systemAudioEnabled: boolean;
 }
 

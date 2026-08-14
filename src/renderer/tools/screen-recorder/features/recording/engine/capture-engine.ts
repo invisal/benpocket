@@ -475,7 +475,8 @@ async function tryStartNativeRecording(request: CaptureRequest): Promise<Capture
       hideCursor: request.hideNativeCursor,
       systemAudioEnabled: request.audio.systemAudioEnabled,
       microphoneEnabled: request.audio.microphoneEnabled,
-      microphoneDeviceId: request.audio.microphoneDeviceId
+      microphoneDeviceId: request.audio.microphoneDeviceId,
+      microphoneDeviceName: request.audio.microphoneDeviceName
     });
 
     if (!result.ok) {

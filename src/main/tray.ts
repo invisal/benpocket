@@ -56,9 +56,15 @@ function trayMenuTemplate(): MenuItemConstructorOptions[] {
     {
       label: 'Screen Capture',
       click: () => {
-        // Wayland: don't flash the window — Capture auto-starts the portal
-        // picker and hideApp will restore focus when done.
-        if (!usesOsCapturePicker()) showMainWindow();
+        if (usesOsCapturePicker()) {
+          // Wayland: no pill — open the tool so the user can set a timer
+          // before Capture (portal). Showing the window is intentional.
+          showMainWindow();
+          sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
+          return;
+        }
+        // Pill platforms: don't flash the main window — openCaptureToolbarFor
+        // minimizes the owner the same way New Recording does.
         sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
       }
     },

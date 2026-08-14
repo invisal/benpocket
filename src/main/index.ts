@@ -29,6 +29,16 @@ import {
 } from './screen-recorder/shortcuts/global-shortcuts';
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
+import {
+  destroyCaptureToolbar,
+  getCaptureToolbarOwner,
+  isCaptureToolbarSessionActive
+} from './screen-recorder/windows/capture-toolbar-window';
+import { destroyCaptureSourcePickerOverlay } from './screen-recorder/windows/capture-source-picker-overlay-window';
+import {
+  showAppLauncherIcon,
+  withdrawWindowToTray
+} from './screen-recorder/windows/window-visibility';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
@@ -71,8 +81,22 @@ if (gotSingleInstanceLock) {
 
   /** Show/focus the existing main window (second launch, dock activate, etc.). */
   function focusMainWindow(): void {
+    if (isCaptureToolbarSessionActive()) {
+      const owner = getCaptureToolbarOwner();
+      if (!owner) return;
+      // Dock / taskbar: bring BenPocket forward for include-in-shot. Re-enable
+      // focus if region-select left the owner non-focusable.
+      owner.setFocusable(true);
+      showAppLauncherIcon(owner);
+      if (owner.isMinimized()) owner.restore();
+      owner.show();
+      owner.focus();
+      setTrayMainWindow(owner);
+      return;
+    }
     const win = BrowserWindow.getAllWindows()[0];
     if (!win || win.isDestroyed()) return;
+    showAppLauncherIcon(win);
     if (win.isMinimized()) win.restore();
     win.show();
     win.focus();
@@ -105,11 +129,12 @@ if (gotSingleInstanceLock) {
       mainWindow.show();
     });
 
-    // Close (X) hides to tray; real quit only via tray Quit / Cmd+Q / app menu.
+    // Close (X) hides to tray and drops Dock/taskbar presence; real quit only
+    // via tray Quit / Cmd+Q / app menu.
     mainWindow.on('close', (event) => {
       if (!isQuitting) {
         event.preventDefault();
-        mainWindow.hide();
+        withdrawWindowToTray(mainWindow);
       }
     });
 
@@ -374,6 +399,8 @@ if (gotSingleInstanceLock) {
     destroyTray();
     destroyRecorderToolbar();
     destroySourcePickerOverlay();
+    destroyCaptureToolbar();
+    destroyCaptureSourcePickerOverlay();
     // Safety net if the renderer never gets to send a normal stop -- kills
     // any still-running native recording helper subprocess rather than
     // leaving it (and, on macOS, the OS-level "recording" indicator) behind.

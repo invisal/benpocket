@@ -1,6 +1,11 @@
 import https from 'https';
 import { URL } from 'url';
-import { KubernetesObjectApi, PatchStrategy, type KubernetesObject } from '@kubernetes/client-node';
+import {
+  ApiException,
+  KubernetesObjectApi,
+  PatchStrategy,
+  type KubernetesObject
+} from '@kubernetes/client-node';
 import * as jsYaml from 'js-yaml';
 import { normalizeCpuString, normalizeMemoryString } from '../utils/metricsNormalizer';
 import { buildKubeApiPath } from '../constants/k8sResources';
@@ -235,8 +240,86 @@ export class KubeClientService {
   }
 
   /**
-   * Applies or updates a resource YAML using Server-Side Apply (SSA) via @kubernetes/client-node.
-   * Uses fieldManager 'benPocket' and PatchStrategy.ServerSideApply.
+   * Extracts an HTTP status code and human-readable message from an error thrown by
+   * @kubernetes/client-node. Newer client-node versions (>=1.x) throw `ApiException`, whose
+   * `.code` is the numeric HTTP status and whose `.body` is the *raw response text* (a string),
+   * not a parsed object — so `.body.code` / `.body.message` are always undefined and must be
+   * parsed out of the JSON string first. Older client shapes (`statusCode` / `response.statusCode`
+   * / parsed `body.code`) are also supported as a fallback.
+   */
+  private static parseK8sError(err: unknown): { code?: number; message?: string } {
+    if (err instanceof ApiException) {
+      let parsedBody: { code?: number; message?: string; reason?: string } | undefined;
+      if (typeof err.body === 'string') {
+        try {
+          parsedBody = JSON.parse(err.body);
+        } catch {
+          parsedBody = undefined;
+        }
+      } else if (err.body && typeof err.body === 'object') {
+        parsedBody = err.body as { code?: number; message?: string; reason?: string };
+      }
+      return {
+        code: err.code ?? parsedBody?.code,
+        message: parsedBody?.message || err.message
+      };
+    }
+
+    const k8sErr = err as {
+      statusCode?: number;
+      response?: { statusCode?: number };
+      body?: { code?: number; message?: string } | string;
+      message?: string;
+    };
+    let bodyCode: number | undefined;
+    let bodyMessage: string | undefined;
+    if (typeof k8sErr.body === 'string') {
+      try {
+        const parsed = JSON.parse(k8sErr.body);
+        bodyCode = parsed.code;
+        bodyMessage = parsed.message;
+      } catch {
+        // not JSON, ignore
+      }
+    } else if (k8sErr.body && typeof k8sErr.body === 'object') {
+      bodyCode = k8sErr.body.code;
+      bodyMessage = k8sErr.body.message;
+    }
+
+    return {
+      code: k8sErr.statusCode ?? k8sErr.response?.statusCode ?? bodyCode,
+      message: bodyMessage || k8sErr.message
+    };
+  }
+
+  /**
+   * @kubernetes/client-node deserializes API responses into typed class instances (V1Deployment,
+   * V1ObjectMeta, etc.), not plain objects. js-yaml's `dump()` can only serialize plain
+   * objects/arrays/primitives and throws "unacceptable kind of an object to dump" on a class
+   * instance, so responses must be round-tripped through JSON before being handed to jsYaml.dump.
+   */
+  private static toPlainObject<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  /**
+   * Applies one or more Kubernetes resources from a YAML document, mirroring
+   * `kubectl apply --server-side --force-conflicts`:
+   *
+   * - Supports multi-document YAML (`---`-separated), applying each resource in turn, the
+   *   same way `kubectl apply -f` walks every document in a manifest.
+   * - Uses a single Server-Side Apply PATCH (`application/apply-patch+yaml`) per resource.
+   *   SSA is create-or-update in one call — the API server creates the object if it's missing
+   *   and merges into it if it exists — so there is no separate create/replace step. Unlike a
+   *   raw PUT (`replace`), fields owned by other actors that aren't in this YAML are left alone,
+   *   which is the actual guarantee "apply" is supposed to provide.
+   * - `force: true` re-acquires fields owned by another field manager, matching
+   *   `--force-conflicts`, since this is a GUI action the user explicitly initiated.
+   * - Reports "created" vs "configured" per resource the same way kubectl does: by checking
+   *   whether the object existed before the apply.
+   *
+   * On a genuine SSA failure (bad RBAC, invalid manifest, unknown kind, etc.) the real server
+   * error is surfaced directly rather than retried through a different, less safe code path.
    */
   public static async applyResourceYamlDirect(
     configPath: string | undefined,
@@ -247,72 +330,74 @@ export class KubeClientService {
       const kc = KubeConfigService.loadKubeConfig(configPath, contextName);
       const client = KubernetesObjectApi.makeApiClient(kc);
 
-      const rawSpec = jsYaml.load(yamlContent) as KubernetesObject;
-      if (!rawSpec || typeof rawSpec !== 'object' || !rawSpec.apiVersion || !rawSpec.kind) {
-        return { error: 'Invalid YAML: missing apiVersion or kind' };
+      const rawDocs = (jsYaml.loadAll(yamlContent) as unknown[]).filter(
+        (doc): doc is KubernetesObject => !!doc && typeof doc === 'object'
+      );
+
+      if (rawDocs.length === 0) {
+        return { error: 'No Kubernetes resources found in YAML' };
+      }
+      const invalidDoc = rawDocs.find((doc) => !doc.apiVersion || !doc.kind);
+      if (invalidDoc) {
+        return { error: 'Invalid YAML: every document must have apiVersion and kind' };
       }
 
-      const spec = this.sanitizeManifestForApply(rawSpec);
+      const applied: Array<{ label: string; verb: string; yaml: string }> = [];
+      const failed: Array<{ label: string; message: string }> = [];
 
-      try {
-        const patchRes = (await client.patch(
-          spec,
-          undefined,
-          undefined,
-          'benPocket',
-          true,
-          PatchStrategy.ServerSideApply
-        )) as KubernetesObject;
-        const name = patchRes.metadata?.name || spec.metadata?.name || 'resource';
-        const updatedYaml = jsYaml.dump(patchRes);
-        return { result: `applied resource ${spec.kind}/${name}`, yaml: updatedYaml };
-      } catch (patchErr: unknown) {
-        // Fall back to create or replace with fieldManager if Server-Side Apply fails
+      for (const rawSpec of rawDocs) {
+        const spec = this.sanitizeManifestForApply(rawSpec);
+        const label = `${spec.kind}/${spec.metadata?.name ?? 'unknown'}`;
+        const specHeader = spec as KubernetesObject & {
+          metadata: { name: string; namespace?: string };
+        };
+
+        // Check existence first (like kubectl's apply.go) purely for "created" vs "configured"
+        // messaging. If the GET itself is inconclusive (e.g. no read RBAC), don't guess.
+        let existedBefore: boolean | undefined;
         try {
-          const createRes = (await client.create(
+          await client.read(specHeader);
+          existedBefore = true;
+        } catch (readErr) {
+          const { code } = this.parseK8sError(readErr);
+          existedBefore = code === 404 ? false : undefined;
+        }
+
+        try {
+          const patchRes = (await client.patch(
             spec,
             undefined,
             undefined,
-            'benPocket'
+            'benPocket',
+            true,
+            PatchStrategy.ServerSideApply
           )) as KubernetesObject;
-          const name = createRes.metadata?.name || spec.metadata?.name || 'resource';
-          const updatedYaml = jsYaml.dump(createRes);
-          return { result: `created resource ${spec.kind}/${name}`, yaml: updatedYaml };
-        } catch (err: unknown) {
-          const k8sErr = err as {
-            statusCode?: number;
-            response?: { statusCode?: number };
-            body?: { code?: number; message?: string };
-            message?: string;
-          };
-          const code = k8sErr.statusCode || k8sErr.response?.statusCode || k8sErr.body?.code;
-
-          if (code === 409) {
-            try {
-              const replaceRes = (await client.replace(
-                spec,
-                undefined,
-                undefined,
-                'benPocket'
-              )) as KubernetesObject;
-              const name = replaceRes.metadata?.name || spec.metadata?.name || 'resource';
-              const updatedYaml = jsYaml.dump(replaceRes);
-              return { result: `configured resource ${spec.kind}/${name}`, yaml: updatedYaml };
-            } catch (replaceErr: unknown) {
-              const rErr = replaceErr as { body?: { message?: string }; message?: string };
-              const msg = rErr.body?.message || rErr.message || 'Replace failed';
-              return { error: msg };
-            }
-          }
-
-          const msg =
-            k8sErr.body?.message || k8sErr.message || (patchErr as Error).message || 'Apply failed';
-          return { error: msg };
+          const verb =
+            existedBefore === undefined ? 'applied' : existedBefore ? 'configured' : 'created';
+          applied.push({ label, verb, yaml: jsYaml.dump(this.toPlainObject(patchRes)) });
+        } catch (patchErr) {
+          const { message } = this.parseK8sError(patchErr);
+          console.warn(`[KubeClientService] Server-Side Apply failed for ${label}:`, message);
+          failed.push({ label, message: message || 'Apply failed' });
         }
       }
+
+      if (failed.length > 0) {
+        const failureSummary = failed.map((f) => `${f.label}: ${f.message}`).join('\n');
+        if (applied.length > 0) {
+          const successSummary = applied.map((a) => `${a.label} ${a.verb}`).join(', ');
+          return { error: `${successSummary}; failed:\n${failureSummary}` };
+        }
+        return { error: failureSummary };
+      }
+
+      return {
+        result: applied.map((a) => `${a.label} ${a.verb}`).join('\n'),
+        yaml: applied.map((a) => a.yaml).join('---\n')
+      };
     } catch (err) {
       console.warn('[KubeClientService] applyResourceYamlDirect failed:', err);
-      return null;
+      return { error: err instanceof Error ? err.message : 'Failed to apply resource YAML' };
     }
   }
 

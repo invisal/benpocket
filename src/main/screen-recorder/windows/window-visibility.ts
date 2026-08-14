@@ -1,4 +1,4 @@
-import { app, type BrowserWindow } from 'electron';
+import { app, screen, type BrowserWindow } from 'electron';
 
 async function waitForWindowHidden(win: BrowserWindow): Promise<void> {
   if (!win.isVisible()) return;
@@ -37,6 +37,44 @@ async function waitForWindowShown(win: BrowserWindow): Promise<void> {
     win.on('show', done);
     if (win.isVisible()) done();
   });
+}
+
+// macOS: dock.hide() is a no-op if called within ~1s of dock.show().
+let lastDockShowAt = 0;
+let hideDockTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Bring back the Dock / taskbar presence (close-to-tray undo, capture restore). */
+export function showAppLauncherIcon(win?: BrowserWindow | null): void {
+  if (win && !win.isDestroyed()) win.setSkipTaskbar(false);
+  if (process.platform !== 'darwin') return;
+  if (hideDockTimer) {
+    clearTimeout(hideDockTimer);
+    hideDockTimer = null;
+  }
+  lastDockShowAt = Date.now();
+  void app.dock?.show();
+}
+
+function hideAppLauncherIcon(): void {
+  if (process.platform !== 'darwin') return;
+  if (hideDockTimer) clearTimeout(hideDockTimer);
+  const wait = Math.max(0, 1100 - (Date.now() - lastDockShowAt));
+  const run = (): void => {
+    hideDockTimer = null;
+    if (app.dock?.isVisible()) app.dock.hide();
+  };
+  if (wait === 0) run();
+  else hideDockTimer = setTimeout(run, wait);
+}
+
+/**
+ * Close (X) → tray: hide the window and drop Dock / taskbar presence so only
+ * the menu-bar / notification-area tray remains.
+ */
+export function withdrawWindowToTray(win: BrowserWindow): void {
+  win.hide();
+  win.setSkipTaskbar(true);
+  hideAppLauncherIcon();
 }
 
 export async function hideCaptureWindow(
@@ -87,10 +125,40 @@ export async function hideCaptureWindow(
  */
 export async function minimizeCaptureWindow(win: BrowserWindow | null): Promise<void> {
   if (!win || win.isMinimized()) return;
+  // Close-to-tray left the window hidden and the Dock gone — restore launcher
+  // presence so dock/taskbar can bring BenPocket back into a shot. Stay hidden
+  // (don't minimize): minimizing a hidden window is flaky across platforms.
+  showAppLauncherIcon(win);
+  if (!win.isVisible()) return;
   if (win.isFocused()) win.blur();
   const minimized = waitForWindowMinimized(win);
   win.minimize();
   await minimized;
+}
+
+export function isCursorOverWindow(win: BrowserWindow): boolean {
+  const point = screen.getCursorScreenPoint();
+  const bounds = win.getBounds();
+  return (
+    point.x >= bounds.x &&
+    point.x < bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y < bounds.y + bounds.height
+  );
+}
+
+/**
+ * Temporarily make `win` ineligible as AppKit's next key window. Closing or
+ * blurring a `type: 'panel'` otherwise promotes the owner and brings BenPocket
+ * forward when the user clicked the desktop (no other app to stay in front).
+ */
+export function suppressWindowActivation(win: BrowserWindow | null): () => void {
+  if (!win || win.isDestroyed()) return () => {};
+  win.setFocusable(false);
+  if (win.isFocused()) win.blur();
+  return () => {
+    if (!win.isDestroyed()) win.setFocusable(true);
+  };
 }
 
 export async function restoreCaptureWindow(
@@ -99,14 +167,20 @@ export async function restoreCaptureWindow(
 ): Promise<void> {
   if (!win) return;
 
+  showAppLauncherIcon(win);
   const shouldFocus = options?.focus ?? true;
 
   if (process.platform === 'darwin') {
-    app.show();
+    if (shouldFocus) {
+      app.show();
+      if (win.isMinimized()) win.restore();
+      if (!win.isVisible()) win.show();
+      win.focus();
+      return;
+    }
     if (win.isMinimized()) win.restore();
-    if (!win.isVisible()) win.show();
-    if (shouldFocus) win.focus();
-    else if (win.isFocused()) win.blur();
+    if (!win.isVisible()) win.showInactive();
+    if (win.isFocused()) win.blur();
     return;
   }
 

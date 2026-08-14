@@ -4,18 +4,14 @@ import { TitleBar } from './TitleBar';
 import { ActivityBar } from './ActivityBar';
 import { RightPanel } from './RightPanel';
 import { StatusBar } from './StatusBar';
-import { useThemeStore } from '../../store/theme.store';
+import { useSyncDocumentTheme } from '../../store/theme.store';
 import { useLayoutStore } from '../../store/layout.store';
 import { ToolTabContents } from '../providers/ToolProvider';
 
 export const AppShell: React.FC = () => {
-  const theme = useThemeStore((state) => state.theme);
+  useSyncDocumentTheme();
 
   const toggleBottomPanel = useLayoutStore((s) => s.toggleBottomPanel);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('light', theme === 'light');
-  }, [theme]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

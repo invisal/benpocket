@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { useRef } from 'react';
 import {
   Ban,
   Captions,
@@ -6,6 +7,7 @@ import {
   Crop,
   Droplets,
   Highlighter,
+  ImageUp,
   MousePointer2,
   MoveUpRight,
   Minus,
@@ -24,6 +26,7 @@ import { Popover } from '@renderer/components/ui/Popover';
 import { Select } from '@renderer/components/ui/Select';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { defaultChipPosition } from '../lib/flatten';
+import { addImageLayerFromBlob } from '../lib/image-layer';
 import {
   BACKGROUND_SIZE_PRESETS,
   DEFAULT_BACKGROUND,
@@ -305,6 +308,7 @@ export function EditorToolbar(): JSX.Element {
   const highlightSquareEnds = useCaptureEditorStore((s) => s.highlightSquareEnds);
   const setHighlightSquareEnds = useCaptureEditorStore((s) => s.setHighlightSquareEnds);
   const unit = useCaptureEditorStore((s) => s.unit);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const anyPenSnap =
     penSnapShapes.line || penSnapShapes.arrow || penSnapShapes.rect || penSnapShapes.circle;
@@ -474,6 +478,28 @@ export function EditorToolbar(): JSX.Element {
             </div>
           </Popover.Content>
         </Popover.Root>
+
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) void addImageLayerFromBlob(file);
+          }}
+        />
+        <RailTooltip label="Add image — or paste">
+          <button
+            type="button"
+            aria-label="Add image"
+            onClick={() => imageInputRef.current?.click()}
+            className={railButtonClass(false)}
+          >
+            <ImageUp size={16} strokeWidth={1.75} />
+          </button>
+        </RailTooltip>
 
         <Popover.Root>
           <RailTooltip label="Background">

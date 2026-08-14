@@ -265,7 +265,6 @@ async function initOverlay(): Promise<void> {
   const payload = await window.screenRecorder?.regionSelect.getBackdrop();
   if (payload) {
     backdrop = await loadBackdropFromPayload(payload);
-    // Image-space crop needs no content-origin settle wait.
     overlayReady = true;
     document.body.style.pointerEvents = 'auto';
     resizeCanvas();

@@ -1,0 +1,14 @@
+export const roleBindingTemplate = `apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: my-serviceaccount
+    namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+`;

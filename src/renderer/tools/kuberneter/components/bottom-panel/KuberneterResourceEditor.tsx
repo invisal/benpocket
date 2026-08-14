@@ -3,11 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import CodeMirror, { EditorView } from '@uiw/react-codemirror';
 import { yaml as yamlLang } from '@codemirror/lang-yaml';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { Save, Check } from 'lucide-react';
-import { DEFAULT_TEMPLATES } from './types';
+import { Save, Check, FileCode, ChevronDown } from 'lucide-react';
+import { DEFAULT_TEMPLATES, TEMPLATE_CATEGORIES } from './types';
 import { useThemeStore } from '@renderer/store/theme.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
 import { Button } from '@renderer/components/ui/Button';
+import { Menu } from '@renderer/components/ui/Menu';
 
 interface KuberneterResourceEditorProps {
   initialYaml?: string;
@@ -116,26 +117,46 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
         {/* Select Template Dropdown */}
         {!isEditMode && (
           <div className="flex items-center gap-2">
-            <select
-              onChange={(e) => handleSelectTemplate(e.target.value)}
-              defaultValue=""
-              className="bg-surface-2 border border-border-dark/60 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-accent cursor-pointer font-sans"
-            >
-              <option value="" disabled>
-                Select Template ...
-              </option>
-              {Object.keys(DEFAULT_TEMPLATES).map((tmpl) => (
-                <option key={tmpl} value={tmpl}>
-                  {tmpl}
-                </option>
-              ))}
-            </select>
+            <Menu.Root>
+              <Menu.Trigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-xs text-foreground font-sans gap-1.5 px-2 bg-surface hover:bg-surface-2 border-border-dark"
+                  >
+                    <FileCode className="size-3 text-muted-foreground" />
+                    <span>Select Template...</span>
+                    <ChevronDown className="size-3 text-muted-foreground" />
+                  </Button>
+                }
+              />
+              <Menu.Content align="end" className="w-56 max-h-72 overflow-y-auto">
+                {TEMPLATE_CATEGORIES.map((category, idx) => (
+                  <Menu.Group key={category.name}>
+                    {idx > 0 && <Menu.Separator />}
+                    <Menu.GroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1">
+                      {category.name}
+                    </Menu.GroupLabel>
+                    {category.templates.map((tmpl) => (
+                      <Menu.Item
+                        key={tmpl.name}
+                        onClick={() => handleSelectTemplate(tmpl.name)}
+                        className="text-xs text-foreground hover:bg-surface-2 focus:bg-surface-2 cursor-pointer px-2 py-1 rounded"
+                      >
+                        {tmpl.name}
+                      </Menu.Item>
+                    ))}
+                  </Menu.Group>
+                ))}
+              </Menu.Content>
+            </Menu.Root>
           </div>
         )}
       </div>
 
       {/* CodeMirror Editor Container */}
-      <div className={`flex-1 min-h-0 relative ${theme === 'dark' ? 'bg-surface' : 'bg-white'}`}>
+      <div className="flex-1 min-h-0 relative bg-surface">
         <CodeMirror
           value={currentContent}
           height="100%"

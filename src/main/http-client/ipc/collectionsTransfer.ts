@@ -11,10 +11,10 @@ import type {
 import { readCollections, writeCollections } from './collections';
 import { readEnvironments, writeEnvironments } from './environments';
 import {
-  exportCollectionToPostman,
-  importPostmanCollection,
-  isLegacyPostmanV1Collection,
-  isPostmanCollectionFile
+  exportCollectionFile,
+  importCollectionFile,
+  isLegacyCollectionV1File,
+  isCollectionFile
 } from '../httpClientFormat';
 import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
@@ -83,8 +83,12 @@ export function registerCollectionTransferHandlers(): void {
         (e) =>
           e.workspaceId === collection.workspaceId && sameEnvironmentName(e.name, collection.name)
       );
-      const postmanFile = exportCollectionToPostman(collection, matchingEnvironment?.variables);
-      await fs.promises.writeFile(result.filePath, JSON.stringify(postmanFile, null, 2), 'utf-8');
+      const collectionFile = exportCollectionFile(collection, matchingEnvironment?.variables);
+      await fs.promises.writeFile(
+        result.filePath,
+        JSON.stringify(collectionFile, null, 2),
+        'utf-8'
+      );
       return { ok: true, filePath: result.filePath };
     }
   );
@@ -111,21 +115,21 @@ export function registerCollectionTransferHandlers(): void {
         return { ok: false, error: `File is not valid JSON. ${SUPPORTED_SCHEMAS_MESSAGE}` };
       }
 
-      if (isLegacyPostmanV1Collection(parsed)) {
+      if (isLegacyCollectionV1File(parsed)) {
         return {
           ok: false,
           error: `This file looks like a Postman Collection Format v1 export, which isn't supported. Please re-export the collection from Postman as v2.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
         };
       }
 
-      if (!isPostmanCollectionFile(parsed)) {
+      if (!isCollectionFile(parsed)) {
         return {
           ok: false,
           error: `File is not a recognized Postman Collection export. ${SUPPORTED_SCHEMAS_MESSAGE}`
         };
       }
 
-      const { collection, schemaVersion, variables } = importPostmanCollection(parsed, workspaceId);
+      const { collection, schemaVersion, variables } = importCollectionFile(parsed, workspaceId);
       const collections = await readCollections();
       collections.push(collection);
       await writeCollections(collections);

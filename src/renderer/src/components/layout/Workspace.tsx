@@ -98,9 +98,9 @@ export const Workspace: React.FC = () => {
         })}
 
       {/* Other tab types — only render the active one */}
-      {(activeTab.type === 'postman' || activeTab.type === 'screenrecorder') && (
+      {(activeTab.type === 'http-client' || activeTab.type === 'screenrecorder') && (
         <div className="flex-1 overflow-hidden p-4 flex flex-col min-h-0 min-w-0 bg-surface">
-          {activeTab.type === 'postman' && <HttpClientWorkspace />}
+          {activeTab.type === 'http-client' && <HttpClientWorkspace />}
           {activeTab.type === 'screenrecorder' && <ScreenRecorderWorkspace />}
         </div>
       )}

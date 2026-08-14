@@ -68,7 +68,7 @@ const tabAcceptsCompletion = Prec.highest(
   ])
 );
 
-// Postman-style body editor: CodeMirror with JSON syntax highlighting (JSON bodies only), a
+// Body editor: CodeMirror with JSON syntax highlighting (JSON bodies only), a
 // Beautify/Minify + valid-JSON indicator toolbar, and {{variable}} autocomplete wired in above.
 export const BodyEditor: React.FC<BodyEditorProps> = ({
   value,

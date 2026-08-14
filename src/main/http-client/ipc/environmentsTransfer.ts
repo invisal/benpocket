@@ -10,9 +10,9 @@ import type {
 } from '../../../preload/http-client/types';
 import { readEnvironments, writeEnvironments } from './environments';
 import {
-  exportEnvironmentToPostman,
-  importPostmanEnvironment,
-  isPostmanEnvironmentFile
+  exportEnvironmentFile,
+  importEnvironmentFile,
+  isEnvironmentFile
 } from '../httpClientFormat';
 import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
@@ -47,8 +47,12 @@ export function registerEnvironmentTransferHandlers(): void {
         : await dialog.showSaveDialog(saveOptions);
       if (result.canceled || !result.filePath) return { ok: true, canceled: true };
 
-      const postmanFile = exportEnvironmentToPostman(environment);
-      await fs.promises.writeFile(result.filePath, JSON.stringify(postmanFile, null, 2), 'utf-8');
+      const environmentFile = exportEnvironmentFile(environment);
+      await fs.promises.writeFile(
+        result.filePath,
+        JSON.stringify(environmentFile, null, 2),
+        'utf-8'
+      );
       return { ok: true, filePath: result.filePath };
     }
   );
@@ -75,14 +79,14 @@ export function registerEnvironmentTransferHandlers(): void {
         return { ok: false, error: 'File is not valid JSON.' };
       }
 
-      if (!isPostmanEnvironmentFile(parsed)) {
+      if (!isEnvironmentFile(parsed)) {
         return {
           ok: false,
           error: 'File is not a recognized Postman Environment export (.postman_environment.json).'
         };
       }
 
-      const draft = importPostmanEnvironment(parsed);
+      const draft = importEnvironmentFile(parsed);
       const environments = await readEnvironments();
       const existing = environments.find(
         (e) => e.workspaceId === workspaceId && sameEnvironmentName(e.name, draft.name)

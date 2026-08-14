@@ -1,4 +1,4 @@
-// Small helpers shared by the Postman collection/environment file-export handlers
+// Small helpers shared by the collection/environment file-export handlers
 // (ipc/collectionsTransfer.ts and ipc/environmentsTransfer.ts).
 
 /** Case-insensitive, trimmed match — good enough to pair a collection/environment with "its" counterpart by name. */

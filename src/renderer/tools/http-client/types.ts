@@ -13,8 +13,8 @@ export interface SavedBinding {
   requestId: string;
 }
 
-/** Shape a Postman tab's `meta` may carry when opened pre-filled (from sidebar history or a saved request). */
-export interface PostmanTabSeed {
+/** Shape a request tab's `meta` may carry when opened pre-filled (from sidebar history or a saved request). */
+export interface RequestTabSeed {
   /** Which protocol tab to land on when opening this seed. Defaults to 'HTTP' when omitted. */
   protocol?: RequestProtocol;
   method?: HttpMethod;

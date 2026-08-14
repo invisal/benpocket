@@ -13,7 +13,7 @@ function createDefaultProtocol(tabId: string): ProtocolTab {
 }
 
 const protocolStore = createTabScopedStore<ProtocolTab>(createDefaultProtocol, {
-  key: (tabId) => `postman-protocol-${tabId}`,
+  key: (tabId) => `request-protocol-${tabId}`,
   serialize: (s) => s,
   deserialize: (raw) => (raw === 'WEBSOCKET' ? 'WEBSOCKET' : 'HTTP')
 });
@@ -39,7 +39,7 @@ export interface UseApiClientOptions {
 }
 
 /**
- * Composes a Postman tab's independent HTTP and WebSocket engines behind one
+ * Composes a request tab's independent HTTP and WebSocket engines behind one
  * protocol switch + saved-request binding. Neither engine depends on the
  * other; this hook only wires the shared "which protocol tab is active" and
  * "which saved request is this bound to" concerns on top.
@@ -56,7 +56,7 @@ export function useApiClient(tabId: string, options?: UseApiClientOptions): UseA
   return { protocol, setProtocol, http, ws, binding, bindTo };
 }
 
-/** Call when a Postman tab is closed to release its cached client state. */
+/** Call when a request tab is closed to release its cached client state. */
 export function disposeApiClientTab(tabId: string): void {
   disposeHttpTab(tabId);
   disposeWebSocketTab(tabId);

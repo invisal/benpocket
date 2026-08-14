@@ -31,13 +31,15 @@ import {
   removeRequest,
   resolveContainer
 } from '../collectionsTree';
+import { migrateStoreFile } from '../storeFile';
 
 function storeFilePath(): string {
-  return path.join(app.getPath('userData'), 'postman-collections.json');
+  return path.join(app.getPath('userData'), 'http-client-collections.json');
 }
 
 export async function readCollections(): Promise<Collection[]> {
   try {
+    await migrateStoreFile('postman-collections.json', 'http-client-collections.json');
     const raw = await fs.promises.readFile(storeFilePath(), 'utf-8');
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.map(normalizeCollection) : [];

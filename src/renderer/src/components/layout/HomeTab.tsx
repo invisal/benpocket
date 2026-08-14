@@ -19,7 +19,7 @@ export const HomeTab: React.FC = () => {
       badge: 'Kubernetes IDE'
     },
     {
-      id: 'postman' as const,
+      id: 'http-client' as const,
       name: 'HTTP Request',
       description:
         'Compose API requests, trigger mock response payloads, customize HTTP headers, and inspect JSON bodies.',

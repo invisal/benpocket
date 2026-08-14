@@ -220,7 +220,7 @@ function generatePythonRequests(req: ResolvedRequest): string {
   return lines.join('\n');
 }
 
-/** Generates a copy-pasteable code snippet for the current request draft, mirroring Postman's "Code" panel. */
+/** Generates a copy-pasteable code snippet for the current request draft. */
 export function generateSnippet(language: SnippetLanguage, input: SnippetInput): string {
   const req = resolveRequest(input);
   switch (language) {

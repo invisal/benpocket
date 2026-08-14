@@ -10,13 +10,15 @@ import type {
 } from '../../../preload/http-client/types';
 import { readCollections, writeCollections } from './collections';
 import { readEnvironments, writeEnvironments } from './environments';
+import { migrateStoreFile } from '../storeFile';
 
 function storeFilePath(): string {
-  return path.join(app.getPath('userData'), 'postman-workspaces.json');
+  return path.join(app.getPath('userData'), 'http-client-workspaces.json');
 }
 
 async function readWorkspaces(): Promise<Workspace[]> {
   try {
+    await migrateStoreFile('postman-workspaces.json', 'http-client-workspaces.json');
     const raw = await fs.promises.readFile(storeFilePath(), 'utf-8');
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];

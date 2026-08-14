@@ -1,7 +1,7 @@
 import { type ElectronAPI } from '@electron-toolkit/preload';
 import type { ScreenRecorderApi } from './screen-recorder/api';
 import type { KuberneterApi } from './kuberneter/api';
-import type { PostmanBridge } from './http-client/api';
+import type { HttpClientBridge } from './http-client/api';
 import type { FileExplorerApi } from './file-explorer/api';
 import type { ImageEditorApi } from './image-editor/api';
 import type { ProfilesApi } from './store/api';
@@ -40,6 +40,6 @@ declare global {
         path: string;
         tree: FileTreeNode | null;
       } | null>;
-    } & PostmanBridge;
+    } & HttpClientBridge;
   }
 }

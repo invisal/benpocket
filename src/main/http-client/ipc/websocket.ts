@@ -15,7 +15,7 @@ interface ManagedConnection {
 }
 
 // Live WebSocket connections keyed by a renderer-generated connection id
-// (the Postman client uses its tab id), so state survives tab switches
+// (the HTTP client tool uses its tab id), so state survives tab switches
 // and re-renders in the renderer without re-connecting.
 const connections = new Map<string, ManagedConnection>();
 

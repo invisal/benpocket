@@ -5,7 +5,7 @@ const VARIABLE_PATTERN = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
 // Substitutes {{name}} placeholders with the active environment's matching
 // variable value. Unknown/disabled variables are left untouched (visible as
-// literal {{name}}) rather than silently emptied, matching Postman's UX.
+// literal {{name}}) rather than silently emptied.
 export function resolveVariables(text: string, variables: KeyValuePair[]): string {
   if (!text || text.indexOf('{{') === -1) return text;
   const lookup = new Map(

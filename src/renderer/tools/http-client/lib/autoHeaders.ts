@@ -33,7 +33,7 @@ function multipartContentType(body: string): string | undefined {
 }
 
 // Kept in sync with DEFAULT_HEADERS in src/main/http-client/ipc/http.ts - sent on
-// every request regardless of body, same as Postman's own "hidden" defaults.
+// every request regardless of body.
 const DEFAULT_HEADERS: AutoHeader[] = [
   { key: 'User-Agent', value: 'BenPocket-HTTPClient/1.0' },
   { key: 'Accept', value: '*/*' },
@@ -42,7 +42,7 @@ const DEFAULT_HEADERS: AutoHeader[] = [
 ];
 
 /**
- * Headers the request will carry without appearing as editable rows - Postman-style
+ * Headers the request will carry without appearing as editable rows - shown as
  * "N hidden" headers, derived from the URL/method/body the same way the main
  * process derives them at send time.
  */

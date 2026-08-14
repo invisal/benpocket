@@ -8,6 +8,7 @@ import {
 } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
+import { showAppLauncherIcon } from './screen-recorder/windows/window-visibility';
 
 /**
  * App-lifetime tray menu: Open, New Recording, Screen Capture, Quit.
@@ -31,6 +32,7 @@ export function setTrayMainWindow(win: BrowserWindow): void {
 function showMainWindow(): void {
   const win = getMainWindow();
   if (!win) return;
+  showAppLauncherIcon(win);
   if (win.isMinimized()) win.restore();
   win.show();
   win.focus();

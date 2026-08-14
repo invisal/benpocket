@@ -35,6 +35,10 @@ import {
   isCaptureToolbarSessionActive
 } from './screen-recorder/windows/capture-toolbar-window';
 import { destroyCaptureSourcePickerOverlay } from './screen-recorder/windows/capture-source-picker-overlay-window';
+import {
+  showAppLauncherIcon,
+  withdrawWindowToTray
+} from './screen-recorder/windows/window-visibility';
 import { registerDisplayMediaHandler } from './screen-recorder/security/display-media-handler';
 import { killActiveNativeRecording } from './screen-recorder/capture/native/recording-helper';
 import { registerKuberneterHandlers } from './kuberneter';
@@ -82,6 +86,7 @@ if (gotSingleInstanceLock) {
       // Dock / taskbar: bring BenPocket forward for include-in-shot. Re-enable
       // focus if region-select left the owner non-focusable.
       owner.setFocusable(true);
+      showAppLauncherIcon(owner);
       if (owner.isMinimized()) owner.restore();
       owner.show();
       owner.focus();
@@ -90,6 +95,7 @@ if (gotSingleInstanceLock) {
     }
     const win = BrowserWindow.getAllWindows()[0];
     if (!win || win.isDestroyed()) return;
+    showAppLauncherIcon(win);
     if (win.isMinimized()) win.restore();
     win.show();
     win.focus();
@@ -122,11 +128,12 @@ if (gotSingleInstanceLock) {
       mainWindow.show();
     });
 
-    // Close (X) hides to tray; real quit only via tray Quit / Cmd+Q / app menu.
+    // Close (X) hides to tray and drops Dock/taskbar presence; real quit only
+    // via tray Quit / Cmd+Q / app menu.
     mainWindow.on('close', (event) => {
       if (!isQuitting) {
         event.preventDefault();
-        mainWindow.hide();
+        withdrawWindowToTray(mainWindow);
       }
     });
 

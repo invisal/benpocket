@@ -39,6 +39,44 @@ async function waitForWindowShown(win: BrowserWindow): Promise<void> {
   });
 }
 
+// macOS: dock.hide() is a no-op if called within ~1s of dock.show().
+let lastDockShowAt = 0;
+let hideDockTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Bring back the Dock / taskbar presence (close-to-tray undo, capture restore). */
+export function showAppLauncherIcon(win?: BrowserWindow | null): void {
+  if (win && !win.isDestroyed()) win.setSkipTaskbar(false);
+  if (process.platform !== 'darwin') return;
+  if (hideDockTimer) {
+    clearTimeout(hideDockTimer);
+    hideDockTimer = null;
+  }
+  lastDockShowAt = Date.now();
+  void app.dock?.show();
+}
+
+function hideAppLauncherIcon(): void {
+  if (process.platform !== 'darwin') return;
+  if (hideDockTimer) clearTimeout(hideDockTimer);
+  const wait = Math.max(0, 1100 - (Date.now() - lastDockShowAt));
+  const run = (): void => {
+    hideDockTimer = null;
+    if (app.dock?.isVisible()) app.dock.hide();
+  };
+  if (wait === 0) run();
+  else hideDockTimer = setTimeout(run, wait);
+}
+
+/**
+ * Close (X) → tray: hide the window and drop Dock / taskbar presence so only
+ * the menu-bar / notification-area tray remains.
+ */
+export function withdrawWindowToTray(win: BrowserWindow): void {
+  win.hide();
+  win.setSkipTaskbar(true);
+  hideAppLauncherIcon();
+}
+
 export async function hideCaptureWindow(
   win: BrowserWindow | null,
   options?: { mainOnly?: boolean; settleMs?: number }
@@ -87,6 +125,11 @@ export async function hideCaptureWindow(
  */
 export async function minimizeCaptureWindow(win: BrowserWindow | null): Promise<void> {
   if (!win || win.isMinimized()) return;
+  // Close-to-tray left the window hidden and the Dock gone — restore launcher
+  // presence so dock/taskbar can bring BenPocket back into a shot. Stay hidden
+  // (don't minimize): minimizing a hidden window is flaky across platforms.
+  showAppLauncherIcon(win);
+  if (!win.isVisible()) return;
   if (win.isFocused()) win.blur();
   const minimized = waitForWindowMinimized(win);
   win.minimize();
@@ -124,6 +167,7 @@ export async function restoreCaptureWindow(
 ): Promise<void> {
   if (!win) return;
 
+  showAppLauncherIcon(win);
   const shouldFocus = options?.focus ?? true;
 
   if (process.platform === 'darwin') {

@@ -7,22 +7,12 @@
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const target = process.argv[2];
 
 const targets = {
-  macos: {
-    platform: 'darwin',
-    src: (arch) =>
-      join(
-        rootDir,
-        'native/macos-recorder/.build',
-        arch === 'arm64' ? 'arm64-apple-macosx' : 'x86_64-apple-macosx',
-        'release/benpocket-macos-recorder-helper'
-      ),
-    fileName: 'benpocket-macos-recorder-helper'
-  },
   windows: {
     platform: 'win32',
     src: () =>
@@ -36,10 +26,47 @@ const targets = {
   }
 };
 
+if (target === 'macos') {
+  // build:native:macos compiles both slices separately (`swift build --arch
+  // arm64` then `--arch x86_64`) rather than one `--arch arm64 --arch
+  // x86_64` invocation -- SwiftPM routes multi-arch requests through a
+  // different build system (Apple/XCBuild, `.build/apple/...`) that fails
+  // on this package's `main.swift` + `@main` combo ("'main' attribute
+  // cannot be used in a module that contains top-level code"). Two
+  // single-arch builds use the same plain SwiftPM path that already works,
+  // then get lipo'd into one universal binary here. Without this, a
+  // release built on GitHub's arm64-only `macos-latest` runner would ship
+  // an arm64-only helper -- Intel Mac users would get no matching
+  // candidate in findHelperPath() and silently fall back to MediaRecorder.
+  const fileName = 'benpocket-macos-recorder-helper';
+  const arm64Src = join(
+    rootDir,
+    'native/macos-recorder/.build/arm64-apple-macosx/release',
+    fileName
+  );
+  const x64Src = join(
+    rootDir,
+    'native/macos-recorder/.build/x86_64-apple-macosx/release',
+    fileName
+  );
+
+  for (const arch of ['darwin-arm64', 'darwin-x64']) {
+    const destDir = join(rootDir, 'native/bin', arch);
+    mkdirSync(destDir, { recursive: true });
+    const dest = join(destDir, fileName);
+    const result = spawnSync('lipo', ['-create', arm64Src, x64Src, '-output', dest], {
+      stdio: 'inherit'
+    });
+    if (result.status !== 0) process.exit(result.status ?? 1);
+    console.log(`[package-native-helper] merged universal binary -> ${dest}`);
+  }
+  process.exit(0);
+}
+
 const entry = targets[target];
 if (!entry) {
   console.error(
-    `Unknown native helper target "${target}" -- expected one of: ${Object.keys(targets).join(', ')}`
+    `Unknown native helper target "${target}" -- expected one of: macos, ${Object.keys(targets).join(', ')}`
   );
   process.exit(1);
 }

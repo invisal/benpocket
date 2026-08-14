@@ -85,7 +85,10 @@ export default defineConfig({
     plugins: [
       react(),
       tailwindcss(),
-      visualizer({ filename: 'stats-renderer.html', template: 'treemap', gzipSize: true })
+      visualizer({ filename: 'stats-renderer.html', template: 'treemap', gzipSize: true }),
+      // Machine-readable twin of the treemap above -- scripts/report-build-size.mjs
+      // sums nodeParts[*].renderedLength (JS chunks only, no CSS/images) out of this.
+      visualizer({ filename: 'stats-renderer.json', template: 'raw-data' })
     ]
   }
 });

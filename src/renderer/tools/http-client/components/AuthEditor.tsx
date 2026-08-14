@@ -17,7 +17,7 @@ interface AuthEditorProps {
   onChange: (auth: HttpAuth) => void;
 }
 
-/** Postman-style Authorization tab: pick an auth type, fill its fields, values support `{{var}}`. */
+/** Authorization tab: pick an auth type, fill its fields, values support `{{var}}`. */
 export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
   const variables = useActiveEnvironmentVariables();
 

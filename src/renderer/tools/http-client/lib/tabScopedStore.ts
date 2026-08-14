@@ -25,7 +25,7 @@ export interface TabScopedStore<T> {
  * disk under userData automatically), so request drafts survive full app
  * restarts, not just in-session tab switches.
  *
- * Each Postman engine (HTTP, WebSocket, ...) creates its own independent
+ * Each request-tab engine (HTTP, WebSocket, ...) creates its own independent
  * store instance from this factory - it holds no domain state itself.
  */
 export function createTabScopedStore<T>(

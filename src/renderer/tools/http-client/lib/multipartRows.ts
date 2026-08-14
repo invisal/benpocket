@@ -23,7 +23,7 @@ function isBlank(row: MultipartRow): boolean {
   return row.key.trim() === '' && row.fieldType === 'text' && row.value.trim() === '';
 }
 
-// Postman-style UX: always keep exactly one trailing empty row ready to type into.
+// Always keep exactly one trailing empty row ready to type into.
 export function withTrailingMultipartRow(rows: MultipartRow[]): MultipartRow[] {
   const last = rows[rows.length - 1];
   if (!last || !isBlank(last)) return [...rows, blankMultipartRow()];

@@ -24,7 +24,7 @@ interface DropdownRect {
   width: number;
 }
 
-// Postman-style "{{variableName}}" autocomplete for free-text fields (request URL,
+// "{{variableName}}" autocomplete for free-text fields (request URL,
 // header/param values, ...). Detects an in-progress `{{` token around the caret and
 // offers the active environment's variable names, replacing the token on selection.
 // Structurally mirrors KeySuggestInput (portal + fixed positioning, keyboard nav),

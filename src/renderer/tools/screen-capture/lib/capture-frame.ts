@@ -323,6 +323,32 @@ export function findScreenSourceForRegion(
   return matched ?? screens[0] ?? null;
 }
 
+/** Capture an already-chosen region (toolbar Area picker already ran selectRegion). */
+export async function captureSelectedRegion(
+  sources: CaptureSource[],
+  selection: CaptureRegionSelection,
+  options?: { hideApp?: boolean }
+): Promise<Blob> {
+  const hideApp = options?.hideApp ?? false;
+  try {
+    if (hideApp) {
+      await hideMainWindow();
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+    }
+    if (window.api?.platform === 'darwin') {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
+      const buffer = await window.screenRecorder!.screenshot.captureRegion(selection.rect);
+      return new Blob([buffer], { type: 'image/png' });
+    }
+    const source = findScreenSourceForRegion(sources, selection);
+    if (!source) throw new Error('No display matches the selected region.');
+    const fullBlob = await captureFromSource(source, { hideApp: false });
+    return await cropPngBlob(fullBlob, selection);
+  } finally {
+    if (hideApp) await showApp({ focus: true });
+  }
+}
+
 export type RegionCaptureStep = 'picker' | 'region' | 'processing';
 
 /** Drag a screen region, capture the matching display, and return a cropped PNG. */

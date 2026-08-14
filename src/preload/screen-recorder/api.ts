@@ -27,6 +27,12 @@ import type {
 } from '@shared/recorder-toolbar';
 import type { SourcePickerOverlayOpenOptions } from '@shared/source-picker-overlay';
 import type {
+  CaptureToolbarCapturePayload,
+  CaptureToolbarOpenPayload
+} from '@shared/capture-toolbar';
+import type { CaptureDelaySetting } from '@shared/capture-delay';
+import type { CaptureSourcePickerOverlayOpenOptions } from '@shared/capture-source-picker-overlay';
+import type {
   NativeRecordingRequest,
   NativeRecordingSupport,
   NativeRecordingStartResult,
@@ -307,6 +313,56 @@ export const screenRecorderApi = {
   sourcePickerOverlay: {
     /** Called by the overlay window itself (Esc / click outside a card, or once a started recording's result has been handled -- see SourcePickerOverlayApp.tsx). Closes the overlay and restores the toolbar window either way. */
     cancel: (): void => ipcRenderer.send(IpcChannels.SourcePickerOverlayCancel)
+  },
+  captureToolbar: {
+    open: (payload: CaptureToolbarOpenPayload): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.CaptureToolbarOpen, payload),
+    isSessionActive: (): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.CaptureToolbarIsSessionActive),
+    cancel: (): void => ipcRenderer.send(IpcChannels.CaptureToolbarCancel),
+    getCurrentDisplayBounds: (): Promise<ScreenRect | null> =>
+      ipcRenderer.invoke(IpcChannels.CaptureToolbarGetCurrentDisplayBounds),
+    requestCapture: (payload: CaptureToolbarCapturePayload): void =>
+      ipcRenderer.send(IpcChannels.CaptureToolbarCapture, payload),
+    setDelay: (delaySeconds: CaptureDelaySetting): void =>
+      ipcRenderer.send(IpcChannels.CaptureToolbarDelayChanged, delaySeconds),
+    onCountdown: (callback: (payload: CaptureToolbarCapturePayload) => void): (() => void) => {
+      const listener = (_event: unknown, payload: CaptureToolbarCapturePayload): void =>
+        callback(payload);
+      ipcRenderer.on(IpcChannels.CaptureToolbarCountdown, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarCountdown, listener);
+    },
+    reportCaptured: (): void => ipcRenderer.send(IpcChannels.CaptureToolbarCaptured),
+    onClosed: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.CaptureToolbarClosed, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarClosed, listener);
+    },
+    onCaptureRequested: (
+      callback: (payload: CaptureToolbarCapturePayload) => void
+    ): (() => void) => {
+      const listener = (_event: unknown, payload: CaptureToolbarCapturePayload): void =>
+        callback(payload);
+      ipcRenderer.on(IpcChannels.CaptureToolbarCaptureRequested, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarCaptureRequested, listener);
+    },
+    onDelayChanged: (callback: (delaySeconds: CaptureDelaySetting) => void): (() => void) => {
+      const listener = (_event: unknown, delaySeconds: CaptureDelaySetting): void =>
+        callback(delaySeconds);
+      ipcRenderer.on(IpcChannels.CaptureToolbarDelayChanged, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CaptureToolbarDelayChanged, listener);
+    },
+    onSourcePickerClosed: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(IpcChannels.CaptureSourcePickerOverlayClosed, listener);
+      return () =>
+        ipcRenderer.removeListener(IpcChannels.CaptureSourcePickerOverlayClosed, listener);
+    },
+    openSourcePicker: (options: CaptureSourcePickerOverlayOpenOptions): Promise<void> =>
+      ipcRenderer.invoke(IpcChannels.CaptureSourcePickerOverlayOpen, options)
+  },
+  captureSourcePickerOverlay: {
+    cancel: (): void => ipcRenderer.send(IpcChannels.CaptureSourcePickerOverlayCancel)
   }
 };
 

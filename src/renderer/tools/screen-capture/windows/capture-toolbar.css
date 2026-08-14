@@ -1,0 +1,10 @@
+/*
+ * main.css paints html/body/#root with an opaque editor background -- this
+ * window is a transparent always-on-top pill. Imported after main.css so it
+ * wins the cascade.
+ */
+html,
+body,
+#root {
+  background: transparent !important;
+}

@@ -8,21 +8,21 @@ const MIN_BOTTOM_PANEL_HEIGHT = 100;
 export interface Tab {
   id: string;
   title: string;
-  type: 'kuberneter' | 'postman' | 'screenrecorder' | 'home';
+  type: 'kuberneter' | 'http-client' | 'screenrecorder' | 'home';
   instanceId: string;
-  /** Tool-specific tab seed data (e.g. PostmanTabSeed). Each tool narrows/casts this at its own read site. */
+  /** Tool-specific tab seed data (e.g. RequestTabSeed). Each tool narrows/casts this at its own read site. */
   meta?: unknown;
   isPreview?: boolean;
 }
 
 export interface ActivityInstance {
   id: string;
-  type: 'kuberneter' | 'postman' | 'screenrecorder';
+  type: 'kuberneter' | 'http-client' | 'screenrecorder';
   title: string;
 }
 
 interface LayoutState {
-  activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null;
+  activeActivity: 'kuberneter' | 'http-client' | 'screenrecorder' | null;
   isRightPanelOpen: boolean;
   rightPanelWidth: number;
 
@@ -62,7 +62,7 @@ interface LayoutState {
 
   // Instance Lifecycle Actions
   addActivityInstance: (
-    type: 'kuberneter' | 'postman' | 'screenrecorder',
+    type: 'kuberneter' | 'http-client' | 'screenrecorder',
     customId?: string,
     KuberneteContext?: { cluster: string; configPath: string; namespace?: string }
   ) => void;
@@ -237,7 +237,7 @@ export const useLayoutStore = create<LayoutState>()(
           const instanceId = customId || `${type}-${Date.now()}`;
           const appNames = {
             kuberneter: 'Kuberneter',
-            postman: 'HTTP Client',
+            'http-client': 'HTTP Client',
             screenrecorder: 'ScreenRecorder'
           };
           const title = appNames[type];
@@ -262,8 +262,8 @@ export const useLayoutStore = create<LayoutState>()(
                 meta: { resource: 'overview' }
               };
             }
-          } else if (type === 'postman') {
-            defaultTabId = `postman-req-${instanceId}`;
+          } else if (type === 'http-client') {
+            defaultTabId = `http-client-req-${instanceId}`;
             defaultTab = {
               id: defaultTabId,
               title: 'New API Request',
@@ -301,7 +301,7 @@ export const useLayoutStore = create<LayoutState>()(
           const filteredTabs = state.openTabs.filter((t) => t.instanceId !== id);
 
           let nextInstanceId: string | 'home' = 'home';
-          let nextActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null = null;
+          let nextActivity: 'kuberneter' | 'http-client' | 'screenrecorder' | null = null;
           let nextActiveTabId: string | null = null;
 
           if (state.activeInstanceId === id) {
@@ -335,7 +335,7 @@ export const useLayoutStore = create<LayoutState>()(
 
       setActiveInstanceId: (id) =>
         set((state) => {
-          let activeActivity: 'kuberneter' | 'postman' | 'screenrecorder' | null = null;
+          let activeActivity: 'kuberneter' | 'http-client' | 'screenrecorder' | null = null;
           let nextActiveTabId: string | null = null;
 
           if (id !== 'home') {
@@ -359,6 +359,26 @@ export const useLayoutStore = create<LayoutState>()(
     }),
     {
       name: 'craftbox-layout',
+      version: 1,
+      // v0 -> v1: the HTTP client tool's type discriminator was renamed from 'postman' to
+      // 'http-client'. Rewrite any persisted tabs/instances still carrying the old value.
+      migrate: (persisted, version) => {
+        if (version >= 1) return persisted;
+        const state = persisted as {
+          openTabs?: { type: string }[];
+          activeInstances?: { type: string }[];
+          activeActivity?: string;
+        };
+        const fixType = (type: string): string => (type === 'postman' ? 'http-client' : type);
+        return {
+          ...state,
+          openTabs: state.openTabs?.map((t) => ({ ...t, type: fixType(t.type) })),
+          activeInstances: state.activeInstances?.map((i) => ({ ...i, type: fixType(i.type) })),
+          activeActivity: state.activeActivity
+            ? fixType(state.activeActivity)
+            : state.activeActivity
+        };
+      },
       partialize: (state) => ({
         openTabs: state.openTabs,
         activeTabId: state.activeTabId,

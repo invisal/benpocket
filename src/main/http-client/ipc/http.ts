@@ -106,11 +106,11 @@ async function buildMultipartBody(fields: MultipartField[]): Promise<FormData> {
   return formData;
 }
 
-// Postman sends these on every request regardless of body, and shows them as
-// "hidden" headers in its Headers tab - matched here (and in autoHeaders.ts) so
-// the request behaves the same way our UI says it does. Node's own fetch/undici
-// already sends its own defaults for these, but they're runtime-dependent (e.g.
-// User-Agent: "node"), so they're pinned to fixed values instead of left implicit.
+// Sent on every request regardless of body, and shown as "hidden" headers in the
+// Headers tab - matched here (and in autoHeaders.ts) so the request behaves the
+// same way our UI says it does. Node's own fetch/undici already sends its own
+// defaults for these, but they're runtime-dependent (e.g. User-Agent: "node"),
+// so they're pinned to fixed values instead of left implicit.
 const DEFAULT_HEADERS: Record<string, string> = {
   'User-Agent': 'BenPocket-HTTPClient/1.0',
   Accept: '*/*',

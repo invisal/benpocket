@@ -8,9 +8,10 @@ import {
 } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
+import { showAppLauncherIcon } from './screen-recorder/windows/window-visibility';
 
 /**
- * App-lifetime tray with a single menu: New Recording, Screen Capture, Quit.
+ * App-lifetime tray menu: Open, New Recording, Screen Capture, Quit.
  * On Linux, StatusNotifierItem does not emit `right-click` and
  * `popUpContextMenu` is a no-op — menus only work via `setContextMenu`.
  * Kept as module state because Electron destroys the OS tray icon if the
@@ -31,6 +32,7 @@ export function setTrayMainWindow(win: BrowserWindow): void {
 function showMainWindow(): void {
   const win = getMainWindow();
   if (!win) return;
+  showAppLauncherIcon(win);
   if (win.isMinimized()) win.restore();
   win.show();
   win.focus();
@@ -44,6 +46,8 @@ function sendToMainWindow(channel: string, ...args: unknown[]): void {
 
 function trayMenuTemplate(): MenuItemConstructorOptions[] {
   return [
+    { label: 'Open benpocket', click: () => showMainWindow() },
+    { type: 'separator' },
     {
       label: 'New Recording',
       // Deliberately doesn't show/focus the main window first -- opening the
@@ -55,9 +59,15 @@ function trayMenuTemplate(): MenuItemConstructorOptions[] {
     {
       label: 'Screen Capture',
       click: () => {
-        // Wayland: don't flash the window — Capture auto-starts the portal
-        // picker and hideApp will restore focus when done.
-        if (!usesOsCapturePicker()) showMainWindow();
+        if (usesOsCapturePicker()) {
+          // Wayland: no pill — open the tool so the user can set a timer
+          // before Capture (portal). Showing the window is intentional.
+          showMainWindow();
+          sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
+          return;
+        }
+        // Pill platforms: don't flash the main window — openCaptureToolbarFor
+        // minimizes the owner the same way New Recording does.
         sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
       }
     },

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -22,3 +23,11 @@ export const useThemeStore = create<ThemeState>()(
     { name: 'craftbox-theme' }
   )
 );
+
+/** Dark is the unclassed default; `.light` on <html> switches tokens (see main.css). */
+export function useSyncDocumentTheme(): void {
+  const theme = useThemeStore((s) => s.theme);
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light');
+  }, [theme]);
+}

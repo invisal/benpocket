@@ -78,8 +78,8 @@ type DragMove = (dxImg: number, dyImg: number, event: PointerEvent) => void;
 
 /**
  * Inline editor for a text annotation. Keystrokes stream into the store live
- * (untracked, so the clipboard auto-copy sees text without waiting for a
- * commit); Enter/blur/Escape finalize exactly once. No commit-on-unmount:
+ * (untracked, so the stage preview updates without waiting for a commit);
+ * Enter/blur/Escape finalize exactly once. No commit-on-unmount:
  * StrictMode's simulated effect cleanup would run it with an empty value
  * right after mount and delete the annotation. Instead, every path that
  * unmounts this input without a native blur (placing a second text mid-edit)

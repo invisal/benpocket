@@ -200,45 +200,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     return () => window.removeEventListener('paste', onPaste);
   }, [phase, openImage]);
 
-  // Keeps the clipboard in sync with the editor: every annotation or
-  // corner-radius change re-flattens and copies, debounced so a drag doesn't
-  // re-encode a full-resolution PNG on every pointermove frame.
-  useEffect(() => {
-    if (phase !== 'result' || !previewBlob) return;
-
-    let timer: number | undefined;
-    // Guards against an older, slower flatten finishing after a newer one
-    // and overwriting the clipboard with stale content.
-    let generation = 0;
-
-    const unsubscribe = useCaptureEditorStore.subscribe((state, previous) => {
-      if (
-        state.annotations === previous.annotations &&
-        state.cornerRadius === previous.cornerRadius &&
-        state.crop === previous.crop &&
-        state.background === previous.background &&
-        state.watermark === previous.watermark
-      ) {
-        return;
-      }
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        generation += 1;
-        const current = generation;
-        void flattenFromEditorState(previewBlob)
-          .then((blob) => (current === generation ? copyAfterCapture(blob) : true))
-          .then((copied) => {
-            if (!copied) console.error('Could not copy edited screenshot to clipboard.');
-          });
-      }, 600);
-    });
-
-    return () => {
-      unsubscribe();
-      window.clearTimeout(timer);
-    };
-  }, [phase, previewBlob]);
-
   const finishCapture = async (blob: Blob | null): Promise<void> => {
     if (!blob) {
       setPhase('idle');

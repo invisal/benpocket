@@ -57,11 +57,11 @@ Shared with main/preload (not under this directory):
 
 When `window.api.usesOsCapturePicker` is true (Linux Wayland), the toolbar is skipped **and the footer shows only one "Capture" button** — GNOME's native picker already offers screen/window/selection in one UI.
 
-| Phase       | macOS / Windows / X11                                                              | Wayland                      |
-| ----------- | ---------------------------------------------------------------------------------- | ---------------------------- |
+| Phase       | macOS / Windows / X11                                                                                      | Wayland                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | `idle`      | Waiting copy + Open image + **Capture** (minimizes app, opens the pill). Dock / taskbar to show BenPocket. | Title + **Capture** (portal) |
-| `capturing` | Hidden header; “Capturing…”                                                        | Portal / region message      |
-| `result`    | **Preview** + Copy / Save / Capture again                                          | same                         |
+| `capturing` | Hidden header; “Capturing…”                                                                                | Portal / region message      |
+| `result`    | **Preview** + Copy / Save / Capture again                                                                  | same                         |
 
 **Capture again** resets to `idle` with the **Capture** button (Wayland: same). The pill opens only when Capture is clicked.
 
@@ -75,12 +75,12 @@ The pill fetches `getCaptureSources()` itself (do not block window open on thumb
 
 ## Cross-platform summary
 
-| Action              | macOS / Windows / Linux X11                                     | Linux Wayland (xdg-desktop-portal)                                                                                                     |
-| ------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **Capture**         | Minimize app → toolbar overlay → main-process PNG               | Same as Capture region below — there's only one button on Wayland                                                                      |
-| **Capture region**  | Pill Area → overlay → PNG + crop                                | Portal `Screenshot(interactive: true)` — hide our window, GNOME's own screen/window/selection picker returns the final pixels directly |
-| Source grid         | Overlay window list (`getCaptureSources`)                       | No — OS portal instead                                                                                                                 |
-| Hide on full screen | Yes — Capture minimizes BenPocket; restore from dock / taskbar to include it. Pill uses `setContentProtection` | Yes, always — our own window would otherwise sit on top of GNOME's picker |
+| Action              | macOS / Windows / Linux X11                                                                                    | Linux Wayland (xdg-desktop-portal)                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Capture**         | Minimize app → toolbar overlay → main-process PNG                                                              | Same as Capture region below — there's only one button on Wayland                                                                      |
+| **Capture region**  | Pill Area → overlay → PNG + crop                                                                               | Portal `Screenshot(interactive: true)` — hide our window, GNOME's own screen/window/selection picker returns the final pixels directly |
+| Source grid         | Overlay window list (`getCaptureSources`)                                                                      | No — OS portal instead                                                                                                                 |
+| Hide on full screen | Yes — Capture minimizes BenPocket; restore from dock / taskbar to include it. Pill uses `setContentProtection` | Yes, always — our own window would otherwise sit on top of GNOME's picker                                                              |
 
 Wayland uses **one portal call for every capture**, always `interactive: true` — CraftBox never takes a screenshot without the user seeing and confirming it in GNOME's own picker. This intentionally does not use `getDisplayMedia`/PipeWire (Chromium's ScreenCast path): that round-trips a still through a video frame, which is visibly lower quality than the OS's own screenshot pixels — see `capture/portal-screenshot.ts` for why. There's no separate "pick a rect, then grab pixels" step for region capture: GNOME's own picker UI handles the whole selection and hands back the finished image, so "Capture" and "Capture region" collapse into the same call on Wayland (hence the merged footer button).
 
@@ -114,10 +114,10 @@ Selected by `window.api.usesOsCapturePicker`: macOS/Windows/Linux X11 use `captu
 
 ### In-app picker (macOS / Windows / Linux X11) — `captureFromSource`
 
-| Source type | Backend                                                        | Hide before grab        |
-| ----------- | -------------------------------------------------------------- | ----------------------- |
+| Source type | Backend                                                        | Hide before grab                                      |
+| ----------- | -------------------------------------------------------------- | ----------------------------------------------------- |
 | `screen`    | Main-process `screenshot.capture` → `captureScreenPngWithHide` | Owner already minimized; `hideApp: false` if restored |
-| `window`    | Renderer `getUserMedia` + `grabPngFromStream`                  | No                                  |
+| `window`    | Renderer `getUserMedia` + `grabPngFromStream`                  | No                                                    |
 
 ```
 getCaptureSources (toolbar/overlay → main → desktopCapturer)
@@ -160,7 +160,7 @@ Auto-copy after capture and the **Copy** button use **different strategies** on 
 | After capture     | Main process first (`screenshot.copy`), renderer fallback   | User-gesture from the Capture click expires during hide/grab/restore |
 | Copy button click | Renderer `navigator.clipboard` first, main process fallback | Fresh user gesture; renderer path is reliable on click               |
 
-After capture, clipboard copy runs **async** after `setPhase('result')` so the preview is not blocked.
+After capture, clipboard copy runs **async** after `setPhase('result')` so the preview is not blocked. Edits do **not** re-copy — use the **Copy** button for the annotated result.
 
 Main-process copy: `src/main/screen-recorder/clipboard/copy-screenshot-to-clipboard.ts`
 

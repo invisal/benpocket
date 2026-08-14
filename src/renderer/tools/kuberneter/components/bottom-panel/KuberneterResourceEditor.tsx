@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import CodeMirror, { EditorView } from '@uiw/react-codemirror';
 import { yaml as yamlLang } from '@codemirror/lang-yaml';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { Save, Check, FileCode, ChevronDown } from 'lucide-react';
+import { Save, Check, FileCode, ChevronDown, Search } from 'lucide-react';
 import { DEFAULT_TEMPLATES, TEMPLATE_CATEGORIES } from './types';
 import { useThemeStore } from '@renderer/store/theme.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
@@ -80,6 +80,18 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
     }
   };
 
+  const [templateSearch, setTemplateSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredCategories = templateSearch.trim()
+    ? TEMPLATE_CATEGORIES.map((cat) => ({
+        ...cat,
+        templates: cat.templates.filter((t) =>
+          t.name.toLowerCase().includes(templateSearch.trim().toLowerCase())
+        )
+      })).filter((cat) => cat.templates.length > 0)
+    : TEMPLATE_CATEGORIES;
+
   const handleSelectTemplate = (templateName: string) => {
     const templateContent = DEFAULT_TEMPLATES[templateName];
     if (templateContent) {
@@ -117,7 +129,11 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
         {/* Select Template Dropdown */}
         {!isEditMode && (
           <div className="flex items-center gap-2">
-            <Menu.Root>
+            <Menu.Root
+              onOpenChange={(open) => {
+                if (!open) setTemplateSearch('');
+              }}
+            >
               <Menu.Trigger
                 render={
                   <Button
@@ -131,24 +147,50 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
                   </Button>
                 }
               />
-              <Menu.Content align="end" className="w-56 max-h-72 overflow-y-auto">
-                {TEMPLATE_CATEGORIES.map((category, idx) => (
-                  <Menu.Group key={category.name}>
-                    {idx > 0 && <Menu.Separator />}
-                    <Menu.GroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1">
-                      {category.name}
-                    </Menu.GroupLabel>
-                    {category.templates.map((tmpl) => (
-                      <Menu.Item
-                        key={tmpl.name}
-                        onClick={() => handleSelectTemplate(tmpl.name)}
-                        className="text-xs text-foreground hover:bg-surface-2 focus:bg-surface-2 cursor-pointer px-2 py-1 rounded"
-                      >
-                        {tmpl.name}
-                      </Menu.Item>
-                    ))}
-                  </Menu.Group>
-                ))}
+              <Menu.Content align="end" className="w-72 max-h-80 overflow-hidden flex flex-col">
+                {/* Search input */}
+                <div className="sticky top-0 p-1.5 border-b border-border-light bg-surface z-10">
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-2 border border-border">
+                    <Search className="size-3 text-muted-foreground shrink-0" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={templateSearch}
+                      onChange={(e) => setTemplateSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      placeholder="Search templates..."
+                      autoFocus
+                      className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Template list */}
+                <div className="overflow-y-auto overflow-x-hidden flex-1">
+                  {filteredCategories.length === 0 ? (
+                    <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                      No templates found
+                    </div>
+                  ) : (
+                    filteredCategories.map((category, idx) => (
+                      <Menu.Group key={category.name}>
+                        {idx > 0 && <Menu.Separator />}
+                        <Menu.GroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1">
+                          {category.name}
+                        </Menu.GroupLabel>
+                        {category.templates.map((tmpl) => (
+                          <Menu.Item
+                            key={tmpl.name}
+                            onClick={() => handleSelectTemplate(tmpl.name)}
+                            className="text-xs text-foreground hover:bg-surface-2 focus:bg-surface-2 cursor-pointer px-2 py-1 rounded"
+                          >
+                            {tmpl.name}
+                          </Menu.Item>
+                        ))}
+                      </Menu.Group>
+                    ))
+                  )}
+                </div>
               </Menu.Content>
             </Menu.Root>
           </div>

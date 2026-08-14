@@ -1,10 +1,9 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { PillTab } from '@renderer/components/ui/Tabs';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { HttpAuth, HttpBodyType, HttpMethod } from '../../../../preload/http-client/types';
-import type { KeyValueRow } from '../lib/keyValueRows';
-import type { MultipartRow } from '../lib/multipartRows';
+import { ChevronDown, ChevronRight, Redo2, Undo2 } from 'lucide-react';
+import type { HttpBodyType } from '../../../../preload/http-client/types';
+import type { UseHttpResult } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
@@ -28,55 +27,31 @@ const BODY_TYPES: { value: HttpBodyType; label: string }[] = [
 ];
 
 interface RequestEditorPanelProps {
-  method: HttpMethod;
-  url: string;
-  params: KeyValueRow[];
-  onUpdateParam: (id: string, patch: Partial<KeyValueRow>) => void;
-  onRemoveParam: (id: string) => void;
-  headers: KeyValueRow[];
-  onUpdateHeader: (id: string, patch: Partial<KeyValueRow>) => void;
-  onRemoveHeader: (id: string) => void;
-  auth: HttpAuth;
-  onAuthChange: (auth: HttpAuth) => void;
+  http: UseHttpResult;
   /** Which saved request this tab is bound to, if any - resolves 'inherit' auth against its folder/collection. */
   binding?: SavedBinding | null;
-  bodyType: HttpBodyType;
-  onBodyTypeChange: (type: HttpBodyType) => void;
-  body: string;
-  onBodyChange: (body: string) => void;
-  bodyRows: KeyValueRow[];
-  onUpdateBodyRow: (id: string, patch: Partial<KeyValueRow>) => void;
-  onRemoveBodyRow: (id: string) => void;
-  multipartRows: MultipartRow[];
-  onUpdateMultipartRow: (id: string, patch: Partial<MultipartRow>) => void;
-  onRemoveMultipartRow: (id: string) => void;
-  onPickMultipartFile: (id: string) => void;
 }
 
-export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
-  method,
-  url,
-  params,
-  onUpdateParam,
-  onRemoveParam,
-  headers,
-  onUpdateHeader,
-  onRemoveHeader,
-  auth,
-  onAuthChange,
-  binding,
-  bodyType,
-  onBodyTypeChange,
-  body,
-  onBodyChange,
-  bodyRows,
-  onUpdateBodyRow,
-  onRemoveBodyRow,
-  multipartRows,
-  onUpdateMultipartRow,
-  onRemoveMultipartRow,
-  onPickMultipartFile
-}) => {
+export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({ http, binding }) => {
+  const {
+    state: { method, url, params, headers, auth, bodyType, body, bodyRows, multipartRows },
+    updateParamRow: onUpdateParam,
+    removeParamRow: onRemoveParam,
+    updateHeaderRow: onUpdateHeader,
+    removeHeaderRow: onRemoveHeader,
+    setAuth: onAuthChange,
+    setBodyType: onBodyTypeChange,
+    setBody: onBodyChange,
+    updateBodyRow: onUpdateBodyRow,
+    removeBodyRow: onRemoveBodyRow,
+    updateMultipartRow: onUpdateMultipartRow,
+    removeMultipartRow: onRemoveMultipartRow,
+    pickMultipartFile: onPickMultipartFile,
+    undo,
+    redo,
+    canUndo,
+    canRedo
+  } = http;
   const [activeTab, setActiveTab] = useState<RequestTabValue>('params');
   const [showAutoHeaders, setShowAutoHeaders] = useState(false);
   const variables = useActiveEnvironmentVariables();
@@ -99,8 +74,8 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
       onValueChange={(value) => setActiveTab(value as RequestTabValue)}
       className="flex flex-col min-h-0 flex-1"
     >
-      <div>
-        <PillTab.List className="mx-3 shrink-0">
+      <div className="flex items-center justify-between gap-2 mx-3 shrink-0">
+        <PillTab.List>
           <PillTab.Item value="params">
             Params{activeParamCount > 0 ? ` (${activeParamCount})` : ''}
           </PillTab.Item>
@@ -115,6 +90,25 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
           </PillTab.Item>
           <PillTab.Indicator />
         </PillTab.List>
+
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            className="flex items-center justify-center size-6 rounded-sm text-zinc-400 hover:text-foreground hover:bg-border-dark/60 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-colors"
+          >
+            <Undo2 size={13} />
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Shift+Z)"
+            className="flex items-center justify-center size-6 rounded-sm text-zinc-400 hover:text-foreground hover:bg-border-dark/60 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-colors"
+          >
+            <Redo2 size={13} />
+          </button>
+        </div>
       </div>
 
       <PillTab.Panel value="params" className="flex-1 min-h-0 overflow-auto p-3">
@@ -127,7 +121,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         />
       </PillTab.Panel>
 
-      <PillTab.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-2">
+      <PillTab.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-3">
         <KeyValueEditor
           rows={headers}
           onUpdate={onUpdateHeader}
@@ -175,11 +169,11 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({
         )}
       </PillTab.Panel>
 
-      <PillTab.Panel value="auth" className="flex-1 min-h-0 overflow-auto p-2">
+      <PillTab.Panel value="auth" className="flex-1 min-h-0 overflow-auto p-3">
         <AuthEditor auth={auth} onChange={onAuthChange} />
       </PillTab.Panel>
 
-      <PillTab.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2 p-2 overflow-auto">
+      <PillTab.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2 p-3 overflow-auto">
         <div className="flex gap-3 text-[11px] shrink-0">
           {BODY_TYPES.map((bt) => (
             <label

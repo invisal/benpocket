@@ -18,6 +18,14 @@ asarUnpack:
   # helper *executable*, spawned rather than require()'d, packaged below
   # via extraResources instead.
   - node_modules/capture-*/**
+  # sharp's native addon (@img/sharp-<platform>) gets auto-unpacked by
+  # electron-builder's .node detection, but the libvips shared library it
+  # dlopen's at runtime lives in a sibling package (@img/sharp-libvips-*)
+  # that has no .node file, so it's invisible to that detection and stays
+  # packed inside app.asar -- .so files can't be dlopen'd from an asar
+  # either, so it fails at runtime. Unpack both packages explicitly.
+  - node_modules/sharp/**
+  - node_modules/@img/**
 extraResources:
   # The macOS/Windows native recording helper binaries -- see
   # recording-helper.ts's helperCandidates(), which resolves a packaged

@@ -9,6 +9,7 @@ import { profilesApi } from './store/api';
 import { authApi } from './auth/api';
 import { updaterApi } from './updater/api';
 import { telemetryApi } from './telemetry/api';
+import { systemApi } from './system/api';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 // Custom APIs for renderer
@@ -37,6 +38,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('auth', authApi);
     contextBridge.exposeInMainWorld('updater', updaterApi);
     contextBridge.exposeInMainWorld('telemetry', telemetryApi);
+    contextBridge.exposeInMainWorld('system', systemApi);
   } catch (error) {
     console.error(error);
   }
@@ -61,4 +63,6 @@ if (process.contextIsolated) {
   window.updater = updaterApi;
   // @ts-ignore (define in dts)
   window.telemetry = telemetryApi;
+  // @ts-ignore (define in dts)
+  window.system = systemApi;
 }

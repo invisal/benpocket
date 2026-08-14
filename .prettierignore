@@ -1,5 +1,7 @@
 out
 dist
+native/*/build
+native/bin
 pnpm-lock.yaml
 LICENSE.md
 tsconfig.json

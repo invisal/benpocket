@@ -162,7 +162,7 @@ function createDefaultHttpState(tabId: string): HttpState {
 }
 
 const httpStore = createTabScopedStore<HttpState>(createDefaultHttpState, {
-  key: (tabId) => `postman-http-${tabId}`,
+  key: (tabId) => `request-http-${tabId}`,
   serialize: (s) => ({
     method: s.method,
     url: s.url,
@@ -247,7 +247,7 @@ export interface UseHttpResult {
   canRedo: boolean;
 }
 
-/** The HTTP engine for a Postman tab: request draft state + sending, fully independent of the
+/** The HTTP engine for a request tab: request draft state + sending, fully independent of the
  * WebSocket engine. `onEdit` (if given) fires once per actual draft edit - not on send() or
  * undo/redo - e.g. to promote a preview tab to a permanent one on first edit. */
 export function useHttp(tabId: string, onEdit?: () => void): UseHttpResult {

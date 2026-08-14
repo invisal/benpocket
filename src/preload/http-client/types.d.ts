@@ -139,11 +139,11 @@ export interface SavedRequest {
   /** HTTP-only; optional so requests saved before this field existed still load - treat missing as 'noauth'. */
   auth?: HttpAuth;
   updatedAt: number;
-  /** Saved responses attached to this request, Postman-style. Missing/undefined for requests saved before examples existed. */
+  /** Saved responses attached to this request. Missing/undefined for requests saved before examples existed. */
   examples?: SavedExample[];
 }
 
-/** A named, saved request+response snapshot attached to a `SavedRequest` - Postman's "Examples" feature. */
+/** A named, saved request+response snapshot attached to a `SavedRequest`. */
 export interface SavedExample {
   id: string;
   name: string;

@@ -12,80 +12,80 @@ import type {
 // benpocket supports importing/exporting the Postman Collection Format v2.0.0 and v2.1.0.
 // Legacy Collection Format v1 (top-level "requests"/"folders" arrays, no "item" tree) is not supported.
 
-interface PostmanHeader {
+interface CollectionFileHeader {
   key: string;
   value: string;
   type?: string;
   disabled?: boolean;
 }
 
-interface PostmanQueryParam {
+interface CollectionFileQueryParam {
   key: string;
   value: string;
   disabled?: boolean;
 }
 
-interface PostmanUrl {
+interface CollectionFileUrl {
   raw?: string;
   host?: string[];
   path?: string[];
-  query?: PostmanQueryParam[];
+  query?: CollectionFileQueryParam[];
 }
 
-interface PostmanFormDataEntry {
+interface CollectionFileFormDataEntry {
   key: string;
   value?: string;
   type?: 'text' | 'file';
   disabled?: boolean;
 }
 
-interface PostmanBody {
+interface CollectionFileBody {
   mode?: 'raw' | 'urlencoded' | 'formdata' | 'graphql' | 'file' | 'none';
   raw?: string;
-  urlencoded?: PostmanQueryParam[];
-  formdata?: PostmanFormDataEntry[];
+  urlencoded?: CollectionFileQueryParam[];
+  formdata?: CollectionFileFormDataEntry[];
   graphql?: { query?: string; variables?: string };
   options?: { raw?: { language?: string } };
 }
 
-interface PostmanAuthParam {
+interface CollectionFileAuthParam {
   key: string;
   value?: string;
   type?: string;
 }
 
-interface PostmanAuth {
+interface CollectionFileAuth {
   type?: string;
-  bearer?: PostmanAuthParam[];
-  basic?: PostmanAuthParam[];
-  apikey?: PostmanAuthParam[];
+  bearer?: CollectionFileAuthParam[];
+  basic?: CollectionFileAuthParam[];
+  apikey?: CollectionFileAuthParam[];
 }
 
-interface PostmanRequest {
+interface CollectionFileRequest {
   method?: string;
-  header?: PostmanHeader[];
-  body?: PostmanBody;
-  url?: string | PostmanUrl;
-  auth?: PostmanAuth;
+  header?: CollectionFileHeader[];
+  body?: CollectionFileBody;
+  url?: string | CollectionFileUrl;
+  auth?: CollectionFileAuth;
 }
 
-interface PostmanItem {
+interface CollectionFileItem {
   name?: string;
-  item?: PostmanItem[];
-  request?: PostmanRequest;
+  item?: CollectionFileItem[];
+  request?: CollectionFileRequest;
 }
 
-interface PostmanVariable {
+interface CollectionFileVariable {
   key: string;
   value?: string;
   type?: string;
   disabled?: boolean;
 }
 
-export interface PostmanCollectionFile {
+export interface CollectionFile {
   info?: { _postman_id?: string; name?: string; schema?: string };
-  item?: PostmanItem[];
-  variable?: PostmanVariable[];
+  item?: CollectionFileItem[];
+  variable?: CollectionFileVariable[];
 }
 
 const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
@@ -95,7 +95,7 @@ function normalizeMethod(method: string | undefined): HttpMethod {
   return (HTTP_METHODS as string[]).includes(upper) ? (upper as HttpMethod) : 'GET';
 }
 
-function urlToString(url: PostmanRequest['url']): string {
+function urlToString(url: CollectionFileRequest['url']): string {
   if (!url) return '';
   if (typeof url === 'string') return url;
   if (url.raw) return url.raw;
@@ -117,13 +117,13 @@ function toKeyValueRows(pairs: { key: string; value: string }[]): KeyValuePair[]
   return pairs.map((p) => ({ id: randomUUID(), key: p.key, value: p.value, enabled: true }));
 }
 
-function importHeaders(headers: PostmanHeader[] | undefined): KeyValuePair[] {
+function importHeaders(headers: CollectionFileHeader[] | undefined): KeyValuePair[] {
   return (headers ?? [])
     .filter((h) => h.key)
     .map((h) => ({ id: randomUUID(), key: h.key, value: h.value ?? '', enabled: !h.disabled }));
 }
 
-function findAuthParam(params: PostmanAuthParam[] | undefined, key: string): string {
+function findAuthParam(params: CollectionFileAuthParam[] | undefined, key: string): string {
   return params?.find((p) => p.key === key)?.value ?? '';
 }
 
@@ -135,7 +135,7 @@ function findAuthParam(params: PostmanAuthParam[] | undefined, key: string): str
  * credential exchange Postman itself performs when sending, so there's no header
  * to statically import for those.
  */
-function importAuthHeader(auth: PostmanAuth | undefined): KeyValuePair | null {
+function importAuthHeader(auth: CollectionFileAuth | undefined): KeyValuePair | null {
   if (!auth?.type || auth.type === 'noauth') return null;
 
   switch (auth.type) {
@@ -165,7 +165,9 @@ function importAuthHeader(auth: PostmanAuth | undefined): KeyValuePair | null {
 }
 
 /** Postman's collection-level `variable` array (Postman's own `{{key}}` variables) -> our `KeyValuePair[]`, the same shape environments use. */
-function importCollectionVariables(variables: PostmanVariable[] | undefined): KeyValuePair[] {
+function importCollectionVariables(
+  variables: CollectionFileVariable[] | undefined
+): KeyValuePair[] {
   return (variables ?? [])
     .filter((v) => v.key)
     .map((v) => ({ id: randomUUID(), key: v.key, value: v.value ?? '', enabled: !v.disabled }));
@@ -182,7 +184,10 @@ function buildMultipartBody(fields: { key: string; value: string }[]): string {
   return `${parts.join('\r\n')}\r\n--${boundary}--`;
 }
 
-function importBody(body: PostmanBody | undefined): { bodyType: HttpBodyType; body: string } {
+function importBody(body: CollectionFileBody | undefined): {
+  bodyType: HttpBodyType;
+  body: string;
+} {
   if (!body || !body.mode || body.mode === 'none') return { bodyType: 'none', body: '' };
 
   switch (body.mode) {
@@ -217,7 +222,7 @@ function importBody(body: PostmanBody | undefined): { bodyType: HttpBodyType; bo
   }
 }
 
-function toSavedRequest(name: string, request: PostmanRequest): SavedRequest {
+function toSavedRequest(name: string, request: CollectionFileRequest): SavedRequest {
   const urlString = urlToString(request.url);
   const { bodyType, body } = importBody(request.body);
   const headers = importHeaders(request.header);
@@ -240,7 +245,7 @@ function toSavedRequest(name: string, request: PostmanRequest): SavedRequest {
 }
 
 /** Recursively converts a Postman `item` array into our nested requests/folders shape. A Postman item is a request if it has `request`, or a folder if it has a nested `item` array. */
-function importItems(items: PostmanItem[] | undefined): {
+function importItems(items: CollectionFileItem[] | undefined): {
   requests: SavedRequest[];
   folders: CollectionFolder[];
 } {
@@ -258,38 +263,38 @@ function importItems(items: PostmanItem[] | undefined): {
   return { requests, folders };
 }
 
-export function isPostmanCollectionFile(data: unknown): data is PostmanCollectionFile {
+export function isCollectionFile(data: unknown): data is CollectionFile {
   if (!data || typeof data !== 'object') return false;
   const record = data as Record<string, unknown>;
   return typeof record.info === 'object' && record.info !== null && Array.isArray(record.item);
 }
 
 /** Detects the legacy Postman Collection Format v1 shape (flat "requests"/"folders" arrays, no "item" tree). */
-export function isLegacyPostmanV1Collection(data: unknown): boolean {
+export function isLegacyCollectionV1File(data: unknown): boolean {
   if (!data || typeof data !== 'object') return false;
   const record = data as Record<string, unknown>;
   if (Array.isArray(record.item)) return false;
   return Array.isArray(record.requests) && Array.isArray(record.folders);
 }
 
-// --- Postman Environment (standalone `*.postman_environment.json` exports) ---
+// --- Environment file (standalone `*.postman_environment.json` exports) ---
 
-interface PostmanEnvironmentValue {
+interface EnvironmentFileValue {
   key: string;
   value?: string;
   type?: string;
   enabled?: boolean;
 }
 
-export interface PostmanEnvironmentFile {
+export interface EnvironmentFile {
   id?: string;
   name?: string;
-  values?: PostmanEnvironmentValue[];
+  values?: EnvironmentFileValue[];
   _postman_variable_scope?: string;
 }
 
 /** Postman environment and global-variable exports share this exact shape. */
-export function isPostmanEnvironmentFile(data: unknown): data is PostmanEnvironmentFile {
+export function isEnvironmentFile(data: unknown): data is EnvironmentFile {
   if (!data || typeof data !== 'object') return false;
   const record = data as Record<string, unknown>;
   const scope = record._postman_variable_scope;
@@ -300,7 +305,7 @@ export function isPostmanEnvironmentFile(data: unknown): data is PostmanEnvironm
   );
 }
 
-export function importPostmanEnvironment(file: PostmanEnvironmentFile): {
+export function importEnvironmentFile(file: EnvironmentFile): {
   name: string;
   variables: KeyValuePair[];
 } {
@@ -317,12 +322,12 @@ export function importPostmanEnvironment(file: PostmanEnvironmentFile): {
   };
 }
 
-/** Our internal Environment -> standalone `*.postman_environment.json`, round-tripping with {@link importPostmanEnvironment}. */
-export function exportEnvironmentToPostman(environment: {
+/** Our internal Environment -> standalone `*.postman_environment.json`, round-tripping with {@link importEnvironmentFile}. */
+export function exportEnvironmentFile(environment: {
   id: string;
   name: string;
   variables: KeyValuePair[];
-}): PostmanEnvironmentFile {
+}): EnvironmentFile {
   return {
     id: environment.id,
     name: environment.name,
@@ -336,28 +341,28 @@ export function exportEnvironmentToPostman(environment: {
   };
 }
 
-export type PostmanSchemaVersion = '2.0.0' | '2.1.0' | 'unknown';
+export type CollectionSchemaVersion = '2.0.0' | '2.1.0' | 'unknown';
 
 /** Best-effort detection of the collection's schema version from `info.schema`. */
-export function detectPostmanSchemaVersion(file: PostmanCollectionFile): PostmanSchemaVersion {
+export function detectCollectionSchemaVersion(file: CollectionFile): CollectionSchemaVersion {
   const schema = file.info?.schema ?? '';
   if (/\/v2\.1\.0\//.test(schema)) return '2.1.0';
   if (/\/v2\.0\.0\//.test(schema)) return '2.0.0';
   return 'unknown';
 }
 
-export interface PostmanImportResult {
+export interface CollectionImportResult {
   collection: Collection;
-  schemaVersion: PostmanSchemaVersion;
+  schemaVersion: CollectionSchemaVersion;
   /** Collection-level variables from the imported file (Postman's `variable` array), for the caller to write into an Environment. Empty if the file had none. */
   variables: KeyValuePair[];
 }
 
 /** Postman Collection v2.0 / v2.1 -> our internal Collection, preserving folder nesting. */
-export function importPostmanCollection(
-  file: PostmanCollectionFile,
+export function importCollectionFile(
+  file: CollectionFile,
   workspaceId: string
-): PostmanImportResult {
+): CollectionImportResult {
   const { requests, folders } = importItems(file.item);
 
   return {
@@ -369,24 +374,24 @@ export function importPostmanCollection(
       requests,
       folders
     },
-    schemaVersion: detectPostmanSchemaVersion(file),
+    schemaVersion: detectCollectionSchemaVersion(file),
     variables: importCollectionVariables(file.variable)
   };
 }
 
 // --- Export: our internal Collection -> Postman Collection v2.1 ---
 
-function exportHeaders(headers: KeyValuePair[]): PostmanHeader[] {
+function exportHeaders(headers: KeyValuePair[]): CollectionFileHeader[] {
   return headers
     .filter((h) => h.key.trim())
     .map((h) => ({ key: h.key, value: h.value, type: 'text', disabled: !h.enabled }));
 }
 
-function exportBody(bodyType: HttpBodyType, body: string): PostmanBody | undefined {
+function exportBody(bodyType: HttpBodyType, body: string): CollectionFileBody | undefined {
   if (bodyType === 'none' || !body.trim()) return undefined;
 
   if (bodyType === 'form') {
-    const urlencoded: PostmanQueryParam[] = body
+    const urlencoded: CollectionFileQueryParam[] = body
       .split('&')
       .map((pair) => pair.split('='))
       .filter(([key]) => key)
@@ -402,14 +407,14 @@ function exportBody(bodyType: HttpBodyType, body: string): PostmanBody | undefin
     // kept in sync since main can't import renderer-side code. A file row's "value" here
     // is its local disk path (see serializeMultipartRows) - exported as a bare `type:
     // 'file'` entry rather than leaking that path into a Postman "text" value, since the
-    // permissive PostmanFormDataEntry shape below has no `src` field for it anyway.
+    // permissive CollectionFileFormDataEntry shape below has no `src` field for it anyway.
     const boundaryMatch = /^--(\S+)/.exec(body);
     if (!boundaryMatch) return undefined;
     const marker = `--${boundaryMatch[1]}`;
-    const formdata: PostmanFormDataEntry[] = body
+    const formdata: CollectionFileFormDataEntry[] = body
       .split(marker)
       .slice(1, -1)
-      .flatMap((segment): PostmanFormDataEntry[] => {
+      .flatMap((segment): CollectionFileFormDataEntry[] => {
         const content = segment.replace(/^\r?\n/, '');
         const headerEnd = content.indexOf('\r\n\r\n');
         if (headerEnd === -1) return [];
@@ -433,13 +438,13 @@ function exportBody(bodyType: HttpBodyType, body: string): PostmanBody | undefin
 }
 
 /** Our `KeyValuePair[]` -> Postman's collection-level `variable` array. */
-function exportCollectionVariables(variables: KeyValuePair[]): PostmanVariable[] {
+function exportCollectionVariables(variables: KeyValuePair[]): CollectionFileVariable[] {
   return variables
     .filter((v) => v.key.trim())
     .map((v) => ({ key: v.key, value: v.value, type: 'string', disabled: !v.enabled }));
 }
 
-function exportUrl(url: string): PostmanUrl {
+function exportUrl(url: string): CollectionFileUrl {
   const [base, queryStr] = url.split('?');
   const pathParts = base.replace(/^[a-zA-Z]+:\/\//, '').split('/');
   const host = pathParts.shift()?.split('.') ?? [];
@@ -449,7 +454,7 @@ function exportUrl(url: string): PostmanUrl {
   return { raw: url, host, path: pathParts.filter(Boolean), query };
 }
 
-function exportRequestItem(request: SavedRequest): PostmanItem {
+function exportRequestItem(request: SavedRequest): CollectionFileItem {
   return {
     name: request.name,
     request: {
@@ -465,20 +470,20 @@ function exportRequestItem(request: SavedRequest): PostmanItem {
 function exportItems(container: {
   requests: SavedRequest[];
   folders: CollectionFolder[];
-}): PostmanItem[] {
-  const folderItems: PostmanItem[] = container.folders.map((folder) => ({
+}): CollectionFileItem[] {
+  const folderItems: CollectionFileItem[] = container.folders.map((folder) => ({
     name: folder.name,
     item: exportItems(folder)
   }));
-  const requestItems: PostmanItem[] = container.requests.map(exportRequestItem);
+  const requestItems: CollectionFileItem[] = container.requests.map(exportRequestItem);
   return [...folderItems, ...requestItems];
 }
 
 /** `variables` is optional: the environment (if any) whose variables should travel with the exported collection, matching Postman's own collection-level `variable` array. */
-export function exportCollectionToPostman(
+export function exportCollectionFile(
   collection: Collection,
   variables?: KeyValuePair[]
-): PostmanCollectionFile {
+): CollectionFile {
   return {
     info: {
       _postman_id: randomUUID(),

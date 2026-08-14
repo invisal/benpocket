@@ -86,8 +86,8 @@ export const WebSocketLog: React.FC<WebSocketLogProps> = ({ log, status, onClear
     });
   };
 
-  // Newest first, like Postman's WebSocket response log - the most recent activity is
-  // always the first thing visible without needing to scroll.
+  // Newest first - the most recent activity is always the first thing visible
+  // without needing to scroll.
   const visibleLog = useMemo(() => {
     const byDirection = filter === 'all' ? log : log.filter((e) => e.direction === filter);
     const query = search.trim().toLowerCase();

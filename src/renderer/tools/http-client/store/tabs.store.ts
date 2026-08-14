@@ -1,29 +1,29 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { PostmanTabSeed } from '../types';
+import type { RequestTabSeed } from '../types';
 import { makeId } from '../lib/makeId';
 
-export interface PostmanTab {
+export interface RequestTab {
   id: string;
   title: string;
   /** Seed data the tab was opened with (from sidebar history or a saved request), if any. */
-  meta?: PostmanTabSeed;
+  meta?: RequestTabSeed;
 }
 
-interface PostmanTabsState {
-  tabs: PostmanTab[];
+interface RequestTabsState {
+  tabs: RequestTab[];
   activeTabId: string | null;
   /** The tab currently shown in italic "preview" style, if any -- see `openTab`'s `preview` option. */
   previewTabId: string | null;
   /**
    * Opens a tab. With `{ preview: true }` (single-click from the sidebar), the tab reuses
-   * the existing preview slot instead of piling up a new permanent tab -- Postman/VS Code's
+   * the existing preview slot instead of piling up a new permanent tab -- VS Code's
    * "preview tab" behavior. Returns the id of a preview tab that got replaced/evicted as a
    * result, if any, so the caller can dispose its cached request-engine state.
    */
-  openTab: (tab: PostmanTab, options?: { preview?: boolean }) => { replacedTabId: string | null };
+  openTab: (tab: RequestTab, options?: { preview?: boolean }) => { replacedTabId: string | null };
   /** Convenience wrapper around `openTab` that generates a fresh request-tab id. Returns the new tab's id. */
-  openNewRequestTab: (seed?: PostmanTabSeed, title?: string) => string;
+  openNewRequestTab: (seed?: RequestTabSeed, title?: string) => string;
   closeTab: (id: string) => void;
   setActiveTabId: (id: string) => void;
   renameTab: (id: string, title: string) => void;
@@ -32,7 +32,7 @@ interface PostmanTabsState {
 }
 
 function makeTabId(): string {
-  return makeId('postman-req');
+  return makeId('request');
 }
 
 /**
@@ -40,7 +40,7 @@ function makeTabId(): string {
  * independent of the app's global tool-tab switcher (`ToolProvider`/`useToolTabs`,
  * which only tracks top-level tool tabs like "HTTP Client" itself).
  */
-export const usePostmanTabsStore = create<PostmanTabsState>()(
+export const useRequestTabsStore = create<RequestTabsState>()(
   persist(
     (set, get) => ({
       tabs: [],

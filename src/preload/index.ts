@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
 import { screenRecorderApi } from './screen-recorder/api';
 import { kuberneterApi } from './kuberneter/api';
-import { postmanApi } from './http-client/api';
+import { httpClientApi } from './http-client/api';
 import { fileExplorerApi } from './file-explorer/api';
 import { imageEditorApi } from './image-editor/api';
 import { profilesApi } from './store/api';
@@ -20,7 +20,7 @@ const api = {
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
   openDirectory: () => ipcRenderer.invoke('open-directory'),
-  ...postmanApi
+  ...httpClientApi
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to

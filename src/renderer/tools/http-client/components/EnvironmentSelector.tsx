@@ -181,7 +181,7 @@ export const EnvironmentSelector: React.FC = () => {
               <div className="flex items-center gap-0.5">
                 <button
                   onClick={handleImport}
-                  title="Import Postman Environment (.postman_environment.json)"
+                  title="Import Environment (.postman_environment.json)"
                   className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer"
                 >
                   <Upload size={13} />

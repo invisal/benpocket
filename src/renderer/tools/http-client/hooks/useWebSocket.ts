@@ -37,7 +37,7 @@ function createDefaultWsState(tabId: string): WsState {
 }
 
 const wsStore = createTabScopedStore<WsState>(createDefaultWsState, {
-  key: (tabId) => `postman-ws-${tabId}`,
+  key: (tabId) => `request-ws-${tabId}`,
   serialize: (s) => ({ url: s.url }),
   deserialize: (raw) => {
     const r = (raw ?? {}) as { url?: string };
@@ -113,7 +113,7 @@ export interface UseWebSocketResult {
   clearLog: () => void;
 }
 
-/** The WebSocket engine for a Postman tab: connection state + streaming log, fully independent
+/** The WebSocket engine for a request tab: connection state + streaming log, fully independent
  * of the HTTP engine. `onEdit` (if given) fires when the URL is edited - e.g. to promote a
  * preview tab to a permanent one on first edit, mirroring useHttp's `onEdit`. */
 export function useWebSocket(tabId: string, onEdit?: () => void): UseWebSocketResult {

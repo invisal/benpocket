@@ -15,7 +15,7 @@ interface MultipartBodyEditorProps {
 
 const FIELD_TYPE_LABELS: Record<MultipartFieldType, string> = { text: 'Text', file: 'File' };
 
-/** Postman-style formdata editor: each row is either a plain text field or a local file,
+/** Formdata editor: each row is either a plain text field or a local file,
  * picked via a native file dialog and sent by reference (see useHttp.ts's pickMultipartFile -
  * the file's bytes are only read from disk at actual send time, never loaded here). */
 export const MultipartBodyEditor: React.FC<MultipartBodyEditorProps> = ({

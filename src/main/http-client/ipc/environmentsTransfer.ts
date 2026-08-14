@@ -10,9 +10,9 @@ import type {
 } from '../../../preload/http-client/types';
 import { readEnvironments, writeEnvironments } from './environments';
 import {
-  exportEnvironmentToPostman,
-  importPostmanEnvironment,
-  isPostmanEnvironmentFile
+  exportEnvironmentFile,
+  importEnvironmentFile,
+  isEnvironmentFile
 } from '../httpClientFormat';
 import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
@@ -40,15 +40,19 @@ export function registerEnvironmentTransferHandlers(): void {
       const saveOptions = {
         title: 'Export Environment',
         defaultPath: `${sanitizeFilename(environment.name, 'environment')}.postman_environment.json`,
-        filters: [{ name: 'Postman Environment', extensions: ['json'] }]
+        filters: [{ name: 'HTTP Client Environment', extensions: ['json'] }]
       };
       const result = win
         ? await dialog.showSaveDialog(win, saveOptions)
         : await dialog.showSaveDialog(saveOptions);
       if (result.canceled || !result.filePath) return { ok: true, canceled: true };
 
-      const postmanFile = exportEnvironmentToPostman(environment);
-      await fs.promises.writeFile(result.filePath, JSON.stringify(postmanFile, null, 2), 'utf-8');
+      const environmentFile = exportEnvironmentFile(environment);
+      await fs.promises.writeFile(
+        result.filePath,
+        JSON.stringify(environmentFile, null, 2),
+        'utf-8'
+      );
       return { ok: true, filePath: result.filePath };
     }
   );
@@ -58,9 +62,9 @@ export function registerEnvironmentTransferHandlers(): void {
     async (event, workspaceId: string): Promise<ImportEnvironmentResult> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const openOptions = {
-        title: 'Import Postman Environment',
+        title: 'Import Environment',
         properties: ['openFile' as const],
-        filters: [{ name: 'Postman Environment', extensions: ['json'] }]
+        filters: [{ name: 'HTTP Client Environment', extensions: ['json'] }]
       };
       const result = win
         ? await dialog.showOpenDialog(win, openOptions)
@@ -75,14 +79,15 @@ export function registerEnvironmentTransferHandlers(): void {
         return { ok: false, error: 'File is not valid JSON.' };
       }
 
-      if (!isPostmanEnvironmentFile(parsed)) {
+      if (!isEnvironmentFile(parsed)) {
         return {
           ok: false,
-          error: 'File is not a recognized Postman Environment export (.postman_environment.json).'
+          error:
+            'File is not a recognized HTTP Client Environment export (.postman_environment.json).'
         };
       }
 
-      const draft = importPostmanEnvironment(parsed);
+      const draft = importEnvironmentFile(parsed);
       const environments = await readEnvironments();
       const existing = environments.find(
         (e) => e.workspaceId === workspaceId && sameEnvironmentName(e.name, draft.name)

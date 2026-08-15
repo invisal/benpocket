@@ -10,6 +10,7 @@ import { useCursorStore } from '../../cursor/store/cursor-store';
 import { parseWindowSourceId } from '@shared/window-source-id';
 import { toRecordingMediaUrl } from '@shared/media-protocol';
 import { resetContentStoresForNewRecording } from '../../project/lib/reset-content-stores-for-new-recording';
+import { isLikelyLinux } from '../../../lib/platform';
 
 export interface LiveCounts {
   cursorCount: number;
@@ -157,15 +158,24 @@ export function useRecordingController(): RecordingController {
       // sidebar checkbox is off -- see `autoZoomEnabled` in
       // recording-store.ts -- so there's no tracking overhead and the
       // recording ends up with an empty cursor/click path, same as a
-      // source with no resolvable bounds.
-      cursorCaptureRef.current = autoZoomEnabled
-        ? await startCursorCapture(
-            cursorTrackingSource,
-            captureRef.current.startedAt,
-            setLiveCounts,
-            followWindowId
-          )
-        : null;
+      // source with no resolvable bounds. Also always skipped on Linux --
+      // neither `screen.getCursorScreenPoint()` nor uiohook-napi's global
+      // click hook produce real data there (confirmed on Wayland; not worth
+      // attempting even on X11, where behavior is inconsistent across
+      // compositors), so tracking would just spend the whole recording
+      // collecting samples nobody can use. The Cursor tool panel and
+      // auto-zoom keyframe generation are hidden/disabled on Linux to match
+      // -- see EditorToolRail.tsx/EditorToolPanel.tsx/EditorPage.tsx and
+      // `generateAutoZoomKeyframes`'s call site below.
+      cursorCaptureRef.current =
+        autoZoomEnabled && !isLikelyLinux
+          ? await startCursorCapture(
+              cursorTrackingSource,
+              captureRef.current.startedAt,
+              setLiveCounts,
+              followWindowId
+            )
+          : null;
       if (!cursorCaptureRef.current) setLiveCounts(null);
       // Snapshot the options this recording actually started with -- `stop()`
       // reports on them for telemetry, and `audio`/webcam state can drift
@@ -201,7 +211,7 @@ export function useRecordingController(): RecordingController {
     if (!capture) return null;
     setIsRecording(false);
 
-    const { video, webcamBlob, webcamStartedAt } = await capture.stop();
+    const { video, webcamBlob, webcamExportSourceBlob, webcamStartedAt } = await capture.stop();
     const { blob } = video;
     captureRef.current = null;
 
@@ -254,6 +264,25 @@ export function useRecordingController(): RecordingController {
     // to preview for this session even though nothing was written to disk.
     const previewUrl = filePath ? toRecordingMediaUrl(filePath) : URL.createObjectURL(blob);
 
+    // See StopResult.video.exportSourceBlob's doc -- saved as its own file
+    // (not reused from `filePath`'s save above) so export can read an
+    // untouched source while everything else keeps using the
+    // duration-patched `filePath` exactly as before. Best-effort: falling
+    // back to `filePath` on failure (or when this recording never produced
+    // one, e.g. the native path) just re-exposes today's existing behavior.
+    let exportSourceFilePath: string | null = null;
+    if (video.exportSourceBlob) {
+      try {
+        const exportSourceArrayBuffer = await video.exportSourceBlob.arrayBuffer();
+        exportSourceFilePath = await window.screenRecorder.recording.saveFile(
+          `recording-${timestamp}-source.${fileExtensionForBlob(video.exportSourceBlob)}`,
+          exportSourceArrayBuffer
+        );
+      } catch (err) {
+        console.error('[useRecordingController] failed to save export-source recording:', err);
+      }
+    }
+
     let webcamPreviewUrl: string | null = null;
     let webcamFilePath: string | null = null;
     if (webcamBlob) {
@@ -272,10 +301,26 @@ export function useRecordingController(): RecordingController {
         : URL.createObjectURL(webcamBlob);
     }
 
+    // Same reasoning as `exportSourceFilePath` above, for the webcam file.
+    let webcamExportSourceFilePath: string | null = null;
+    if (webcamExportSourceBlob) {
+      try {
+        const webcamExportSourceArrayBuffer = await webcamExportSourceBlob.arrayBuffer();
+        webcamExportSourceFilePath = await window.screenRecorder.recording.saveFile(
+          `recording-${timestamp}-webcam-source.${fileExtensionForBlob(webcamExportSourceBlob)}`,
+          webcamExportSourceArrayBuffer
+        );
+      } catch (err) {
+        console.error('[useRecordingController] failed to save export-source webcam:', err);
+      }
+    }
+
     return {
       previewUrl,
       filePath,
+      exportSourceFilePath: exportSourceFilePath ?? filePath,
       webcamFilePath,
+      webcamExportSourceFilePath: webcamExportSourceFilePath ?? webcamFilePath,
       sizeBytes: blob.size,
       cursorPath,
       clickPath,
@@ -290,7 +335,9 @@ export function useRecordingController(): RecordingController {
     if (!result) return;
     const {
       filePath,
+      exportSourceFilePath,
       webcamFilePath,
+      webcamExportSourceFilePath,
       sizeBytes,
       cursorPath,
       clickPath,
@@ -302,12 +349,14 @@ export function useRecordingController(): RecordingController {
     setLastRecording({
       previewUrl,
       filePath,
+      exportSourceFilePath,
       sizeBytes,
       createdAt: Date.now(),
       cursorPath,
       clickPath,
       webcamPreviewUrl,
       webcamFilePath,
+      webcamExportSourceFilePath,
       webcamOffsetMs,
       source: 'recorded'
     });
@@ -333,10 +382,18 @@ export function useRecordingController(): RecordingController {
   const stopAndDiscard = useCallback(async (): Promise<void> => {
     const result = await finalize();
     if (!result) return;
-    const { filePath, webcamFilePath } = result;
+    const { filePath, exportSourceFilePath, webcamFilePath, webcamExportSourceFilePath } = result;
     if (filePath) await window.screenRecorder.recording.deleteFile(filePath).catch(() => {});
+    // Only a distinct file when export-source saving actually ran (see
+    // finalize()'s `?? filePath` default) -- skip re-deleting the same path.
+    if (exportSourceFilePath && exportSourceFilePath !== filePath) {
+      await window.screenRecorder.recording.deleteFile(exportSourceFilePath).catch(() => {});
+    }
     if (webcamFilePath)
       await window.screenRecorder.recording.deleteFile(webcamFilePath).catch(() => {});
+    if (webcamExportSourceFilePath && webcamExportSourceFilePath !== webcamFilePath) {
+      await window.screenRecorder.recording.deleteFile(webcamExportSourceFilePath).catch(() => {});
+    }
   }, [finalize]);
 
   const restart = useCallback(async (): Promise<StartResult> => {

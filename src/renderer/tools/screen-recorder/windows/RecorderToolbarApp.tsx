@@ -132,7 +132,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
   const cameraPermission = usePermission('camera');
   const [sources, setSources] = useState<CaptureSource[]>([]);
   const [sourcesLoaded, setSourcesLoaded] = useState(false);
-  const [sourceId, setSourceId] = useState<string | null>(init?.sourceId ?? null);
+  const [sourceId, setSourceId] = useState<string | null>(init?.source?.id ?? null);
   const [audio, setAudio] = useState<AudioInputOptions>(
     init?.audio ?? { microphoneEnabled: true, systemAudioEnabled: false }
   );
@@ -192,7 +192,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
     // toolbar stays wherever it already is.
     const targetBounds = region?.rect ?? source.displayBounds;
     window.screenRecorder.recorderToolbar.requestStart({
-      sourceId: source.id,
+      source,
       audio,
       webcam,
       cropRegion: region ?? undefined,

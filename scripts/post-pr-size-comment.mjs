@@ -62,12 +62,21 @@ const fmt = {
     const sign = bytes < 0 ? '-' : '';
     return `${sign}${(Math.abs(bytes) / (1024 * 1024)).toFixed(2)} MB`;
   },
+  // Auto-scales the unit so small diffs (a few bytes/KB) don't round to "0.00 MB".
+  deltaBytes: (bytes) => {
+    const sign = bytes < 0 ? '-' : '+';
+    const abs = Math.abs(bytes);
+    if (abs === 0) return '0 B';
+    if (abs < 1024) return `${sign}${abs} B`;
+    if (abs < 1024 * 1024) return `${sign}${(abs / 1024).toFixed(2)} KB`;
+    return `${sign}${(abs / (1024 * 1024)).toFixed(2)} MB`;
+  },
   delta: (before, after) => {
     if (before === undefined || after === undefined) return '—';
     const diff = after - before;
     const sign = diff >= 0 ? '+' : '';
     const pct = before === 0 ? '—' : `${sign}${((diff / before) * 100).toFixed(2)}%`;
-    return `${sign}${fmt.bytes(diff)} (${pct})`;
+    return `${fmt.deltaBytes(diff)} (${pct})`;
   },
   cell: (report, key) => {
     if (!report) return '_build failed_';

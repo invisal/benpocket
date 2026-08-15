@@ -9,10 +9,7 @@ export function TabPanel({ className, ...props }: ComponentProps<typeof TabsPrim
 export function PillTabList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
-      className={cn(
-        'relative h-8 inline-flex items-center gap-1 rounded border border-border bg-surface-2 p-1',
-        className
-      )}
+      className={cn('relative h-8 inline-flex items-center gap-1', className)}
       {...props}
     />
   );
@@ -23,7 +20,7 @@ export function PillTabItem({ className, ...props }: ComponentProps<typeof TabsP
     <TabsPrimitive.Tab
       className={cn(
         'relative z-10 flex items-center gap-1.5 px-2 h-6 text-xs cursor-pointer outline-none transition-colors',
-        'text-muted-foreground hover:text-foreground font-medium',
+        'text-muted-foreground hover:text-foreground',
         'data-[active]:text-strong',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className
@@ -41,10 +38,7 @@ export function PillTabIndicator({
   return (
     <TabsPrimitive.Indicator
       className={cn(
-        // bg-surface-3 on a bg-surface-2 track only differs by 8/255 in dark mode - close enough
-        // to invisible that the active tab reads as unmarked. Accent tint keeps real contrast in
-        // both themes instead of relying on two adjacent surface shades.
-        'absolute rounded-sm bg-accent/20 transition-all duration-200 ease-out border border-accent/30',
+        'absolute rounded-sm bg-list-selected transition-all duration-200 ease-out',
         'left-[var(--active-tab-left)] top-[var(--active-tab-top)]',
         'h-[var(--active-tab-height)] w-[var(--active-tab-width)]',
         className

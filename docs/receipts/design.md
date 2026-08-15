@@ -14,7 +14,7 @@ isn't covered here.
 - `ContextMenu` — right-click menu (`ContextMenu.Root/Trigger/Content/Item/CheckboxItem/RadioItem/GroupLabel/Separator/SubmenuTrigger`).
 - `Menu` — click-to-open dropdown menu (`Menu.Root/Trigger/Content/Item/GroupLabel/Separator`), same visual language as `ContextMenu`.
 - `Select` — dropdown select (`Select.Trigger/Content/Item`), `SelectTrigger` renders as a `Button`.
-- `PillTab` / `UnderlineTab` — tabbed navigation (`Root/List/Item/Panel`), built on `@base-ui/react`. Both have an `Indicator` (render as a child of `List`, alongside the `Item`s) that slides to the active tab. `PillTab.List` is enclosed in its own bordered/`bg-surface-2` track with an accent-tinted pill `Indicator`; `UnderlineTab.List` (add a `border-b`) pairs with a line `Indicator` that slides under the active `Item`.
+- `PillTab` / `UnderlineTab` — tabbed navigation (`Root/List/Item/Panel`), built on `@base-ui/react`. Both have an `Indicator` (render as a child of `List`, alongside the `Item`s) that slides to the active tab. `PillTab.List` has no background/border/padding of its own — only the accent-tinted pill `Indicator` behind the active `Item` carries a background; `UnderlineTab.List` (add a `border-b`) pairs with a line `Indicator` that slides under the active `Item`.
 - `Popover` — anchored floating panel (`Popover.Root/Trigger/Content`).
 - `Tooltip` — hover hint (`Tooltip.Provider/Root/Trigger/Content`).
 - `Toolbar` — horizontal action bar (`Toolbar.Root/Button/Link/Input/Label/FreeSpace/Group/Separator`).

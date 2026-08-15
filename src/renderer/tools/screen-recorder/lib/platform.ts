@@ -7,3 +7,6 @@ export const isLikelyMac = navigator.userAgent.includes('Mac');
 
 /** Same caveat as isLikelyMac -- Windows 10+'s own global mic/camera Privacy toggle is a real gate Electron surfaces there (see permissions.ts's supportsMediaAccessStatus), unlike Screen Recording/Accessibility/Automation, which stay macOS-only. */
 export const isLikelyWindows = navigator.userAgent.includes('Windows');
+
+/** Same caveat as isLikelyMac -- used where H.265 needs a Linux-specific fallback (see export/presets.ts): Chromium ships no HEVC software encoder at all, and hardware HEVC encode support on Linux is far less consistently available than VideoToolbox (macOS) / Media Foundation (Windows). */
+export const isLikelyLinux = navigator.userAgent.includes('Linux');

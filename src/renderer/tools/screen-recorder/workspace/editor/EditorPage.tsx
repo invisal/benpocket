@@ -26,6 +26,7 @@ import { useSyncSelectedSegment } from './hooks/use-sync-selected-segment';
 import { useApplySeekRequest } from './hooks/use-apply-seek-request';
 import { useInitializeTimelineForRecording } from './hooks/use-initialize-timeline-for-recording';
 import { useEditorKeyboardShortcuts } from './hooks/use-editor-keyboard-shortcuts';
+import { isLikelyLinux } from '../../lib/platform';
 
 export function EditorPage(): JSX.Element {
   const lastRecording = useAppStore((state) => state.lastRecording);
@@ -93,10 +94,14 @@ export function EditorPage(): JSX.Element {
   // Imported footage never has recorded cursor/click samples, so the Cursor
   // tool has nothing real to show or control -- its tab is hidden below.
   // Steer away from it here too, for whichever project was open (or tab was
-  // selected) right before this one loaded.
+  // selected) right before this one loaded. Same for Linux, where cursor/
+  // click tracking is always skipped (see useRecordingController.ts) --
+  // even a 'recorded' project has an empty cursor path there.
   const isImportedProject = lastRecording?.source === 'imported';
   useEffect(() => {
-    if (isImportedProject && activeTool === 'cursor') setActiveTool('background');
+    if ((isImportedProject || isLikelyLinux) && activeTool === 'cursor') {
+      setActiveTool('background');
+    }
   }, [isImportedProject, activeTool, setActiveTool]);
 
   if (!lastRecording && !isOpeningProject) {

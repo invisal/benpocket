@@ -34,28 +34,27 @@ try {
 }
 
 let baseline = {};
-const backendUrl = process.env.BENPOCKET_BACKEND_URL;
-const secret = process.env.CI_METRICS_SECRET;
-if (!backendUrl || !secret) {
-  console.warn(
-    '[post-pr-size-comment] missing BENPOCKET_BACKEND_URL/CI_METRICS_SECRET -- no baseline'
-  );
-} else {
-  try {
-    // No branch filter -- report-build-size.mjs only POSTs on pushes to main
-    // (ci.yml's push trigger is scoped to branches: [main]), so every row the
-    // backend holds already is a main row.
-    const res = await fetch(`${backendUrl}/api/build-metrics/latest`, {
-      headers: { Authorization: `Bearer ${secret}` }
-    });
-    if (!res.ok) {
-      console.warn(`[post-pr-size-comment] backend responded ${res.status}: ${await res.text()}`);
-    } else {
-      for (const row of await res.json()) baseline[row.platform] = row;
+try {
+  // No branch filter -- report-build-size.mjs only POSTs on pushes to main
+  // (ci.yml's push trigger is scoped to branches: [main]), so every row the
+  // backend holds already is a main row. Public read-only endpoint, no auth.
+  const res = await fetch('https://benpocket.com/api/build-metrics/latest');
+  if (!res.ok) {
+    console.warn(`[post-pr-size-comment] backend responded ${res.status}: ${await res.text()}`);
+  } else {
+    // Response is an object keyed by platform, with snake_case fields --
+    // normalize to the camelCase shape used by size-report.json/fmt.cell.
+    const data = await res.json();
+    for (const row of Object.values(data)) {
+      baseline[row.platform] = {
+        commitSha: row.commit_sha,
+        rendererJsBytes: row.renderer_js_bytes,
+        packagedBytes: row.packaged_bytes
+      };
     }
-  } catch (err) {
-    console.warn(`[post-pr-size-comment] failed to reach backend: ${err.message}`);
   }
+} catch (err) {
+  console.warn(`[post-pr-size-comment] failed to reach backend: ${err.message}`);
 }
 
 const fmt = {

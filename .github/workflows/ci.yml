@@ -159,9 +159,6 @@ jobs:
 
       - name: Build comment body
         run: node scripts/post-pr-size-comment.mjs
-        env:
-          BENPOCKET_BACKEND_URL: ${{ vars.BENPOCKET_BACKEND_URL }}
-          CI_METRICS_SECRET: ${{ secrets.CI_METRICS_SECRET }}
 
       # Edits this workflow's own last comment on the PR if one exists (there's
       # no other job in this repo that comments on PRs, so --edit-last can't

@@ -21,8 +21,20 @@ const targets = {
   },
   linux: {
     platform: 'linux',
-    src: () => join(rootDir, 'native/linux-recorder/build/benpocket-linux-recorder-helper'),
-    fileName: 'benpocket-linux-recorder-helper'
+    // Two independent binaries share one cmake build (see
+    // native/linux-recorder/CMakeLists.txt): the screen/window capture
+    // helper and the CLIPBOARD selection-owner helper used by
+    // copy-file-to-clipboard.ts.
+    files: [
+      {
+        src: () => join(rootDir, 'native/linux-recorder/build/benpocket-linux-recorder-helper'),
+        fileName: 'benpocket-linux-recorder-helper'
+      },
+      {
+        src: () => join(rootDir, 'native/linux-recorder/build/benpocket-linux-clipboard-helper'),
+        fileName: 'benpocket-linux-clipboard-helper'
+      }
+    ]
   }
 };
 
@@ -72,10 +84,13 @@ if (!entry) {
 }
 
 const arch = process.arch;
-const src = entry.src(arch);
 const destDir = join(rootDir, 'native/bin', `${entry.platform}-${arch}`);
-const dest = join(destDir, entry.fileName);
-
 mkdirSync(destDir, { recursive: true });
-copyFileSync(src, dest);
-console.log(`[package-native-helper] copied ${src} -> ${dest}`);
+
+const files = entry.files ?? [{ src: entry.src, fileName: entry.fileName }];
+for (const file of files) {
+  const src = file.src(arch);
+  const dest = join(destDir, file.fileName);
+  copyFileSync(src, dest);
+  console.log(`[package-native-helper] copied ${src} -> ${dest}`);
+}

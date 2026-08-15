@@ -1,4 +1,4 @@
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
@@ -107,10 +107,22 @@ async function writeLinux(paths: string[], mode: ClipboardMode): Promise<void> {
 
 function writeToXclip(target: string, content: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = execFile('xclip', ['-selection', 'clipboard', '-t', target], (err) =>
-      err ? reject(err) : resolve()
-    );
-    child.stdin?.end(content);
+    // xclip forks into the background and stays alive indefinitely to serve
+    // the clipboard selection to whoever pastes next -- it never exits on
+    // its own, so execFile's "wait for close" callback hangs forever once it
+    // does that fork (see copy-file-to-clipboard.ts's writeToXclip, which
+    // has the same fix with the full investigation notes). `detached: true`
+    // + `unref()` lets that background copy run on its own, and we resolve
+    // once our end of stdin is flushed rather than when the process exits.
+    const child = spawn('xclip', ['-selection', 'clipboard', '-t', target], {
+      stdio: ['pipe', 'ignore', 'ignore'],
+      detached: true
+    });
+    child.on('error', reject);
+    child.stdin.end(content, () => {
+      child.unref();
+      resolve();
+    });
   });
 }
 

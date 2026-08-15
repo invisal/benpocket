@@ -1,5 +1,6 @@
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
+import { writeFileReferenceToClipboardLinux } from './linux-clipboard-owner';
 
 const execFileAsync = promisify(execFile);
 
@@ -36,18 +37,68 @@ async function writeMac(filePath: string): Promise<void> {
 
 function writeToXclip(target: string, content: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = execFile('xclip', ['-selection', 'clipboard', '-t', target], (err) =>
-      err ? reject(err) : resolve()
-    );
-    child.stdin?.end(content);
+    // xclip's whole design is to fork into the background and stay alive
+    // indefinitely, serving the clipboard selection to whoever pastes next --
+    // it never exits on its own. Using execFile/exec and waiting for it to
+    // close hangs forever once it does that fork, since the detached copy
+    // keeps running (verified directly: the callback never fired even
+    // seconds after the original process had already exited). `detached:
+    // true` + `unref()` lets that background copy run on its own instead of
+    // being waited on, and we resolve as soon as our end of stdin is
+    // flushed, not when the process itself exits.
+    const child = spawn('xclip', ['-selection', 'clipboard', '-t', target], {
+      stdio: ['pipe', 'ignore', 'ignore'],
+      detached: true
+    });
+    child.on('error', (err) => {
+      // ENOENT here means the `xclip` binary itself is missing, not that the
+      // copy failed -- surface that distinctly since the raw spawn error
+      // ("spawn xclip ENOENT") is meaningless to a user with no reason to
+      // know this app shells out to xclip for Linux file-clipboard support.
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        reject(
+          new Error(
+            'Copying to the clipboard requires the "xclip" utility, which is not installed. Install it with your package manager (e.g. "sudo apt install xclip") and try again.'
+          )
+        );
+        return;
+      }
+      reject(err);
+    });
+    child.stdin.end(content, () => {
+      child.unref();
+      resolve();
+    });
   });
 }
 
 async function writeLinux(filePath: string): Promise<void> {
-  // Same single-target choice as file-explorer's nativeClipboard.ts -- xclip
-  // only ever owns one target per invocation, and this is the one the
-  // GNOME/Nautilus family (Nautilus, Nemo, Caja) actually reads as a file.
-  await writeToXclip('x-special/gnome-copied-files', `copy\nfile://${filePath}`);
+  // Nautilus/Nemo/Caja only recognize the GNOME-proprietary
+  // `x-special/gnome-copied-files` target; everything else (Telegram,
+  // browsers, Slack, mail clients) reads the freedesktop.org-standard
+  // `text/uri-list` instead -- and since a single xclip invocation can only
+  // ever serve one target, no single xclip call satisfies both (confirmed
+  // directly: switching between them just moved the same failure from one
+  // audience to the other). benpocket-linux-clipboard-helper is a small
+  // persistent CLIPBOARD selection owner that serves both simultaneously
+  // from the same process -- see linux-clipboard-owner.ts and
+  // clipboard_owner.cpp for the full mechanism.
+  try {
+    await writeFileReferenceToClipboardLinux(filePath);
+    return;
+  } catch (err) {
+    // Most likely cause: a dev checkout that hasn't run `npm run
+    // build:native:linux` yet. Fall back to the single-target xclip path so
+    // copy-to-clipboard still works for *something* (text/uri-list is the
+    // broader of the two -- non-GNOME apps plus Nautilus's own fallback
+    // support for it) rather than hard-failing the whole feature.
+    console.error(
+      '[copy-file-to-clipboard] native clipboard helper unavailable, falling back to xclip (text/uri-list only):',
+      err
+    );
+  }
+  const uri = `file://${encodeURI(filePath)}`;
+  await writeToXclip('text/uri-list', `${uri}\r\n`);
 }
 
 /** Writes a single exported file's path to the system clipboard as a file reference, so pasting elsewhere (Finder, Mail, Slack, ...) pastes the actual file. */

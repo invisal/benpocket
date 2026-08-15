@@ -159,6 +159,11 @@ jobs:
 
       - name: Build comment body
         run: node scripts/post-pr-size-comment.mjs
+        env:
+          # base.sha is the commit this PR branched from (kept in sync on each
+          # push to the PR) -- lets the comment diff against that instead of
+          # whatever happens to be newest on main. See post-pr-size-comment.mjs.
+          BASE_COMMIT_SHA: ${{ github.event.pull_request.base.sha }}
 
       # Edits this workflow's own last comment on the PR if one exists (there's
       # no other job in this repo that comments on PRs, so --edit-last can't

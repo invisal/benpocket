@@ -6,7 +6,12 @@ import { evaluateSceneAtMs } from './rendering/timeline-evaluator';
 import { PixiSceneRenderer } from './rendering/pixi-scene-renderer';
 import { resolveCropRect, centerSquareCrop } from './rendering/crop';
 import { StreamingVideoDecoder } from './streaming-decoder';
-import { createVideoEncoder, getEncoderPreferences, resolveCodecCandidate } from './video-encoder';
+import {
+  codecFallbackOrder,
+  createVideoEncoder,
+  getEncoderPreferences,
+  resolveCodecCandidate
+} from './video-encoder';
 import { WebcamFrameQueue } from './webcam-frame-queue';
 import { EXPORT_CANCELLED_MESSAGE, isExportCancelled } from './cancel';
 
@@ -86,35 +91,37 @@ export async function exportVideoOnly(
   const { options, sourceFile, webcamFile } = request;
   let lastError: Error | null = null;
 
-  const { muxerCodec } = resolveCodecCandidate(options.format, options.codec);
-  for (const hardwareAcceleration of getEncoderPreferences(muxerCodec)) {
-    try {
-      // A fresh OffscreenCanvas per attempt, not one shared across retries --
-      // PixiSceneRenderer.create() (via autoDetectRenderer) acquires a
-      // WebGL/WebGPU rendering context on whatever canvas it's given, and a
-      // canvas can only ever hand out one context for its lifetime (the
-      // platform has no supported way to release/reacquire one). The first
-      // attempt already creates a real renderer (and so a real context)
-      // *before* createVideoEncoder's hardware-support check even runs, so a
-      // failed first attempt still leaves the canvas's context claimed;
-      // reusing it for the retry silently hung forever (no error, no
-      // timeout) instead of failing fast -- confirmed as the cause of
-      // "hangs at 0%" after a 'prefer-hardware attempt failed' warning.
-      const canvas = new OffscreenCanvas(options.resolution.width, options.resolution.height);
-      return await runOnce(
-        options,
-        sourceFile,
-        webcamFile,
-        canvas,
-        hardwareAcceleration,
-        onProgress,
-        wasmUrl,
-        signal
-      );
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (isExportCancelled(lastError)) throw lastError;
-      console.warn(`[export] ${hardwareAcceleration} attempt failed:`, lastError);
+  for (const codec of codecFallbackOrder(options.codec)) {
+    const { muxerCodec } = resolveCodecCandidate(options.format, codec);
+    for (const hardwareAcceleration of getEncoderPreferences(muxerCodec)) {
+      try {
+        // A fresh OffscreenCanvas per attempt, not one shared across retries --
+        // PixiSceneRenderer.create() (via autoDetectRenderer) acquires a
+        // WebGL/WebGPU rendering context on whatever canvas it's given, and a
+        // canvas can only ever hand out one context for its lifetime (the
+        // platform has no supported way to release/reacquire one). The first
+        // attempt already creates a real renderer (and so a real context)
+        // *before* createVideoEncoder's hardware-support check even runs, so a
+        // failed first attempt still leaves the canvas's context claimed;
+        // reusing it for the retry silently hung forever (no error, no
+        // timeout) instead of failing fast -- confirmed as the cause of
+        // "hangs at 0%" after a 'prefer-hardware attempt failed' warning.
+        const canvas = new OffscreenCanvas(options.resolution.width, options.resolution.height);
+        return await runOnce(
+          codec === options.codec ? options : { ...options, codec },
+          sourceFile,
+          webcamFile,
+          canvas,
+          hardwareAcceleration,
+          onProgress,
+          wasmUrl,
+          signal
+        );
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (isExportCancelled(lastError)) throw lastError;
+        console.warn(`[export] ${codec}/${hardwareAcceleration} attempt failed:`, lastError);
+      }
     }
   }
 

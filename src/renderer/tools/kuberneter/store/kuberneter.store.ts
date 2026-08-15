@@ -96,6 +96,9 @@ interface KuberneterState {
   setKuberneterActiveBottomPanelTabId: (id: string) => void;
   addKuberneterBottomPanelTab: (tab: KuberneterBottomPanelTab) => void;
   closeKuberneterBottomPanelTab: (id: string) => void;
+  closeOtherKuberneterBottomPanelTabs: (id: string) => void;
+  closeToRightKuberneterBottomPanelTabs: (id: string) => void;
+  closeAllKuberneterBottomPanelTabs: () => void;
   openPodTerminalTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodLogsTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodEditTab: (podName: string, namespace?: string, rawItem?: unknown) => Promise<void>;
@@ -163,27 +166,64 @@ export const useKuberneterStore = create<KuberneterState>()(
 
       closeKuberneterBottomPanelTab: (id) =>
         set((state) => {
+          const tabIndex = state.kuberneterBottomPanelTabs.findIndex((t) => t.id === id);
           const remaining = state.kuberneterBottomPanelTabs.filter((t) => t.id !== id);
           if (remaining.length === 0) {
-            const defaultTerm: KuberneterBottomPanelTab = {
-              id: `term-${Date.now()}`,
-              type: 'terminal',
-              title: 'Terminal'
-            };
+            useLayoutStore.setState({ isBottomPanelOpen: false });
             return {
-              kuberneterBottomPanelTabs: [defaultTerm],
-              kuberneterActiveBottomPanelTabId: defaultTerm.id
+              kuberneterBottomPanelTabs: [],
+              kuberneterActiveBottomPanelTabId: ''
             };
           }
-          const nextActiveId =
-            state.kuberneterActiveBottomPanelTabId === id
-              ? remaining[remaining.length - 1].id
-              : state.kuberneterActiveBottomPanelTabId;
+          let nextActiveId = state.kuberneterActiveBottomPanelTabId;
+          if (state.kuberneterActiveBottomPanelTabId === id) {
+            const nextIndex = Math.min(tabIndex, remaining.length - 1);
+            nextActiveId = remaining[nextIndex].id;
+          }
           return {
             kuberneterBottomPanelTabs: remaining,
             kuberneterActiveBottomPanelTabId: nextActiveId
           };
         }),
+
+      closeOtherKuberneterBottomPanelTabs: (id) =>
+        set((state) => {
+          const targetTab = state.kuberneterBottomPanelTabs.find((t) => t.id === id);
+          if (!targetTab) return {};
+          return {
+            kuberneterBottomPanelTabs: [targetTab],
+            kuberneterActiveBottomPanelTabId: id
+          };
+        }),
+
+      closeToRightKuberneterBottomPanelTabs: (id) =>
+        set((state) => {
+          const targetIndex = state.kuberneterBottomPanelTabs.findIndex((t) => t.id === id);
+          if (targetIndex === -1) return {};
+
+          const remaining = state.kuberneterBottomPanelTabs.slice(0, targetIndex + 1);
+          const closedIds = new Set(
+            state.kuberneterBottomPanelTabs.slice(targetIndex + 1).map((t) => t.id)
+          );
+
+          let nextActiveId = state.kuberneterActiveBottomPanelTabId;
+          if (closedIds.has(nextActiveId)) {
+            nextActiveId = id;
+          }
+
+          return {
+            kuberneterBottomPanelTabs: remaining,
+            kuberneterActiveBottomPanelTabId: nextActiveId
+          };
+        }),
+
+      closeAllKuberneterBottomPanelTabs: () => {
+        useLayoutStore.setState({ isBottomPanelOpen: false });
+        set({
+          kuberneterBottomPanelTabs: [],
+          kuberneterActiveBottomPanelTabId: ''
+        });
+      },
 
       openPodTerminalTab: (podName, namespace, containerName) => {
         if (!podName) return;

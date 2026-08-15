@@ -19,6 +19,7 @@ isn't covered here.
 - `Tooltip` — hover hint (`Tooltip.Provider/Root/Trigger/Content`).
 - `Toolbar` — horizontal action bar (`Toolbar.Root/Button/Link/Input/Label/FreeSpace/Group/Separator`).
 - `ListView` — virtualized selectable row list backed by `@tanstack/react-table` + `react-virtual`; supports context menu, copy/cut/paste/delete, keyboard nav.
+- `TreeList` — generic recursive tree (arbitrary depth via `getChildren`), owns expand state toggling and drag-and-drop plumbing (`onDropOnNode`/`onDropOnBackground`); row content is fully owned by the `renderItem` slot (icon, label, badges, rename, actions). Not virtualized. See the Storybook "Tree List" gallery.
 - `ResizablePanel` — drag handle on one edge (`left`/`right`/`top`/`bottom`) that resizes a panel in `px` or `%`.
 
 ## Color tokens

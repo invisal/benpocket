@@ -12,6 +12,7 @@ import { PopoverGallery } from './components/PopoverGallery';
 import { TooltipGallery } from './components/TooltipGallery';
 import { ToolbarGallery } from './components/ToolbarGallery';
 import { ListViewGallery } from './components/ListViewGallery';
+import { TreeListGallery } from './components/TreeListGallery';
 import { ResizablePanelGallery } from './components/ResizablePanelGallery';
 import { ColorTokenGallery } from './components/ColorTokenGallery';
 import { SettingsMockup } from './components/mockups/SettingsMockup';
@@ -42,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'tooltip', label: 'Tooltip', group: 'Components', Component: TooltipGallery },
   { id: 'toolbar', label: 'Toolbar', group: 'Components', Component: ToolbarGallery },
   { id: 'list-view', label: 'List View', group: 'Components', Component: ListViewGallery },
+  { id: 'tree-list', label: 'Tree List', group: 'Components', Component: TreeListGallery },
   {
     id: 'resizable-panel',
     label: 'Resizable Panel',

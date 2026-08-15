@@ -1,7 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
-import { Bookmark } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
 import { useCollectionsStore } from '../store/collections.store';
 import type { HttpResponsePayload } from '../../../../preload/http-client/types';
@@ -77,8 +76,7 @@ export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
         }
         render={<Button variant="secondary" size="md" />}
       >
-        <Bookmark size={14} />
-        <span>Save Example</span>
+        Save Example
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} align="end" className="z-50">

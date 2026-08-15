@@ -36,7 +36,7 @@ const SNIPPET_LANGUAGE_EXTENSIONS: Record<SnippetLanguage, Extension> = {
   'python-requests': pythonLang()
 };
 
-/** "Code" panel like Postman's: slides in the current request draft as a copy-pasteable snippet in a few common languages. */
+/** "Code" panel: slides in the current request draft as a copy-pasteable snippet in a few common languages. */
 export const CodeSnippetDrawer: React.FC<CodeSnippetDrawerProps> = ({ request, binding }) => {
   const { method, url, headers, bodyType, body, auth } = request;
   const [open, setOpen] = useState(false);

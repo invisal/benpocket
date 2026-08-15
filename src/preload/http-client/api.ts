@@ -44,8 +44,8 @@ import type {
   WsSendPayload
 } from './types';
 
-/** Shape of the Postman tool's renderer-facing IPC bridge, exposed on `window.api`. */
-export interface PostmanBridge {
+/** Shape of the HTTP client tool's renderer-facing IPC bridge, exposed on `window.api`. */
+export interface HttpClientBridge {
   http: {
     send: (payload: HttpRequestPayload) => Promise<HttpResponsePayload>;
     oauth2GetToken: (payload: OAuth2TokenRequest) => Promise<OAuth2TokenResult>;
@@ -100,8 +100,8 @@ export interface PostmanBridge {
   };
 }
 
-/** The Postman tool's renderer-facing IPC bridge: REST client, WebSocket client, saved collections, and environments. */
-export const postmanApi: PostmanBridge = {
+/** The HTTP client tool's renderer-facing IPC bridge: REST client, WebSocket client, saved collections, and environments. */
+export const httpClientApi: HttpClientBridge = {
   // REST client - executed in the main process to avoid renderer CORS limits.
   http: {
     send: (payload: HttpRequestPayload): Promise<HttpResponsePayload> =>
@@ -190,7 +190,7 @@ export const postmanApi: PostmanBridge = {
       ipcRenderer.invoke('environments:resolveImportConflict', payload)
   },
 
-  // Workspaces - scope collections/environments into named groups, like Postman workspaces.
+  // Workspaces - scope collections/environments into named groups.
   workspaces: {
     list: (): Promise<Workspace[]> => ipcRenderer.invoke('workspaces:list'),
     create: (name: string): Promise<Workspace> => ipcRenderer.invoke('workspaces:create', name),

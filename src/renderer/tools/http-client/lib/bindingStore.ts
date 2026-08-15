@@ -16,7 +16,7 @@ function createDefaultBinding(tabId: string): SavedBinding | null {
  * against the right collection/folder without a circular import.
  */
 export const bindingStore = createTabScopedStore<SavedBinding | null>(createDefaultBinding, {
-  key: (tabId) => `postman-binding-${tabId}`,
+  key: (tabId) => `request-binding-${tabId}`,
   serialize: (s) => s,
   deserialize: (raw) => (raw as SavedBinding | null) ?? null
 });

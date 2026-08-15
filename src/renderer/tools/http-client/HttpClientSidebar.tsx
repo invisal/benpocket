@@ -22,7 +22,7 @@ import {
   Waves,
   X
 } from 'lucide-react';
-import { usePostmanTabsStore, type PostmanTab } from './store/tabs.store';
+import { useRequestTabsStore, type RequestTab } from './store/tabs.store';
 import { useCollectionsStore } from './store/collections.store';
 import { useEnvironmentsStore } from './store/environments.store';
 import { disposeApiClientTab } from './hooks/useApiClient';
@@ -38,7 +38,7 @@ import type {
   SavedExample,
   SavedRequest
 } from '../../../preload/http-client/types';
-import type { PostmanTabSeed } from './types';
+import type { RequestTabSeed } from './types';
 import {
   collectAllFolderIds,
   countRequestsRecursive,
@@ -50,7 +50,7 @@ import {
 } from './lib/collectionTree';
 
 /** Custom MIME type carrying the drag payload for sidebar folder/request drag & drop. */
-const DRAG_MIME_TYPE = 'application/x-craftbox-postman-item';
+const DRAG_MIME_TYPE = 'application/x-craftbox-http-request-item';
 
 interface DragPayload {
   kind: 'request' | 'folder';
@@ -122,7 +122,7 @@ const RequestMethodBadge: React.FC<{ request: SavedRequest }> = ({ request }) =>
 };
 
 /** Method/protocol badge for an open tab, mirroring `RequestMethodBadge` but reading off the tab's seed data. */
-const TabMethodBadge: React.FC<{ tab: PostmanTab }> = ({ tab }) => {
+const TabMethodBadge: React.FC<{ tab: RequestTab }> = ({ tab }) => {
   if (tab.meta?.protocol === 'WEBSOCKET') {
     return (
       <span
@@ -144,9 +144,9 @@ const TabMethodBadge: React.FC<{ tab: PostmanTab }> = ({ tab }) => {
 };
 
 interface OpenTabItemProps {
-  tab: PostmanTab;
+  tab: RequestTab;
   isActive: boolean;
-  /** Shown in italic and reused by the next preview-mode open, Postman/VS Code-style. */
+  /** Shown in italic and reused by the next preview-mode open, VS Code-style. */
   isPreview: boolean;
   canCloseOthers: boolean;
   onActivate: () => void;
@@ -281,7 +281,7 @@ export const HttpClientSidebar: React.FC = () => {
     closeTab,
     renameTab,
     pinTab
-  } = usePostmanTabsStore();
+  } = useRequestTabsStore();
   const {
     collections,
     isLoaded,
@@ -349,7 +349,7 @@ export const HttpClientSidebar: React.FC = () => {
     return () => clearTimeout(timer);
   }, [statusMessage]);
 
-  const handleNewPostmanRequest = (): void => {
+  const handleNewRequestTab = (): void => {
     openNewRequestTab({ method: 'GET', url: '' });
   };
 
@@ -368,8 +368,8 @@ export const HttpClientSidebar: React.FC = () => {
     options?: { preview?: boolean }
   ): void => {
     const preview = options?.preview ?? true;
-    const tabId = `postman-saved-${collection.id}-${request.id}`;
-    const seed: PostmanTabSeed =
+    const tabId = `request-saved-${collection.id}-${request.id}`;
+    const seed: RequestTabSeed =
       request.protocol === 'WEBSOCKET'
         ? {
             protocol: 'WEBSOCKET',
@@ -389,7 +389,7 @@ export const HttpClientSidebar: React.FC = () => {
             savedCollectionId: collection.id,
             savedRequestId: request.id
           };
-    // Single-click opens in preview mode (Postman/VS Code-style italic tab that gets
+    // Single-click opens in preview mode (a VS Code-style italic tab that gets
     // reused/replaced by the next preview click, until the user edits it, pins it, or
     // double-clicks it in the sidebar to open it permanently right away).
     const { replacedTabId } = openTab(
@@ -416,8 +416,8 @@ export const HttpClientSidebar: React.FC = () => {
     options?: { preview?: boolean }
   ): void => {
     const preview = options?.preview ?? true;
-    const tabId = `postman-example-${collection.id}-${request.id}-${example.id}`;
-    const seed: PostmanTabSeed = {
+    const tabId = `request-example-${collection.id}-${request.id}-${example.id}`;
+    const seed: RequestTabSeed = {
       protocol: 'HTTP',
       method: example.request.method,
       url: example.request.url,
@@ -484,7 +484,7 @@ export const HttpClientSidebar: React.FC = () => {
       });
       const versionLabel =
         result.schemaVersion && result.schemaVersion !== 'unknown'
-          ? ` (Postman Collection v${result.schemaVersion})`
+          ? ` (Collection v${result.schemaVersion})`
           : '';
       const variablesLabel = result.importedVariableCount
         ? `, ${result.importedVariableCount} variable${result.importedVariableCount === 1 ? '' : 's'}`
@@ -534,7 +534,7 @@ export const HttpClientSidebar: React.FC = () => {
       <div className="flex items-center justify-between">
         <WorkspaceSelector />
         <button
-          onClick={handleNewPostmanRequest}
+          onClick={handleNewRequestTab}
           title="Create Request"
           className="p-1 text-zinc-400 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
         >
@@ -543,7 +543,7 @@ export const HttpClientSidebar: React.FC = () => {
       </div>
 
       <button
-        onClick={handleNewPostmanRequest}
+        onClick={handleNewRequestTab}
         className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-surface-3 border border-border-dark hover:bg-border-dark/50 rounded text-xs text-zinc-300 hover:text-foreground cursor-pointer transition-all"
       >
         <Send size={12} className="text-zinc-500" />
@@ -583,7 +583,7 @@ export const HttpClientSidebar: React.FC = () => {
           <div className="flex items-center gap-0.5">
             <button
               onClick={handleImportCollection}
-              title="Import Postman Collection — supports Collection Format v2.0 and v2.1 (.json)"
+              title="Import Collection — supports Collection Format v2.0 and v2.1 (.json)"
               className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
             >
               <Upload size={13} />
@@ -642,8 +642,7 @@ export const HttpClientSidebar: React.FC = () => {
         {collections.length === 0 && !isCreatingCollection && (
           <div className="text-[11px] text-zinc-650 italic px-1 py-1 leading-relaxed">
             No collections yet. Collections group related saved requests together, so you can find
-            and re-run them later. Save a request, or import a Postman collection (v2.0 / v2.1
-            .json).
+            and re-run them later. Save a request, or import a collection (v2.0 / v2.1 .json).
           </div>
         )}
 

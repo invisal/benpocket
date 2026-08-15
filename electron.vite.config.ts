@@ -39,7 +39,9 @@ export default defineConfig({
           regionSelect: resolve('src/renderer/region-select.html'),
           recorderToolbar: resolve('src/renderer/recorder-toolbar.html'),
           recordingRegionFrame: resolve('src/renderer/recording-region-frame.html'),
-          sourcePickerOverlay: resolve('src/renderer/source-picker-overlay.html')
+          sourcePickerOverlay: resolve('src/renderer/source-picker-overlay.html'),
+          captureToolbar: resolve('src/renderer/capture-toolbar.html'),
+          captureSourcePickerOverlay: resolve('src/renderer/capture-source-picker-overlay.html')
         },
         output: {
           chunkFileNames: (chunk) => {
@@ -83,7 +85,10 @@ export default defineConfig({
     plugins: [
       react(),
       tailwindcss(),
-      visualizer({ filename: 'stats-renderer.html', template: 'treemap', gzipSize: true })
+      visualizer({ filename: 'stats-renderer.html', template: 'treemap', gzipSize: true }),
+      // Machine-readable twin of the treemap above -- scripts/report-build-size.mjs
+      // sums nodeParts[*].renderedLength (JS chunks only, no CSS/images) out of this.
+      visualizer({ filename: 'stats-renderer.json', template: 'raw-data' })
     ]
   }
 });

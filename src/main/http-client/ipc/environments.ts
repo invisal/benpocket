@@ -10,13 +10,15 @@ import type {
   SaveEnvironmentVariablesPayload,
   WsAckResult
 } from '../../../preload/http-client/types';
+import { migrateStoreFile } from '../storeFile';
 
 function storeFilePath(): string {
-  return path.join(app.getPath('userData'), 'postman-environments.json');
+  return path.join(app.getPath('userData'), 'http-client-environments.json');
 }
 
 export async function readEnvironments(): Promise<Environment[]> {
   try {
+    await migrateStoreFile('postman-environments.json', 'http-client-environments.json');
     const raw = await fs.promises.readFile(storeFilePath(), 'utf-8');
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];

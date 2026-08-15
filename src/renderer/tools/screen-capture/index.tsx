@@ -1,6 +1,5 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Tabs } from '@base-ui/react/tabs';
 import {
   Camera,
   ChevronDown,
@@ -8,26 +7,24 @@ import {
   ClipboardCopy,
   Download,
   ImageUp,
-  Loader2,
-  Scan
+  Loader2
 } from 'lucide-react';
 import { cn } from 'cnfast';
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
 import { Button } from '@renderer/components/ui/Button';
 import { Menu } from '@renderer/components/ui/Menu';
-import type { CaptureSource } from '@screen-recorder/types/recording';
 import { ScreenRecordingPermissionBanner } from '@screen-recorder/features/recording/components/ScreenRecordingPermissionBanner';
-import { SourcePickerPanels } from './components/SourcePicker';
+import { CAPTURE_DELAY_OPTIONS, runCaptureCountdown } from '@shared/capture-delay';
 import { CaptureEditor } from './components/CaptureEditor';
 import { EditorToolbar } from './components/EditorToolbar';
 import { LayerPanel } from './components/LayerPanel';
 import { useCaptureEditorStore } from './store/editor.store';
+import { useCaptureResultStore } from './store/capture-result.store';
 import { flattenImage } from './lib/flatten';
-import { useCaptureSources, type SourceTab } from './lib/use-capture-sources';
+import { addImageLayerFromBlob } from './lib/image-layer';
 import {
   blobToDataUrl,
   CAPTURE_EXPORT_FORMATS,
-  captureFromSource,
   encodeCaptureBlob,
   selectAndCaptureRegion,
   screenshotFileName,
@@ -35,20 +32,13 @@ import {
   type CaptureExportFormat,
   type RegionCaptureStep
 } from './lib/capture-frame';
-import { takeTrayAutoCapture } from './lib/tray-auto-capture';
+import { openCaptureToolbarFor } from './lib/open-capture-toolbar';
 import { useScreenCaptureSettings } from './lib/use-screen-capture-settings';
 
 interface Props {}
 
 type Phase = 'idle' | 'capturing' | 'result';
 type CaptureMode = 'source' | 'region';
-
-function headerTabClass(active: boolean): string {
-  return cn(
-    'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-    active ? 'bg-accent/10 text-accent' : 'text-text-dim hover:bg-surface-2 hover:text-text-base'
-  );
-}
 
 async function copyViaRenderer(blob: Blob): Promise<boolean> {
   try {
@@ -93,7 +83,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const [phase, setPhase] = useState<Phase>('idle');
   const [captureMode, setCaptureMode] = useState<CaptureMode>('source');
   const [captureStep, setCaptureStep] = useState<RegionCaptureStep>('picker');
-  const [selectedSource, setSelectedSource] = useState<CaptureSource | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [confirmed, setConfirmed] = useState<'copy' | 'save' | null>(null);
@@ -104,8 +93,11 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     setFields: setSettings
   } = useScreenCaptureSettings();
   const hideApp = settings.hideApp;
+  const isToolbarOpen = useCaptureResultStore((s) => s.isToolbarOpen);
   const confirmTimer = useRef<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
+  const countdownAbortRef = useRef<AbortController | null>(null);
   /** Prevents zustand→Y echo when applying remote/local hydrate. */
   const applyingSettingsRef = useRef(false);
   const settingsRef = useRef(settings);
@@ -176,78 +168,36 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     confirmTimer.current = window.setTimeout(() => setConfirmed(null), 1500);
   };
 
-  const { screens, windows, sources, activeTab, setActiveTab, loading } = useCaptureSources(
-    setSelectedSource,
-    { enabled: !usesOsPicker }
-  );
-
-  // Pasting an image on the main screen opens it in the editor.
+  // Idle: paste opens a new capture. Result: paste adds an image layer
+  // unless the user is typing in a field or editing text on the stage.
   useEffect(() => {
-    if (phase !== 'idle') return;
+    if (phase !== 'idle' && phase !== 'result') return;
     function onPaste(event: ClipboardEvent): void {
       const item = Array.from(event.clipboardData?.items ?? []).find((i) =>
         i.type.startsWith('image/')
       );
       const file = item?.getAsFile();
       if (!file) return;
+      if (phase === 'idle') {
+        event.preventDefault();
+        void openImage(file);
+        return;
+      }
+      if (useCaptureEditorStore.getState().editingId) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
       event.preventDefault();
-      void openImage(file);
+      void addImageLayerFromBlob(file);
     }
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
   }, [phase, openImage]);
-
-  // Keeps the clipboard in sync with the editor: every annotation or
-  // corner-radius change re-flattens and copies, debounced so a drag doesn't
-  // re-encode a full-resolution PNG on every pointermove frame.
-  useEffect(() => {
-    if (phase !== 'result' || !previewBlob) return;
-
-    let timer: number | undefined;
-    // Guards against an older, slower flatten finishing after a newer one
-    // and overwriting the clipboard with stale content.
-    let generation = 0;
-
-    const unsubscribe = useCaptureEditorStore.subscribe((state, previous) => {
-      if (
-        state.annotations === previous.annotations &&
-        state.cornerRadius === previous.cornerRadius &&
-        state.crop === previous.crop &&
-        state.background === previous.background &&
-        state.watermark === previous.watermark
-      ) {
-        return;
-      }
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        generation += 1;
-        const current = generation;
-        void flattenFromEditorState(previewBlob)
-          .then((blob) => (current === generation ? copyAfterCapture(blob) : true))
-          .then((copied) => {
-            if (!copied) console.error('Could not copy edited screenshot to clipboard.');
-          });
-      }, 600);
-    });
-
-    return () => {
-      unsubscribe();
-      window.clearTimeout(timer);
-    };
-  }, [phase, previewBlob]);
-
-  const handleTabChange = (value: string): void => {
-    const tab = value as SourceTab;
-    setActiveTab(tab);
-    const tabSources = tab === 'screen' ? screens : windows;
-    if (tabSources.length === 0) {
-      setSelectedSource(null);
-      return;
-    }
-    if (!selectedSource || selectedSource.type !== tab) {
-      setSelectedSource(tabSources[0]);
-    }
-  };
 
   const finishCapture = async (blob: Blob | null): Promise<void> => {
     if (!blob) {
@@ -267,7 +217,39 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     );
   };
 
-  const runRegionCapture = async (): Promise<void> => {
+  const finishCaptureRef = useRef(finishCapture);
+  useEffect(() => {
+    finishCaptureRef.current = finishCapture;
+  });
+
+  const pendingCapture = useCaptureResultStore((s) => s.pending);
+  useEffect(() => {
+    if (!pendingCapture) return;
+    void finishCaptureRef.current(pendingCapture).finally(() => {
+      useCaptureResultStore.getState().takePending();
+    });
+  }, [pendingCapture]);
+
+  const cancelCaptureCountdown = (): void => {
+    countdownAbortRef.current?.abort();
+    countdownAbortRef.current = null;
+    setCountdownRemaining(null);
+  };
+
+  const runRegionCapture = async (delaySeconds = 0): Promise<void> => {
+    if (countdownAbortRef.current) return;
+
+    if (delaySeconds > 0) {
+      const controller = new AbortController();
+      countdownAbortRef.current = controller;
+      const ok = await runCaptureCountdown(delaySeconds, setCountdownRemaining, {
+        signal: controller.signal
+      });
+      if (countdownAbortRef.current === controller) countdownAbortRef.current = null;
+      if (!ok) return;
+      setCountdownRemaining(null);
+    }
+
     setCaptureMode('region');
     setCaptureStep('picker');
     setPhase('capturing');
@@ -276,7 +258,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
 
     try {
       const blob = await selectAndCaptureRegion(
-        sources,
+        [],
         usesOsPicker,
         (step) => {
           setCaptureStep(step);
@@ -291,57 +273,20 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     }
   };
 
-  // macOS / Windows / Linux X11 only — Linux Wayland always goes through
-  // runRegionCapture's native picker instead (see the merged footer button).
-  const runCapture = async (source = selectedSource): Promise<void> => {
-    if (!source) return;
-
-    setSelectedSource(source);
-    setCaptureMode('source');
-    setCaptureStep('picker');
-    setPhase('capturing');
-    setPreviewDataUrl(null);
-    setPreviewBlob(null);
-
-    try {
-      // Checked = platform default (hide for screen grabs, keep visible for
-      // window grabs); unchecked = never hide.
-      const blob = await captureFromSource(source, hideApp ? undefined : { hideApp: false });
-      await finishCapture(blob);
-    } catch {
-      setPhase('idle');
-    }
-  };
-
-  const phaseRef = useRef(phase);
-  const runRegionCaptureRef = useRef(runRegionCapture);
-  useEffect(() => {
-    phaseRef.current = phase;
-    runRegionCaptureRef.current = runRegionCapture;
-  });
-
-  // Linux Wayland tray: auto-press Capture (portal picker). Flag survives
-  // lazy-load until mount; onOpenTool covers the tab-already-open path.
   useEffect(() => {
     if (!usesOsPicker) return;
-
-    if (takeTrayAutoCapture() && phaseRef.current !== 'capturing') {
-      void runRegionCaptureRef.current();
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') cancelCaptureCountdown();
     }
-
-    const unsubscribe = window.screenRecorder.tray.onOpenTool((tool) => {
-      if (tool !== 'screen-capture') return;
-      // Clear arm from TrayBridge so a later remount doesn't fire again.
-      takeTrayAutoCapture();
-      if (phaseRef.current === 'capturing') return;
-      void runRegionCaptureRef.current();
-    });
-    return unsubscribe;
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      countdownAbortRef.current?.abort();
+    };
   }, [usesOsPicker]);
 
-  const handleSourceDoubleClick = (source: CaptureSource): void => {
-    if (loading || phase !== 'idle') return;
-    void runCapture(source);
+  const handleCapture = (): void => {
+    void openCaptureToolbarFor(settings.delaySeconds);
   };
 
   const handleCaptureAgain = (): void => {
@@ -399,8 +344,6 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
     }
   };
 
-  const captureDisabled = usesOsPicker ? false : !selectedSource || loading;
-
   const capturingMessage =
     captureMode === 'region' && captureStep === 'processing'
       ? 'Cropping screenshot…'
@@ -412,21 +355,16 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
             ? 'Capturing selected region…'
             : 'Capturing…';
 
+  const isCapturing = phase === 'capturing' || (pendingCapture !== null && phase !== 'result');
+
   return (
-    <Tabs.Root
-      value={activeTab}
-      onValueChange={handleTabChange}
-      className="flex h-full min-h-0 flex-col bg-surface text-text-base"
-    >
-      {phase !== 'capturing' && (
+    <div className="flex h-full min-h-0 flex-col bg-surface text-text-base">
+      {!isCapturing && (
         <header className="shrink-0 border-b border-border-dark px-6 py-4">
-          {phase === 'idle' ? (
+          {phase === 'idle' && !isCapturing ? (
             <div>
               <h1 className="text-base font-medium">Screen Capture</h1>
-              <p className="mt-0.5 text-xs text-text-dim">
-                Capture a full screen or window, or drag a region. You can also paste (Ctrl+V) or
-                open an image to edit it.
-              </p>
+              <p className="mt-0.5 text-xs text-text-dim">Take a screenshot or edit an image.</p>
             </div>
           ) : (
             <div>
@@ -451,32 +389,120 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         >
           <ScreenRecordingPermissionBanner />
 
-          {phase === 'idle' && !usesOsPicker && (
-            <div className="flex w-full min-w-0 flex-col gap-3">
-              <Tabs.List className="flex items-center gap-1">
-                <Tabs.Tab value="screen" className={headerTabClass(activeTab === 'screen')}>
-                  Entire Screen{screens.length > 0 ? ` (${screens.length})` : ''}
-                </Tabs.Tab>
-                <Tabs.Tab value="window" className={headerTabClass(activeTab === 'window')}>
-                  Window{windows.length > 0 ? ` (${windows.length})` : ''}
-                </Tabs.Tab>
-              </Tabs.List>
-              {loading ? (
-                <p className="text-sm text-text-dim">Loading sources…</p>
+          {phase === 'idle' && !isCapturing && (
+            <div className="bg-dotted flex min-h-[12rem] flex-1 flex-col items-center justify-center rounded-xl bg-surface select-none">
+              {countdownRemaining !== null ? (
+                <>
+                  <span className="font-mono text-5xl font-semibold text-foreground">
+                    {countdownRemaining}
+                  </span>
+                  <p className="mt-3 text-xs text-muted-foreground">Capturing in a moment…</p>
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    className="mt-5"
+                    onClick={cancelCaptureCountdown}
+                  >
+                    Cancel
+                  </Button>
+                </>
               ) : (
-                <SourcePickerPanels
-                  activeTab={activeTab}
-                  screens={screens}
-                  windows={windows}
-                  selectedSource={selectedSource}
-                  onSelectSource={setSelectedSource}
-                  onCaptureSource={handleSourceDoubleClick}
-                />
+                <>
+                  <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-border bg-surface-2 text-accent">
+                    <Camera size={26} />
+                  </div>
+                  <h2 className="text-sm font-semibold text-foreground">Ready to capture</h2>
+                  <p className="mt-1 mb-6 max-w-xs text-center text-xs leading-5 text-muted-foreground">
+                    Screen, window, or area — or paste an image to edit.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      // Reset so picking the same file again still fires onChange.
+                      e.target.value = '';
+                      if (file) void openImage(file);
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      title="Browse for an image to edit — you can also paste one"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <ImageUp size={16} />
+                      Browse
+                    </Button>
+                    {!usesOsPicker && !isToolbarOpen && (
+                      <Button variant="primary" size="md" onClick={handleCapture}>
+                        <Camera size={16} />
+                        Capture
+                      </Button>
+                    )}
+                    {usesOsPicker && (
+                      <div className="inline-flex">
+                        <Button
+                          variant="primary"
+                          size="md"
+                          className="rounded-r-none"
+                          onClick={() => void runRegionCapture()}
+                        >
+                          <Camera size={16} />
+                          Capture
+                        </Button>
+                        <Menu.Root>
+                          <Menu.Trigger
+                            aria-label="Capture after delay"
+                            render={
+                              <Button
+                                variant="primary"
+                                size="md"
+                                className="rounded-l-none border-l border-emphasis-text/25 px-1.5"
+                              />
+                            }
+                          >
+                            <ChevronDown size={14} />
+                          </Menu.Trigger>
+                          <Menu.Content side="top" align="end">
+                            {CAPTURE_DELAY_OPTIONS.map((seconds) => (
+                              <Menu.Item
+                                key={seconds}
+                                onClick={() => void runRegionCapture(seconds)}
+                              >
+                                Wait {seconds} seconds
+                              </Menu.Item>
+                            ))}
+                          </Menu.Content>
+                        </Menu.Root>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-4 text-[11px] text-muted-foreground">
+                    Paste with{' '}
+                    <kbd className="rounded bg-surface-3 px-1.5 py-0.5 font-medium">
+                      {window.api?.platform === 'darwin' ? '⌘V' : 'Ctrl+V'}
+                    </kbd>
+                  </p>
+                  {usesOsPicker && (
+                    <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={hideApp}
+                        onChange={(e) => toggleHideApp(e.target.checked)}
+                        className="accent-(--color-accent)"
+                      />
+                      Hide this app while capturing
+                    </label>
+                  )}
+                </>
               )}
             </div>
           )}
-
-          {phase === 'capturing' && (
+          {isCapturing && (
             <div className="flex min-h-[12rem] flex-1 items-center justify-center">
               <p className="text-sm text-text-dim">{capturingMessage}</p>
             </div>
@@ -555,59 +581,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           </Button>
         </footer>
       )}
-
-      {phase === 'idle' && (
-        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border-dark bg-surface px-6 py-4">
-          <label className="mr-auto flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
-            <input
-              type="checkbox"
-              checked={hideApp}
-              onChange={(e) => toggleHideApp(e.target.checked)}
-              className="accent-(--color-accent)"
-            />
-            Hide this app while capturing
-          </label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              // Reset so picking the same file again still fires onChange.
-              e.target.value = '';
-              if (file) void openImage(file);
-            }}
-          />
-          <Button
-            variant="secondary"
-            size="sm"
-            title="Open an image to edit — you can also paste one (Ctrl+V)"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <ImageUp size={14} />
-            Open image
-          </Button>
-          {/* Linux Wayland: GNOME's native picker already offers screen / window /
-              selection in one UI, so a separate "Capture region" button is redundant. */}
-          {!usesOsPicker && (
-            <Button variant="secondary" size="sm" onClick={() => void runRegionCapture()}>
-              <Scan size={14} />
-              Capture region
-            </Button>
-          )}
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={captureDisabled}
-            onClick={() => void (usesOsPicker ? runRegionCapture() : runCapture())}
-          >
-            <Camera size={14} />
-            Capture
-          </Button>
-        </footer>
-      )}
-    </Tabs.Root>
+    </div>
   );
 }
 

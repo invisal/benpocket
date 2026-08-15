@@ -1,13 +1,13 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Plug, PlugZap, RefreshCw, Send } from 'lucide-react';
-import { usePostmanTabsStore } from './store/tabs.store';
+import { useRequestTabsStore } from './store/tabs.store';
 import { useEnvironmentsStore } from './store/environments.store';
 import { useWorkspacesStore } from './store/workspaces.store';
 import { useCollectionsStore } from './store/collections.store';
 import { HttpClientSidebar } from './HttpClientSidebar';
 import { useApiClient } from './hooks/useApiClient';
-import type { PostmanTabSeed } from './types';
+import type { RequestTabSeed } from './types';
 import { RequestComposer } from './components/RequestComposer';
 import { RequestEditorPanel } from './components/RequestEditorPanel';
 import { ResponseInspector } from './components/ResponseInspector';
@@ -50,9 +50,9 @@ function readStoredSidebarWidth(): number {
  * tabs, not this tool's internal request tabs).
  */
 export const HttpClientWorkspace: React.FC = () => {
-  const tabs = usePostmanTabsStore((s) => s.tabs);
-  const activeTabId = usePostmanTabsStore((s) => s.activeTabId);
-  const openNewRequestTab = usePostmanTabsStore((s) => s.openNewRequestTab);
+  const tabs = useRequestTabsStore((s) => s.tabs);
+  const activeTabId = useRequestTabsStore((s) => s.activeTabId);
+  const openNewRequestTab = useRequestTabsStore((s) => s.openNewRequestTab);
 
   const workspacesLoaded = useWorkspacesStore((s) => s.isLoaded);
   const loadWorkspaces = useWorkspacesStore((s) => s.load);
@@ -117,17 +117,17 @@ export const HttpClientWorkspace: React.FC = () => {
 };
 
 const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
-  const tab = usePostmanTabsStore((s) => s.tabs.find((t) => t.id === tabId));
-  const renameTab = usePostmanTabsStore((s) => s.renameTab);
-  const isPreviewTab = usePostmanTabsStore((s) => s.previewTabId === tabId);
-  const pinTab = usePostmanTabsStore((s) => s.pinTab);
-  // Editing a preview tab's request promotes it to a permanent tab, same as Postman/VS Code:
+  const tab = useRequestTabsStore((s) => s.tabs.find((t) => t.id === tabId));
+  const renameTab = useRequestTabsStore((s) => s.renameTab);
+  const isPreviewTab = useRequestTabsStore((s) => s.previewTabId === tabId);
+  const pinTab = useRequestTabsStore((s) => s.pinTab);
+  // Editing a preview tab's request promotes it to a permanent tab, same as VS Code:
   // previewing is read-only in spirit, and any real edit means the user wants to keep working here.
   const pinIfPreview = (): void => {
     if (isPreviewTab) pinTab(tabId);
   };
   const client = useApiClient(tabId, { onEdit: pinIfPreview });
-  const seed = tab?.meta as PostmanTabSeed | undefined;
+  const seed = tab?.meta as RequestTabSeed | undefined;
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveBarRef = useRef<RequestSaveBarHandle>(null);
   const [responsePanelHeight, setResponsePanelHeight] = useState<number>(

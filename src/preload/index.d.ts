@@ -1,13 +1,14 @@
 import { type ElectronAPI } from '@electron-toolkit/preload';
 import type { ScreenRecorderApi } from './screen-recorder/api';
 import type { KuberneterApi } from './kuberneter/api';
-import type { PostmanBridge } from './http-client/api';
+import type { HttpClientBridge } from './http-client/api';
 import type { FileExplorerApi } from './file-explorer/api';
 import type { ImageEditorApi } from './image-editor/api';
 import type { ProfilesApi } from './store/api';
 import type { AuthApi } from './auth/api';
 import type { UpdaterApi } from './updater/api';
 import type { TelemetryApi } from './telemetry/api';
+import type { SystemApi } from './system/api';
 
 interface FileTreeNode {
   name: string;
@@ -27,6 +28,7 @@ declare global {
     auth: AuthApi;
     updater: UpdaterApi;
     telemetry: TelemetryApi;
+    system: SystemApi;
     api: {
       platform: string;
       /** Linux Wayland — PipeWire portal picker instead of in-app source grid. */
@@ -38,6 +40,6 @@ declare global {
         path: string;
         tree: FileTreeNode | null;
       } | null>;
-    } & PostmanBridge;
+    } & HttpClientBridge;
   }
 }

@@ -134,6 +134,17 @@ export interface BlurAnnotation extends AnnotationBase {
   blurRadius: number;
 }
 
+/** Imported / pasted bitmap composited as a movable, resizable layer. */
+export interface ImageAnnotation extends AnnotationBase {
+  kind: 'image';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** PNG object URL (blob:) or legacy data URL — undo snapshots keep the same string by reference. */
+  src: string;
+}
+
 export type CaptureAnnotation =
   | TextAnnotation
   | ChipAnnotation
@@ -144,4 +155,5 @@ export type CaptureAnnotation =
   | LineAnnotation
   | PenAnnotation
   | HighlightAnnotation
-  | BlurAnnotation;
+  | BlurAnnotation
+  | ImageAnnotation;

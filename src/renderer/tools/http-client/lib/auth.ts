@@ -61,10 +61,10 @@ export function resolveAuth(auth: HttpAuth | undefined, variables: KeyValuePair[
 }
 
 /**
- * The header a resolved (variables already substituted) auth resolves to - what Postman
- * shows greyed-out under Authorization. Kept in sync with the header-injection logic in
- * src/main/http-client/ipc/http.ts. An 'apikey' auth placed in the query string has no
- * header to preview here.
+ * The header a resolved (variables already substituted) auth resolves to - shown greyed-out
+ * under Authorization as a preview of what will actually be sent. Kept in sync with the
+ * header-injection logic in src/main/http-client/ipc/http.ts. An 'apikey' auth placed in the
+ * query string has no header to preview here.
  */
 export function authToHeader(auth: HttpAuth): { key: string; value: string } | null {
   switch (auth.type) {

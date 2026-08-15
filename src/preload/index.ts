@@ -2,13 +2,14 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
 import { screenRecorderApi } from './screen-recorder/api';
 import { kuberneterApi } from './kuberneter/api';
-import { postmanApi } from './http-client/api';
+import { httpClientApi } from './http-client/api';
 import { fileExplorerApi } from './file-explorer/api';
 import { imageEditorApi } from './image-editor/api';
 import { profilesApi } from './store/api';
 import { authApi } from './auth/api';
 import { updaterApi } from './updater/api';
 import { telemetryApi } from './telemetry/api';
+import { systemApi } from './system/api';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 // Custom APIs for renderer
@@ -19,7 +20,7 @@ const api = {
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
   openDirectory: () => ipcRenderer.invoke('open-directory'),
-  ...postmanApi
+  ...httpClientApi
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -37,6 +38,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('auth', authApi);
     contextBridge.exposeInMainWorld('updater', updaterApi);
     contextBridge.exposeInMainWorld('telemetry', telemetryApi);
+    contextBridge.exposeInMainWorld('system', systemApi);
   } catch (error) {
     console.error(error);
   }
@@ -61,4 +63,6 @@ if (process.contextIsolated) {
   window.updater = updaterApi;
   // @ts-ignore (define in dts)
   window.telemetry = telemetryApi;
+  // @ts-ignore (define in dts)
+  window.system = systemApi;
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AspectRatio, ExportCodec, ExportFormat } from '@screen-recorder/types/export';
 import { EXPORT_PRESETS } from '../presets';
+import { isLikelyLinux } from '../../../lib/platform';
 
 const defaultPreset = EXPORT_PRESETS[0];
 
@@ -111,6 +112,23 @@ export const useExportStore = create<ExportStoreState>()(
     }),
     {
       name: 'craftbox-screen-recorder-export-settings',
+      version: 1,
+      // v0 -> v1: h265 has no software encoder in Chromium at all (see
+      // video-encoder.ts's getEncoderPreferences doc) and Linux rarely has a
+      // working hardware one either, unlike macOS/Windows -- so a Linux user
+      // who'd picked (or defaulted into, before presets.ts became Linux-aware)
+      // an h265 preset had a persisted codec that would deterministically
+      // fail forever, immune to the presets.ts fix alone since a persisted
+      // value always wins over a freshly-computed default. Correcting it here
+      // means existing users don't need to manually reselect a preset.
+      migrate: (persisted, version) => {
+        if (version >= 1) return persisted;
+        const state = persisted as { codec?: ExportCodec };
+        if (isLikelyLinux && state.codec === 'h265') {
+          return { ...state, codec: 'h264' as ExportCodec };
+        }
+        return state;
+      },
       // Everything except the transient in-progress flag is a persistent
       // default for the next export -- including manual tweaks (a detached
       // "Custom" configuration should survive a restart just as much as a

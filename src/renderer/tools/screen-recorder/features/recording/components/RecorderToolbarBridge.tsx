@@ -22,12 +22,10 @@ export function RecorderToolbarBridge(): JSX.Element | null {
     return window.screenRecorder.recorderToolbar.onStartRequested(
       async (payload: RecorderToolbarStartPayload) => {
         try {
-          const sources = await window.screenRecorder.recording.getCaptureSources();
-          const source = sources.find((s) => s.id === payload.sourceId);
-          if (!source) {
+          if (!payload.source) {
             window.screenRecorder.recorderToolbar.reportRecordingStarted({
               ok: false,
-              error: 'That source is no longer available.'
+              error: 'Pick a screen or window first.'
             });
             return;
           }
@@ -35,7 +33,7 @@ export function RecorderToolbarBridge(): JSX.Element | null {
           // setSelectedSource clears any previous cropRegion as a side
           // effect (a new pick invalidates the old rect) -- setCropRegion
           // has to run after it to actually apply this payload's region.
-          useRecordingStore.getState().setSelectedSource(source);
+          useRecordingStore.getState().setSelectedSource(payload.source);
           useRecordingStore.getState().setAudio(payload.audio);
           useRecordingStore.getState().setCropRegion(payload.cropRegion ?? null);
           useRecordingStore.getState().setCountdownSeconds(payload.countdownSeconds);

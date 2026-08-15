@@ -31,7 +31,7 @@ export async function openRecorderToolbarFor(source?: CaptureSource): Promise<vo
   useAppStore.getState().setRecorderToolbarOpen(true);
   try {
     await window.screenRecorder.recorderToolbar.open({
-      sourceId: source?.id,
+      source,
       audio,
       webcam: { enabled, deviceId, shape, mirrored, position, size, shadow },
       cursorSettings: { visible, clickRippleEnabled },

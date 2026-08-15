@@ -523,6 +523,21 @@ void handleTerminatingSignal(int signum) {
     _exit(128 + signum);
 }
 
+// Xlib's default error handler exits the process on any X protocol error
+// (e.g. BadWindow from a window that closed between source enumeration and
+// capture start) -- installing this one instead lets synchronous requests
+// like XGetWindowAttributes report failure through their normal return
+// value (checked at each call site below) so a stale/invalid resource id
+// produces a clean `error` JSON event instead of a raw, uncatchable crash.
+int handleXError(Display* errorDisplay, XErrorEvent* error) {
+    char errorText[256];
+    XGetErrorText(errorDisplay, error->error_code, errorText, sizeof(errorText));
+    std::cerr << "[linux-recorder] X error (non-fatal): " << errorText
+        << " (request=" << static_cast<int>(error->request_code)
+        << ", resource=0x" << std::hex << error->resourceid << std::dec << ")" << std::endl;
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -550,6 +565,7 @@ int main(int argc, char* argv[]) {
         emitError("Failed to open X display (is DISPLAY set?)");
         return 1;
     }
+    XSetErrorHandler(handleXError);
     Window root = DefaultRootWindow(display);
 
     int shmMajor, shmMinor;

@@ -13,6 +13,7 @@ import {
 } from '../../features/timeline/store/timeline-store';
 import { useAppStore, EMPTY_CURSOR_PATH } from '../../app/app-store';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
+import { isLikelyLinux } from '../../lib/platform';
 import { AnnotationOverlay } from '../../features/annotations/components/AnnotationOverlay';
 import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOverlay';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
@@ -243,7 +244,7 @@ export function PreviewStage({
               stageWidthPx={stageWidthPx}
             />
 
-            {!isImportedProject && (
+            {!isImportedProject && !isLikelyLinux && (
               <CursorOverlay
                 cursor={cursor}
                 rawPath={rawCursorPath}

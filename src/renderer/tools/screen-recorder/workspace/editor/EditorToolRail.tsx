@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { cn } from '../../lib/utils';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
+import { isLikelyLinux } from '../../lib/platform';
 import { EDITOR_TOOLS, type EditorTool } from './editorTools';
 
 interface EditorToolRailProps {
@@ -16,7 +17,14 @@ export function EditorToolRail({
   onSelect,
   isImportedProject
 }: EditorToolRailProps): JSX.Element {
-  const tools = isImportedProject ? EDITOR_TOOLS.filter((t) => t.id !== 'cursor') : EDITOR_TOOLS;
+  // Same reasoning as the imported-project case, for a different reason:
+  // cursor/click tracking is always skipped on Linux (see
+  // useRecordingController.ts), so a Linux recording's cursor path is
+  // empty too -- nothing here for the tool to control.
+  const tools =
+    isImportedProject || isLikelyLinux
+      ? EDITOR_TOOLS.filter((t) => t.id !== 'cursor')
+      : EDITOR_TOOLS;
   return (
     <Tooltip.Provider delay={200} closeDelay={0}>
       <nav className="flex w-11 shrink-0 flex-col items-center gap-0.5 py-3">

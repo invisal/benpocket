@@ -6,7 +6,7 @@ import { ShortcutRecorder } from '../../features/shortcuts/components/ShortcutRe
 import { ExportPresetPicker } from '../../features/export/components/ExportPresetPicker';
 import { PermissionsSettings } from '../../features/permissions/components/PermissionsSettings';
 import { SettingsGroup, SettingsRow } from '../../components/ui/settings-row';
-import { isLikelyMac, isLikelyWindows } from '../../lib/platform';
+import { isLikelyMac, isLikelyWindows, isLikelyLinux } from '../../lib/platform';
 
 export function SettingsPage(): JSX.Element {
   return (
@@ -31,7 +31,10 @@ export function SettingsPage(): JSX.Element {
 
         <SettingsGroup title="Recording">
           <AudioSourceToggle />
-          <AutoZoomToggle />
+          {/* Cursor/click tracking is always skipped on Linux (see
+              useRecordingController.ts) -- this toggle would just be a
+              silent no-op there. */}
+          {!isLikelyLinux && <AutoZoomToggle />}
         </SettingsGroup>
 
         <SettingsGroup title="Webcam">

@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Measures the renderer's JS bundle size (from the rollup-plugin-visualizer
 // raw-data output -- see electron.vite.config.ts) and this OS's packaged app
-// size, then reports both to benpocket-backend so size can be tracked over
-// time on main. Runs once per CI matrix leg (win/mac/linux) after packaging --
-// see .github/workflows/ci.yml.
-import { readFileSync, statSync } from 'node:fs';
+// size. Always writes size-report.json locally (consumed by the PR size-diff
+// comment job); also POSTs to benpocket-backend so size can be tracked over
+// time on main, when BENPOCKET_BACKEND_URL/CI_METRICS_SECRET are set (push to
+// main only -- see .github/workflows/ci.yml). Runs once per CI matrix leg
+// (win/mac/linux) after packaging.
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,13 +49,15 @@ try {
 
 const payload = {
   commitSha: process.env.COMMIT_SHA,
-  branch: 'main',
+  branch: process.env.BRANCH || 'main',
   platform: platformInfo.platform,
   appVersion: version,
   rendererJsBytes,
   packagedBytes
 };
 console.log(`[report-build-size] ${JSON.stringify(payload)}`);
+
+writeFileSync(join(rootDir, 'size-report.json'), JSON.stringify(payload));
 
 // A misconfigured/unreachable backend shouldn't turn main red -- the packaging
 // steps above already validated the build itself. Just warn and move on.

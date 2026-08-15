@@ -87,9 +87,34 @@ export interface StopResult {
      * entirely and just uses this path as-is.
      */
     existingFilePath?: string;
+    /**
+     * Set only by the legacy MediaRecorder path, when `fixWebmDuration`
+     * actually ran (i.e. `blob` is the duration-patched file, not the raw
+     * recorder output) -- the unmodified raw blob, for `finalize()` to save
+     * as a second file export reads instead of `blob`. `fixWebmDuration`
+     * rewrites the whole Matroska Segment tree to inject a Duration field
+     * (Chromium's MediaRecorder output has none, which otherwise reads as
+     * `<video>.duration === Infinity` and often refuses to paint any frame
+     * at all -- see the call site's own doc), but its parser doesn't treat
+     * `Cluster` as a container (see its own `sections.js`) and mishandles
+     * Chromium's unknown-size Clusters on any multi-cluster recording --
+     * confirmed directly: it silently produces a structurally invalid file
+     * (a Cluster re-declared with a finite size that secretly still
+     * contains several more raw, unknown-size Clusters nested inside it).
+     * Chromium's own `<video>` playback tolerates this fine (nothing here
+     * has ever reported a broken preview), but `web-demuxer`'s strict
+     * libavformat-based parser does not, corrupting anything exported from
+     * it -- including the "source copy eligible" fast path, which just
+     * copies the file's raw bytes verbatim. Exporting from the untouched
+     * raw blob instead sidesteps the bug entirely rather than trying to fix
+     * a third-party library's EBML re-serialization blind.
+     */
+    exportSourceBlob?: Blob;
   };
   /** The parallel webcam recording, if `CaptureRequest.webcam` was enabled. */
   webcamBlob: Blob | null;
+  /** See `video.exportSourceBlob`'s doc -- same bug, same fix, for `webcamBlob`. */
+  webcamExportSourceBlob?: Blob;
   /** `Date.now()` when the webcam `MediaRecorder` actually started -- see `CaptureHandle.startedAt` for why this matters, and `webcamOffsetMs` in useRecordingController.ts for how callers use the gap between the two. */
   webcamStartedAt: number | null;
 }
@@ -210,7 +235,8 @@ async function getCameraStream(deviceId?: string): Promise<MediaStream> {
 interface WebcamRecorder {
   startedAt: number;
   stream: MediaStream;
-  stop: () => Promise<Blob>;
+  /** See StopResult.video.exportSourceBlob's doc -- same bug, same fix, for the parallel webcam file. */
+  stop: () => Promise<{ blob: Blob; exportSourceBlob?: Blob }>;
 }
 
 /**
@@ -244,19 +270,20 @@ function startWebcamRecorder(stream: MediaStream): WebcamRecorder {
   return {
     startedAt,
     stream,
-    stop: async (): Promise<Blob> => {
+    stop: async (): Promise<{ blob: Blob; exportSourceBlob?: Blob }> => {
       if (recorder.state !== 'inactive') recorder.stop();
       const rawBlob = await recorderStopped;
       const durationMs = Date.now() - startedAt;
       stream.getTracks().forEach((track) => track.stop());
       try {
-        return await fixWebmDuration(rawBlob, durationMs);
+        const blob = await fixWebmDuration(rawBlob, durationMs);
+        return { blob, exportSourceBlob: rawBlob };
       } catch (err) {
         console.error(
           '[capture-engine] failed to patch webcam webm duration, using raw blob:',
           err
         );
-        return rawBlob;
+        return { blob: rawBlob };
       }
     }
   };
@@ -496,7 +523,7 @@ async function tryStartNativeRecording(request: CaptureRequest): Promise<Capture
       startedAt,
       native: true,
       stop: async (): Promise<StopResult> => {
-        const [stopResult, webcamBlob] = await Promise.all([
+        const [stopResult, webcamResult] = await Promise.all([
           window.screenRecorder.nativeRecording.stop(),
           webcamRecorder?.stop() ?? Promise.resolve(null)
         ]);
@@ -510,7 +537,8 @@ async function tryStartNativeRecording(request: CaptureRequest): Promise<Capture
 
         return {
           video: { blob, existingFilePath: stopResult.outputPath },
-          webcamBlob,
+          webcamBlob: webcamResult?.blob ?? null,
+          webcamExportSourceBlob: webcamResult?.exportSourceBlob,
           webcamStartedAt: webcamRecorder?.startedAt ?? null
         };
       }
@@ -530,6 +558,16 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
   const desktopStream =
     request.existingVideoStream ??
     (await getDesktopStream(request.source, request.audio.systemAudioEnabled));
+  // TEMP DEBUG -- remove once the Linux low-resolution report is diagnosed.
+  console.log('[debug] window.screen:', {
+    width: window.screen.width,
+    height: window.screen.height,
+    devicePixelRatio: window.devicePixelRatio
+  });
+  console.log(
+    '[debug] negotiated desktop track settings:',
+    desktopStream.getVideoTracks()[0]?.getSettings()
+  );
 
   // The crop relay only ever touches *video* -- desktop/mic audio below
   // still comes straight off desktopStream/micStream regardless.
@@ -596,7 +634,7 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
     native: false,
     stop: async (): Promise<StopResult> => {
       if (recorder.state !== 'inactive') recorder.stop();
-      const [rawBlob, webcamBlob] = await Promise.all([
+      const [rawBlob, webcamResult] = await Promise.all([
         recorderStopped,
         webcamRecorder?.stop() ?? Promise.resolve(null)
       ]);
@@ -617,13 +655,23 @@ export async function startCapture(request: CaptureRequest): Promise<CaptureHand
       // the correct duration into the file so it plays normally. See
       // https://github.com/yusitnikov/fix-webm-duration
       let blob: Blob;
+      let exportSourceBlob: Blob | undefined;
       try {
         blob = await fixWebmDuration(rawBlob, durationMs);
+        // Only meaningfully different from `blob` when patching actually
+        // ran -- see StopResult.video.exportSourceBlob's doc for why export
+        // needs the untouched original instead.
+        exportSourceBlob = rawBlob;
       } catch (err) {
         console.error('[capture-engine] failed to patch webm duration, using raw blob:', err);
         blob = rawBlob;
       }
-      return { video: { blob }, webcamBlob, webcamStartedAt: webcamRecorder?.startedAt ?? null };
+      return {
+        video: { blob, exportSourceBlob },
+        webcamBlob: webcamResult?.blob ?? null,
+        webcamExportSourceBlob: webcamResult?.exportSourceBlob,
+        webcamStartedAt: webcamRecorder?.startedAt ?? null
+      };
     }
   };
 }

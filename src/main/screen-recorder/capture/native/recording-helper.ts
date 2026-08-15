@@ -10,6 +10,7 @@ import type {
   NativeRecordingStartResult,
   NativeRecordingStopResult
 } from '@shared/native-capture';
+import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 /**
  * Manages the per-platform native recording helper subprocess -- see
@@ -311,6 +312,18 @@ let activeSession: ActiveSession | null = null;
 export function checkNativeRecordingSupport(): NativeRecordingSupport {
   const adapter = adapterForPlatform();
   if (!adapter) return { supported: false, supportsCrop: false };
+  // LINUX_ADAPTER's helper captures via raw X11 (XGetWindowAttributes,
+  // XRandR CRTCs, MIT-SHM against the root window/a window's own XID -- see
+  // that helper's own main.cpp) -- none of which exists on Wayland, whose
+  // compositor doesn't hand out real XIDs and isn't reliably represented by
+  // the root window even under XWayland. Reusing usesOsCapturePicker's
+  // Wayland check here (same env-var detection, different reason) skips
+  // straight to the legacy getUserMedia/chromeMediaSourceId path -- which
+  // *does* work under Wayland via Chromium's own PipeWire integration --
+  // instead of spawning a helper that's certain to fail.
+  if (process.platform === 'linux' && usesOsCapturePicker()) {
+    return { supported: false, supportsCrop: false };
+  }
   const supported = findHelperPath(adapter) !== null;
   // All three helpers now implement `cropFraction` (ScreenCaptureKit's
   // sourceRect on macOS, a D3D11 CopySubresourceRegion crop on Windows, an

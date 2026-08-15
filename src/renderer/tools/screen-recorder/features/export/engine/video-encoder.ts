@@ -135,8 +135,8 @@ export async function createVideoEncoder(
   if (!support.supported) {
     throw new Error(
       hardwareAcceleration === 'prefer-hardware'
-        ? 'Hardware video encoding is not supported on this system.'
-        : 'Software video encoding is not supported on this system.'
+        ? `Hardware ${opts.codec} video encoding is not supported on this system.`
+        : `Software ${opts.codec} video encoding is not supported on this system.`
     );
   }
 

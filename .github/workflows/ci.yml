@@ -91,11 +91,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Packaging + size reporting below only runs on pushes to main (this workflow's
-      # push trigger is already scoped to branches: [main]) -- PRs stay compile-only
-      # to avoid the extra packaging cost on every PR push.
+      # Packaging + size reporting runs on every push and every PR push, so PR
+      # size can be diffed against main (see the pr-size-comment job below) --
+      # this is the extra packaging cost that tradeoff was weighed against.
       - name: Package for size measurement (Windows)
-        if: github.event_name == 'push' && runner.os == 'Windows'
+        if: runner.os == 'Windows'
         run: npx electron-builder --win --publish never
 
       # electron-builder.yml has mac.notarize: true, but only release.yml imports the
@@ -103,7 +103,7 @@ jobs:
       # electron-builder skip signing (and it auto-skips notarizing an unsigned app),
       # so this stays fast here and needs no Apple secrets.
       - name: Package for size measurement (macOS)
-        if: github.event_name == 'push' && runner.os == 'macOS'
+        if: runner.os == 'macOS'
         run: npx electron-builder --mac --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -111,13 +111,68 @@ jobs:
       # AppImage only -- electron-builder.yml's linux target list also has snap/deb/rpm,
       # but snap needs snapcraft (not on this runner) and only AppImage size is tracked.
       - name: Package for size measurement (Linux)
-        if: github.event_name == 'push' && runner.os == 'Linux'
+        if: runner.os == 'Linux'
         run: npx electron-builder --linux AppImage --publish never
 
+      # Always writes size-report.json locally (picked up by the "Upload size
+      # report" step below on PRs). Only POSTs to benpocket-backend -- recording
+      # size history -- on pushes to main; BENPOCKET_BACKEND_URL/CI_METRICS_SECRET
+      # are left unset on PR runs so the script's own guard skips the POST.
       - name: Report build size
-        if: github.event_name == 'push'
         run: node scripts/report-build-size.mjs
         env:
           COMMIT_SHA: ${{ github.sha }}
-          BENPOCKET_BACKEND_URL: ${{ vars.BENPOCKET_BACKEND_URL }}
-          CI_METRICS_SECRET: ${{ secrets.CI_METRICS_SECRET }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          BENPOCKET_BACKEND_URL: ${{ github.event_name == 'push' && vars.BENPOCKET_BACKEND_URL || '' }}
+          CI_METRICS_SECRET: ${{ github.event_name == 'push' && secrets.CI_METRICS_SECRET || '' }}
+
+      - name: Upload size report
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: size-report-${{ matrix.os }}
+          path: size-report.json
+          retention-days: 1
+
+  pr-size-comment:
+    name: Post PR size comment
+    needs: build
+    # always() so this still posts (showing "build failed" for the affected
+    # row) if one matrix leg fails -- fail-fast: false means the others may
+    # still have succeeded and uploaded their report.
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: size-report-*
+          path: reports
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build comment body
+        run: node scripts/post-pr-size-comment.mjs
+        env:
+          # base.sha is the commit this PR branched from (kept in sync on each
+          # push to the PR) -- lets the comment diff against that instead of
+          # whatever happens to be newest on main. See post-pr-size-comment.mjs.
+          BASE_COMMIT_SHA: ${{ github.event.pull_request.base.sha }}
+
+      # Edits this workflow's own last comment on the PR if one exists (there's
+      # no other job in this repo that comments on PRs, so --edit-last can't
+      # clobber an unrelated comment); otherwise posts a new one.
+      - name: Post or update PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          if ! gh pr comment "$PR_NUMBER" --edit-last --body-file body.md 2>/dev/null; then
+            gh pr comment "$PR_NUMBER" --body-file body.md
+          fi

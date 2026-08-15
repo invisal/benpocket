@@ -1,0 +1,11 @@
+export const podDisruptionBudgetTemplate = `apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: my-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: my-app
+`;

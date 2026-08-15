@@ -115,7 +115,7 @@ export function SourcePickerOverlayApp(): JSX.Element | null {
   function startRecording(init: SourcePickerOverlayInit, source: CaptureSource): void {
     setIsStarting(true);
     window.screenRecorder.recorderToolbar.requestStart({
-      sourceId: source.id,
+      source,
       audio: init.audio,
       webcam: init.webcam,
       targetBounds: source.displayBounds,

@@ -1,5 +1,13 @@
-import { type DragEvent, type KeyboardEvent, type ReactNode, useRef, useState } from 'react';
+import {
+  type DragEvent,
+  type KeyboardEvent,
+  type MouseEventHandler,
+  type ReactNode,
+  useRef,
+  useState
+} from 'react';
 import { cn } from 'cnfast';
+import { ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 export interface TreeDragHandlers {
@@ -74,7 +82,7 @@ interface FlatRow<T> {
   parentId: string | null;
 }
 
-export function TreeList<T>({
+function TreeListRoot<T>({
   data,
   getId,
   getChildren,
@@ -313,3 +321,142 @@ export function TreeList<T>({
     </div>
   );
 }
+
+function pickDragHandlers(
+  handlers: TreeDragHandlers,
+  mode: 'source' | 'target' | 'both' | 'none'
+): Partial<TreeDragHandlers> {
+  switch (mode) {
+    case 'both':
+      return handlers;
+    case 'source':
+      return {
+        draggable: handlers.draggable,
+        onDragStart: handlers.onDragStart,
+        onDragEnd: handlers.onDragEnd
+      };
+    case 'target':
+      return {
+        onDragOver: handlers.onDragOver,
+        onDragLeave: handlers.onDragLeave,
+        onDrop: handlers.onDrop
+      };
+    case 'none':
+      return {};
+  }
+}
+
+export interface TreeListItemProps<T> {
+  meta: TreeItemMeta<T>;
+  /**
+   * Which of `meta.dragHandlers` this row wires up:
+   * - `'source'` -- draggable, never itself a drop target (e.g. a request).
+   * - `'target'` -- a drop target, never itself draggable (e.g. a collection).
+   * - `'both'` -- both at once (e.g. a folder -- draggable, and a drop target for its own children).
+   * - `'none'` -- opts out of drag-and-drop entirely (e.g. an example, never dragged or dropped onto).
+   * Default `'both'`.
+   */
+  dragMode?: 'source' | 'target' | 'both' | 'none';
+  /** Shows the selected background -- this row itself backs the active tab/selection. */
+  isActive?: boolean;
+  /**
+   * Shows the drop-target ring. TreeList only knows *something* is hovering
+   * (`meta.isDropTarget`) -- domain validity (same collection, not onto its own
+   * descendant, etc.) is the caller's call, so pass `meta.isDropTarget && <your validity check>`.
+   */
+  isDropTarget?: boolean;
+  onClick?: MouseEventHandler<HTMLDivElement>;
+  onDoubleClick?: MouseEventHandler<HTMLDivElement>;
+  title?: string;
+  className?: string;
+  /** Rendered last, after `children` -- typically an `ActionsMenu`. */
+  actions?: ReactNode;
+  children?: ReactNode;
+}
+
+/**
+ * The row shell every `TreeList` `renderItem` should wrap its content in -- owns the
+ * mechanics that must stay consistent across row kinds (roving-focus ring, drag
+ * opacity/drop-target ring, indent, drag-handler wiring) so individual rows only ever
+ * differ in their actual content (icon, label, badges, rename state) and the `actions` slot.
+ */
+export function TreeListItem<T>({
+  meta,
+  dragMode = 'both',
+  isActive,
+  isDropTarget,
+  onClick,
+  onDoubleClick,
+  title,
+  className,
+  actions,
+  children
+}: TreeListItemProps<T>) {
+  return (
+    <div
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      title={title}
+      style={{ paddingLeft: meta.indentPx }}
+      {...pickDragHandlers(meta.dragHandlers, dragMode)}
+      className={cn(
+        'h-7 flex items-center gap-2 px-2 rounded transition-all group',
+        meta.isDragging && 'opacity-40',
+        isDropTarget && 'ring-1 ring-accent bg-accent/10',
+        // Hover/keyboard-focus only apply when the row isn't already selected --
+        // otherwise a mouse-over (or roving focus landing on it) would repaint a
+        // selected row's background back to the plain hover color, making hover
+        // read as if it outranks selection.
+        isActive
+          ? 'bg-list-selected'
+          : cn('hover:bg-list-hover', meta.isFocused && 'bg-list-hover'),
+        className
+      )}
+    >
+      {children}
+      {actions}
+    </div>
+  );
+}
+
+export interface TreeListExpandToggleProps {
+  hasChildren: boolean;
+  isExpanded: boolean;
+  /**
+   * When there's nothing to expand, render a same-width blank spacer instead of
+   * nothing, so sibling rows' labels still line up. Default `true` -- turn off for
+   * a toggle that isn't the row's leading element (e.g. nested further into the
+   * row, where non-expandable siblings don't need to align against it).
+   */
+  reserveSpace?: boolean;
+  size?: number;
+  className?: string;
+}
+
+/** The chevron-or-spacer every expandable row's leading slot renders -- rotates open, or reserves its own width so leaf rows still align with expandable ones. */
+export function TreeListExpandToggle({
+  hasChildren,
+  isExpanded,
+  reserveSpace = true,
+  size = 12,
+  className
+}: TreeListExpandToggleProps) {
+  if (!hasChildren) {
+    return reserveSpace ? <span className="shrink-0" style={{ width: size }} /> : null;
+  }
+  return (
+    <ChevronRight
+      size={size}
+      className={cn(
+        'shrink-0 text-zinc-500 transition-transform duration-150',
+        isExpanded && 'rotate-90',
+        className
+      )}
+    />
+  );
+}
+
+export const TreeList = Object.assign(TreeListRoot, {
+  Item: TreeListItem,
+  ExpandToggle: TreeListExpandToggle
+});

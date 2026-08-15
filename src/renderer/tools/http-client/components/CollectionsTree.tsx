@@ -5,7 +5,6 @@ import { cn } from 'cnfast';
 import {
   Bookmark,
   ChevronLeft,
-  ChevronRight,
   Download,
   Folder,
   FolderOpen,
@@ -362,20 +361,6 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   );
 };
 
-/** A rotating chevron shared by collection/folder rows and the request row's examples toggle. */
-const ExpandChevron: React.FC<{ isExpanded: boolean; size?: number }> = ({
-  isExpanded,
-  size = 12
-}) => (
-  <ChevronRight
-    size={size}
-    className={cn(
-      'shrink-0 text-zinc-500 transition-transform duration-150',
-      isExpanded && 'rotate-90'
-    )}
-  />
-);
-
 export interface CollectionsTreeProps {
   collections: Collection[];
   expanded: Set<string>;
@@ -639,8 +624,6 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
   // folders/requests are ever dragged) is decided here, same rule as the storybook demo.
   const isValidDropTarget =
     meta.draggingNode !== null && nodeCollectionId(meta.draggingNode) === collection.id;
-  // Drop target only, never a drag source -- collections can't be reordered/moved.
-  const { onDragOver, onDragLeave, onDrop } = meta.dragHandlers;
 
   const commitRename = (): void => {
     setIsRenaming(false);
@@ -659,17 +642,50 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
 
   return (
     <>
-      <div
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
+      <TreeList.Item
+        meta={meta}
+        dragMode="target"
+        isDropTarget={meta.isDropTarget && isValidDropTarget}
+        // A collection is never itself "selected" (only a request/example backs a tab) --
+        // only highlight it as a stand-in for the active descendant while that descendant
+        // is actually hidden (collapsed). Once expanded, the descendant's own row carries
+        // the highlight, so showing it here too would just be a second, redundant highlight.
+        isActive={containsActive && !meta.isExpanded}
         title="Drop here to move to collection root"
-        className={cn(
-          'h-7 flex items-center gap-1 group px-1 rounded transition-all hover:bg-surface-3',
-          meta.isDropTarget && isValidDropTarget && 'ring-1 ring-accent bg-accent/10',
-          meta.isFocused && 'ring-1 ring-inset ring-accent',
-          containsActive && 'bg-surface-3'
-        )}
+        className="gap-1 px-1"
+        actions={
+          !isRenaming && (
+            <ActionsMenu
+              triggerTitle="Collection actions"
+              actions={[
+                { icon: <Send size={12} />, label: 'New Request', onClick: onNewRequest },
+                {
+                  icon: <FolderPlus size={12} />,
+                  label: 'New Folder',
+                  onClick: () => {
+                    setIsCreatingFolder(true);
+                    setDraftFolderName('');
+                  }
+                },
+                {
+                  icon: <Pencil size={12} />,
+                  label: 'Rename',
+                  onClick: () => {
+                    setDraftName(collection.name);
+                    setIsRenaming(true);
+                  }
+                },
+                {
+                  icon: <KeyRound size={12} />,
+                  label: 'Authorization',
+                  onClick: () => setIsEditingAuth(true)
+                },
+                { icon: <Download size={12} />, label: 'Export', onClick: onExport },
+                { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
+              ]}
+            />
+          )
+        }
       >
         {meta.hasChildren ? (
           <button
@@ -677,10 +693,10 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
             title={meta.isExpanded ? 'Collapse' : 'Expand'}
             className="text-zinc-500 hover:text-foreground cursor-pointer shrink-0"
           >
-            <ExpandChevron isExpanded={meta.isExpanded} />
+            <TreeList.ExpandToggle hasChildren isExpanded={meta.isExpanded} />
           </button>
         ) : (
-          <span className="shrink-0" style={{ width: 12 }} />
+          <TreeList.ExpandToggle hasChildren={false} isExpanded={false} />
         )}
 
         {isRenaming ? (
@@ -712,39 +728,7 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
             <span className="text-zinc-600 ml-1">({totalCount})</span>
           </span>
         )}
-
-        {!isRenaming && (
-          <ActionsMenu
-            triggerTitle="Collection actions"
-            actions={[
-              { icon: <Send size={12} />, label: 'New Request', onClick: onNewRequest },
-              {
-                icon: <FolderPlus size={12} />,
-                label: 'New Folder',
-                onClick: () => {
-                  setIsCreatingFolder(true);
-                  setDraftFolderName('');
-                }
-              },
-              {
-                icon: <Pencil size={12} />,
-                label: 'Rename',
-                onClick: () => {
-                  setDraftName(collection.name);
-                  setIsRenaming(true);
-                }
-              },
-              {
-                icon: <KeyRound size={12} />,
-                label: 'Authorization',
-                onClick: () => setIsEditingAuth(true)
-              },
-              { icon: <Download size={12} />, label: 'Export', onClick: onExport },
-              { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
-            ]}
-          />
-        )}
-      </div>
+      </TreeList.Item>
 
       <AuthorizationDialog
         open={isEditingAuth}
@@ -834,24 +818,52 @@ const FolderRow: React.FC<FolderRowProps> = ({
 
   return (
     <>
-      <div
+      <TreeList.Item
+        meta={meta}
         onClick={meta.toggleExpanded}
-        {...meta.dragHandlers}
-        style={{ paddingLeft: meta.indentPx }}
+        dragMode="both"
+        isDropTarget={meta.isDropTarget && isValidDropTarget}
+        // Same rule as CollectionRow: stand in for the active descendant only while
+        // it's actually hidden (collapsed) -- expanded, the descendant's own row
+        // already carries the highlight.
+        isActive={containsActive && !meta.isExpanded}
         title={meta.isExpanded ? 'Collapse folder' : 'Expand folder'}
-        className={cn(
-          'h-7 flex items-center gap-1 group px-1 rounded transition-all cursor-grab active:cursor-grabbing hover:bg-surface-3',
-          meta.isDragging && 'opacity-40',
-          meta.isDropTarget && isValidDropTarget && 'ring-1 ring-accent bg-accent/10',
-          meta.isFocused && 'ring-1 ring-inset ring-accent',
-          containsActive && 'bg-surface-3'
-        )}
+        className="gap-1 px-1 cursor-grab active:cursor-grabbing"
+        actions={
+          !isRenaming && (
+            <ActionsMenu
+              triggerTitle="Folder actions"
+              actions={[
+                { icon: <Send size={12} />, label: 'New Request', onClick: onNewRequest },
+                {
+                  icon: <FolderPlus size={12} />,
+                  label: 'New Subfolder',
+                  onClick: () => {
+                    setIsCreatingSubfolder(true);
+                    setDraftSubfolderName('');
+                  }
+                },
+                {
+                  icon: <Pencil size={12} />,
+                  label: 'Rename',
+                  onClick: () => {
+                    setDraftName(folder.name);
+                    setIsRenaming(true);
+                  }
+                },
+                {
+                  icon: <KeyRound size={12} />,
+                  label: 'Authorization',
+                  onClick: () => setIsEditingAuth(true)
+                },
+                { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
+              ]}
+              moveTo={{ folders: moveFolders, excludeId: folder.id, onSelect: onMove }}
+            />
+          )
+        }
       >
-        {meta.hasChildren ? (
-          <ExpandChevron isExpanded={meta.isExpanded} />
-        ) : (
-          <span className="shrink-0" style={{ width: 12 }} />
-        )}
+        <TreeList.ExpandToggle hasChildren={meta.hasChildren} isExpanded={meta.isExpanded} />
         {meta.isExpanded ? (
           <FolderOpen size={12} className="text-zinc-500 shrink-0" />
         ) : (
@@ -889,39 +901,7 @@ const FolderRow: React.FC<FolderRowProps> = ({
             <span className="text-zinc-600 ml-1">({countRequestsRecursive(folder)})</span>
           </span>
         )}
-
-        {!isRenaming && (
-          <ActionsMenu
-            triggerTitle="Folder actions"
-            actions={[
-              { icon: <Send size={12} />, label: 'New Request', onClick: onNewRequest },
-              {
-                icon: <FolderPlus size={12} />,
-                label: 'New Subfolder',
-                onClick: () => {
-                  setIsCreatingSubfolder(true);
-                  setDraftSubfolderName('');
-                }
-              },
-              {
-                icon: <Pencil size={12} />,
-                label: 'Rename',
-                onClick: () => {
-                  setDraftName(folder.name);
-                  setIsRenaming(true);
-                }
-              },
-              {
-                icon: <KeyRound size={12} />,
-                label: 'Authorization',
-                onClick: () => setIsEditingAuth(true)
-              },
-              { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
-            ]}
-            moveTo={{ folders: moveFolders, excludeId: folder.id, onSelect: onMove }}
-          />
-        )}
-      </div>
+      </TreeList.Item>
 
       <AuthorizationDialog
         open={isEditingAuth}
@@ -979,8 +959,6 @@ const RequestRow: React.FC<RequestRowProps> = ({
   const [draftName, setDraftName] = useState(request.name);
   const examples = request.examples ?? [];
   const hasExamples = examples.length > 0;
-  // Drag source only -- a request can never be a drop target.
-  const { draggable, onDragStart, onDragEnd } = meta.dragHandlers;
 
   const commitRename = (): void => {
     setIsRenaming(false);
@@ -1015,26 +993,34 @@ const RequestRow: React.FC<RequestRowProps> = ({
   }
 
   return (
-    <div
+    <TreeList.Item
+      meta={meta}
+      dragMode="source"
+      isActive={isActive}
       onClick={() => onOpen()}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onOpen({ preview: false });
       }}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
       title={`${request.url}\nDouble-click to open in a permanent tab`}
-      style={{ paddingLeft: meta.indentPx }}
-      className={cn(
-        'h-7 px-2',
-        'flex items-center gap-2 rounded',
-        'hover:bg-surface-3',
-        'text-xs text-foreground cursor-grab active:cursor-grabbing transition-all group',
-        meta.isDragging && 'opacity-40',
-        meta.isFocused && 'ring-1 ring-inset ring-border',
-        isActive ? 'bg-surface-3' : 'border-transparent hover:border-border-dark'
-      )}
+      className="text-xs text-foreground cursor-grab active:cursor-grabbing"
+      actions={
+        <ActionsMenu
+          triggerTitle="Request actions"
+          actions={[
+            {
+              icon: <Pencil size={12} />,
+              label: 'Rename',
+              onClick: () => {
+                setDraftName(request.name);
+                setIsRenaming(true);
+              }
+            },
+            { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
+          ]}
+          moveTo={{ folders: moveFolders, onSelect: onMove }}
+        />
+      }
     >
       {hasExamples && (
         <button
@@ -1045,7 +1031,7 @@ const RequestRow: React.FC<RequestRowProps> = ({
           title={meta.isExpanded ? 'Hide examples' : 'Show examples'}
           className="text-zinc-500 hover:text-foreground cursor-pointer shrink-0"
         >
-          <ExpandChevron isExpanded={meta.isExpanded} size={11} />
+          <TreeList.ExpandToggle hasChildren isExpanded={meta.isExpanded} size={11} />
         </button>
       )}
       <RequestMethodBadge request={request} />
@@ -1062,22 +1048,7 @@ const RequestRow: React.FC<RequestRowProps> = ({
           {examples.length}
         </span>
       )}
-      <ActionsMenu
-        triggerTitle="Request actions"
-        actions={[
-          {
-            icon: <Pencil size={12} />,
-            label: 'Rename',
-            onClick: () => {
-              setDraftName(request.name);
-              setIsRenaming(true);
-            }
-          },
-          { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
-        ]}
-        moveTo={{ folders: moveFolders, onSelect: onMove }}
-      />
-    </div>
+    </TreeList.Item>
   );
 };
 
@@ -1134,19 +1105,40 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
   }
 
   return (
-    <div
+    <TreeList.Item
+      meta={meta}
+      dragMode="none"
       onClick={() => onOpen()}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onOpen({ preview: false });
       }}
       title={`${example.response.status === 0 ? 'ERROR' : `${example.response.status} ${example.response.statusText}`}\nDouble-click to open in a permanent tab`}
-      style={{ paddingLeft: meta.indentPx }}
       className={cn(
-        'h-7 flex items-center gap-2 px-2 hover:bg-surface-3 rounded text-xs cursor-pointer border transition-all group',
-        meta.isFocused && 'ring-1 ring-inset ring-accent',
+        'text-xs cursor-pointer border',
         isActive ? 'bg-accent/10 border-accent/60' : 'border-transparent hover:border-border-dark'
       )}
+      actions={
+        <ActionsMenu
+          idleContent={
+            <span className="text-[9px] text-zinc-600 shrink-0">
+              {example.response.status === 0 ? 'ERR' : example.response.status}
+            </span>
+          }
+          triggerTitle="Example actions"
+          actions={[
+            {
+              icon: <Pencil size={12} />,
+              label: 'Rename',
+              onClick: () => {
+                setDraftName(example.name);
+                setIsRenaming(true);
+              }
+            },
+            { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
+          ]}
+        />
+      }
     >
       <Bookmark size={11} className={`shrink-0 ${exampleStatusClass(example.response.status)}`} />
       <span
@@ -1154,25 +1146,6 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
       >
         {example.name}
       </span>
-      <ActionsMenu
-        idleContent={
-          <span className="text-[9px] text-zinc-600 shrink-0">
-            {example.response.status === 0 ? 'ERR' : example.response.status}
-          </span>
-        }
-        triggerTitle="Example actions"
-        actions={[
-          {
-            icon: <Pencil size={12} />,
-            label: 'Rename',
-            onClick: () => {
-              setDraftName(example.name);
-              setIsRenaming(true);
-            }
-          },
-          { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
-        ]}
-      />
-    </div>
+    </TreeList.Item>
   );
 };

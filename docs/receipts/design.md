@@ -19,7 +19,7 @@ isn't covered here.
 - `Tooltip` — hover hint (`Tooltip.Provider/Root/Trigger/Content`).
 - `Toolbar` — horizontal action bar (`Toolbar.Root/Button/Link/Input/Label/FreeSpace/Group/Separator`).
 - `ListView` — virtualized selectable row list backed by `@tanstack/react-table` + `react-virtual`; supports context menu, copy/cut/paste/delete, keyboard nav.
-- `TreeList` — generic recursive tree (arbitrary depth via `getChildren`), owns expand state toggling and drag-and-drop plumbing (`onDropOnNode`/`onDropOnBackground`); row content is fully owned by the `renderItem` slot (icon, label, badges, rename, actions). Not virtualized. See the Storybook "Tree List" gallery.
+- `TreeList` — generic recursive tree (arbitrary depth via `getChildren`), owns expand state toggling and drag-and-drop plumbing (`onDropOnNode`/`onDropOnBackground`); row content is fully owned by the `renderItem` slot (icon, label, badges, rename, actions). Not virtualized. See the Storybook "Tree List" gallery. `renderItem` should wrap its row in `TreeList.Item` — it owns the mechanics that must stay consistent across row kinds (roving-focus ring, drag opacity/drop-target ring, indent, `dragMode` to pick which of `meta.dragHandlers` to wire up: `'source'`/`'target'`/`'both'`/`'none'`) with an `actions` slot rendered last. `TreeList.ExpandToggle` is the paired chevron-or-spacer for a row's leading expand affordance.
 - `ResizablePanel` — drag handle on one edge (`left`/`right`/`top`/`bottom`) that resizes a panel in `px` or `%`.
 
 ## Color tokens
@@ -51,6 +51,26 @@ selected: bg-surface-3
 
 If the container itself is already `bg-surface-2`, shift the chain up one step:
 hover becomes `bg-surface-3`, selected becomes `bg-surface-4`.
+
+## List tokens: `bg-list-hover`, `bg-list-selected`
+
+For an interactive **list/tree row** specifically (`TreeList.Item`, and anything
+with the same hover/selected shape), reach for these instead of hand-picking a
+rung on the `bg-surface-*` ladder:
+
+- `bg-list-hover` — row hover background. `TreeList.Item` also uses this for
+  keyboard roving-focus (a focused row reads the same as a hovered one, no
+  separate focus ring).
+- `bg-list-selected` — row selected/active background.
+
+Own dedicated hex values (`src/renderer/src/assets/main.css`) rather than
+aliasing onto `--color-surface-2`/`--color-surface-3` -- still grayscale, matching
+the rest of the app's neutral palette, but their own intermediate steps rather
+than reusing an existing rung, so a row's look can be retuned on its own dial
+without nudging every other `bg-surface-*` consumer (panels, dialogs, dropdowns)
+along with it. Prefer these over `bg-surface-2`/`bg-surface-3` for any new
+list/tree row; the plain surface scale is still right for panels and other
+non-row elevation.
 
 ## Text: `text-foreground` vs `text-muted-foreground` vs `text-strong`
 

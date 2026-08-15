@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from 'cnfast';
-import { ChevronRight, File, Folder, FolderOpen, Trash2 } from 'lucide-react';
+import { File, Folder, FolderOpen, Trash2 } from 'lucide-react';
 import { TreeList, type TreeItemMeta } from '@renderer/components/ui/TreeList';
 import { Section } from './Section';
 
@@ -97,32 +97,33 @@ function DemoRow({ node, meta, isSelected, onSelect, onDelete }: DemoRowProps) {
     !isNodeOrDescendant(meta.draggingNode, node.id);
 
   return (
-    <div
+    <TreeList.Item
+      meta={meta}
       onClick={() => {
         if (node.kind === 'folder') meta.toggleExpanded();
         onSelect();
       }}
-      style={{ paddingLeft: meta.indentPx }}
-      {...meta.dragHandlers}
+      isDropTarget={meta.isDropTarget && isValidDropTarget}
+      isActive={isSelected}
       className={cn(
-        'group flex items-center gap-1.5 rounded px-1.5 py-1 text-xs cursor-pointer select-none',
-
-        meta.isDragging && 'opacity-40',
-        meta.isDropTarget && isValidDropTarget && 'ring-1 ring-accent bg-accent/10',
-        meta.isFocused && 'ring-1 ring-inset bg-surface-2 ring-border',
-        isSelected
-          ? 'bg-surface-3 text-foreground'
-          : 'text-muted-foreground hover:bg-surface-3/50 hover:text-foreground'
+        'gap-1.5 px-1.5 text-xs cursor-pointer select-none',
+        isSelected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
       )}
+      actions={
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="Delete"
+          className="shrink-0 text-muted-foreground opacity-0 hover:text-red-400 group-hover:opacity-100"
+        >
+          <Trash2 size={11} />
+        </button>
+      }
     >
       {node.kind === 'folder' ? (
-        <ChevronRight
-          size={12}
-          className={cn(
-            'shrink-0 text-muted-foreground transition-transform duration-150',
-            meta.isExpanded && 'rotate-90'
-          )}
-        />
+        <TreeList.ExpandToggle hasChildren isExpanded={meta.isExpanded} />
       ) : (
         <span className="w-3 shrink-0" />
       )}
@@ -136,17 +137,7 @@ function DemoRow({ node, meta, isSelected, onSelect, onDelete }: DemoRowProps) {
         <File size={13} className="shrink-0 text-sky-500" />
       )}
       <span className="flex-1 truncate">{node.name}</span>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        title="Delete"
-        className="shrink-0 text-muted-foreground opacity-0 hover:text-red-400 group-hover:opacity-100"
-      >
-        <Trash2 size={11} />
-      </button>
-    </div>
+    </TreeList.Item>
   );
 }
 

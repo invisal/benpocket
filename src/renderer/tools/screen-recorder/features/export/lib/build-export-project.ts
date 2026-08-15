@@ -46,7 +46,10 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
       size: webcamState.size,
       shadow: webcamState.shadow
     },
-    webcamVideoPath: lastRecording?.webcamFilePath ?? null,
+    // Prefer the untouched export-source file over `webcamFilePath` when the
+    // two differ -- see LastRecording.webcamExportSourceFilePath's doc.
+    webcamVideoPath:
+      lastRecording?.webcamExportSourceFilePath ?? lastRecording?.webcamFilePath ?? null,
     webcamOffsetMs: lastRecording?.webcamOffsetMs ?? 0,
     background: {
       kind: backgroundState.kind,

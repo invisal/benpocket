@@ -57,7 +57,9 @@ export function useExportAction(): UseExportActionResult {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   function validateExportable(): string | null {
-    const sourceVideoPath = lastRecording?.filePath ?? null;
+    // Prefer the untouched export-source file over `filePath` when the two
+    // differ -- see LastRecording.exportSourceFilePath's doc.
+    const sourceVideoPath = lastRecording?.exportSourceFilePath ?? lastRecording?.filePath ?? null;
     if (!sourceVideoPath) {
       setStatus('error');
       setError('Recording is still being saved. Try again in a moment.');

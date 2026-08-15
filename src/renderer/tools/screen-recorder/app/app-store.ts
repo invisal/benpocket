@@ -20,6 +20,15 @@ export const EMPTY_CURSOR_PATH: CursorPathPoint[] = [];
 interface LastRecording {
   previewUrl: string;
   filePath: string | null;
+  /**
+   * What export should actually read instead of `filePath`, when it
+   * differs -- see capture-engine.ts's `StopResult.video.exportSourceBlob`
+   * doc. Undefined for anything that didn't go through
+   * useRecordingController.ts's own `finalize()` (an imported video, a
+   * reopened saved project) -- callers fall back to `filePath` in that
+   * case, same as before this field existed.
+   */
+  exportSourceFilePath?: string | null;
   sizeBytes: number;
   createdAt: number;
   /** Recorded system-cursor samples, source-timeline `atMs`. Empty for window captures. */
@@ -30,6 +39,8 @@ interface LastRecording {
   webcamPreviewUrl: string | null;
   /** Absolute path to the saved webcam file, for export -- see capture-engine.ts's `CaptureRequest.webcam`. */
   webcamFilePath: string | null;
+  /** What export should read instead of `webcamFilePath`, when it differs -- see `exportSourceFilePath`'s doc, same reasoning for the webcam file. */
+  webcamExportSourceFilePath?: string | null;
   /** `webcamStartedAt - startedAt` from capture-engine.ts's `StopResult` -- the webcam recorder's `MediaRecorder` starts a moment after the main one, so this is added to a main-timeline `atMs` to find the corresponding moment in the webcam file. */
   webcamOffsetMs: number;
   /** Which flow produced this session -- carried into `Project.source` on save, see project.ts. */

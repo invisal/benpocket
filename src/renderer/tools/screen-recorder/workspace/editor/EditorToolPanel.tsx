@@ -9,6 +9,7 @@ import { AnnotationsPanel } from '../../features/annotations/components/Annotati
 import { BlurMaskPanel } from '../../features/blur-mask/components/BlurMaskPanel';
 import { ZoomKeyframeEditor } from '../../features/zoom/components/ZoomKeyframeEditor';
 import { ClipSettingsPanel } from '../../features/timeline/components/ClipSettingsPanel';
+import { isLikelyLinux } from '../../lib/platform';
 import { type EditorTool } from './editorTools';
 
 interface EditorToolPanelProps {
@@ -41,7 +42,9 @@ export function EditorToolPanel({
   selectedSegment,
   isImportedProject
 }: EditorToolPanelProps): JSX.Element {
-  const visibleTools = isImportedProject ? tools.filter((t) => t.id !== 'cursor') : tools;
+  // Same reasoning as EditorToolRail.tsx's identical filter.
+  const visibleTools =
+    isImportedProject || isLikelyLinux ? tools.filter((t) => t.id !== 'cursor') : tools;
   const label = visibleTools.find((t) => t.id === tool)?.label ?? '';
   return (
     <aside className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto border-l border-line p-3">

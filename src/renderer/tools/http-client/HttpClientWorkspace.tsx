@@ -87,7 +87,7 @@ export const HttpClientWorkspace: React.FC = () => {
         onResize={handleSidebarResize}
         min={200}
         max={480}
-        className="bg-surface-2 border-r border-border-dark overflow-y-auto p-3"
+        className="bg-surface border-r border-border-dark overflow-y-auto"
       >
         <HttpClientSidebar />
       </ResizablePanel>

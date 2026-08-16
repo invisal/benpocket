@@ -8,6 +8,7 @@ import { yaml as yamlLang } from '@codemirror/lang-yaml';
 import { javascript as javascriptLang } from '@codemirror/lang-javascript';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Select } from '@renderer/components/ui/Select';
+import { PillTab } from '@renderer/components/ui/Tabs';
 import { Check, Copy, Eye, FileText, Table } from 'lucide-react';
 import { useThemeStore } from '@renderer/store/theme.store';
 import { getPrettyText } from '../lib/formatters/index';
@@ -99,45 +100,30 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
           </Select.Root>
 
           {(previewEnabled || tableEnabled) && (
-            <div className="flex items-center bg-surface-3 border border-border-dark rounded overflow-hidden text-[10px] font-semibold">
-              <button
-                onClick={() => setViewMode('formatted')}
-                className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors ${
-                  viewMode === 'formatted'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-zinc-400 hover:text-foreground'
-                }`}
-              >
-                <FileText size={10} />
-                Pretty
-              </button>
-              {previewEnabled && (
-                <button
-                  onClick={() => setViewMode('preview')}
-                  className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors ${
-                    viewMode === 'preview'
-                      ? 'bg-accent/20 text-accent'
-                      : 'text-zinc-400 hover:text-foreground'
-                  }`}
-                >
-                  <Eye size={10} />
-                  Preview
-                </button>
-              )}
-              {tableEnabled && (
-                <button
-                  onClick={() => setViewMode('table')}
-                  className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors ${
-                    viewMode === 'table'
-                      ? 'bg-accent/20 text-accent'
-                      : 'text-zinc-400 hover:text-foreground'
-                  }`}
-                >
-                  <Table size={10} />
-                  Table
-                </button>
-              )}
-            </div>
+            <PillTab.Root
+              value={viewMode}
+              onValueChange={(value) => setViewMode(value as 'formatted' | 'preview' | 'table')}
+            >
+              <PillTab.List>
+                <PillTab.Item value="formatted">
+                  <FileText size={10} />
+                  Pretty
+                </PillTab.Item>
+                {previewEnabled && (
+                  <PillTab.Item value="preview">
+                    <Eye size={10} />
+                    Preview
+                  </PillTab.Item>
+                )}
+                {tableEnabled && (
+                  <PillTab.Item value="table">
+                    <Table size={10} />
+                    Table
+                  </PillTab.Item>
+                )}
+                <PillTab.Indicator />
+              </PillTab.List>
+            </PillTab.Root>
           )}
         </div>
 

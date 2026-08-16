@@ -223,7 +223,12 @@ export const RequestSaveBar = forwardRef<RequestSaveBarHandle, RequestSaveBarPro
 
         <div className="flex items-center gap-2 shrink-0">
           {extraActions}
-          <Button onClick={handleSave} disabled={isSaving} title="Save (Ctrl+S / ⌘S)">
+          <Button
+            variant="secondary"
+            onClick={handleSave}
+            disabled={isSaving}
+            title="Save (Ctrl+S / ⌘S)"
+          >
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
         </div>

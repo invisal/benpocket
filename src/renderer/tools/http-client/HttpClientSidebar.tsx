@@ -1,39 +1,18 @@
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
-import { Popover } from '@base-ui/react/popover';
+import { useEffect, useState } from 'react';
 import { cn } from 'cnfast';
-import {
-  Bookmark,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Folder,
-  FolderOpen,
-  FolderPlus,
-  KeyRound,
-  Move,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Send,
-  Trash2,
-  Upload,
-  Waves,
-  X
-} from 'lucide-react';
+import { FolderPlus, Plus, Upload, Waves, X } from 'lucide-react';
+import { Button } from '@renderer/components/ui/Button';
 import { useRequestTabsStore, type RequestTab } from './store/tabs.store';
 import { useCollectionsStore } from './store/collections.store';
 import { useEnvironmentsStore } from './store/environments.store';
 import { disposeApiClientTab } from './hooks/useApiClient';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
 import { EnvironmentSelector } from './components/EnvironmentSelector';
-import { AuthorizationDialog } from './components/AuthorizationDialog';
+import { CollectionsTree } from './components/CollectionsTree';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import type {
   Collection,
-  CollectionFolder,
-  HttpAuth,
   HttpMethod,
   SavedExample,
   SavedRequest
@@ -42,86 +21,11 @@ import type { RequestTabSeed } from './types';
 import {
   collectAllFolderIds,
   countRequestsRecursive,
-  findFolderById,
-  findFolderChainForRequest,
-  findRequestInContainer,
-  flattenFolderOptions,
-  isFolderOrDescendant
+  findFolderChainForRequest
 } from './lib/collectionTree';
+import { methodBadgeClass } from './lib/methodBadge';
 
-/** Custom MIME type carrying the drag payload for sidebar folder/request drag & drop. */
-const DRAG_MIME_TYPE = 'application/x-craftbox-http-request-item';
-
-interface DragPayload {
-  kind: 'request' | 'folder';
-  id: string;
-  collectionId: string;
-}
-
-function readDragPayload(dataTransfer: DataTransfer): DragPayload | null {
-  const raw = dataTransfer.getData(DRAG_MIME_TYPE);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as DragPayload;
-  } catch {
-    return null;
-  }
-}
-
-// Bordered so the badge still reads as a distinct chip against a light-theme
-// surface, where the `-950` fill alone blends into near-white; the border
-// pins the shape while the fill/text colors do the rest (`--color-purple-400`
-// gets a light-theme override in main.css since its default is too washed out
-// on a white background).
-function methodBadgeClass(method: string): string {
-  switch (method) {
-    case 'WEBSOCKET':
-      return 'text-cyan-500';
-    case 'GET':
-      return 'text-emerald-500';
-    case 'POST':
-      return 'text-amber-500';
-    case 'PUT':
-      return 'text-sky-500';
-    case 'PATCH':
-      return 'text-purple-400';
-    case 'DELETE':
-      return 'text-red-500';
-    default:
-      return 'text-zinc-400';
-  }
-}
-
-function exampleStatusClass(status: number): string {
-  if (status === 0) return 'text-red-500';
-  if (status < 300) return 'text-emerald-500';
-  if (status < 400) return 'text-sky-500';
-  if (status < 500) return 'text-amber-500';
-  return 'text-red-500';
-}
-
-/** Method/protocol badge for a saved request: the HTTP verb, or a WebSocket icon for WS requests. */
-const RequestMethodBadge: React.FC<{ request: SavedRequest }> = ({ request }) => {
-  if (request.protocol === 'WEBSOCKET') {
-    return (
-      <span
-        title="WebSocket request"
-        className={`flex items-center justify-center px-1 py-0.5 rounded shrink-0 ${methodBadgeClass('WEBSOCKET')}`}
-      >
-        <Waves size={9} strokeWidth={3} />
-      </span>
-    );
-  }
-  return (
-    <span
-      className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(request.method)}`}
-    >
-      {request.method}
-    </span>
-  );
-};
-
-/** Method/protocol badge for an open tab, mirroring `RequestMethodBadge` but reading off the tab's seed data. */
+/** Method/protocol badge for an open tab, mirroring `RequestMethodBadge` in `CollectionsTree.tsx` but reading off the tab's seed data. */
 const TabMethodBadge: React.FC<{ tab: RequestTab }> = ({ tab }) => {
   if (tab.meta?.protocol === 'WEBSOCKET') {
     return (
@@ -136,7 +40,7 @@ const TabMethodBadge: React.FC<{ tab: RequestTab }> = ({ tab }) => {
   const method: HttpMethod = tab.meta?.method ?? 'GET';
   return (
     <span
-      className={`text-[9px] font-extrabold px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(method)}`}
+      className={`text-[9px] font-medium px-1 py-0.5 rounded shrink-0 ${methodBadgeClass(method)}`}
     >
       {method}
     </span>
@@ -459,15 +363,6 @@ export const HttpClientSidebar: React.FC = () => {
     if (name) runMutation(() => createCollection(name));
   };
 
-  const toggleExpanded = (id: string): void => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const handleImportCollection = async (): Promise<void> => {
     const result = await importCollection();
     if (result.canceled) return;
@@ -530,1237 +425,167 @@ export const HttpClientSidebar: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <WorkspaceSelector />
-        <button
-          onClick={handleNewRequestTab}
-          title="Create Request"
-          className="p-1 text-zinc-400 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
-        >
-          <Plus size={16} />
-        </button>
-      </div>
+    <div className="flex flex-col min-h-full">
+      <div className="flex flex-col flex-1">
+        <div className="flex items-center justify-between border-b border-border px-2 py-1">
+          <WorkspaceSelector />
+          <Button variant="ghost" size="sm" onClick={handleNewRequestTab} title="Create Request">
+            <Plus size={16} />
+          </Button>
+        </div>
 
-      <button
-        onClick={handleNewRequestTab}
-        className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-surface-3 border border-border-dark hover:bg-border-dark/50 rounded text-xs text-zinc-300 hover:text-foreground cursor-pointer transition-all"
-      >
-        <Send size={12} className="text-zinc-500" />
-        <span>New Request</span>
-      </button>
+        {tabs.length > 0 && (
+          <div className="flex flex-col gap-1.5 px-2">
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-[10px] font-semibold text-zinc-500">OPEN TABS</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {tabs.map((tab) => (
+                <OpenTabItem
+                  key={tab.id}
+                  tab={tab}
+                  isActive={tab.id === activeTabId}
+                  isPreview={tab.id === previewTabId}
+                  canCloseOthers={tabs.length > 1}
+                  onActivate={() => setActiveTabId(tab.id)}
+                  onClose={() => handleCloseTab(tab.id)}
+                  onCloseOthers={() => handleCloseOtherTabs(tab.id)}
+                  onCloseAll={handleCloseAllTabs}
+                  onRename={(title) => renameTab(tab.id, title)}
+                  onPin={() => pinTab(tab.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-      <EnvironmentSelector />
-
-      {tabs.length > 0 && (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 px-2">
           <div className="flex items-center justify-between mt-2">
-            <span className="text-[10px] font-semibold text-zinc-500">OPEN TABS</span>
+            <span className="text-[10px] font-semibold text-zinc-500">COLLECTIONS</span>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={handleImportCollection}
+                title="Import Collection — supports Collection Format v2.0 and v2.1 (.json)"
+                className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
+              >
+                <Upload size={13} />
+              </button>
+              <button
+                onClick={() => {
+                  setIsCreatingCollection(true);
+                  setDraftCollectionName('');
+                }}
+                title="New Collection"
+                className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
+              >
+                <FolderPlus size={13} />
+              </button>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5">
-            {tabs.map((tab) => (
-              <OpenTabItem
-                key={tab.id}
-                tab={tab}
-                isActive={tab.id === activeTabId}
-                isPreview={tab.id === previewTabId}
-                canCloseOthers={tabs.length > 1}
-                onActivate={() => setActiveTabId(tab.id)}
-                onClose={() => handleCloseTab(tab.id)}
-                onCloseOthers={() => handleCloseOtherTabs(tab.id)}
-                onCloseAll={handleCloseAllTabs}
-                onRename={(title) => renameTab(tab.id, title)}
-                onPin={() => pinTab(tab.id)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[10px] font-semibold text-zinc-500">COLLECTIONS</span>
-          <div className="flex items-center gap-0.5">
-            <button
-              onClick={handleImportCollection}
-              title="Import Collection — supports Collection Format v2.0 and v2.1 (.json)"
-              className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
+          {statusMessage && (
+            <div
+              className={`flex items-start justify-between gap-2 rounded px-2 py-1.5 text-[10px] leading-snug border ${
+                statusMessage.type === 'error'
+                  ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              }`}
             >
-              <Upload size={13} />
-            </button>
-            <button
-              onClick={() => {
-                setIsCreatingCollection(true);
-                setDraftCollectionName('');
-              }}
-              title="New Collection"
-              className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
-            >
-              <FolderPlus size={13} />
-            </button>
-          </div>
-        </div>
+              <span>{statusMessage.text}</span>
+              <button
+                onClick={() => setStatusMessage(null)}
+                title="Dismiss"
+                className="shrink-0 cursor-pointer hover:opacity-70"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          )}
 
-        {statusMessage && (
-          <div
-            className={`flex items-start justify-between gap-2 rounded px-2 py-1.5 text-[10px] leading-snug border ${
-              statusMessage.type === 'error'
-                ? 'bg-red-500/10 border-red-500/20 text-red-400'
-                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-            }`}
-          >
-            <span>{statusMessage.text}</span>
-            <button
-              onClick={() => setStatusMessage(null)}
-              title="Dismiss"
-              className="shrink-0 cursor-pointer hover:opacity-70"
-            >
-              <X size={11} />
-            </button>
-          </div>
-        )}
-
-        {isCreatingCollection && (
-          <input
-            type="text"
-            autoFocus
-            placeholder="Collection name..."
-            value={draftCollectionName}
-            onChange={(e) => setDraftCollectionName(e.target.value)}
-            onBlur={submitNewCollection}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submitNewCollection();
-              if (e.key === 'Escape') {
-                setIsCreatingCollection(false);
-                setDraftCollectionName('');
-              }
-            }}
-            className="bg-surface-3 border border-accent rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none"
-          />
-        )}
-
-        {collections.length === 0 && !isCreatingCollection && (
-          <div className="text-[11px] text-zinc-650 italic px-1 py-1 leading-relaxed">
-            No collections yet. Collections group related saved requests together, so you can find
-            and re-run them later. Save a request, or import a collection (v2.0 / v2.1 .json).
-          </div>
-        )}
-
-        <div className="flex flex-col gap-0.5">
-          {collections.map((collection) => (
-            <CollectionItem
-              key={collection.id}
-              collection={collection}
-              expanded={expanded}
-              isExpanded={expanded.has(collection.id)}
-              onToggle={() => toggleExpanded(collection.id)}
-              onToggleFolder={toggleExpanded}
-              onRename={(name) => runMutation(() => renameCollection(collection.id, name))}
-              onDelete={() => runMutation(() => deleteCollection(collection.id))}
-              onExport={() => handleExportCollection(collection.id)}
-              onOpenRequest={(request, options) => openSavedRequest(collection, request, options)}
-              onRenameRequest={(requestId, name) =>
-                runMutation(() => renameRequest(collection.id, requestId, name))
-              }
-              onDeleteRequest={(requestId) =>
-                runMutation(() => deleteRequest(collection.id, requestId))
-              }
-              onOpenExample={(request, example, options) =>
-                openSavedExample(collection, request, example, options)
-              }
-              onRenameExample={(requestId, exampleId, name) =>
-                runMutation(() => renameExample(collection.id, requestId, exampleId, name))
-              }
-              onDeleteExample={(requestId, exampleId) =>
-                runMutation(() => deleteExample(collection.id, requestId, exampleId))
-              }
-              onMoveRequest={(requestId, targetFolderId) =>
-                runMutation(() => moveRequest(collection.id, requestId, targetFolderId))
-              }
-              onNewRequest={(folderId) => openNewRequestInFolder(collection.id, folderId)}
-              onCreateFolder={(parentFolderId, name) =>
-                runMutation(() => createFolder(collection.id, parentFolderId, name))
-              }
-              onRenameFolder={(folderId, name) =>
-                runMutation(() => renameFolder(collection.id, folderId, name))
-              }
-              onDeleteFolder={(folderId) =>
-                runMutation(() => deleteFolder(collection.id, folderId))
-              }
-              onMoveFolder={(folderId, targetParentFolderId) =>
-                runMutation(() => moveFolder(collection.id, folderId, targetParentFolderId))
-              }
-              onSetAuth={(auth) => setCollectionAuth(collection.id, auth)}
-              onSetFolderAuth={(folderId, auth) => setFolderAuth(collection.id, folderId, auth)}
-              onInvalidDrop={handleInvalidDrop}
-              activeRequestId={activeCollectionId === collection.id ? activeRequestId : null}
-              activeExampleId={activeCollectionId === collection.id ? activeExampleId : null}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-interface MenuButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-}
-
-const MenuButton: React.FC<MenuButtonProps> = ({ icon, label, onClick, danger }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 text-left px-2 py-1.5 rounded hover:bg-border-dark/60 cursor-pointer ${
-      danger ? 'text-red-400 hover:text-red-300' : 'text-zinc-300 hover:text-foreground'
-    }`}
-  >
-    {icon}
-    <span className="truncate">{label}</span>
-  </button>
-);
-
-interface ActionsMenuAction {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-}
-
-interface ActionsMenuMoveTarget {
-  /** The whole collection's root folder tree — options are computed across all of it, not just siblings. */
-  folders: CollectionFolder[];
-  /** Exclude this folder (and its descendants) from the target list — used when moving a folder itself. */
-  excludeId?: string;
-  onSelect: (targetFolderId: string | null) => void;
-}
-
-interface ActionsMenuProps {
-  actions: ActionsMenuAction[];
-  moveTo?: ActionsMenuMoveTarget;
-  triggerTitle?: string;
-  triggerClassName?: string;
-}
-
-/**
- * A single "..." trigger that pops open a stacked menu of actions for a collection, folder or
- * request item, instead of a row of always-competing hover icons.
- *
- * Owns the `hidden group-hover:flex` reveal-on-hover wrapper itself (rather than leaving it to the
- * caller) because it must force itself visible while the popover is open: the popup renders in a
- * portal outside the hovered row, so moving the mouse into the popup drops the row's `:hover`. If
- * the trigger were still `display:none` at that point, its bounding rect would collapse to
- * (0,0) and the floating-positioned popup would jump to the top-left corner mid-interaction.
- */
-const ActionsMenu: React.FC<ActionsMenuProps> = ({
-  actions,
-  moveTo,
-  triggerTitle = 'More actions',
-  triggerClassName = 'p-0.5 text-zinc-555 hover:text-foreground cursor-pointer'
-}) => {
-  const [open, setOpen] = useState(false);
-  const [view, setView] = useState<'menu' | 'move'>('menu');
-  const moveOptions = useMemo(
-    () => (moveTo ? flattenFolderOptions(moveTo.folders, 0, moveTo.excludeId) : []),
-    [moveTo]
-  );
-
-  const close = (): void => {
-    setOpen(false);
-    setView('menu');
-  };
-
-  return (
-    <div
-      className={`items-center shrink-0 ${open ? 'flex' : 'hidden group-hover:flex'}`}
-      onClick={(e) => e.stopPropagation()}
-      draggable={false}
-    >
-      <Popover.Root
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setView('menu');
-        }}
-      >
-        <Popover.Trigger title={triggerTitle} className={triggerClassName}>
-          <MoreHorizontal size={13} />
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Positioner sideOffset={4} align="start" className="z-50">
-            <Popover.Popup
-              onClick={(e) => e.stopPropagation()}
-              className="bg-surface border border-border-dark rounded-lg shadow-xl p-1 w-48 max-h-72 overflow-y-auto flex flex-col gap-0.5 text-xs outline-none"
-            >
-              {view === 'menu' ? (
-                <>
-                  {actions.map((action) => (
-                    <MenuButton
-                      key={action.label}
-                      icon={action.icon}
-                      label={action.label}
-                      danger={action.danger}
-                      onClick={() => {
-                        close();
-                        action.onClick();
-                      }}
-                    />
-                  ))}
-                  {moveTo && (
-                    <MenuButton
-                      icon={<Move size={12} />}
-                      label="Move to..."
-                      onClick={() => setView('move')}
-                    />
-                  )}
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setView('menu')}
-                    className="flex items-center gap-1 text-left px-2 py-1.5 rounded hover:bg-border-dark/60 text-zinc-400 hover:text-foreground cursor-pointer"
-                  >
-                    <ChevronLeft size={12} />
-                    <span>Back</span>
-                  </button>
-                  <div className="h-px bg-border-dark my-0.5" />
-                  <button
-                    onClick={() => {
-                      close();
-                      moveTo!.onSelect(null);
-                    }}
-                    className="text-left px-2 py-1.5 rounded hover:bg-border-dark/60 text-zinc-300 hover:text-foreground cursor-pointer"
-                  >
-                    Collection Root
-                  </button>
-                  {moveOptions.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        close();
-                        moveTo!.onSelect(opt.id);
-                      }}
-                      style={{ paddingLeft: 8 + opt.depth * 12 }}
-                      className="text-left px-2 py-1.5 rounded hover:bg-border-dark/60 text-zinc-300 hover:text-foreground cursor-pointer truncate"
-                    >
-                      {opt.name}
-                    </button>
-                  ))}
-                  {moveOptions.length === 0 && (
-                    <div className="px-2 py-1.5 text-zinc-600 italic">No other folders</div>
-                  )}
-                </>
-              )}
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
-      </Popover.Root>
-    </div>
-  );
-};
-
-interface CollectionItemProps {
-  collection: Collection;
-  expanded: Set<string>;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onToggleFolder: (folderId: string) => void;
-  onRename: (name: string) => void;
-  onDelete: () => void;
-  onExport: () => void;
-  onOpenRequest: (request: SavedRequest, options?: { preview?: boolean }) => void;
-  onRenameRequest: (requestId: string, name: string) => void;
-  onDeleteRequest: (requestId: string) => void;
-  onOpenExample: (
-    request: SavedRequest,
-    example: SavedExample,
-    options?: { preview?: boolean }
-  ) => void;
-  onRenameExample: (requestId: string, exampleId: string, name: string) => void;
-  onDeleteExample: (requestId: string, exampleId: string) => void;
-  onMoveRequest: (requestId: string, targetFolderId: string | null) => void;
-  onNewRequest: (folderId: string | null) => void;
-  onCreateFolder: (parentFolderId: string | null, name: string) => void;
-  onRenameFolder: (folderId: string, name: string) => void;
-  onDeleteFolder: (folderId: string) => void;
-  onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
-  onSetAuth: (auth: HttpAuth) => Promise<void>;
-  onSetFolderAuth: (folderId: string, auth: HttpAuth) => Promise<void>;
-  onInvalidDrop: (message: string) => void;
-  /** The saved request id backing the currently active tab, if it lives in this collection. */
-  activeRequestId: string | null;
-  /** The saved example id backing the currently active tab, if it lives in this collection. */
-  activeExampleId: string | null;
-}
-
-const CollectionItem: React.FC<CollectionItemProps> = ({
-  collection,
-  expanded,
-  isExpanded,
-  onToggle,
-  onToggleFolder,
-  onRename,
-  onDelete,
-  onExport,
-  onOpenRequest,
-  onRenameRequest,
-  onDeleteRequest,
-  onOpenExample,
-  onRenameExample,
-  onDeleteExample,
-  onMoveRequest,
-  onNewRequest,
-  onCreateFolder,
-  onRenameFolder,
-  onDeleteFolder,
-  onMoveFolder,
-  onSetAuth,
-  onSetFolderAuth,
-  onInvalidDrop,
-  activeRequestId,
-  activeExampleId
-}) => {
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [draftName, setDraftName] = useState(collection.name);
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [draftFolderName, setDraftFolderName] = useState('');
-  const [isRootDropTarget, setIsRootDropTarget] = useState(false);
-  const [isEditingAuth, setIsEditingAuth] = useState(false);
-
-  const handleRootDragOver = (e: React.DragEvent): void => {
-    if (!e.dataTransfer.types.includes(DRAG_MIME_TYPE)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-    setIsRootDropTarget(true);
-  };
-
-  const handleRootDragLeave = (e: React.DragEvent): void => {
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    setIsRootDropTarget(false);
-  };
-
-  const handleRootDrop = (e: React.DragEvent): void => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsRootDropTarget(false);
-    const payload = readDragPayload(e.dataTransfer);
-    if (!payload) return;
-    if (payload.collectionId !== collection.id) {
-      onInvalidDrop('Items can only be moved within the same collection.');
-      return;
-    }
-    if (payload.kind === 'request') onMoveRequest(payload.id, null);
-    else onMoveFolder(payload.id, null);
-  };
-
-  const commitRename = (): void => {
-    setIsRenaming(false);
-    const trimmed = draftName.trim();
-    if (trimmed && trimmed !== collection.name) onRename(trimmed);
-  };
-
-  const submitNewFolder = (): void => {
-    const name = draftFolderName.trim();
-    setIsCreatingFolder(false);
-    setDraftFolderName('');
-    if (name) onCreateFolder(null, name);
-  };
-
-  const sortedRequests = useMemo(
-    () => [...collection.requests].sort((a, b) => b.updatedAt - a.updatedAt),
-    [collection.requests]
-  );
-
-  const totalCount = useMemo(() => countRequestsRecursive(collection), [collection]);
-  const containsActive = activeRequestId !== null;
-
-  return (
-    <div className="flex flex-col">
-      <div
-        onDragOver={handleRootDragOver}
-        onDragLeave={handleRootDragLeave}
-        onDrop={handleRootDrop}
-        title="Drop here to move to collection root"
-        className={`flex items-center gap-1 group px-1 py-1 rounded hover:bg-surface-3/60 ${
-          isRootDropTarget
-            ? 'ring-1 ring-accent bg-accent/10'
-            : containsActive
-              ? 'bg-surface-3/40'
-              : ''
-        }`}
-      >
-        <button
-          onClick={onToggle}
-          title={isExpanded ? 'Collapse' : 'Expand'}
-          className="text-zinc-500 hover:text-foreground cursor-pointer shrink-0"
-        >
-          {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        </button>
-
-        {isRenaming ? (
-          <input
-            type="text"
-            autoFocus
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename();
-              if (e.key === 'Escape') {
-                setDraftName(collection.name);
-                setIsRenaming(false);
-              }
-            }}
-            className="flex-1 bg-surface-3 border border-accent rounded px-1.5 py-0.5 text-xs text-zinc-200 focus:outline-none"
-          />
-        ) : (
-          <span
-            onDoubleClick={() => {
-              setDraftName(collection.name);
-              setIsRenaming(true);
-            }}
-            title="Double-click to rename"
-            className="flex-1 truncate text-xs text-zinc-300 cursor-default"
-          >
-            {collection.name}
-            <span className="text-zinc-600 ml-1">({totalCount})</span>
-          </span>
-        )}
-
-        {!isRenaming && (
-          <ActionsMenu
-            triggerTitle="Collection actions"
-            actions={[
-              {
-                icon: <Send size={12} />,
-                label: 'New Request',
-                onClick: () => onNewRequest(null)
-              },
-              {
-                icon: <FolderPlus size={12} />,
-                label: 'New Folder',
-                onClick: () => {
-                  setIsCreatingFolder(true);
-                  setDraftFolderName('');
-                }
-              },
-              {
-                icon: <Pencil size={12} />,
-                label: 'Rename',
-                onClick: () => {
-                  setDraftName(collection.name);
-                  setIsRenaming(true);
-                }
-              },
-              {
-                icon: <KeyRound size={12} />,
-                label: 'Authorization',
-                onClick: () => setIsEditingAuth(true)
-              },
-              { icon: <Download size={12} />, label: 'Export', onClick: onExport },
-              { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
-            ]}
-          />
-        )}
-      </div>
-
-      <AuthorizationDialog
-        open={isEditingAuth}
-        onOpenChange={setIsEditingAuth}
-        title={`${collection.name} Authorization`}
-        auth={collection.auth}
-        onSave={onSetAuth}
-      />
-
-      {isExpanded && (
-        <div
-          onDragOver={handleRootDragOver}
-          onDragLeave={handleRootDragLeave}
-          onDrop={handleRootDrop}
-          className={`flex flex-col gap-0.5 pl-4 rounded ${isRootDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''}`}
-        >
-          {isCreatingFolder && (
+          {isCreatingCollection && (
             <input
               type="text"
               autoFocus
-              placeholder="Folder name..."
-              value={draftFolderName}
-              onChange={(e) => setDraftFolderName(e.target.value)}
-              onBlur={submitNewFolder}
+              placeholder="Collection name..."
+              value={draftCollectionName}
+              onChange={(e) => setDraftCollectionName(e.target.value)}
+              onBlur={submitNewCollection}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') submitNewFolder();
+                if (e.key === 'Enter') submitNewCollection();
                 if (e.key === 'Escape') {
-                  setIsCreatingFolder(false);
-                  setDraftFolderName('');
+                  setIsCreatingCollection(false);
+                  setDraftCollectionName('');
                 }
               }}
               className="bg-surface-3 border border-accent rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none"
             />
           )}
 
-          {collection.folders.length === 0 && sortedRequests.length === 0 && !isCreatingFolder && (
-            <div className="text-[10px] text-zinc-650 italic px-1 py-0.5">
-              Empty - use Save to add a request.
+          {collections.length === 0 && !isCreatingCollection && (
+            <div className="text-[11px] text-zinc-650 italic px-1 py-1 leading-relaxed">
+              No collections yet. Collections group related saved requests together, so you can find
+              and re-run them later. Save a request, or import a collection (v2.0 / v2.1 .json).
             </div>
           )}
 
-          {collection.folders.map((folder) => (
-            <FolderItem
-              key={folder.id}
-              folder={folder}
-              depth={0}
-              expanded={expanded}
-              onToggle={onToggleFolder}
-              rootFolders={collection.folders}
-              collectionId={collection.id}
-              onOpenRequest={onOpenRequest}
-              onRenameRequest={onRenameRequest}
-              onDeleteRequest={onDeleteRequest}
-              onOpenExample={onOpenExample}
-              onRenameExample={onRenameExample}
-              onDeleteExample={onDeleteExample}
-              onMoveRequest={onMoveRequest}
-              onNewRequest={onNewRequest}
-              onCreateFolder={onCreateFolder}
-              onRenameFolder={onRenameFolder}
-              onDeleteFolder={onDeleteFolder}
-              onMoveFolder={onMoveFolder}
-              onSetFolderAuth={onSetFolderAuth}
-              onInvalidDrop={onInvalidDrop}
-              activeRequestId={activeRequestId}
-              activeExampleId={activeExampleId}
-            />
-          ))}
-
-          {sortedRequests.map((request) => (
-            <RequestItem
-              key={request.id}
-              request={request}
-              collectionId={collection.id}
-              onOpen={(options) => onOpenRequest(request, options)}
-              onRename={(name) => onRenameRequest(request.id, name)}
-              onDelete={() => onDeleteRequest(request.id)}
-              moveFolders={collection.folders}
-              onMove={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
-              isActive={request.id === activeRequestId}
-              isExpanded={expanded.has(request.id)}
-              onToggleExpanded={() => onToggleFolder(request.id)}
-              onOpenExample={(example, options) => onOpenExample(request, example, options)}
-              onRenameExample={(exampleId, name) => onRenameExample(request.id, exampleId, name)}
-              onDeleteExample={(exampleId) => onDeleteExample(request.id, exampleId)}
-              activeExampleId={activeExampleId}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface FolderItemProps {
-  folder: CollectionFolder;
-  depth: number;
-  expanded: Set<string>;
-  onToggle: (folderId: string) => void;
-  rootFolders: CollectionFolder[];
-  collectionId: string;
-  onOpenRequest: (request: SavedRequest, options?: { preview?: boolean }) => void;
-  onRenameRequest: (requestId: string, name: string) => void;
-  onDeleteRequest: (requestId: string) => void;
-  onOpenExample: (
-    request: SavedRequest,
-    example: SavedExample,
-    options?: { preview?: boolean }
-  ) => void;
-  onRenameExample: (requestId: string, exampleId: string, name: string) => void;
-  onDeleteExample: (requestId: string, exampleId: string) => void;
-  onMoveRequest: (requestId: string, targetFolderId: string | null) => void;
-  onNewRequest: (folderId: string | null) => void;
-  onCreateFolder: (parentFolderId: string | null, name: string) => void;
-  onRenameFolder: (folderId: string, name: string) => void;
-  onDeleteFolder: (folderId: string) => void;
-  onMoveFolder: (folderId: string, targetParentFolderId: string | null) => void;
-  onSetFolderAuth: (folderId: string, auth: HttpAuth) => Promise<void>;
-  onInvalidDrop: (message: string) => void;
-  /** The saved request id backing the currently active tab, if it lives in this collection. */
-  activeRequestId: string | null;
-  /** The saved example id backing the currently active tab, if it lives in this collection. */
-  activeExampleId: string | null;
-}
-
-const FolderItem: React.FC<FolderItemProps> = ({
-  folder,
-  depth,
-  expanded,
-  onToggle,
-  rootFolders,
-  collectionId,
-  onOpenRequest,
-  onRenameRequest,
-  onDeleteRequest,
-  onOpenExample,
-  onRenameExample,
-  onDeleteExample,
-  onMoveRequest,
-  onNewRequest,
-  onCreateFolder,
-  onRenameFolder,
-  onDeleteFolder,
-  onMoveFolder,
-  onSetFolderAuth,
-  onInvalidDrop,
-  activeRequestId,
-  activeExampleId
-}) => {
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [draftName, setDraftName] = useState(folder.name);
-  const [isCreatingSubfolder, setIsCreatingSubfolder] = useState(false);
-  const [draftSubfolderName, setDraftSubfolderName] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [isDropTarget, setIsDropTarget] = useState(false);
-  const [isEditingAuth, setIsEditingAuth] = useState(false);
-
-  const isExpanded = expanded.has(folder.id);
-  const indent = depth * 12;
-
-  const sortedRequests = useMemo(
-    () => [...folder.requests].sort((a, b) => b.updatedAt - a.updatedAt),
-    [folder.requests]
-  );
-
-  const containsActive =
-    activeRequestId !== null && findRequestInContainer(folder, activeRequestId) !== undefined;
-
-  const commitRename = (): void => {
-    setIsRenaming(false);
-    const trimmed = draftName.trim();
-    if (trimmed && trimmed !== folder.name) onRenameFolder(folder.id, trimmed);
-  };
-
-  const submitSubfolder = (): void => {
-    const name = draftSubfolderName.trim();
-    setIsCreatingSubfolder(false);
-    setDraftSubfolderName('');
-    if (name) onCreateFolder(folder.id, name);
-  };
-
-  const handleDragStart = (e: React.DragEvent): void => {
-    e.stopPropagation();
-    e.dataTransfer.effectAllowed = 'move';
-    const payload: DragPayload = { kind: 'folder', id: folder.id, collectionId };
-    e.dataTransfer.setData(DRAG_MIME_TYPE, JSON.stringify(payload));
-    setIsDragging(true);
-  };
-
-  const handleDragEnd = (): void => setIsDragging(false);
-
-  const handleDragOver = (e: React.DragEvent): void => {
-    if (!e.dataTransfer.types.includes(DRAG_MIME_TYPE)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-    setIsDropTarget(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent): void => {
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    setIsDropTarget(false);
-  };
-
-  const handleDrop = (e: React.DragEvent): void => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDropTarget(false);
-    const payload = readDragPayload(e.dataTransfer);
-    if (!payload) return;
-    if (payload.collectionId !== collectionId) {
-      onInvalidDrop('Items can only be moved within the same collection.');
-      return;
-    }
-    if (payload.kind === 'request') {
-      onMoveRequest(payload.id, folder.id);
-      return;
-    }
-    if (payload.id === folder.id) return;
-    const draggedFolder = findFolderById(rootFolders, payload.id);
-    if (draggedFolder && isFolderOrDescendant(draggedFolder, folder.id)) {
-      onInvalidDrop("Can't move a folder into itself or one of its own subfolders.");
-      return;
-    }
-    onMoveFolder(payload.id, folder.id);
-  };
-
-  return (
-    <div className="flex flex-col">
-      <div
-        onClick={() => onToggle(folder.id)}
-        draggable
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        style={{ paddingLeft: indent }}
-        title={isExpanded ? 'Collapse folder' : 'Expand folder'}
-        className={`flex items-center gap-1 group px-1 py-1 rounded hover:bg-surface-3/60 cursor-grab active:cursor-grabbing ${
-          isDragging ? 'opacity-40' : ''
-        } ${isDropTarget ? 'ring-1 ring-accent bg-accent/10' : containsActive ? 'bg-surface-3/40' : ''}`}
-      >
-        <span className="text-zinc-500 hover:text-foreground shrink-0">
-          {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        </span>
-        {isExpanded ? (
-          <FolderOpen size={12} className="text-zinc-500 shrink-0" />
-        ) : (
-          <Folder size={12} className="text-zinc-500 shrink-0" />
-        )}
-
-        {isRenaming ? (
-          <input
-            type="text"
-            autoFocus
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename();
-              if (e.key === 'Escape') {
-                setDraftName(folder.name);
-                setIsRenaming(false);
-              }
-            }}
-            className="flex-1 bg-surface-3 border border-accent rounded px-1.5 py-0.5 text-xs text-zinc-200 focus:outline-none"
+          <CollectionsTree
+            collections={collections}
+            expanded={expanded}
+            onExpandedChange={setExpanded}
+            activeCollectionId={activeCollectionId}
+            activeRequestId={activeRequestId}
+            activeExampleId={activeExampleId}
+            onOpenRequest={(collection, request, options) =>
+              openSavedRequest(collection, request, options)
+            }
+            onOpenExample={(collection, request, example, options) =>
+              openSavedExample(collection, request, example, options)
+            }
+            onNewRequest={(collectionId, folderId) =>
+              openNewRequestInFolder(collectionId, folderId)
+            }
+            onRenameCollection={(collectionId, name) =>
+              runMutation(() => renameCollection(collectionId, name))
+            }
+            onDeleteCollection={(collectionId) => runMutation(() => deleteCollection(collectionId))}
+            onExportCollection={(collectionId) => handleExportCollection(collectionId)}
+            onSetCollectionAuth={(collectionId, auth) => setCollectionAuth(collectionId, auth)}
+            onCreateFolder={(collectionId, parentFolderId, name) =>
+              runMutation(() => createFolder(collectionId, parentFolderId, name))
+            }
+            onRenameFolder={(collectionId, folderId, name) =>
+              runMutation(() => renameFolder(collectionId, folderId, name))
+            }
+            onDeleteFolder={(collectionId, folderId) =>
+              runMutation(() => deleteFolder(collectionId, folderId))
+            }
+            onMoveFolder={(collectionId, folderId, targetParentFolderId) =>
+              runMutation(() => moveFolder(collectionId, folderId, targetParentFolderId))
+            }
+            onSetFolderAuth={(collectionId, folderId, auth) =>
+              setFolderAuth(collectionId, folderId, auth)
+            }
+            onRenameRequest={(collectionId, requestId, name) =>
+              runMutation(() => renameRequest(collectionId, requestId, name))
+            }
+            onDeleteRequest={(collectionId, requestId) =>
+              runMutation(() => deleteRequest(collectionId, requestId))
+            }
+            onMoveRequest={(collectionId, requestId, targetFolderId) =>
+              runMutation(() => moveRequest(collectionId, requestId, targetFolderId))
+            }
+            onRenameExample={(collectionId, requestId, exampleId, name) =>
+              runMutation(() => renameExample(collectionId, requestId, exampleId, name))
+            }
+            onDeleteExample={(collectionId, requestId, exampleId) =>
+              runMutation(() => deleteExample(collectionId, requestId, exampleId))
+            }
+            onInvalidDrop={handleInvalidDrop}
           />
-        ) : (
-          <span
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              setDraftName(folder.name);
-              setIsRenaming(true);
-            }}
-            title="Double-click to rename"
-            className="flex-1 truncate text-xs text-zinc-300"
-          >
-            {folder.name}
-            <span className="text-zinc-600 ml-1">({countRequestsRecursive(folder)})</span>
-          </span>
-        )}
-
-        {!isRenaming && (
-          <ActionsMenu
-            triggerTitle="Folder actions"
-            actions={[
-              {
-                icon: <Send size={12} />,
-                label: 'New Request',
-                onClick: () => onNewRequest(folder.id)
-              },
-              {
-                icon: <FolderPlus size={12} />,
-                label: 'New Subfolder',
-                onClick: () => {
-                  setIsCreatingSubfolder(true);
-                  setDraftSubfolderName('');
-                }
-              },
-              {
-                icon: <Pencil size={12} />,
-                label: 'Rename',
-                onClick: () => {
-                  setDraftName(folder.name);
-                  setIsRenaming(true);
-                }
-              },
-              {
-                icon: <KeyRound size={12} />,
-                label: 'Authorization',
-                onClick: () => setIsEditingAuth(true)
-              },
-              {
-                icon: <Trash2 size={12} />,
-                label: 'Delete',
-                danger: true,
-                onClick: () => onDeleteFolder(folder.id)
-              }
-            ]}
-            moveTo={{
-              folders: rootFolders,
-              excludeId: folder.id,
-              onSelect: (targetFolderId) => onMoveFolder(folder.id, targetFolderId)
-            }}
-          />
-        )}
-      </div>
-
-      <AuthorizationDialog
-        open={isEditingAuth}
-        onOpenChange={setIsEditingAuth}
-        title={`${folder.name} Authorization`}
-        auth={folder.auth}
-        onSave={(auth) => onSetFolderAuth(folder.id, auth)}
-      />
-
-      {isCreatingSubfolder && (
-        <input
-          type="text"
-          autoFocus
-          placeholder="Folder name..."
-          value={draftSubfolderName}
-          onChange={(e) => setDraftSubfolderName(e.target.value)}
-          onBlur={submitSubfolder}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') submitSubfolder();
-            if (e.key === 'Escape') {
-              setIsCreatingSubfolder(false);
-              setDraftSubfolderName('');
-            }
-          }}
-          style={{ marginLeft: indent + 16 }}
-          className="bg-surface-3 border border-accent rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none mt-0.5"
-        />
-      )}
-
-      {isExpanded && (
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`flex flex-col gap-0.5 rounded ${isDropTarget ? 'ring-1 ring-accent bg-accent/10' : ''}`}
-        >
-          {folder.folders.length === 0 && sortedRequests.length === 0 && !isCreatingSubfolder && (
-            <div
-              className="text-[10px] text-zinc-650 italic px-1 py-0.5"
-              style={{ paddingLeft: indent + 16 }}
-            >
-              Empty - use Save or drag a request here.
-            </div>
-          )}
-
-          {folder.folders.map((sub) => (
-            <FolderItem
-              key={sub.id}
-              folder={sub}
-              depth={depth + 1}
-              expanded={expanded}
-              onToggle={onToggle}
-              rootFolders={rootFolders}
-              collectionId={collectionId}
-              onOpenRequest={onOpenRequest}
-              onRenameRequest={onRenameRequest}
-              onDeleteRequest={onDeleteRequest}
-              onOpenExample={onOpenExample}
-              onRenameExample={onRenameExample}
-              onDeleteExample={onDeleteExample}
-              onMoveRequest={onMoveRequest}
-              onNewRequest={onNewRequest}
-              onCreateFolder={onCreateFolder}
-              onRenameFolder={onRenameFolder}
-              onDeleteFolder={onDeleteFolder}
-              onMoveFolder={onMoveFolder}
-              onSetFolderAuth={onSetFolderAuth}
-              onInvalidDrop={onInvalidDrop}
-              activeRequestId={activeRequestId}
-              activeExampleId={activeExampleId}
-            />
-          ))}
-
-          {sortedRequests.map((request) => (
-            <RequestItem
-              key={request.id}
-              request={request}
-              indent={depth + 1}
-              collectionId={collectionId}
-              onOpen={(options) => onOpenRequest(request, options)}
-              onRename={(name) => onRenameRequest(request.id, name)}
-              onDelete={() => onDeleteRequest(request.id)}
-              moveFolders={rootFolders}
-              onMove={(targetFolderId) => onMoveRequest(request.id, targetFolderId)}
-              isActive={request.id === activeRequestId}
-              isExpanded={expanded.has(request.id)}
-              onToggleExpanded={() => onToggle(request.id)}
-              onOpenExample={(example, options) => onOpenExample(request, example, options)}
-              onRenameExample={(exampleId, name) => onRenameExample(request.id, exampleId, name)}
-              onDeleteExample={(exampleId) => onDeleteExample(request.id, exampleId)}
-              activeExampleId={activeExampleId}
-            />
-          ))}
         </div>
-      )}
-    </div>
-  );
-};
-
-interface RequestItemProps {
-  request: SavedRequest;
-  indent?: number;
-  collectionId: string;
-  /** Single-click previews; pass `{ preview: false }` (double-click) to open/pin it permanently. */
-  onOpen: (options?: { preview?: boolean }) => void;
-  onRename: (name: string) => void;
-  onDelete: () => void;
-  /** The collection's whole folder tree — used to build the "Move to..." target list. */
-  moveFolders: CollectionFolder[];
-  onMove: (targetFolderId: string | null) => void;
-  /** Whether this request backs the currently active tab — highlighted so the user can see where they are. */
-  isActive: boolean;
-  /** Whether the saved examples list below this request is expanded. Ignored when the request has none. */
-  isExpanded: boolean;
-  onToggleExpanded: () => void;
-  onOpenExample: (example: SavedExample, options?: { preview?: boolean }) => void;
-  onRenameExample: (exampleId: string, name: string) => void;
-  onDeleteExample: (exampleId: string) => void;
-  /** The saved example id backing the currently active tab, if any — highlights that example. */
-  activeExampleId: string | null;
-}
-
-const RequestItem: React.FC<RequestItemProps> = ({
-  request,
-  indent = 0,
-  collectionId,
-  onOpen,
-  onRename,
-  onDelete,
-  moveFolders,
-  onMove,
-  isActive,
-  isExpanded,
-  onToggleExpanded,
-  onOpenExample,
-  onRenameExample,
-  onDeleteExample,
-  activeExampleId
-}) => {
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [draftName, setDraftName] = useState(request.name);
-  const [isDragging, setIsDragging] = useState(false);
-  const style = { marginLeft: indent * 12 };
-  const examples = request.examples ?? [];
-  const hasExamples = examples.length > 0;
-
-  const handleDragStart = (e: React.DragEvent): void => {
-    e.stopPropagation();
-    e.dataTransfer.effectAllowed = 'move';
-    const payload: DragPayload = { kind: 'request', id: request.id, collectionId };
-    e.dataTransfer.setData(DRAG_MIME_TYPE, JSON.stringify(payload));
-    setIsDragging(true);
-  };
-
-  const handleDragEnd = (): void => setIsDragging(false);
-
-  const commitRename = (): void => {
-    setIsRenaming(false);
-    const trimmed = draftName.trim();
-    if (trimmed && trimmed !== request.name) onRename(trimmed);
-  };
-
-  if (isRenaming) {
-    return (
-      <div
-        style={style}
-        className="flex items-center gap-2 p-1.5 rounded border border-accent bg-surface-3"
-      >
-        <RequestMethodBadge request={request} />
-        <input
-          type="text"
-          autoFocus
-          value={draftName}
-          onChange={(e) => setDraftName(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitRename();
-            if (e.key === 'Escape') {
-              setDraftName(request.name);
-              setIsRenaming(false);
-            }
-          }}
-          className="flex-1 bg-transparent text-xs text-zinc-200 focus:outline-none min-w-0"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col">
-      <div
-        onClick={() => onOpen()}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          onOpen({ preview: false });
-        }}
-        draggable
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        title={`${request.url}\nDouble-click to open in a permanent tab`}
-        style={style}
-        className={`flex items-center gap-2 p-1.5 hover:bg-surface-3 rounded text-xs cursor-grab active:cursor-grabbing border transition-all group ${
-          isDragging ? 'opacity-40' : ''
-        } ${
-          isActive
-            ? 'bg-accent/10 border-accent/60'
-            : 'bg-surface-3/40 border-transparent hover:border-border-dark'
-        }`}
-      >
-        {hasExamples && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpanded();
-            }}
-            title={isExpanded ? 'Hide examples' : 'Show examples'}
-            className="text-zinc-500 hover:text-foreground cursor-pointer shrink-0"
-          >
-            {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-          </button>
-        )}
-        {isActive && <span className="w-1 h-1 rounded-full bg-accent shrink-0" />}
-        <RequestMethodBadge request={request} />
-        <span
-          className={`truncate flex-1 ${isActive ? 'text-foreground' : 'text-zinc-300 group-hover:text-foreground'}`}
-        >
-          {request.name}
-        </span>
-        {hasExamples && (
-          <span
-            title={`${examples.length} saved example${examples.length === 1 ? '' : 's'}`}
-            className="text-[9px] text-zinc-600 shrink-0"
-          >
-            {examples.length}
-          </span>
-        )}
-        <ActionsMenu
-          triggerTitle="Request actions"
-          actions={[
-            {
-              icon: <Pencil size={12} />,
-              label: 'Rename',
-              onClick: () => {
-                setDraftName(request.name);
-                setIsRenaming(true);
-              }
-            },
-            { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
-          ]}
-          moveTo={{ folders: moveFolders, onSelect: onMove }}
-        />
       </div>
 
-      {isExpanded && hasExamples && (
-        <div className="flex flex-col gap-0.5 mt-0.5">
-          {examples.map((example) => (
-            <ExampleItem
-              key={example.id}
-              example={example}
-              indent={indent + 1}
-              onOpen={(options) => onOpenExample(example, options)}
-              onRename={(name) => onRenameExample(example.id, name)}
-              onDelete={() => onDeleteExample(example.id)}
-              isActive={example.id === activeExampleId}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface ExampleItemProps {
-  example: SavedExample;
-  indent: number;
-  /** Single-click previews; pass `{ preview: false }` (double-click) to open/pin it permanently. */
-  onOpen: (options?: { preview?: boolean }) => void;
-  onRename: (name: string) => void;
-  onDelete: () => void;
-  /** Whether this example backs the currently active tab. */
-  isActive: boolean;
-}
-
-const ExampleItem: React.FC<ExampleItemProps> = ({
-  example,
-  indent,
-  onOpen,
-  onRename,
-  onDelete,
-  isActive
-}) => {
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [draftName, setDraftName] = useState(example.name);
-  const style = { marginLeft: indent * 12 };
-
-  const commitRename = (): void => {
-    setIsRenaming(false);
-    const trimmed = draftName.trim();
-    if (trimmed && trimmed !== example.name) onRename(trimmed);
-  };
-
-  if (isRenaming) {
-    return (
-      <div
-        style={style}
-        className="flex items-center gap-2 p-1.5 rounded border border-accent bg-surface-3"
-      >
-        <Bookmark size={11} className="text-zinc-500 shrink-0" />
-        <input
-          type="text"
-          autoFocus
-          value={draftName}
-          onChange={(e) => setDraftName(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitRename();
-            if (e.key === 'Escape') {
-              setDraftName(example.name);
-              setIsRenaming(false);
-            }
-          }}
-          className="flex-1 bg-transparent text-xs text-zinc-200 focus:outline-none min-w-0"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={() => onOpen()}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        onOpen({ preview: false });
-      }}
-      title={`${example.response.status === 0 ? 'ERROR' : `${example.response.status} ${example.response.statusText}`}\nDouble-click to open in a permanent tab`}
-      style={style}
-      className={`flex items-center gap-2 p-1.5 hover:bg-surface-3 rounded text-xs cursor-pointer border transition-all group ${
-        isActive
-          ? 'bg-accent/10 border-accent/60'
-          : 'bg-surface-3/40 border-transparent hover:border-border-dark'
-      }`}
-    >
-      {isActive && <span className="w-1 h-1 rounded-full bg-accent shrink-0" />}
-      <Bookmark size={11} className={`shrink-0 ${exampleStatusClass(example.response.status)}`} />
-      <span
-        className={`truncate flex-1 ${isActive ? 'text-foreground' : 'text-zinc-400 group-hover:text-foreground'}`}
-      >
-        {example.name}
-      </span>
-      <span className="text-[9px] text-zinc-600 shrink-0">
-        {example.response.status === 0 ? 'ERR' : example.response.status}
-      </span>
-      <ActionsMenu
-        triggerTitle="Example actions"
-        actions={[
-          {
-            icon: <Pencil size={12} />,
-            label: 'Rename',
-            onClick: () => {
-              setDraftName(example.name);
-              setIsRenaming(true);
-            }
-          },
-          { icon: <Trash2 size={12} />, label: 'Delete', danger: true, onClick: onDelete }
-        ]}
-      />
+      <EnvironmentSelector />
     </div>
   );
 };

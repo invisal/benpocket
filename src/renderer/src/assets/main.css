@@ -31,6 +31,12 @@
   ); /* screen-recorder: elevated panel on bg-surface */
   --color-surface-sunken: var(--color-activity-bg); /* screen-recorder: recessed side panel */
   --color-line: var(--color-border-dark); /* screen-recorder: hairline border */
+  /* Dedicated to interactive list/tree rows (TreeList, and anything with the same
+     hover/selected shape) -- named separately from the bg-surface elevation ladder
+     so a row's look can be tuned on its own dial. Keyboard roving-focus reuses
+     list-hover rather than its own ring. See design.md's "List tokens" section. */
+  --color-list-hover: #282a30; /* row hover background */
+  --color-list-selected: #3d4254; /* row selected/active background */
   --color-emphasis-text: #11111b; /* Catppuccin Mocha Crust — text on accent/danger fills */
   --color-foreground: #c0c5d8; /* softened from Catppuccin Mocha Text — less near-white contrast */
   --color-strong: #ffffff; /* pure white — max-contrast text, unlike the softened foreground */
@@ -153,6 +159,8 @@
   ); /* screen-recorder: elevated panel on bg-surface */
   --color-surface-sunken: var(--color-activity-bg); /* screen-recorder: recessed side panel */
   --color-line: var(--color-border-dark); /* screen-recorder: hairline border */
+  --color-list-hover: #eef0f5; /* row hover background */
+  --color-list-selected: #e2e5ec; /* row selected/active background */
   --color-emphasis-text: #ffffff; /* Latte's accent/danger are saturated — need light text */
   --color-foreground: #5c5f7a; /* softened from Catppuccin Latte Text — less near-black contrast */
   --color-strong: #000000; /* pure black — max-contrast text, unlike the softened foreground */

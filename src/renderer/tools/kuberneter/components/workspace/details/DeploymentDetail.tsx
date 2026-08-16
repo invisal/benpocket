@@ -1,6 +1,7 @@
 import { Age } from '../../Age';
 import type React from 'react';
 import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   type DeployData,
   type DeployRevision,
@@ -14,7 +15,17 @@ import {
   formatInstantCpu,
   formatInstantMemory
 } from '../../../hooks/useMetrics';
-import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
+import {
+  useOpenNamespaceDetail,
+  useOpenPodDetail,
+  useOpenNodeDetail,
+  useOpenWorkloadDetail
+} from '../../../hooks/open-detail';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
+import { type K8sResource } from '../../../types/K8sResource';
+import { formatAge } from '../../../utils/formatAge';
 
 interface DeploymentDetailProps {
   payload: DeployData;
@@ -54,13 +65,132 @@ interface DeployRawResource {
 }
 
 export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isTab = false }) => {
-  const pods = payload?.podsList || [];
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
+  const rawConfigPath = useKuberneterStore(
+    (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
+  );
+
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openPodDetail } = useOpenPodDetail();
+  const { openNodeDetail } = useOpenNodeDetail();
+  const { openReplicaSetDetail } = useOpenWorkloadDetail();
+
   const [selectedTarget, setSelectedTarget] = useState<string>('all');
 
   const metricsQuery = useInstantMetrics(true);
   const metricItems = metricsQuery.data ?? [];
 
-  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  // Fetch full deployment, replica sets, and pods with React Query caching
+  const { data: queryData } = useQuery({
+    queryKey: [
+      'kuberneter',
+      'deployment-detail-data',
+      rawConfigPath,
+      cluster,
+      payload?.ns,
+      payload?.name
+    ],
+    queryFn: async () => {
+      if (!cluster || !payload?.ns || !payload?.name) return null;
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+      const [deployRes, rsRes, podsRes] = await Promise.all([
+        window.kuberneter.getResources(
+          configPathArg,
+          cluster,
+          K8S_RESOURCE_KEYS.DEPLOYMENTS,
+          payload.ns
+        ),
+        window.kuberneter.getResources(
+          configPathArg,
+          cluster,
+          K8S_RESOURCE_KEYS.REPLICA_SETS,
+          payload.ns
+        ),
+        window.kuberneter.getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.PODS, payload.ns)
+      ]);
+      const deployItem = ((deployRes?.items || []) as K8sResource[]).find(
+        (i) => i.metadata?.name === payload.name
+      );
+      const allRS = (rsRes?.items || []) as K8sResource[];
+      const allPods = (podsRes?.items || []) as K8sResource[];
+
+      // Match ReplicaSets owned by this Deployment
+      const matchedRSList = allRS.filter((rs) => {
+        const ownerRefs = rs.metadata?.ownerReferences || [];
+        return (
+          rs.metadata?.namespace === payload.ns &&
+          ownerRefs.some((ref) => ref.kind === 'Deployment' && ref.name === payload.name)
+        );
+      });
+
+      const revisions: DeployRevision[] = matchedRSList
+        .map((rs) => {
+          const revStr = rs.metadata?.annotations?.['deployment.kubernetes.io/revision'] || '1';
+          const revision = parseInt(revStr, 10) || 1;
+          const rsReplicas = (rs.spec?.replicas as number) ?? 0;
+          const rsReady = (rs.status?.readyReplicas as number) ?? 0;
+          return {
+            revision,
+            name: rs.metadata?.name || '',
+            podsCount: `${rsReady}/${rsReplicas}`,
+            age: formatAge(rs.metadata?.creationTimestamp || ''),
+            creationTimestamp: rs.metadata?.creationTimestamp || '',
+            rawItem: rs
+          } as DeployRevision & { rawItem?: K8sResource };
+        })
+        .sort((a, b) => b.revision - a.revision);
+
+      const matchedRSNames = new Set(matchedRSList.map((rs) => rs.metadata?.name).filter(Boolean));
+      const matchedPods = allPods.filter((pod) => {
+        const ownerRefs = pod.metadata?.ownerReferences || [];
+        return (
+          pod.metadata?.namespace === payload.ns &&
+          ownerRefs.some((ref) => ref.kind === 'ReplicaSet' && matchedRSNames.has(ref.name))
+        );
+      });
+
+      const podsList: DeployRelatedPod[] = matchedPods.map((pod) => {
+        const podName = pod.metadata?.name || '';
+        const node = (pod.spec?.nodeName as string) || '—';
+        const containerStatuses =
+          (pod.status?.containerStatuses as Array<{ ready?: boolean }>) || [];
+        const readyCount = containerStatuses.filter((c) => c.ready).length;
+        const totalCount = containerStatuses.length;
+        const phase = (pod.status?.phase as string) || 'Unknown';
+        return {
+          name: podName,
+          node,
+          ns: payload.ns,
+          ready: `${readyCount}/${totalCount}`,
+          cpu: 'N/A',
+          memory: 'N/A',
+          status: phase,
+          hasWarning: phase !== 'Running' && phase !== 'Succeeded',
+          rawItem: pod
+        } as DeployRelatedPod & { rawItem?: K8sResource };
+      });
+
+      return {
+        deployItem,
+        revisions,
+        podsList
+      };
+    },
+    enabled: !!cluster && !!payload?.ns && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
+  if (!payload) {
+    return <div className="p-4 text-xs text-zinc-500">No deployment details available.</div>;
+  }
+
+  const pods = queryData?.podsList || payload?.podsList || [];
+  const revisions = queryData?.revisions || payload?.revisions || [];
+  const rawItem = (queryData?.deployItem || payload.rawItem) as unknown as
+    DeployRawResource | undefined;
 
   const allPodNames = pods.map((p) => p.name);
   const targetPodNames =
@@ -70,17 +200,11 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
         ? [selectedTarget]
         : allPodNames;
 
-  if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No deployment details available.</div>;
-  }
-
   const handleNamespaceClick = () => {
     if (payload.ns) {
       openNamespaceDetail(payload.ns);
     }
   };
-
-  const rawItem = payload.rawItem as unknown as DeployRawResource | undefined;
 
   const labels = rawItem?.metadata?.labels ? Object.entries(rawItem.metadata.labels) : [];
   const annotations = rawItem?.metadata?.annotations
@@ -93,10 +217,10 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
     : '';
 
   // Replicas breakdown
-  const desired = rawItem?.spec?.replicas ?? 0;
-  const updated = rawItem?.status?.updatedReplicas ?? 0;
-  const total = rawItem?.status?.replicas ?? 0;
-  const available = rawItem?.status?.availableReplicas ?? 0;
+  const desired = rawItem?.spec?.replicas ?? payload.replicas ?? 0;
+  const updated = rawItem?.status?.updatedReplicas ?? payload.upToDate ?? 0;
+  const total = rawItem?.status?.replicas ?? payload.replicas ?? 0;
+  const available = rawItem?.status?.availableReplicas ?? payload.available ?? 0;
   const unavailable = rawItem?.status?.unavailableReplicas ?? 0;
 
   // Selector
@@ -256,14 +380,14 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
         {pods.length > 0 && (
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">
-              Pod Metrics Target
+              Metrics
             </span>
             <select
               value={selectedTarget}
               onChange={(e) => setSelectedTarget(e.target.value)}
-              className="bg-surface-3 border border-border/60 rounded text-[10px] font-mono px-2 py-0.5 text-foreground outline-none cursor-pointer"
+              className="w-24 bg-surface-3 border border-border/60 rounded text-[10px] font-mono px-2 py-0.5 text-foreground outline-none cursor-pointer truncate"
             >
-              <option value="all">All Pods ({pods.length} aggregated)</option>
+              <option value="all">All ({pods.length})</option>
               {pods.map((p) => (
                 <option key={p.name} value={p.name}>
                   {p.name}
@@ -292,7 +416,7 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
         <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider">
           Deploy Revisions
         </span>
-        {!payload.revisions || payload.revisions.length === 0 ? (
+        {revisions.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No revisions found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
@@ -303,7 +427,7 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
                   header: '#',
                   className: 'py-2 px-3 text-zinc-200',
                   render: (row) => {
-                    const index = payload.revisions?.findIndex((r) => r.name === row.name) ?? -1;
+                    const index = revisions.findIndex((r) => r.name === row.name);
                     return (
                       <div className="flex items-center gap-1.5">
                         <span
@@ -318,7 +442,22 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
                   key: 'name',
                   header: 'Summary',
                   className: 'py-2 px-3 text-zinc-400 truncate max-w-[200px]',
-                  render: (row) => <span title={row.name}>{row.name}</span>
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openReplicaSetDetail(
+                          payload.ns,
+                          row.name,
+                          (row as unknown as { rawItem?: K8sResource }).rawItem
+                        );
+                      }}
+                      className="text-accent hover:underline cursor-pointer font-mono"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </span>
+                  )
                 },
                 {
                   key: 'podsCount',
@@ -345,8 +484,15 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
                   render: () => '⋮'
                 }
               ]}
-              data={payload.revisions || []}
+              data={revisions}
               getRowKey={(row) => row.name}
+              onRowClick={(row) =>
+                openReplicaSetDetail(
+                  payload.ns,
+                  row.name,
+                  (row as unknown as { rawItem?: K8sResource }).rawItem
+                )
+              }
               resizable={false}
             />
           </div>
@@ -356,7 +502,7 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
       {/* Pods Section */}
       <div className="flex flex-col gap-2 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider">Pods</span>
-        {!payload.podsList || payload.podsList.length === 0 ? (
+        {pods.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No pods found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
@@ -366,13 +512,45 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
                   key: 'name',
                   header: 'Name',
                   className: 'py-2 px-3 text-zinc-200 font-semibold truncate max-w-[180px]',
-                  render: (row) => <span title={row.name}>{row.name}</span>
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPodDetail(
+                          row.ns,
+                          row.name,
+                          (row as unknown as { rawItem?: K8sResource }).rawItem
+                        );
+                      }}
+                      className="text-accent hover:underline cursor-pointer font-sans"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </span>
+                  )
                 },
                 {
                   key: 'node',
                   header: 'Node',
                   className: 'py-2 px-3 text-zinc-300 truncate max-w-[100px]',
-                  render: (row) => <span title={row.node}>{row.node}</span>
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        if (row.node && row.node !== '—') {
+                          e.stopPropagation();
+                          openNodeDetail(row.node);
+                        }
+                      }}
+                      className={
+                        row.node && row.node !== '—'
+                          ? 'text-accent hover:underline cursor-pointer font-mono'
+                          : 'text-zinc-400'
+                      }
+                      title={row.node}
+                    >
+                      {row.node}
+                    </span>
+                  )
                 },
                 {
                   key: 'ns',
@@ -435,8 +613,15 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
                   render: () => '⋮'
                 }
               ]}
-              data={payload.podsList || []}
+              data={pods}
               getRowKey={(row) => row.name}
+              onRowClick={(row) =>
+                openPodDetail(
+                  row.ns,
+                  row.name,
+                  (row as unknown as { rawItem?: K8sResource }).rawItem
+                )
+              }
               resizable={false}
             />
           </div>

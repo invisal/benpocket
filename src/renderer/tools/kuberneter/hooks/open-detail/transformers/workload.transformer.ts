@@ -48,6 +48,8 @@ export function buildDaemonSetDetailPayload(
   const upToDate = (item?.status?.updatedNumberScheduled as number) ?? 0;
   const available = (item?.status?.numberAvailable as number) ?? 0;
   const creationTimestamp = item?.metadata?.creationTimestamp || '';
+  const matchLabels = (item?.spec?.selector as { matchLabels?: Record<string, string> })
+    ?.matchLabels;
 
   return {
     id: `${namespace}/${name}`,
@@ -60,13 +62,18 @@ export function buildDaemonSetDetailPayload(
     available,
     age: formatAge(creationTimestamp),
     rawAge: new Date(creationTimestamp || Date.now()).getTime().toString(),
+    createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
     nodeSelector: Object.entries(
       ((item?.spec?.template as { spec?: { nodeSelector?: Record<string, string> } })?.spec
         ?.nodeSelector as Record<string, string>) || {}
     )
       .map(([k, v]) => `${k}=${v}`)
       .join(', '),
-    hasWarning: ready < desired
+    hasWarning: ready < desired,
+    labels: item?.metadata?.labels,
+    annotations: item?.metadata?.annotations,
+    selector: matchLabels,
+    rawItem: item
   };
 }
 
@@ -79,6 +86,8 @@ export function buildStatefulSetDetailPayload(
   const replicas = (item?.spec?.replicas as number) ?? 0;
   const readyReplicas = (item?.status?.readyReplicas as number) ?? 0;
   const creationTimestamp = item?.metadata?.creationTimestamp || '';
+  const matchLabels = (item?.spec?.selector as { matchLabels?: Record<string, string> })
+    ?.matchLabels;
 
   return {
     id: `${namespace}/${name}`,
@@ -88,7 +97,12 @@ export function buildStatefulSetDetailPayload(
     ready: `${readyReplicas}/${replicas}`,
     age: formatAge(creationTimestamp),
     rawAge: new Date(creationTimestamp || Date.now()).getTime().toString(),
-    hasWarning: readyReplicas < replicas
+    createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+    hasWarning: readyReplicas < replicas,
+    labels: item?.metadata?.labels,
+    annotations: item?.metadata?.annotations,
+    selector: matchLabels,
+    rawItem: item
   };
 }
 
@@ -102,6 +116,12 @@ export function buildReplicaSetDetailPayload(
   const current = (item?.status?.replicas as number) ?? 0;
   const ready = (item?.status?.readyReplicas as number) ?? 0;
   const creationTimestamp = item?.metadata?.creationTimestamp || '';
+  const ownerRef = item?.metadata?.ownerReferences?.[0];
+  const controlledBy = ownerRef?.name
+    ? { kind: ownerRef.kind || 'Deployment', name: ownerRef.name }
+    : undefined;
+  const matchLabels = (item?.spec?.selector as { matchLabels?: Record<string, string> })
+    ?.matchLabels;
 
   return {
     id: `${namespace}/${name}`,
@@ -112,7 +132,13 @@ export function buildReplicaSetDetailPayload(
     ready,
     age: formatAge(creationTimestamp),
     rawAge: new Date(creationTimestamp || Date.now()).getTime().toString(),
-    hasWarning: ready < desired
+    createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+    hasWarning: ready < desired,
+    labels: item?.metadata?.labels,
+    annotations: item?.metadata?.annotations,
+    selector: matchLabels,
+    controlledBy,
+    rawItem: item
   };
 }
 
@@ -132,6 +158,12 @@ export function buildJobDetailPayload(
       .map((c) => c.type)
       .join(', ') || (succeeded > 0 ? 'Complete' : failed > 0 ? 'Failed' : 'Running');
   const creationTimestamp = item?.metadata?.creationTimestamp || '';
+  const ownerRef = item?.metadata?.ownerReferences?.[0];
+  const controlledBy = ownerRef?.name
+    ? { kind: ownerRef.kind || 'CronJob', name: ownerRef.name }
+    : undefined;
+  const matchLabels = (item?.spec?.selector as { matchLabels?: Record<string, string> })
+    ?.matchLabels;
 
   return {
     id: `${namespace}/${name}`,
@@ -142,8 +174,14 @@ export function buildJobDetailPayload(
     desired,
     age: formatAge(creationTimestamp),
     rawAge: new Date(creationTimestamp || Date.now()).getTime().toString(),
+    createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
     conditions: condStr,
-    hasWarning: failed > 0
+    hasWarning: failed > 0,
+    labels: item?.metadata?.labels,
+    annotations: item?.metadata?.annotations,
+    selector: matchLabels,
+    controlledBy,
+    rawItem: item
   };
 }
 
@@ -175,6 +213,7 @@ export function buildCronJobDetailPayload(
     timeZone,
     age: formatAge(creationTimestamp),
     rawAge: new Date(creationTimestamp || Date.now()).getTime().toString(),
-    hasWarning: active > 0 && suspend
+    hasWarning: active > 0 && suspend,
+    rawItem: item
   };
 }

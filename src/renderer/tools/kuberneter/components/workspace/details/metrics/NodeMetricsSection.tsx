@@ -25,6 +25,20 @@ export interface NodeMetricsSectionProps {
   nodeName: string;
 }
 
+function generatePlaceholderTimeLabels(range: '1h' | '6h' | '24h'): string[] {
+  const count = 12;
+  const now = Date.now();
+  const stepMs = ((range === '24h' ? 24 * 3600 : range === '6h' ? 6 * 3600 : 3600) * 1000) / count;
+  const labels: string[] = [];
+  for (let i = count; i >= 0; i--) {
+    const d = new Date(now - i * stepMs);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    labels.push(`${hh}:${mm}`);
+  }
+  return labels;
+}
+
 export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName }) => {
   const [category, setCategory] = useState<NodeMetricCategory>('cpu');
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
@@ -93,40 +107,10 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
 
   if (metricsConfig.source === 'none') return null;
 
-  if (isFetching && !data?.timeLabels.length) {
-    return (
-      <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground font-mono">
-          <RefreshCw className="size-4 animate-spin text-accent" />
-          <span>Loading node metrics...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!nodeName || !data?.timeLabels.length) {
-    return (
-      <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        <div className="flex items-center justify-between gap-2 py-2 text-xs text-muted-foreground font-mono">
-          <div className="flex items-center gap-2">
-            <span>
-              No node metrics available for <b className="text-foreground">{nodeName}</b> (source:{' '}
-              <span className="text-accent font-medium">{metricsConfig.provider}</span>)
-            </span>
-          </div>
-          {nodeName && (
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-surface-3 border border-border text-[10px] text-foreground hover:bg-surface-2 cursor-pointer transition-colors"
-            >
-              <RefreshCw className="size-3" />
-              <span>Retry</span>
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const timeLabels =
+    data?.timeLabels && data.timeLabels.length > 0
+      ? data.timeLabels
+      : generatePlaceholderTimeLabels(timeRange);
 
   let activeSeries: ChartSeries[] = [];
   let activeUnit = '';
@@ -220,7 +204,7 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value as '1h' | '6h' | '24h')}
-            className="bg-surface-3 border border-border rounded text-[10px] px-1.5 py-0.5 text-foreground focus:outline-none cursor-pointer"
+            className="bg-surface-3 border border-border rounded text-[10px] px-1.5 py-0.5 text-foreground focus:outline-none cursor-pointer font-mono font-medium"
           >
             <option value="1h">1h</option>
             <option value="6h">6h</option>
@@ -232,22 +216,18 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
             disabled={isFetching}
             className="p-1 rounded bg-surface-3 border border-border text-foreground hover:bg-surface-2 disabled:opacity-50 cursor-pointer transition-colors flex items-center justify-center"
           >
-            <RefreshCw className={`size-3 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-3.5 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
           <Menu.Root>
             <Menu.Trigger
-              render={
-                <button
-                  title="More actions"
-                  className="p-1 rounded bg-surface-3 border border-border text-foreground hover:bg-surface-2 cursor-pointer transition-colors flex items-center justify-center"
-                >
-                  <MoreVertical className="size-3" />
-                </button>
-              }
-            />
-            <Menu.Content side="bottom" align="end" className="w-40">
-              <Menu.Item onClick={handleOpenMetricsSettings} className="gap-2 text-xs">
-                <Settings className="size-3.5 text-muted-foreground" />
+              className="p-1 text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-none transition-colors outline-none flex items-center justify-center rounded"
+              title="Metrics options"
+            >
+              <MoreVertical className="size-3.5" />
+            </Menu.Trigger>
+            <Menu.Content align="end">
+              <Menu.Item onClick={handleOpenMetricsSettings}>
+                <Settings className="size-3.5 text-muted-foreground mr-1.5" />
                 <span>Metrics Settings</span>
               </Menu.Item>
             </Menu.Content>
@@ -288,14 +268,18 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
                 </>
               );
             }
-            return <span className="text-accent font-medium">{data?.source ?? '—'}</span>;
+            return (
+              <span className="text-accent font-medium">
+                {data?.source || metricsConfig.provider || '—'}
+              </span>
+            );
           })()}
         </span>
       </div>
 
       <div className="w-full pt-1 min-w-0">
         <EChartsMetricChart
-          timeLabels={data.timeLabels}
+          timeLabels={timeLabels}
           series={activeSeries}
           unit={activeUnit}
           showLegend={false}

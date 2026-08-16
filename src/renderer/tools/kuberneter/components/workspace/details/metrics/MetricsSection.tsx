@@ -29,12 +29,25 @@ export interface MetricsSectionProps {
   resourceLabel?: string;
 }
 
+function generatePlaceholderTimeLabels(range: '1h' | '6h' | '24h'): string[] {
+  const count = 12;
+  const now = Date.now();
+  const stepMs = ((range === '24h' ? 24 * 3600 : range === '6h' ? 6 * 3600 : 3600) * 1000) / count;
+  const labels: string[] = [];
+  for (let i = count; i >= 0; i--) {
+    const d = new Date(now - i * stepMs);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    labels.push(`${hh}:${mm}`);
+  }
+  return labels;
+}
+
 export const MetricsSection: React.FC<MetricsSectionProps> = ({
   podName,
   podNames,
   podNs,
-  namespace,
-  resourceLabel = 'resource'
+  namespace
 }) => {
   const targetNs = namespace || podNs || '';
   const effectivePodNames = useMemo(() => {
@@ -117,41 +130,10 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
 
   if (metricsConfig.source === 'none') return null;
 
-  if (isFetching && !data?.timeLabels.length) {
-    return (
-      <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground font-mono">
-          <RefreshCw className="size-4 animate-spin text-accent" />
-          <span>Loading metrics...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!targetName || !data?.timeLabels.length) {
-    return (
-      <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        <div className="flex items-center justify-between gap-2 py-2 text-xs text-muted-foreground font-mono">
-          <div className="flex items-center gap-2">
-            <BarChart2 className="size-4 text-muted-foreground" />
-            <span>
-              No metric points available for this {resourceLabel} (Source:{' '}
-              <span className="text-accent font-medium">{metricsConfig.provider}</span>)
-            </span>
-          </div>
-          {targetName && (
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-surface-3 border border-border text-[10px] text-foreground hover:bg-surface-2 cursor-pointer transition-colors"
-            >
-              <RefreshCw className="size-3" />
-              <span>Retry</span>
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const timeLabels =
+    data?.timeLabels && data.timeLabels.length > 0
+      ? data.timeLabels
+      : generatePlaceholderTimeLabels(timeRange);
 
   let activeSeries: ChartSeries[] = [];
   let activeUnit = '';
@@ -166,7 +148,7 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
   } else if (activeCategory === 'memory') {
     activeUnit = 'MiB';
     activeSeries = [
-      { name: 'Memory Usage', color: '#a855f7', data: data?.memory.usage ?? [] },
+      { name: 'Memory Usage', color: '#3b82f6', data: data?.memory.usage ?? [] },
       { name: 'Memory Requests', color: '#10b981', data: data?.memory.requests ?? [] },
       { name: 'Memory Limits', color: '#6b7280', data: data?.memory.limits ?? [] }
     ];
@@ -291,14 +273,18 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
                 </>
               );
             }
-            return <span className="text-accent font-medium">{data?.source ?? '—'}</span>;
+            return (
+              <span className="text-accent font-medium">
+                {data?.source || metricsConfig.provider || '—'}
+              </span>
+            );
           })()}
         </span>
       </div>
 
       <div className="w-full pt-1 min-w-0">
         <EChartsMetricChart
-          timeLabels={data?.timeLabels ?? []}
+          timeLabels={timeLabels}
           series={activeSeries}
           unit={activeUnit}
           height={150}

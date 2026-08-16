@@ -88,7 +88,7 @@ function pickMajorTickIntervalMs(totalDurationMs: number): number {
 
 // Sized to comfortably fit the ruler+clip row plus the Zoom/Caption/Speed/Crop
 // pill tracks beneath it without squishing (each track is a fixed h-9, `shrink-0`).
-const MIN_PANEL_HEIGHT_PX = 150;
+const MIN_PANEL_HEIGHT_PX = 210;
 // Also caps how far the auto-grow effect below will stretch the panel --
 // a pathological number of overlapping pills still can't squeeze the
 // preview stage down to nothing (see ScreenRecorderApp.tsx's layout: this
@@ -98,7 +98,7 @@ const MAX_PANEL_HEIGHT_PX = 300;
 // between the toolbar row and the scrollable track area -- the only part of
 // the panel's required height that isn't covered by measuring
 // `toolbarRowRef`/`trackAreaRef` directly (see the auto-grow effect below).
-const PANEL_CONTENT_CHROME_PX = 24 + 8;
+const PANEL_CONTENT_CHROME_PX = 24 + 10;
 
 // Taller than a plain pill track (`CLIP_ROW_HEIGHT_PX`) -- clips carry a
 // two-line label (name + duration/speed), not just a single corner badge.

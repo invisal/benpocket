@@ -744,7 +744,7 @@ export function CutTimeline(): JSX.Element {
         >
           <div
             ref={trackAreaRef}
-            className="relative flex min-h-full flex-col gap-1.25"
+            className="relative flex min-h-full flex-col gap-1.5"
             style={{ width: `${zoom * 100}%`, minWidth: '100%' }}
             onPointerMove={handleRulerPointerMove}
             onPointerLeave={handleRulerPointerLeave}

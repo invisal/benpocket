@@ -7,6 +7,7 @@ import { type DeployRelatedPod } from '../../../types/DeployData';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { MetricsSection } from './metrics';
+import { Select } from '@renderer/components/ui/Select';
 import {
   useInstantMetrics,
   formatInstantCpu,
@@ -342,21 +343,40 @@ export const DaemonSetDetail: React.FC<DaemonSetDetailProps> = ({ payload, isTab
       <div className="flex flex-col gap-2">
         {pods.length > 0 && (
           <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Metrics
             </span>
-            <select
+            <Select.Root
               value={selectedTarget}
-              onChange={(e) => setSelectedTarget(e.target.value)}
-              className="w-24 bg-surface-3 border border-border/60 rounded text-[10px] font-mono px-2 py-0.5 text-foreground outline-none cursor-pointer truncate"
+              onValueChange={(val) => val && setSelectedTarget(val)}
             >
-              <option value="all">All ({pods.length})</option>
-              {pods.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              <Select.Trigger
+                variant="outline"
+                className="w-24 h-5 text-[10px] font-mono px-1.5 py-0 bg-surface-3 border border-border/60 rounded text-foreground flex items-center justify-between gap-1 outline-none shadow-none font-normal"
+              >
+                <Select.Value>
+                  {(value: string) => (value === 'all' ? `All (${pods.length})` : value)}
+                </Select.Value>
+              </Select.Trigger>
+              <Select.Content
+                side="bottom"
+                align="end"
+                className="min-w-[140px] max-w-[260px] text-[10px] font-mono"
+              >
+                <Select.Item value="all" className="text-[10px] font-mono py-1 px-2">
+                  <Select.ItemText>All ({pods.length})</Select.ItemText>
+                </Select.Item>
+                {pods.map((p) => (
+                  <Select.Item
+                    key={p.name}
+                    value={p.name}
+                    className="text-[10px] font-mono py-1 px-2 truncate"
+                  >
+                    <Select.ItemText className="truncate">{p.name}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
           </div>
         )}
         <MetricsSection

@@ -18,6 +18,7 @@ import { useNodeMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
 import { useOpenNamespaceDetail, useOpenServiceDetail } from '../../../../hooks/open-detail';
 import { parseMetricSource } from '../../../../utils/parseMetricSource';
 import { Menu } from '@renderer/components/ui/Menu';
+import { Select } from '@renderer/components/ui/Select';
 
 export type NodeMetricCategory = 'cpu' | 'memory' | 'network' | 'filesystem';
 
@@ -201,15 +202,32 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
 
         {/* Time range & Refresh on the Right */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <select
+          <Select.Root
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as '1h' | '6h' | '24h')}
-            className="bg-surface-3 border border-border rounded text-[10px] px-1.5 py-0.5 text-foreground focus:outline-none cursor-pointer font-mono font-medium"
+            onValueChange={(val) => val && setTimeRange(val as '1h' | '6h' | '24h')}
           >
-            <option value="1h">1h</option>
-            <option value="6h">6h</option>
-            <option value="24h">24h</option>
-          </select>
+            <Select.Trigger
+              variant="outline"
+              className="h-5 text-[10px] font-mono font-medium px-1.5 py-0 bg-surface-3 border border-border rounded text-foreground flex items-center justify-between gap-1 outline-none shadow-none"
+            >
+              <Select.Value />
+            </Select.Trigger>
+            <Select.Content
+              side="bottom"
+              align="end"
+              className="min-w-[60px] text-[10px] font-mono"
+            >
+              <Select.Item value="1h" className="text-[10px] font-mono py-1 px-2">
+                <Select.ItemText>1h</Select.ItemText>
+              </Select.Item>
+              <Select.Item value="6h" className="text-[10px] font-mono py-1 px-2">
+                <Select.ItemText>6h</Select.ItemText>
+              </Select.Item>
+              <Select.Item value="24h" className="text-[10px] font-mono py-1 px-2">
+                <Select.ItemText>24h</Select.ItemText>
+              </Select.Item>
+            </Select.Content>
+          </Select.Root>
           <button
             onClick={handleRefresh}
             title="Refresh metrics"

@@ -42,6 +42,7 @@ export function useOpenNamespaceDetail() {
             status: item.status?.phase || 'Active',
             age: formatAge(creationTimestamp),
             createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+            creationTimestamp,
             labels: item.metadata?.labels,
             annotations: item.metadata?.annotations,
             rawItem: item

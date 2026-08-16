@@ -5,7 +5,7 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { Age } from '../../Age';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface EventDetailProps {
   payload: EventData;
@@ -15,7 +15,7 @@ interface EventDetailProps {
 export const EventDetail: React.FC<EventDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const openTab = useLayoutStore((s) => s.openTab);
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
   const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
 

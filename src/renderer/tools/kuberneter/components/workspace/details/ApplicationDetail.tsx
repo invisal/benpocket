@@ -10,7 +10,11 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
 import { type K8sResource } from '../../../types/K8sResource';
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import {
+  useOpenNamespaceDetail,
+  useOpenServiceDetail,
+  useOpenResourceDetail
+} from '../../../hooks/open-detail';
 import { cn } from 'cnfast';
 
 interface ApplicationDetailProps {
@@ -28,7 +32,9 @@ interface ResourceItem {
 
 export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const { openNamespaceDetail, openServiceDetail, openResourceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openServiceDetail } = useOpenServiceDetail();
+  const { openResourceDetail } = useOpenResourceDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const configPath = useKuberneterStore(

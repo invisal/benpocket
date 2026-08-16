@@ -3,7 +3,7 @@ import type React from 'react';
 import { type RoleData } from '../../../types/RoleData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface RoleDetailProps {
   payload: RoleData;
@@ -11,7 +11,7 @@ interface RoleDetailProps {
 }
 
 export const RoleDetail: React.FC<RoleDetailProps> = ({ payload, isTab = false }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Role details available.</div>;

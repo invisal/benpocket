@@ -10,7 +10,7 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail, useOpenServiceDetail } from '../../../hooks/open-detail';
 
 interface EndpointSliceDetailProps {
   payload: EndpointSliceData;
@@ -24,7 +24,8 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const openTab = useLayoutStore((s) => s.openTab);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
-  const { openNamespaceDetail, openServiceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openServiceDetail } = useOpenServiceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Endpoint Slice details available.</div>;

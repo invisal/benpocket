@@ -17,7 +17,7 @@ import {
   parseMemoryToMiB
 } from '../../../utils/formatCapacity';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail, useOpenPodDetail } from '../../../hooks/open-detail';
 
 interface NodeDetailProps {
   payload: NodeData;
@@ -111,7 +111,8 @@ interface PodTableRow {
 
 export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const { openNamespaceDetail, openResourceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openPodDetail } = useOpenPodDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const configPath = useKuberneterStore(
@@ -421,12 +422,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
           <span
             onClick={(e) => {
               e.stopPropagation();
-              openResourceDetail(
-                'Pod',
-                row.namespace,
-                row.name,
-                row.rawItem as unknown as K8sResource
-              );
+              openPodDetail(row.namespace, row.name, row.rawItem as unknown as K8sResource);
             }}
             className="text-accent hover:underline cursor-pointer font-sans text-xs truncate block"
             title={row.name}
@@ -569,7 +565,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
         resizable: false
       }
     ],
-    [handleNamespaceClick, openResourceDetail]
+    [handleNamespaceClick, openPodDetail]
   );
 
   if (!payload) {
@@ -652,12 +648,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
               data={podsData}
               getRowKey={(row) => row.id}
               onRowClick={(row) =>
-                openResourceDetail(
-                  'Pod',
-                  row.namespace,
-                  row.name,
-                  row.rawItem as unknown as K8sResource
-                )
+                openPodDetail(row.namespace, row.name, row.rawItem as unknown as K8sResource)
               }
               resizable={false}
             />

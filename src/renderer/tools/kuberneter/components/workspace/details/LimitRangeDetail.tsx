@@ -3,7 +3,7 @@ import type React from 'react';
 import { type LimitRangeData } from '../../../types/LimitRangeData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface LimitRangeDetailProps {
   payload: LimitRangeData;
@@ -11,7 +11,7 @@ interface LimitRangeDetailProps {
 }
 
 export const LimitRangeDetail: React.FC<LimitRangeDetailProps> = ({ payload, isTab = false }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No limit range details available.</div>;

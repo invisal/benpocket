@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { type SecretData } from '../../../types/SecretData';
 import { ChevronRight, ChevronDown, Copy, Check, FileKey, Eye, EyeOff } from 'lucide-react';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface SecretDetailProps {
   payload: SecretData;
@@ -12,10 +12,10 @@ interface SecretDetailProps {
 }
 
 export const SecretDetail: React.FC<SecretDetailProps> = ({ payload, isTab = false }) => {
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
   const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const { openNamespaceDetail } = useOpenResourceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No secret details available.</div>;

@@ -8,7 +8,7 @@ import {
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface ServiceDetailProps {
   payload: ServiceData;
@@ -16,7 +16,7 @@ interface ServiceDetailProps {
 }
 
 export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = false }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Service details available.</div>;

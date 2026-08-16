@@ -15,7 +15,7 @@ import { EChartsMetricChart, type ChartSeries } from './EChartsMetricChart';
 import { useLayoutStore } from '../../../../../../src/store/layout.store';
 import { useKuberneterStore, DEFAULT_METRICS_CONFIG } from '../../../../store/kuberneter.store';
 import { useMultiPodMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
-import { useOpenResourceDetail } from '../../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail, useOpenServiceDetail } from '../../../../hooks/open-detail';
 import { parseMetricSource } from '../../../../utils/parseMetricSource';
 import { Menu } from '@renderer/components/ui/Menu';
 
@@ -49,7 +49,8 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const openTab = useLayoutStore((s) => s.openTab);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
-  const { openNamespaceDetail, openServiceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openServiceDetail } = useOpenServiceDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const rawConfigPath = useKuberneterStore(

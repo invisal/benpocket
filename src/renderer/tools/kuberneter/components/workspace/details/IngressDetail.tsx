@@ -6,7 +6,7 @@ import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { KubeTable, type Column } from '../../kube-table';
 import { MoreVertical, ChevronDown, ArrowUpDown, Sliders, Flag } from 'lucide-react';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface IngressDetailProps {
   payload: IngressData;
@@ -14,7 +14,7 @@ interface IngressDetailProps {
 }
 
 export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = false }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   const handleNamespaceClick = useCallback(() => {
     if (payload?.ns) {

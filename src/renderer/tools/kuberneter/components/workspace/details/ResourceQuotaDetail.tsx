@@ -3,7 +3,7 @@ import type React from 'react';
 import { type ResourceQuotaData } from '../../../types/ResourceQuotaData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface ResourceQuotaDetailProps {
   payload: ResourceQuotaData;
@@ -14,7 +14,7 @@ export const ResourceQuotaDetail: React.FC<ResourceQuotaDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No resource quota details available.</div>;

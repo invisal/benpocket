@@ -3,7 +3,7 @@ import type React from 'react';
 import { type LeaseData } from '../../../types/LeaseData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface LeaseDetailProps {
   payload: LeaseData;
@@ -11,7 +11,7 @@ interface LeaseDetailProps {
 }
 
 export const LeaseDetail: React.FC<LeaseDetailProps> = ({ payload, isTab = false }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Lease details available.</div>;

@@ -14,7 +14,7 @@ import {
   formatInstantCpu,
   formatInstantMemory
 } from '../../../hooks/useMetrics';
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface DeploymentDetailProps {
   payload: DeployData;
@@ -60,7 +60,7 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
   const metricsQuery = useInstantMetrics(true);
   const metricItems = metricsQuery.data ?? [];
 
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   const allPodNames = pods.map((p) => p.name);
   const targetPodNames =

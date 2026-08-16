@@ -5,8 +5,7 @@ import { type ClusterRoleBindingData } from '../../../types/ClusterRoleBindingDa
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
-
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface ClusterRoleBindingDetailProps {
   payload: ClusterRoleBindingData;
@@ -24,7 +23,7 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
   payload,
   isTab = false
 }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
 

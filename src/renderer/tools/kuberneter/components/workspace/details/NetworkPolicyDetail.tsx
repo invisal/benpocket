@@ -4,7 +4,7 @@ import { type NetworkPolicyData } from '../../../types/NetworkPolicyData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { Age } from '../../Age';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface NetworkPolicyDetailProps {
   payload: NetworkPolicyData;
@@ -15,7 +15,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   const handleNamespaceClick = useCallback(() => {
     if (payload?.ns) {

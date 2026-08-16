@@ -5,7 +5,7 @@ import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface PersistentVolumeClaimDetailProps {
   payload: PersistentVolumeClaimData;
@@ -20,7 +20,7 @@ export const PersistentVolumeClaimDetail: React.FC<PersistentVolumeClaimDetailPr
   const openTab = useLayoutStore((s) => s.openTab);
   const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return (

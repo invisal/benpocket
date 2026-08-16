@@ -5,7 +5,7 @@ import { type ConfigMapData } from '../../../types/ConfigMapData';
 import { ChevronRight, ChevronDown, Copy, Check, FileText, Binary } from 'lucide-react';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface ConfigMapDetailProps {
   payload: ConfigMapData;
@@ -15,7 +15,7 @@ interface ConfigMapDetailProps {
 export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab = false }) => {
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No config map details available.</div>;

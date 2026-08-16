@@ -3,7 +3,7 @@ import type React from 'react';
 import { type ServiceAccountData } from '../../../types/ServiceAccountData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface ServiceAccountDetailProps {
   payload: ServiceAccountData;
@@ -14,7 +14,7 @@ export const ServiceAccountDetail: React.FC<ServiceAccountDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Service Account details available.</div>;

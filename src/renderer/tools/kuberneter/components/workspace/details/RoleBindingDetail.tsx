@@ -6,7 +6,7 @@ import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface RoleBindingDetailProps {
   payload: RoleBindingData;
@@ -21,7 +21,7 @@ interface SubjectTableRow {
 }
 
 export const RoleBindingDetail: React.FC<RoleBindingDetailProps> = ({ payload, isTab = false }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
 

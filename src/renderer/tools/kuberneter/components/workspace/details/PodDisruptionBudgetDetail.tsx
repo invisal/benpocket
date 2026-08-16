@@ -3,7 +3,7 @@ import type React from 'react';
 import { type PodDisruptionBudgetData } from '../../../types/PodDisruptionBudgetData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
-import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface PodDisruptionBudgetDetailProps {
   payload: PodDisruptionBudgetData;
@@ -14,7 +14,7 @@ export const PodDisruptionBudgetDetail: React.FC<PodDisruptionBudgetDetailProps>
   payload,
   isTab = false
 }) => {
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No PDB details available.</div>;

@@ -15,6 +15,8 @@ import { EChartsMetricChart, type ChartSeries } from './EChartsMetricChart';
 import { useLayoutStore } from '../../../../../../src/store/layout.store';
 import { useKuberneterStore, DEFAULT_METRICS_CONFIG } from '../../../../store/kuberneter.store';
 import { useMultiPodMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
+import { useOpenResourceDetail } from '../../../../hooks/useOpenResourceDetail';
+import { parseMetricSource } from '../../../../utils/parseMetricSource';
 import { Menu } from '@renderer/components/ui/Menu';
 
 export type MetricCategory = 'cpu' | 'memory' | 'network' | 'filesystem';
@@ -47,6 +49,7 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const openTab = useLayoutStore((s) => s.openTab);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
+  const { openNamespaceDetail, openServiceDetail } = useOpenResourceDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const rawConfigPath = useKuberneterStore(
@@ -257,7 +260,38 @@ export const MetricsSection: React.FC<MetricsSectionProps> = ({
       <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono truncate min-w-0 pt-2 pb-1">
         <BarChart2 className="size-3 text-muted-foreground shrink-0" />
         <span className="truncate">
-          Resource: <span className="text-accent font-medium">{data?.source ?? '—'}</span>
+          Resource:{' '}
+          {(() => {
+            const parsedSource = parseMetricSource(data?.source);
+            if (parsedSource) {
+              return (
+                <>
+                  <span
+                    onClick={() => openNamespaceDetail(parsedSource.namespace)}
+                    className="text-accent font-medium hover:underline cursor-pointer"
+                    title={`Open namespace "${parsedSource.namespace}" in new tab`}
+                  >
+                    {parsedSource.namespace}
+                  </span>
+                  <span className="text-muted-foreground mx-1">/</span>
+                  <span
+                    onClick={() => openServiceDetail(parsedSource.namespace, parsedSource.service)}
+                    className="text-accent font-medium hover:underline cursor-pointer"
+                    title={`Open service "${parsedSource.service}" in new tab`}
+                  >
+                    {parsedSource.service}
+                  </span>
+                  {parsedSource.port ? (
+                    <span className="text-accent font-medium">:{parsedSource.port}</span>
+                  ) : null}
+                  {parsedSource.extra ? (
+                    <span className="text-muted-foreground ml-1">{parsedSource.extra}</span>
+                  ) : null}
+                </>
+              );
+            }
+            return <span className="text-accent font-medium">{data?.source ?? '—'}</span>;
+          })()}
         </span>
       </div>
 

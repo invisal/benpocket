@@ -10,6 +10,7 @@ import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
 import { type K8sResource } from '../../../types/K8sResource';
 import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+import { cn } from 'cnfast';
 
 interface ApplicationDetailProps {
   payload: ApplicationData;
@@ -21,11 +22,12 @@ interface ResourceItem {
   name: string;
   kind: string;
   component: string;
+  rawResource?: K8sResource;
 }
 
 export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const { openNamespaceDetail } = useOpenResourceDetail();
+  const { openNamespaceDetail, openServiceDetail, openResourceDetail } = useOpenResourceDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const configPath = useKuberneterStore(
@@ -159,7 +161,8 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
         id: `${item.kind}/${item.metadata?.name || idx}`,
         name: item.metadata?.name || '',
         kind: item.kind,
-        component: item.metadata?.labels?.['app.kubernetes.io/component'] || ''
+        component: item.metadata?.labels?.['app.kubernetes.io/component'] || '',
+        rawResource: item
       }));
   }, [matchedResources]);
 
@@ -171,7 +174,8 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
         id: `${item.kind}/${item.metadata?.name || idx}`,
         name: item.metadata?.name || '',
         kind: item.kind,
-        component: item.metadata?.labels?.['app.kubernetes.io/component'] || ''
+        component: item.metadata?.labels?.['app.kubernetes.io/component'] || '',
+        rawResource: item
       }));
   }, [matchedResources]);
 
@@ -179,18 +183,28 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
   const internalUrls = useMemo(() => {
     const namespace = payload?.namespace;
     const services = otherResources.filter((r) => r.kind === 'Service');
-    const urls: string[] = [];
+    const urls: Array<{ url: string; serviceName?: string }> = [];
     services.forEach((svc) => {
-      urls.push('kubernetes.default.svc.cluster.local');
+      urls.push({ url: 'kubernetes.default.svc.cluster.local' });
       if (namespace) {
-        urls.push(`${svc.name}.${namespace}.svc.cluster.local`);
+        urls.push({
+          url: `${svc.name}.${namespace}.svc.cluster.local`,
+          serviceName: svc.name
+        });
       }
     });
     // Fallback if no services
     if (urls.length === 0) {
-      urls.push('kubernetes.default.svc.cluster.local');
+      urls.push({ url: 'kubernetes.default.svc.cluster.local' });
     }
-    return Array.from(new Set(urls)).slice(0, 8);
+    const seen = new Set<string>();
+    return urls
+      .filter((u) => {
+        if (seen.has(u.url)) return false;
+        seen.add(u.url);
+        return true;
+      })
+      .slice(0, 8);
   }, [otherResources, payload?.namespace]);
 
   const resourceColumns = useMemo<Column<ResourceItem>[]>(
@@ -198,7 +212,18 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
       {
         key: 'name',
         header: 'Name',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.name}</span>,
+        render: (row) => (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              openResourceDetail(row.kind, payload?.namespace || '', row.name, row.rawResource);
+            }}
+            className="text-accent hover:underline cursor-pointer font-sans text-xs truncate block"
+            title={row.name}
+          >
+            {row.name}
+          </span>
+        ),
         className: 'text-zinc-300 font-sans max-w-[240px] truncate',
         initialWidth: 240
       },
@@ -221,7 +246,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
         initialWidth: 150
       }
     ],
-    []
+    [openResourceDetail, payload?.namespace]
   );
 
   if (!payload) {
@@ -280,13 +305,22 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
       hasDetail: internalUrls.length > 0,
       renderDetail: () => (
         <div className="flex flex-col gap-1 pr-1 max-h-36 overflow-y-auto select-text">
-          {internalUrls.map((url, idx) => (
+          {internalUrls.map((urlObj, idx) => (
             <span
               key={idx}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-355 truncate w-fit select-all"
-              title={url}
+              onClick={() => {
+                if (urlObj.serviceName && payload?.namespace) {
+                  openServiceDetail(payload.namespace, urlObj.serviceName);
+                }
+              }}
+              className={cn(
+                'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-355 truncate w-fit select-all',
+                urlObj.serviceName &&
+                  'cursor-pointer hover:text-accent hover:underline hover:border-accent/40'
+              )}
+              title={urlObj.url}
             >
-              {url}
+              {urlObj.url}
             </span>
           ))}
         </div>
@@ -357,6 +391,9 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
               columns={resourceColumns}
               data={workloadResources}
               getRowKey={(row) => row.id}
+              onRowClick={(row) =>
+                openResourceDetail(row.kind, payload?.namespace || '', row.name, row.rawResource)
+              }
               resizable={false}
             />
           </div>
@@ -378,6 +415,9 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
               columns={resourceColumns}
               data={otherResources}
               getRowKey={(row) => row.id}
+              onRowClick={(row) =>
+                openResourceDetail(row.kind, payload?.namespace || '', row.name, row.rawResource)
+              }
               resizable={false}
             />
           </div>

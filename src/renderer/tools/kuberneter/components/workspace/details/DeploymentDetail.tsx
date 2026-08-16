@@ -6,8 +6,6 @@ import {
   type DeployRevision,
   type DeployRelatedPod
 } from '../../../types/DeployData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { MetricsSection } from './metrics';
@@ -16,6 +14,7 @@ import {
   formatInstantCpu,
   formatInstantMemory
 } from '../../../hooks/useMetrics';
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface DeploymentDetailProps {
   payload: DeployData;
@@ -55,13 +54,13 @@ interface DeployRawResource {
 }
 
 export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isTab = false }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
   const pods = payload?.podsList || [];
   const [selectedTarget, setSelectedTarget] = useState<string>('all');
 
   const metricsQuery = useInstantMetrics(true);
   const metricItems = metricsQuery.data ?? [];
+
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   const allPodNames = pods.map((p) => p.name);
   const targetPodNames =
@@ -76,8 +75,8 @@ export const DeploymentDetail: React.FC<DeploymentDetailProps> = ({ payload, isT
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 

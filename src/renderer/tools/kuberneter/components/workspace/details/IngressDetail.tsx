@@ -2,11 +2,11 @@ import { Age } from '../../Age';
 import type React from 'react';
 import { useMemo, useCallback } from 'react';
 import { type IngressData } from '../../../types/IngressData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { KubeTable, type Column } from '../../kube-table';
 import { MoreVertical, ChevronDown, ArrowUpDown, Sliders, Flag } from 'lucide-react';
+
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface IngressDetailProps {
   payload: IngressData;
@@ -14,14 +14,13 @@ interface IngressDetailProps {
 }
 
 export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = false }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   const handleNamespaceClick = useCallback(() => {
-    if (payload?.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload?.ns) {
+      openNamespaceDetail(payload.ns);
     }
-  }, [payload, activeInstanceId, setNamespace]);
+  }, [payload, openNamespaceDetail]);
 
   const annotations = payload?.annotations ? Object.entries(payload.annotations) : [];
 

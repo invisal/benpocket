@@ -9,6 +9,7 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
 import { type K8sResource } from '../../../types/K8sResource';
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface ApplicationDetailProps {
   payload: ApplicationData;
@@ -24,7 +25,7 @@ interface ResourceItem {
 
 export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const configPath = useKuberneterStore(
@@ -38,11 +39,11 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
 
   const handleNamespaceClick = useCallback(
     (ns: string) => {
-      if (ns && activeInstanceId) {
-        setNamespace(activeInstanceId, ns);
+      if (ns) {
+        openNamespaceDetail(ns);
       }
     },
-    [activeInstanceId, setNamespace]
+    [openNamespaceDetail]
   );
 
   // Fetch namespaced resources to match application group items

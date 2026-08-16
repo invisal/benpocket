@@ -7,6 +7,8 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { KubeTable, type Column } from '../../kube-table';
 
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+
 interface EndpointDetailProps {
   payload: EndpointData;
   isTab?: boolean;
@@ -14,14 +16,14 @@ interface EndpointDetailProps {
 
 export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
   const setResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
 
   const handleNamespaceClick = useCallback(() => {
-    if (payload?.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload?.ns) {
+      openNamespaceDetail(payload.ns);
     }
-  }, [payload, activeInstanceId, setNamespace]);
+  }, [payload, openNamespaceDetail]);
 
   const handlePodClick = useCallback(() => {
     if (activeInstanceId) {

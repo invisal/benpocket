@@ -5,10 +5,10 @@ import {
   type ServiceEndpointSlice,
   type ServiceEndpoint
 } from '../../../types/ServiceData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface ServiceDetailProps {
   payload: ServiceData;
@@ -16,16 +16,15 @@ interface ServiceDetailProps {
 }
 
 export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = false }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Service details available.</div>;
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 
@@ -33,6 +32,8 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
   const labels = payload.labels ? Object.entries(payload.labels) : [];
   const selectors = payload.selector ? Object.entries(payload.selector) : [];
   const finalizers = payload.finalizers || [];
+  const endpointSlices = payload.endpointSlices || [];
+  const endpoints = payload.endpoints || [];
 
   const propertiesData: PropertyItem[] = [
     {
@@ -226,7 +227,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
           Endpoint Slices
         </span>
-        {payload.endpointSlices.length === 0 ? (
+        {endpointSlices.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No endpoint slices found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-[160px]">
@@ -266,7 +267,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                   )
                 }
               ]}
-              data={payload.endpointSlices}
+              data={endpointSlices}
               getRowKey={(row) => row.name}
               resizable={false}
             />
@@ -279,7 +280,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
           Endpoints
         </span>
-        {payload.endpoints.length === 0 ? (
+        {endpoints.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No endpoints found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-[160px]">
@@ -297,7 +298,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                   className: 'font-mono text-zinc-450 break-all select-text'
                 }
               ]}
-              data={payload.endpoints}
+              data={endpoints}
               getRowKey={(row) => row.name}
               resizable={false}
             />

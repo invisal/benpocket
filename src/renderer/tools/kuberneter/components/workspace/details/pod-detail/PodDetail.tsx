@@ -17,6 +17,7 @@ import { MetricsSection } from '../metrics';
 import { PodTolerationsSection } from './PodTolerationsSection';
 import { PodVolumesSection } from './PodVolumesSection';
 import { PodContainersSection } from './PodContainersSection';
+import { useOpenResourceDetail } from '../../../../hooks/useOpenResourceDetail';
 
 export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) => {
   const [portForwardModalConfig, setPortForwardModalConfig] = useState<{
@@ -26,7 +27,7 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
   }>({ isOpen: false, containerPort: 80 });
 
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
   const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
   const kuberneterInstanceConfigPath = useKuberneterStore((s) => s.kuberneterInstanceConfigPath);
 
@@ -42,8 +43,8 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 

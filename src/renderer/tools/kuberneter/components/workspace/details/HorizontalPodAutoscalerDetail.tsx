@@ -5,6 +5,8 @@ import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+
 interface HorizontalPodAutoscalerDetailProps {
   payload: HorizontalPodAutoscalerData;
   isTab?: boolean;
@@ -15,7 +17,7 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
   isTab = false
 }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
   const setResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
 
   if (!payload) {
@@ -23,8 +25,8 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 

@@ -1,9 +1,9 @@
 import { Age } from '../../Age';
 import type React from 'react';
 import { type ServiceAccountData } from '../../../types/ServiceAccountData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface ServiceAccountDetailProps {
   payload: ServiceAccountData;
@@ -14,21 +14,22 @@ export const ServiceAccountDetail: React.FC<ServiceAccountDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Service Account details available.</div>;
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 
   const labels = payload.labels ? Object.entries(payload.labels) : [];
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
+  const secrets = payload.secrets || [];
+  const imagePullSecrets = payload.imagePullSecrets || [];
 
   const propertiesData: PropertyItem[] = [
     {
@@ -39,7 +40,7 @@ export const ServiceAccountDetail: React.FC<ServiceAccountDetailProps> = ({
           <Age
             timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
           />{' '}
-          ago ({payload.createdTime || 'N/A'})
+          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
         </span>
       )
     },
@@ -101,11 +102,11 @@ export const ServiceAccountDetail: React.FC<ServiceAccountDetailProps> = ({
     {
       id: 'secrets',
       name: 'Secrets',
-      value: `${payload.secrets.length} Secret(s)`,
-      hasDetail: payload.secrets.length > 0,
+      value: `${secrets.length} Secret(s)`,
+      hasDetail: secrets.length > 0,
       renderDetail: () => (
         <ul className="list-disc list-inside space-y-1 text-zinc-400 pr-1 select-text">
-          {payload.secrets.map((s) => (
+          {secrets.map((s) => (
             <li key={s} className="truncate font-mono text-[11px]" title={s}>
               {s}
             </li>
@@ -116,11 +117,11 @@ export const ServiceAccountDetail: React.FC<ServiceAccountDetailProps> = ({
     {
       id: 'imagePullSecrets',
       name: 'Image Pull Secrets',
-      value: `${payload.imagePullSecrets.length} Secret(s)`,
-      hasDetail: payload.imagePullSecrets.length > 0,
+      value: `${imagePullSecrets.length} Secret(s)`,
+      hasDetail: imagePullSecrets.length > 0,
       renderDetail: () => (
         <ul className="list-disc list-inside space-y-1 text-zinc-400 pr-1 select-text">
-          {payload.imagePullSecrets.map((s) => (
+          {imagePullSecrets.map((s) => (
             <li key={s} className="truncate font-mono text-[11px]" title={s}>
               {s}
             </li>

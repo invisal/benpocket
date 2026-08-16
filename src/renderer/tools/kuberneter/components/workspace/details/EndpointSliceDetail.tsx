@@ -10,6 +10,8 @@ import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
+
 interface EndpointSliceDetailProps {
   payload: EndpointSliceData;
   isTab?: boolean;
@@ -21,30 +23,22 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
 }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const openTab = useLayoutStore((s) => s.openTab);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
+  const { openNamespaceDetail, openServiceDetail } = useOpenResourceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Endpoint Slice details available.</div>;
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 
   const handleServiceClick = (serviceName: string) => {
-    console.debug('Navigate to service:', serviceName);
-    if (activeInstanceId) {
-      setKuberneterInstanceResource(activeInstanceId, 'services');
-      openTab({
-        id: `kuberneter-k8s-services-${activeInstanceId}`,
-        title: `K8s Services`,
-        type: 'kuberneter',
-        instanceId: activeInstanceId,
-        meta: { resource: 'services' }
-      });
+    if (payload.ns && serviceName) {
+      openServiceDetail(payload.ns, serviceName);
     }
   };
 
@@ -78,6 +72,8 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
 
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
   const labels = payload.labels ? Object.entries(payload.labels) : [];
+  const endpoints = payload.endpoints || [];
+  const ports = payload.ports || [];
 
   const propertiesData: PropertyItem[] = [
     {
@@ -188,7 +184,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
           Endpoints
         </span>
-        {payload.endpoints.length === 0 ? (
+        {endpoints.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No endpoints found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
@@ -251,7 +247,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
                   render: (row) => <span>{row.zone}</span>
                 }
               ]}
-              data={payload.endpoints}
+              data={endpoints}
               getRowKey={(row) => row.addresses.join('-')}
               resizable={false}
             />
@@ -264,7 +260,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
           Ports
         </span>
-        {payload.ports.length === 0 ? (
+        {ports.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No ports found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col max-h-[120px] h-auto w-full overflow-y-auto">
@@ -295,7 +291,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
                   render: (row) => <span>{row.appProtocol}</span>
                 }
               ]}
-              data={payload.ports}
+              data={ports}
               getRowKey={(row) => `${row.name}-${row.port}`}
               resizable={false}
             />

@@ -1,9 +1,9 @@
 import { Age } from '../../Age';
 import type React from 'react';
 import { type LeaseData } from '../../../types/LeaseData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface LeaseDetailProps {
   payload: LeaseData;
@@ -11,16 +11,15 @@ interface LeaseDetailProps {
 }
 
 export const LeaseDetail: React.FC<LeaseDetailProps> = ({ payload, isTab = false }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Lease details available.</div>;
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 

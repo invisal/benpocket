@@ -3,10 +3,10 @@ import type React from 'react';
 import { useState, useMemo, useCallback } from 'react';
 import { type ClusterRoleBindingData } from '../../../types/ClusterRoleBindingData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
+
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface ClusterRoleBindingDetailProps {
   payload: ClusterRoleBindingData;
@@ -24,18 +24,17 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
   payload,
   isTab = false
 }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
 
   const handleNamespaceClick = useCallback(
     (ns: string) => {
-      if (ns && activeInstanceId) {
-        setNamespace(activeInstanceId, ns);
+      if (ns) {
+        openNamespaceDetail(ns);
       }
     },
-    [activeInstanceId, setNamespace]
+    [openNamespaceDetail]
   );
 
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];

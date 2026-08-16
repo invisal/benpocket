@@ -16,6 +16,7 @@ import {
   parseMemoryToMiB
 } from '../../../utils/formatCapacity';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
+import { useOpenResourceDetail } from '../../../hooks/useOpenResourceDetail';
 
 interface NodeDetailProps {
   payload: NodeData;
@@ -32,38 +33,50 @@ interface ResourceStatsRow {
   pods: string;
 }
 
-interface NodeAddress {
-  type: string;
-  address: string;
-}
-
-interface NodeCondition {
-  type: string;
-  status: string;
-  message?: string;
-}
-
 interface NodeRawResource {
   metadata?: {
     name?: string;
-    namespace?: string;
-    creationTimestamp?: string;
     labels?: Record<string, string>;
     annotations?: Record<string, string>;
+    creationTimestamp?: string;
   };
   status?: {
-    addresses?: NodeAddress[];
-    capacity?: Record<string, string>;
-    allocatable?: Record<string, string>;
+    addresses?: Array<{ type: string; address: string }>;
     nodeInfo?: {
+      machineID?: string;
+      systemUUID?: string;
+      bootID?: string;
+      kernelVersion?: string;
+      osImage?: string;
+      containerRuntimeVersion?: string;
       kubeletVersion?: string;
+      kubeProxyVersion?: string;
       operatingSystem?: string;
       architecture?: string;
-      osImage?: string;
-      kernelVersion?: string;
-      containerRuntimeVersion?: string;
     };
-    conditions?: NodeCondition[];
+    capacity?: Record<string, string>;
+    allocatable?: Record<string, string>;
+    images?: Array<{ names?: string[]; sizeBytes?: number }>;
+    conditions?: Array<{
+      type: string;
+      status: string;
+      reason?: string;
+      message?: string;
+      lastHeartbeatTime?: string;
+      lastTransitionTime?: string;
+    }>;
+  };
+  spec?: {
+    podCIDR?: string;
+    podCIDRs?: string[];
+    providerID?: string;
+    taints?: Array<{
+      key: string;
+      value?: string;
+      effect: string;
+      timeAdded?: string;
+    }>;
+    unschedulable?: boolean;
   };
 }
 
@@ -97,7 +110,7 @@ interface PodTableRow {
 
 export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenResourceDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const configPath = useKuberneterStore(
@@ -171,11 +184,11 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
 
   const handleNamespaceClick = useCallback(
     (ns: string) => {
-      if (ns && activeInstanceId) {
-        setNamespace(activeInstanceId, ns);
+      if (ns) {
+        openNamespaceDetail(ns);
       }
     },
-    [activeInstanceId, setNamespace]
+    [openNamespaceDetail]
   );
 
   // Address details helper

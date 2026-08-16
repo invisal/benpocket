@@ -48,7 +48,8 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
 
   // Fetch namespaced resources to match application group items
   useEffect(() => {
-    if (!cluster || !activeInstanceId || !payload.namespace) return;
+    const namespace = payload?.namespace;
+    if (!cluster || !activeInstanceId || !namespace) return;
 
     let active = true;
 
@@ -75,7 +76,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
                 configPathArg,
                 cluster,
                 resource,
-                payload.namespace
+                namespace
               );
               const items = Array.isArray(res?.items) ? (res.items as K8sResource[]) : [];
               return items.map((item) => ({ ...item, kind }));
@@ -104,10 +105,13 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
     return () => {
       active = false;
     };
-  }, [cluster, configPath, activeInstanceId, payload.namespace]);
+  }, [cluster, configPath, activeInstanceId, payload?.namespace]);
 
   // Match resources using application instance labels, Helm annotations, or names
   const matchedResources = useMemo(() => {
+    const instance = payload?.instance;
+    if (!instance) return [];
+
     return allRelatedResources.filter((item) => {
       const name = item.metadata?.name || '';
       const labels = item.metadata?.labels || {};
@@ -115,31 +119,31 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
 
       // Match label selector keys
       if (
-        labels['app.kubernetes.io/instance'] === payload.instance ||
-        labels['app.kubernetes.io/name'] === payload.instance ||
-        labels['app.kubernetes.io/part-of'] === payload.instance ||
-        labels['app'] === payload.instance ||
-        labels['release'] === payload.instance
+        labels['app.kubernetes.io/instance'] === instance ||
+        labels['app.kubernetes.io/name'] === instance ||
+        labels['app.kubernetes.io/part-of'] === instance ||
+        labels['app'] === instance ||
+        labels['release'] === instance
       ) {
         return true;
       }
 
       // Helm release annotation
       if (
-        annotations['meta.helm.sh/release-name'] === payload.instance ||
-        labels['meta.helm.sh/release-name'] === payload.instance
+        annotations['meta.helm.sh/release-name'] === instance ||
+        labels['meta.helm.sh/release-name'] === instance
       ) {
         return true;
       }
 
       // Name matches instance or starts with instance name prefix plus dash
-      if (name === payload.instance || name.startsWith(`${payload.instance}-`)) {
+      if (name === instance || name.startsWith(`${instance}-`)) {
         return true;
       }
 
       return false;
     });
-  }, [allRelatedResources, payload.instance]);
+  }, [allRelatedResources, payload?.instance]);
 
   const primaryPodName = useMemo(() => {
     const podItem = matchedResources.find((item) => item.kind === 'Pod');
@@ -173,18 +177,56 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
 
   // Generate internal URLs block
   const internalUrls = useMemo(() => {
+    const namespace = payload?.namespace;
     const services = otherResources.filter((r) => r.kind === 'Service');
     const urls: string[] = [];
     services.forEach((svc) => {
       urls.push('kubernetes.default.svc.cluster.local');
-      urls.push(`${svc.name}.${payload.namespace}.svc.cluster.local`);
+      if (namespace) {
+        urls.push(`${svc.name}.${namespace}.svc.cluster.local`);
+      }
     });
     // Fallback if no services
     if (urls.length === 0) {
       urls.push('kubernetes.default.svc.cluster.local');
     }
     return Array.from(new Set(urls)).slice(0, 8);
-  }, [otherResources, payload.namespace]);
+  }, [otherResources, payload?.namespace]);
+
+  const resourceColumns = useMemo<Column<ResourceItem>[]>(
+    () => [
+      {
+        key: 'name',
+        header: 'Name',
+        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.name}</span>,
+        className: 'text-zinc-300 font-sans max-w-[240px] truncate',
+        initialWidth: 240
+      },
+      {
+        key: 'kind',
+        header: 'Kind',
+        render: (row) => <span className="text-zinc-400 font-sans text-xs">{row.kind}</span>,
+        className: 'text-zinc-400 font-sans max-w-[150px] truncate',
+        initialWidth: 150
+      },
+      {
+        key: 'component',
+        header: 'Component',
+        render: (row) => (
+          <span className="text-zinc-400 font-sans text-xs">
+            {row.component || <span className="text-zinc-650">—</span>}
+          </span>
+        ),
+        className: 'text-zinc-400 font-sans max-w-[150px] truncate',
+        initialWidth: 150
+      }
+    ],
+    []
+  );
+
+  if (!payload) {
+    return <div className="p-4 text-xs text-zinc-500">No application details available.</div>;
+  }
 
   const propertiesData: PropertyItem[] = [
     {
@@ -277,37 +319,6 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
       )
     }
   ];
-
-  const resourceColumns = useMemo<Column<ResourceItem>[]>(
-    () => [
-      {
-        key: 'name',
-        header: 'Name',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.name}</span>,
-        className: 'text-zinc-300 font-sans max-w-[240px] truncate',
-        initialWidth: 240
-      },
-      {
-        key: 'kind',
-        header: 'Kind',
-        render: (row) => <span className="text-zinc-400 font-sans text-xs">{row.kind}</span>,
-        className: 'text-zinc-400 font-sans max-w-[150px] truncate',
-        initialWidth: 150
-      },
-      {
-        key: 'component',
-        header: 'Component',
-        render: (row) => (
-          <span className="text-zinc-400 font-sans text-xs">
-            {row.component || <span className="text-zinc-650">—</span>}
-          </span>
-        ),
-        className: 'text-zinc-400 font-sans max-w-[150px] truncate',
-        initialWidth: 150
-      }
-    ],
-    []
-  );
 
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>

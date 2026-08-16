@@ -1,7 +1,8 @@
 import { MetricsSection } from './metrics';
 import { Age } from '../../Age';
 import type React from 'react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type ApplicationData } from '../../../types/ApplicationData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
@@ -34,11 +35,6 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
     (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
 
-  const [loading, setLoading] = useState(true);
-  const [allRelatedResources, setAllRelatedResources] = useState<
-    (K8sResource & { kind: string })[]
-  >([]);
-
   const handleNamespaceClick = useCallback(
     (ns: string) => {
       if (ns) {
@@ -48,66 +44,60 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
     [openNamespaceDetail]
   );
 
-  // Fetch namespaced resources to match application group items
-  useEffect(() => {
-    const namespace = payload?.namespace;
-    if (!cluster || !activeInstanceId || !namespace) return;
+  // Fetch and cache namespaced resources using React Query to prevent reload flicker on tab switches
+  const { data: allRelatedResources = [], isLoading: loading } = useQuery<
+    (K8sResource & { kind: string })[]
+  >({
+    queryKey: [
+      'kuberneter',
+      'application-resources',
+      configPath,
+      cluster,
+      payload?.namespace,
+      payload?.instance
+    ],
+    queryFn: async () => {
+      const namespace = payload?.namespace;
+      if (!cluster || !namespace) return [];
 
-    let active = true;
+      const configPathArg = configPath === 'default' ? undefined : configPath;
+      const resourcesToFetch = [
+        { kind: 'Deployment', resource: 'deployments' },
+        { kind: 'StatefulSet', resource: 'statefulsets' },
+        { kind: 'DaemonSet', resource: 'daemonsets' },
+        { kind: 'Pod', resource: 'pods' },
+        { kind: 'ConfigMap', resource: 'configmaps' },
+        { kind: 'Secret', resource: 'secrets' },
+        { kind: 'ServiceAccount', resource: 'serviceaccounts' },
+        { kind: 'Service', resource: 'services' },
+        { kind: 'Ingress', resource: 'ingresses' }
+      ];
 
-    const fetchAll = async () => {
-      setLoading(true);
-      try {
-        const configPathArg = configPath === 'default' ? undefined : configPath;
-        const resourcesToFetch = [
-          { kind: 'Deployment', resource: 'deployments' },
-          { kind: 'StatefulSet', resource: 'statefulsets' },
-          { kind: 'DaemonSet', resource: 'daemonsets' },
-          { kind: 'Pod', resource: 'pods' },
-          { kind: 'ConfigMap', resource: 'configmaps' },
-          { kind: 'Secret', resource: 'secrets' },
-          { kind: 'ServiceAccount', resource: 'serviceaccounts' },
-          { kind: 'Service', resource: 'services' },
-          { kind: 'Ingress', resource: 'ingresses' }
-        ];
+      const results = await Promise.all(
+        resourcesToFetch.map(async ({ kind, resource }) => {
+          try {
+            const res = await window.kuberneter.getResources(
+              configPathArg,
+              cluster,
+              resource,
+              namespace
+            );
+            const items = Array.isArray(res?.items) ? (res.items as K8sResource[]) : [];
+            return items.map((item) => ({ ...item, kind }));
+          } catch (err) {
+            console.error(`Failed to fetch ${resource} in ApplicationDetail:`, err);
+            return [];
+          }
+        })
+      );
 
-        const results = await Promise.all(
-          resourcesToFetch.map(async ({ kind, resource }) => {
-            try {
-              const res = await window.kuberneter.getResources(
-                configPathArg,
-                cluster,
-                resource,
-                namespace
-              );
-              const items = Array.isArray(res?.items) ? (res.items as K8sResource[]) : [];
-              return items.map((item) => ({ ...item, kind }));
-            } catch (err) {
-              console.error(`Failed to fetch ${resource} in ApplicationDetail:`, err);
-              return [];
-            }
-          })
-        );
-
-        if (active) {
-          const flatItems = results.flat();
-          setAllRelatedResources(flatItems);
-        }
-      } catch (err) {
-        console.error('Error fetching application resources:', err);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchAll();
-
-    return () => {
-      active = false;
-    };
-  }, [cluster, configPath, activeInstanceId, payload?.namespace]);
+      return results.flat();
+    },
+    enabled: !!cluster && !!payload?.namespace && !!activeInstanceId,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
 
   // Match resources using application instance labels, Helm annotations, or names
   const matchedResources = useMemo(() => {

@@ -117,7 +117,11 @@ export function EditorPage(): JSX.Element {
   function handleLoadedMetadata(event: React.SyntheticEvent<HTMLVideoElement>): void {
     const video = event.currentTarget;
     setDuration(video.duration);
-    setSourceResolution({ width: video.videoWidth, height: video.videoHeight });
+    const resolution = { width: video.videoWidth, height: video.videoHeight };
+    setSourceResolution(resolution);
+    // Also mirrored into the app store -- see its `sourceResolution` doc for
+    // why useExportAction.ts (outside this component entirely) needs it too.
+    useAppStore.getState().setSourceResolution(resolution);
   }
 
   return (

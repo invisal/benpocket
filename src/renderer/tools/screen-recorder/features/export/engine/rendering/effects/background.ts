@@ -37,8 +37,14 @@ export class BackgroundEffect {
     this.height = height;
   }
 
-  async update(data: BackgroundSceneData): Promise<void> {
+  async update(data: BackgroundSceneData | null): Promise<void> {
     const { width, height } = this;
+
+    if (!data) {
+      this.graphics.visible = false;
+      this.sprite.visible = false;
+      return;
+    }
 
     if (data.kind === 'image') {
       this.graphics.visible = false;

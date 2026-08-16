@@ -60,10 +60,15 @@ export function isSourceCopyEligible(
   if (project.zoomKeyframes.length > 0) return false;
   if (project.annotations.length > 0) return false;
   if (project.blurMasks.length > 0) return false;
-  if (project.background.shadow > 0) return false;
-  if (project.background.blur > 0) return false;
-  if (project.background.cornerRadius > 0) return false;
-  if (project.background.padding > 0) return false;
+  // Inert while `enabled` is off -- evaluateSceneAtMs already ignores these
+  // stored values in that case, so they shouldn't block the fast path
+  // either (see timeline-evaluator.ts's `evaluateSceneAtMs`).
+  if (project.background.enabled) {
+    if (project.background.shadow > 0) return false;
+    if (project.background.blur > 0) return false;
+    if (project.background.cornerRadius > 0) return false;
+    if (project.background.padding > 0) return false;
+  }
   if (project.motionBlur) return false;
   if (project.captions.enabled && project.captions.segments.length > 0) return false;
 

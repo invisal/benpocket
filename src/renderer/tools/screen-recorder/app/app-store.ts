@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { CursorPathPoint } from '@screen-recorder/types/project';
+import type { SourceResolution } from '@screen-recorder/types/editor';
 
 export type ScreenRecorderRoute = 'editor' | 'library' | 'settings';
 
@@ -67,6 +68,16 @@ interface AppStoreState {
   /** Library's "Remove" action -- just the in-memory/route-level state; the caller is responsible for deleting the underlying file and revoking `previewUrl` first (see LibraryPage.tsx). */
   clearLastRecording: () => void;
   /**
+   * Mirrors EditorPage's own local `sourceResolution` state (set from the
+   * `<video>` element's `videoWidth`/`videoHeight` once metadata loads) --
+   * duplicated here so `useExportAction.ts`, which lives outside EditorPage
+   * entirely (ExportDialogButton is a nav-bar sibling in
+   * ScreenRecorderApp.tsx), can know the recording's native aspect ratio
+   * too, for exporting at that aspect when the background is disabled.
+   */
+  sourceResolution: SourceResolution | null;
+  setSourceResolution: (sourceResolution: SourceResolution | null) => void;
+  /**
    * Set by `useOpenProject` for the duration of a `project:open` +
    * `applyProjectSnapshot` call -- shared here (not just that hook's own
    * local state) so EditorPage can show `EditorLoading` for the sidebar's
@@ -115,7 +126,9 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setRecorderToolbarOpen: (isRecorderToolbarOpen) => set({ isRecorderToolbarOpen }),
   lastRecording: null,
   setLastRecording: (lastRecording) => set({ lastRecording }),
-  clearLastRecording: () => set({ lastRecording: null }),
+  clearLastRecording: () => set({ lastRecording: null, sourceResolution: null }),
+  sourceResolution: null,
+  setSourceResolution: (sourceResolution) => set({ sourceResolution }),
   isOpeningProject: false,
   setIsOpeningProject: (isOpeningProject) => set({ isOpeningProject }),
   projectName: 'Untitled Recording',

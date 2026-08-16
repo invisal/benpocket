@@ -53,6 +53,7 @@ export function buildProjectSnapshot(name: string): Project | null {
     webcamVideoPath: lastRecording.webcamFilePath,
     webcamOffsetMs: lastRecording.webcamOffsetMs,
     background: {
+      enabled: backgroundState.enabled,
       kind: backgroundState.kind,
       value: backgroundState.value,
       padding: backgroundState.padding,

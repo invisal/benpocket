@@ -114,7 +114,6 @@ export function PreviewStage({
     [zoomTimeMs, zoomKeyframes, autoZoomFocalPaths]
   );
 
-  const stageAspectRatio = ASPECT_RATIO_VALUES[exportAspectRatio];
   const sourceAspectRatio = sourceResolution
     ? sourceResolution.width / sourceResolution.height
     : undefined;
@@ -163,10 +162,22 @@ export function PreviewStage({
       }
     : undefined;
 
+  // With no background, the stage takes the recording's own (cropped)
+  // aspect ratio instead of the fixed export-settings one, so the video
+  // fills the frame edge-to-edge instead of leaving empty canvas margin
+  // that -- with no background layer left to paint into it -- would
+  // otherwise show through as bare space rather than actual letterboxing.
+  // Falls back to the fixed aspect while metadata hasn't loaded yet
+  // (`croppedAspectRatio` is undefined pre-metadata) -- purely a brief
+  // loading-state stand-in, corrected the instant `onLoadedMetadata` fires.
+  const stageAspectRatio = background.enabled
+    ? ASPECT_RATIO_VALUES[exportAspectRatio]
+    : (croppedAspectRatio ?? ASPECT_RATIO_VALUES[exportAspectRatio]);
+
   const previewScale = stageWidthPx > 0 ? stageWidthPx / REFERENCE_CANVAS_WIDTH : 1;
-  const contentBorderRadius = background.cornerRadius * previewScale;
+  const contentBorderRadius = background.enabled ? background.cornerRadius * previewScale : 0;
   const contentBoxShadow =
-    background.shadow > 0
+    background.enabled && background.shadow > 0
       ? // No offset -- 4th value is spread, growing the shadow rect evenly on
         // every edge (matching shadow-corner.ts's export render) instead of
         // the 2nd/3rd-value directional offset this used to read as, which
@@ -179,18 +190,25 @@ export function PreviewStage({
       <div
         ref={stageRef}
         className="relative isolate flex max-h-full max-w-full overflow-hidden rounded-xl border border-border"
-        style={{ padding: `${background.padding}%`, aspectRatio: stageAspectRatio }}
+        style={{
+          padding: background.enabled ? `${background.padding}%` : 0,
+          aspectRatio: stageAspectRatio
+        }}
       >
-        <div className="absolute inset-0 -z-10" style={backgroundLayerStyle(background)} />
-        {background.kind === 'image' && background.blur > 0 && (
-          <div
-            className="absolute inset-0 -z-10"
-            style={{
-              ...backgroundLayerStyle(background),
-              filter: `blur(${background.blur}px)`,
-              transform: 'scale(1.15)'
-            }}
-          />
+        {background.enabled && (
+          <>
+            <div className="absolute inset-0 -z-10" style={backgroundLayerStyle(background)} />
+            {background.kind === 'image' && background.blur > 0 && (
+              <div
+                className="absolute inset-0 -z-10"
+                style={{
+                  ...backgroundLayerStyle(background),
+                  filter: `blur(${background.blur}px)`,
+                  transform: 'scale(1.15)'
+                }}
+              />
+            )}
+          </>
         )}
 
         <div className="relative flex flex-1 items-center justify-center">

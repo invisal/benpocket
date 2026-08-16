@@ -52,6 +52,7 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
       lastRecording?.webcamExportSourceFilePath ?? lastRecording?.webcamFilePath ?? null,
     webcamOffsetMs: lastRecording?.webcamOffsetMs ?? 0,
     background: {
+      enabled: backgroundState.enabled,
       kind: backgroundState.kind,
       value: backgroundState.value,
       padding: backgroundState.padding,

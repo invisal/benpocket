@@ -47,7 +47,15 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
     selectedKeyframeId: null
   });
   useWebcamStore.setState(project.webcam);
-  useBackgroundStore.setState(project.background);
+  useBackgroundStore.setState({
+    // `enabled` defaults to `true` -- projects saved before this field
+    // existed on `BackgroundSettings` have no such key at all, which would
+    // otherwise read as `false` and make the background vanish (and the
+    // canvas jump to the recording's own aspect) the moment an older
+    // project is opened.
+    ...project.background,
+    enabled: project.background.enabled ?? true
+  });
   useCursorStore.setState(project.cursor);
   useCaptionsStore.setState(project.captions);
   useAnnotationsStore.setState({ annotations: project.annotations, selectedAnnotationId: null });

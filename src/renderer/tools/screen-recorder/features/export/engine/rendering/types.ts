@@ -144,7 +144,8 @@ export interface SceneDescription {
   innerRect: InnerRect;
   cornerRadiusPx: number;
   referenceScale: number;
-  background: BackgroundSceneData;
+  /** `null` when `BackgroundSettings.enabled` is off -- nothing to paint behind the video. */
+  background: BackgroundSceneData | null;
   shadow: ShadowSceneData | null;
   zoom: ZoomSceneData;
   cursor: CursorSceneData | null;

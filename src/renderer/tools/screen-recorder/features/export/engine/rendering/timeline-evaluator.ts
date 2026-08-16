@@ -32,8 +32,9 @@ import type {
   WebcamSceneData
 } from './types';
 
-function resolveBackground(project: Project): BackgroundSceneData {
+function resolveBackground(project: Project): BackgroundSceneData | null {
   const { background } = project;
+  if (!background.enabled) return null;
   switch (background.kind) {
     case 'color':
       return { kind: 'color', color: background.value };
@@ -161,6 +162,7 @@ function resolveBlurMasks(
 ): BlurMaskSceneData[] {
   const active: BlurMaskSceneData[] = [];
   for (const region of project.blurMasks) {
+    if (!region.enabled) continue;
     if (atMs < region.atMs || atMs > region.atMs + region.durationMs) continue;
     const widthPx = region.rect.width * innerRect.width;
     const heightPx = region.rect.height * innerRect.height;
@@ -286,17 +288,29 @@ export function evaluateSceneAtMs(
   cursorHidden: boolean,
   webcamHidden: boolean
 ): SceneDescription {
+  // With the background off, `outputWidth`/`outputHeight` are already sized
+  // to the recording's own (cropped) aspect ratio by the caller (see
+  // useExportAction.ts's `effectiveResolution`) -- padding 0 against a
+  // matching aspect makes `computeInnerRect` naturally resolve to the full
+  // canvas, same as `PreviewStage.tsx` at `padding: 0`. Corner radius/
+  // shadow are meaningless with nothing showing past the video's own edges,
+  // so those are suppressed too rather than rounding/shadowing the video
+  // itself against nothing.
   const innerRect = computeInnerRect(
     outputWidth,
     outputHeight,
     sourceAspect,
-    project.background.padding
+    project.background.enabled ? project.background.padding : 0
   );
   const referenceScale = outputWidth / REFERENCE_CANVAS_WIDTH;
-  const cornerRadiusPx = project.background.cornerRadius * referenceScale;
+  const cornerRadiusPx = project.background.enabled
+    ? project.background.cornerRadius * referenceScale
+    : 0;
 
   const zoom = resolveZoom(atMs, project.zoomKeyframes, autoZoomFocalPaths);
-  const shadow = resolveShadow(project.background.shadow, referenceScale);
+  const shadow = project.background.enabled
+    ? resolveShadow(project.background.shadow, referenceScale)
+    : null;
   if (shadow) shadow.radiusPx = cornerRadiusPx;
 
   return {

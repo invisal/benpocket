@@ -37,3 +37,20 @@ target_include_directories(benpocket-linux-recorder-helper PRIVATE
 )
 
 target_compile_options(benpocket-linux-recorder-helper PRIVATE -Wall -Wextra)
+
+# A persistent CLIPBOARD selection owner (see clipboard_owner.cpp for why
+# xclip can't do this) -- only needs core Xlib, not the Xext/Xfixes/Xrandr
+# extensions the recorder helper above uses for capture.
+add_executable(benpocket-linux-clipboard-helper
+  src/clipboard_owner.cpp
+)
+
+target_link_libraries(benpocket-linux-clipboard-helper PRIVATE
+  ${X11_LIBRARIES}
+)
+
+target_include_directories(benpocket-linux-clipboard-helper PRIVATE
+  ${X11_INCLUDE_DIR}
+)
+
+target_compile_options(benpocket-linux-clipboard-helper PRIVATE -Wall -Wextra)

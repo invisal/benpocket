@@ -149,9 +149,33 @@ export interface ResolvedZoom {
    * it toward the center of the frame as the zoom deepens instead, which
    * is what makes a "zoom to this point" read as actually zooming *in on*
    * the point rather than just growing everything around a fixed pin.
-   * Zero whenever depth is 1 (not zoomed).
+   * Zero whenever depth is 1 (not zoomed). Clamped (see `clampShiftAxis`)
+   * so the scaled+shifted content never pulls back from covering its own
+   * original bounds on either axis, regardless of how close `focal` is to
+   * an edge -- video content is all there ever is past that edge (no
+   * background necessarily behind it to show through instead).
    */
   shift: { x: number; y: number };
+}
+
+/**
+ * The largest `shift` (in either direction, on one axis) that still leaves
+ * the scaled content covering its own original bounds on that axis --
+ * beyond this, the content's far edge pulls inward past where it started,
+ * exposing whatever's behind it (nothing, once the background is off).
+ * Derived from `result = focal + depth*(p-focal) + shift` (the resolved
+ * position of local point `p`, `transform-origin` at `focal`, both 0-1
+ * fractions of the content's own size -- matches PreviewStage.tsx's
+ * `translate(shift%) scale(depth)` and effects/zoom.ts's pixel equivalent):
+ * requiring `result(0) <= 0` and `result(1) >= 1` (the original [0,1] span
+ * stays fully covered) solves to `-(1-focal)*(depth-1) <= shift <=
+ * focal*(depth-1)`. At `depth === 1` (not zoomed) both bounds collapse to
+ * 0, matching `shift` already being 0 there.
+ */
+function clampShiftAxis(rawShift: number, focal: number, depth: number): number {
+  const max = focal * (depth - 1);
+  const min = -(1 - focal) * (depth - 1);
+  return Math.min(max, Math.max(min, rawShift));
 }
 
 /**
@@ -216,8 +240,13 @@ export function resolveZoom(
       : active.position;
   // Grows from 0 (rest) to envelope * distance-to-center at the zoom's peak,
   // so the focal point smoothly migrates to center as depth increases and
-  // returns to its original spot as the zoom releases.
-  const shift = { x: envelope * (0.5 - focal.x), y: envelope * (0.5 - focal.y) };
+  // returns to its original spot as the zoom releases. Clamped per axis
+  // (see clampShiftAxis) so a focal point near an edge can't drag the
+  // content far enough to expose empty space past its own opposite edge.
+  const shift = {
+    x: clampShiftAxis(envelope * (0.5 - focal.x), focal.x, depth),
+    y: clampShiftAxis(envelope * (0.5 - focal.y), focal.y, depth)
+  };
 
   return { depth, focal, shift };
 }

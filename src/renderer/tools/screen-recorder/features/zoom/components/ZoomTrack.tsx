@@ -99,14 +99,14 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
   return (
     <div
       className="relative"
-      // Matches PillTrack's own single-lane sizing (`py-1` top+bottom plus
-      // one `laneHeightPx` row) so the empty hint / ghost preview reserve
-      // exactly as much height as a real pill would, and whatever track
-      // sits below never jumps when one appears/disappears.
-      style={{ minHeight: CLIP_ROW_HEIGHT_PX + 8 }}
+      // Matches PillTrack's own single-lane sizing (one `laneHeightPx` row)
+      // so the empty hint / ghost preview reserve exactly as much height as
+      // a real pill would, and whatever track sits below never jumps when
+      // one appears/disappears.
+      style={{ minHeight: CLIP_ROW_HEIGHT_PX }}
     >
       {showEmptyHint && (
-        <div className="flex items-center px-1 py-1" style={{ height: CLIP_ROW_HEIGHT_PX + 8 }}>
+        <div className="flex items-center px-1" style={{ height: CLIP_ROW_HEIGHT_PX }}>
           <div className="flex h-full w-full items-center justify-center gap-1.5 text-[10px] text-muted-foreground">
             <MousePointerClick size={12} className="shrink-0" />
             Click or drag to add zoom on cursor
@@ -222,13 +222,13 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
 
       {ghostPercent && (
         // Reproduces PillTrack's own outer wrapper exactly (`flex
-        // items-center py-1 px-1`, then an inner `relative` box) so this
+        // items-center px-1`, then an inner `relative` box) so this
         // percent-positioned ghost lines up pixel-for-pixel with real
         // pills, without needing to touch PillTrack itself (shared by
         // Caption/Annotation/BlurMask tracks too). `pointer-events-none`
         // throughout -- it's a preview, not interactive; CutTimeline's
         // ruler/clip-row clicks are what actually place the keyframe.
-        <div className="pointer-events-none absolute left-0 right-0 top-0 flex items-center py-1 px-1">
+        <div className="pointer-events-none absolute left-0 right-0 top-0 flex items-center px-1">
           <div className="relative w-full" style={{ height: CLIP_ROW_HEIGHT_PX }}>
             <div
               className="absolute overflow-hidden rounded-md border border-purple-900/40 opacity-50"

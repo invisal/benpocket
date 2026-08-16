@@ -5,6 +5,8 @@ import type { CursorPathPoint } from '@shared/cursor-path';
 export type { CursorPathPoint };
 
 export interface BackgroundSettings {
+  /** Off means the video fills the frame edge-to-edge at its own native aspect ratio -- no padding, no wallpaper/color/gradient/image layer, no corner radius or shadow. `kind`/`value`/`padding`/`blur`/`cornerRadius`/`shadow` stay in state so re-enabling restores whatever was set before. */
+  enabled: boolean;
   kind: 'wallpaper' | 'color' | 'gradient' | 'image';
   /**
    * Meaning depends on `kind`: a wallpaper preset id (see
@@ -109,6 +111,8 @@ export interface BlurMaskRegion {
   intensity: number;
   /** Solid fill color -- used when kind === 'mask'. */
   color: string;
+  /** Off but not deleted -- skipped entirely in both the editor preview and export, same as `ZoomKeyframe.enabled`/`AnnotationBase.enabled`. */
+  enabled: boolean;
 }
 
 export interface Project {

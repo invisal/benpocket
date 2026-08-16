@@ -3,7 +3,8 @@ import { useAppStore } from '../../../app/app-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useCropStore } from '../../crop/store/crop-store';
-import { useExportStore } from '../store/export-store';
+import { useBackgroundStore } from '../../background/store/background-store';
+import { useExportStore, toEven } from '../store/export-store';
 import { buildExportProject } from '../lib/build-export-project';
 import { runExport } from '../engine/export-coordinator';
 import { isExportCancelled } from '../engine/cancel';
@@ -45,11 +46,29 @@ interface UseExportActionResult {
  */
 export function useExportAction(): UseExportActionResult {
   const lastRecording = useAppStore((state) => state.lastRecording);
+  const sourceResolution = useAppStore((state) => state.sourceResolution);
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
   const crop = useCropStore((s) => s.rect);
+  const backgroundEnabled = useBackgroundStore((s) => s.enabled);
   const store = useExportStore();
+
+  // With no background, the export canvas follows the recording's own
+  // (cropped) native resolution instead of the aspect-ratio picker's fixed
+  // preset -- same reasoning as PreviewStage.tsx's `stageAspectRatio`, kept
+  // at the recording's *actual* pixel size (not resampled to the picker's
+  // long-edge preset) so disabling the background doesn't also silently
+  // change output quality. Falls back to `store.resolution` if metadata
+  // hasn't loaded yet (shouldn't happen in practice -- `canExport` below
+  // requires a loaded recording).
+  const effectiveResolution =
+    !backgroundEnabled && sourceResolution
+      ? {
+          width: toEven(crop ? sourceResolution.width * crop.width : sourceResolution.width),
+          height: toEven(crop ? sourceResolution.height * crop.height : sourceResolution.height)
+        }
+      : store.resolution;
 
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +113,7 @@ export function useExportAction(): UseExportActionResult {
           format: store.format,
           codec: store.codec,
           aspectRatio: store.aspectRatio,
-          resolution: store.resolution,
+          resolution: effectiveResolution,
           frameRate: store.frameRate,
           quality: store.quality,
           // No separate global toggle -- skip audio entirely when every kept

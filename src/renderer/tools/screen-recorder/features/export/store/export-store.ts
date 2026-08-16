@@ -13,7 +13,8 @@ const ASPECT_RATIO_VALUES: Record<AspectRatio, number> = {
   '4:3': 4 / 3
 };
 
-function toEven(n: number): number {
+/** Even-pixel floor most video encoders require -- exported for useExportAction.ts's own resolution override when the background is disabled (see that file). */
+export function toEven(n: number): number {
   return Math.max(2, Math.round(n / 2) * 2);
 }
 

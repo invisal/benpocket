@@ -6,6 +6,7 @@ import { WALLPAPER_IMAGE_PRESETS } from '../lib/wallpaper-images';
 import { useBackgroundStore } from '../store/background-store';
 import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
+import { Switch } from '../../../components/ui/switch';
 import { cn } from '../../../lib/utils';
 
 const GRADIENT_PRESETS: { angleDeg: number; colors: [string, string] }[] = [
@@ -49,11 +50,13 @@ function parseGradientValue(value: string): { angleDeg: number; color1: string; 
 
 export function BackgroundPicker(): JSX.Element {
   const {
+    enabled,
     kind,
     value,
     padding,
     cornerRadius,
     shadow,
+    toggleEnabled,
     setKind,
     setValue,
     setPadding,
@@ -80,181 +83,197 @@ export function BackgroundPicker(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-1 rounded-lg border border-border p-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setKind(tab.id)}
-              className={cn(
-                'flex-1 rounded-md py-1.5 px-1 text-xs font-medium transition-colors',
-                kind === tab.id
-                  ? 'dark:bg-surface-3 bg-gray-200 text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-col gap-1">
+        <label className="flex items-center justify-between">
+          <span className="text-xs font-medium">Show background</span>
+          <Switch checked={enabled} onChange={toggleEnabled} label="Show background" />
+        </label>
+        {!enabled && (
+          <p className="text-[11px] text-muted-foreground">
+            The recording fills the whole frame at its own aspect ratio -- no padding, corner
+            radius, or shadow, and the export aspect ratio picker follows it instead of the other
+            way around.
+          </p>
+        )}
       </div>
 
-      {kind === 'wallpaper' && (
+      <div className={cn('flex flex-col gap-3', !enabled && 'pointer-events-none opacity-40')}>
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Wallpaper</span>
-          <div className="grid grid-cols-4 gap-2">
-            {WALLPAPER_IMAGE_PRESETS.map((preset) => (
+          <div className="flex gap-1 rounded-lg border border-border p-1">
+            {TABS.map((tab) => (
               <button
-                key={preset.id}
-                onClick={() => setValue(preset.id)}
-                title={preset.label}
-                aria-label={preset.label}
-                className={cn(swatchClass(value === preset.id), 'bg-cover bg-center')}
-                style={{ backgroundImage: `url(${preset.src})` }}
-              />
+                key={tab.id}
+                onClick={() => setKind(tab.id)}
+                className={cn(
+                  'flex-1 rounded-md py-1.5 px-1 text-xs font-medium transition-colors',
+                  kind === tab.id
+                    ? 'dark:bg-surface-3 bg-gray-200 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
         </div>
-      )}
 
-      {kind === 'gradient' && gradient && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Gradient</span>
-          <div className="grid grid-cols-5 gap-2">
-            {GRADIENT_PRESETS.map((preset, i) => {
-              const presetValue = `${preset.angleDeg}|${preset.colors[0]}|${preset.colors[1]}`;
-              return (
+        {kind === 'wallpaper' && (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Wallpaper</span>
+            <div className="grid grid-cols-4 gap-2">
+              {WALLPAPER_IMAGE_PRESETS.map((preset) => (
                 <button
-                  key={i}
-                  onClick={() => setValue(presetValue)}
-                  className={swatchClass(value === presetValue)}
-                  style={{
-                    background: `linear-gradient(${preset.angleDeg}deg, ${preset.colors[0]}, ${preset.colors[1]})`
-                  }}
+                  key={preset.id}
+                  onClick={() => setValue(preset.id)}
+                  title={preset.label}
+                  aria-label={preset.label}
+                  className={cn(swatchClass(value === preset.id), 'bg-cover bg-center')}
+                  style={{ backgroundImage: `url(${preset.src})` }}
                 />
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={gradient.color1}
-              onChange={(e) =>
-                setValue(`${gradient.angleDeg}|${e.target.value}|${gradient.color2}`)
-              }
-              className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
-            />
-            <input
-              type="color"
-              value={gradient.color2}
-              onChange={(e) =>
-                setValue(`${gradient.angleDeg}|${gradient.color1}|${e.target.value}`)
-              }
-              className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
-            />
-          </div>
-          <SliderRow
-            icon={RotateCw}
-            label="Angle"
-            value={gradient.angleDeg}
-            displayValue={`${gradient.angleDeg}°`}
-            min={0}
-            max={359}
-            step={1}
-            onChange={(angleDeg) => setValue(`${angleDeg}|${gradient.color1}|${gradient.color2}`)}
-          />
-        </div>
-      )}
-
-      {kind === 'color' && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Color</span>
-          <div className="grid grid-cols-8 gap-2">
-            {COLOR_SWATCHES.map((color) => (
-              <button
-                key={color}
-                onClick={() => setValue(color)}
-                className={cn(swatchClass(value === color), 'border border-border-dark')}
-                style={{ background: color }}
-              />
-            ))}
-          </div>
-          <input
-            type="color"
-            value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#0f0f12'}
-            onChange={(e) => setValue(e.target.value)}
-            className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
-          />
-        </div>
-      )}
-
-      {kind === 'image' && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Image</span>
-          {value && (
-            <div className="aspect-video overflow-hidden rounded-lg border border-line">
-              <img src={value} alt="Background" className="h-full w-full object-cover" />
+              ))}
             </div>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageUpload}
-          />
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-            Choose image…
-          </Button>
-
-          <span className="mt-1 text-xs font-medium text-muted-foreground">Photo presets</span>
-          <div className="grid grid-cols-4 gap-2">
-            {PHOTO_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                onClick={() => setValue(preset.src)}
-                title={preset.label}
-                aria-label={preset.label}
-                className={cn(swatchClass(value === preset.src), 'bg-cover bg-center')}
-                style={{ backgroundImage: `url(${preset.src})` }}
-              />
-            ))}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="flex flex-col gap-3 border-t border-line pt-3">
-        <SliderRow
-          icon={Squircle}
-          label="Padding"
-          value={padding}
-          displayValue={`${padding}%`}
-          min={0}
-          max={30}
-          step={1}
-          onChange={setPadding}
-        />
-        <SliderRow
-          icon={Radius}
-          label="Corner radius"
-          value={cornerRadius}
-          displayValue={`${cornerRadius}px`}
-          min={0}
-          max={40}
-          step={1}
-          onChange={setCornerRadius}
-        />
-        <SliderRow
-          icon={Blend}
-          label="Drop shadow"
-          value={shadow}
-          displayValue={`${shadow}`}
-          min={0}
-          max={100}
-          step={1}
-          onChange={setShadow}
-        />
+        {kind === 'gradient' && gradient && (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Gradient</span>
+            <div className="grid grid-cols-5 gap-2">
+              {GRADIENT_PRESETS.map((preset, i) => {
+                const presetValue = `${preset.angleDeg}|${preset.colors[0]}|${preset.colors[1]}`;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setValue(presetValue)}
+                    className={swatchClass(value === presetValue)}
+                    style={{
+                      background: `linear-gradient(${preset.angleDeg}deg, ${preset.colors[0]}, ${preset.colors[1]})`
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={gradient.color1}
+                onChange={(e) =>
+                  setValue(`${gradient.angleDeg}|${e.target.value}|${gradient.color2}`)
+                }
+                className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+              />
+              <input
+                type="color"
+                value={gradient.color2}
+                onChange={(e) =>
+                  setValue(`${gradient.angleDeg}|${gradient.color1}|${e.target.value}`)
+                }
+                className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+              />
+            </div>
+            <SliderRow
+              icon={RotateCw}
+              label="Angle"
+              value={gradient.angleDeg}
+              displayValue={`${gradient.angleDeg}°`}
+              min={0}
+              max={359}
+              step={1}
+              onChange={(angleDeg) => setValue(`${angleDeg}|${gradient.color1}|${gradient.color2}`)}
+            />
+          </div>
+        )}
+
+        {kind === 'color' && (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Color</span>
+            <div className="grid grid-cols-8 gap-2">
+              {COLOR_SWATCHES.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => setValue(color)}
+                  className={cn(swatchClass(value === color), 'border border-border-dark')}
+                  style={{ background: color }}
+                />
+              ))}
+            </div>
+            <input
+              type="color"
+              value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#0f0f12'}
+              onChange={(e) => setValue(e.target.value)}
+              className="h-7 w-full cursor-pointer rounded-lg border border-line bg-transparent"
+            />
+          </div>
+        )}
+
+        {kind === 'image' && (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Image</span>
+            {value && (
+              <div className="aspect-video overflow-hidden rounded-lg border border-line">
+                <img src={value} alt="Background" className="h-full w-full object-cover" />
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+              Choose image…
+            </Button>
+
+            <span className="mt-1 text-xs font-medium text-muted-foreground">Photo presets</span>
+            <div className="grid grid-cols-4 gap-2">
+              {PHOTO_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => setValue(preset.src)}
+                  title={preset.label}
+                  aria-label={preset.label}
+                  className={cn(swatchClass(value === preset.src), 'bg-cover bg-center')}
+                  style={{ backgroundImage: `url(${preset.src})` }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 border-t border-line pt-3">
+          <SliderRow
+            icon={Squircle}
+            label="Padding"
+            value={padding}
+            displayValue={`${padding}%`}
+            min={0}
+            max={30}
+            step={1}
+            onChange={setPadding}
+          />
+          <SliderRow
+            icon={Radius}
+            label="Corner radius"
+            value={cornerRadius}
+            displayValue={`${cornerRadius}px`}
+            min={0}
+            max={40}
+            step={1}
+            onChange={setCornerRadius}
+          />
+          <SliderRow
+            icon={Blend}
+            label="Drop shadow"
+            value={shadow}
+            displayValue={`${shadow}`}
+            min={0}
+            max={100}
+            step={1}
+            onChange={setShadow}
+          />
+        </div>
       </div>
     </div>
   );

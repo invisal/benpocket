@@ -147,7 +147,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
   const [activeTab, setActiveTab] = useState<CaptureTargetType | null>(null);
   const [mode, setMode] = useState<Mode>('setup');
   const [error, setError] = useState<ToolbarError | null>(null);
-  const [openPopover, setOpenPopover] = useState<'camera' | 'device' | null>(null);
+  const [openPopover, setOpenPopover] = useState<'camera' | 'device' | 'mic' | null>(null);
   // Which device kind the user picked via the Device popover below, purely
   // to highlight the right label on the button -- the actual selection lives
   // in sourceId/cropRegion like every other pick.
@@ -156,6 +156,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+  const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([]);
   // Cursor visibility/click-highlight/countdown are round-tripped through the
   // start payload as whatever the main window handed over when it opened this
   // toolbar (see openRecorderToolbarFor) -- nothing in this toolbar changes
@@ -368,7 +369,9 @@ export function RecorderToolbarApp(): JSX.Element | null {
     let rafId: number | null = null;
 
     navigator.mediaDevices
-      .getUserMedia({ audio: true })
+      .getUserMedia({
+        audio: audio.microphoneDeviceId ? { deviceId: { exact: audio.microphoneDeviceId } } : true
+      })
       .then(async (s) => {
         if (cancelled) {
           s.getTracks().forEach((track) => track.stop());
@@ -377,6 +380,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
         stream = s;
         const track = s.getAudioTracks()[0];
         const devices = await navigator.mediaDevices.enumerateDevices();
+        if (!cancelled) setMicDevices(devices.filter((d) => d.kind === 'audioinput'));
         const deviceId = track?.getSettings().deviceId;
         setMicDeviceLabel(
           devices.find((d) => d.deviceId === deviceId)?.label ?? track?.label ?? null
@@ -411,7 +415,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
       stream?.getTracks().forEach((track) => track.stop());
       void audioContext?.close();
     };
-  }, [audio.microphoneEnabled]);
+  }, [audio.microphoneEnabled, audio.microphoneDeviceId]);
 
   const focusedSource = sources.find((s) => s.id === sourceId) ?? null;
 
@@ -1088,29 +1092,76 @@ export function RecorderToolbarApp(): JSX.Element | null {
             </Popover.Root>
           </div>
 
-          <button
-            onClick={() => void toggleMic()}
-            className={cn(
-              NO_DRAG,
-              'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
-              audio.microphoneEnabled
-                ? 'bg-white/15 text-white'
-                : 'text-white/50 hover:bg-white/10 hover:text-white/80'
-            )}
-          >
-            {audio.microphoneEnabled ? <Mic size={14} /> : <MicOff size={14} />}
-            <span className="max-w-20 truncate">
-              {audio.microphoneEnabled ? (micDeviceLabel ?? 'Mic') : 'Mic'}
-            </span>
-            {audio.microphoneEnabled && (
-              <span className="h-3 w-6 overflow-hidden rounded-full bg-white/10">
-                <span
-                  ref={micLevelBarRef}
-                  className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent"
-                />
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-1 border-r border-white/10 px-1.5">
+            <Popover.Root
+              open={openPopover === 'mic'}
+              onOpenChange={(open) => {
+                setOpenPopover(open ? 'mic' : null);
+                if (open) enablePointerEvents();
+              }}
+            >
+              <Popover.Trigger
+                className={cn(
+                  NO_DRAG,
+                  'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
+                  audio.microphoneEnabled
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                )}
+              >
+                {audio.microphoneEnabled ? <Mic size={14} /> : <MicOff size={14} />}
+                <span className="max-w-20 truncate">
+                  {audio.microphoneEnabled ? (micDeviceLabel ?? 'Mic') : 'Mic'}
+                </span>
+                {audio.microphoneEnabled && (
+                  <span className="h-3 w-6 overflow-hidden rounded-full bg-white/10">
+                    <span
+                      ref={micLevelBarRef}
+                      className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent"
+                    />
+                  </span>
+                )}
+              </Popover.Trigger>
+
+              <Popover.Content
+                side="top"
+                align="start"
+                onMouseEnter={enablePointerEvents}
+                className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-3 text-white')}
+              >
+                <label className="mb-2 flex items-center gap-2 text-xs text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={audio.microphoneEnabled}
+                    onChange={() => void toggleMic()}
+                    className="h-3.5 w-3.5 accent-accent"
+                  />
+                  Enable microphone
+                </label>
+                {audio.microphoneEnabled && micDevices.length > 1 && (
+                  <select
+                    value={audio.microphoneDeviceId ?? ''}
+                    onChange={(e) => {
+                      const deviceId = e.target.value || undefined;
+                      const device = micDevices.find((d) => d.deviceId === deviceId);
+                      setAudio((a) => ({
+                        ...a,
+                        microphoneDeviceId: deviceId,
+                        microphoneDeviceName: device?.label
+                      }));
+                    }}
+                    className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-1 text-[11px] text-white/80"
+                  >
+                    {micDevices.map((device, index) => (
+                      <option key={device.deviceId} value={device.deviceId} className="bg-zinc-900">
+                        {device.label || `Microphone ${index + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Popover.Content>
+            </Popover.Root>
+          </div>
 
           <Tooltip.Root>
             <Tooltip.Trigger

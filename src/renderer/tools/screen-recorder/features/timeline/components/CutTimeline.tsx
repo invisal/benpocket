@@ -51,6 +51,7 @@ import { Playhead } from './Playhead';
 import { SegmentWaveform } from './SegmentWaveform';
 import { cn } from '../../../lib/utils';
 import { Slider } from '../../../components/ui/slider';
+import { isLikelyLinux } from '../../../lib/platform';
 
 function formatTime(ms: number): string {
   const totalSeconds = ms / 1000;
@@ -87,7 +88,7 @@ function pickMajorTickIntervalMs(totalDurationMs: number): number {
 
 // Sized to comfortably fit the ruler+clip row plus the Zoom/Caption/Speed/Crop
 // pill tracks beneath it without squishing (each track is a fixed h-9, `shrink-0`).
-const MIN_PANEL_HEIGHT_PX = 150;
+const MIN_PANEL_HEIGHT_PX = 210;
 // Also caps how far the auto-grow effect below will stretch the panel --
 // a pathological number of overlapping pills still can't squeeze the
 // preview stage down to nothing (see ScreenRecorderApp.tsx's layout: this
@@ -97,7 +98,7 @@ const MAX_PANEL_HEIGHT_PX = 300;
 // between the toolbar row and the scrollable track area -- the only part of
 // the panel's required height that isn't covered by measuring
 // `toolbarRowRef`/`trackAreaRef` directly (see the auto-grow effect below).
-const PANEL_CONTENT_CHROME_PX = 24 + 8;
+const PANEL_CONTENT_CHROME_PX = 24 + 10;
 
 // Taller than a plain pill track (`CLIP_ROW_HEIGHT_PX`) -- clips carry a
 // two-line label (name + duration/speed), not just a single corner badge.
@@ -504,6 +505,8 @@ export function CutTimeline(): JSX.Element {
   }
 
   function handleRulerPointerMove(event: React.PointerEvent<HTMLDivElement>): void {
+    // Ignore events bubbled here from a portaled ContextMenu (React bubbles through the component tree, not the DOM tree).
+    if (!event.currentTarget.contains(event.target as Node)) return;
     // Hover-scrub only live-previews while paused -- while actually
     // playing back, a hovering mouse shouldn't fight the running playback
     // position. Dragging the *main* playhead handle (startPlayheadDrag)
@@ -541,6 +544,9 @@ export function CutTimeline(): JSX.Element {
   // `handleRulerPointerMove` -- releasing off the end of one of those
   // interactions shouldn't also fire a seek.
   function handleHoverRelease(event: React.PointerEvent<HTMLDivElement>): void {
+    if (!event.currentTarget.contains(event.target as Node)) return;
+    // A right-click also fires pointerup (unlike the native `click` event `handleRulerClick` uses, which is left-button only) -- without this, opening a clip's context menu would also seek.
+    if (event.button === 2) return;
     if (isPlaying || playheadDraggingRef.current || edgeResizingRef.current) return;
     preHoverPlayheadMsRef.current = null;
     setIsHoverScrubbing(false);
@@ -730,7 +736,7 @@ export function CutTimeline(): JSX.Element {
         */}
         <div
           ref={scrollContainerRef}
-          className="min-h-0 flex-1 overflow-auto"
+          className="min-h-0 flex-1 overflow-auto bg-dotted"
           style={{
             paddingLeft: TIMELINE_SCROLL_PADDING_PX,
             paddingRight: TIMELINE_SCROLL_PADDING_PX
@@ -738,26 +744,13 @@ export function CutTimeline(): JSX.Element {
         >
           <div
             ref={trackAreaRef}
-            className="relative flex flex-col gap-1.5"
+            className="relative flex min-h-full flex-col gap-1.5"
             style={{ width: `${zoom * 100}%`, minWidth: '100%' }}
+            onPointerMove={handleRulerPointerMove}
+            onPointerLeave={handleRulerPointerLeave}
+            onPointerUp={handleHoverRelease}
           >
-            {/*
-              Ruler + clip row share a `relative` wrapper (distinct from
-              trackAreaRef, which holds the *real* Playhead spanning every
-              track) so the gray hover-scrub marker can be sized to just
-              these two rows via `inset-y-0` instead of hand-computing a
-              pixel height that would drift if either row's height changes.
-              Hover tracking lives on this wrapper (not just the ruler) so
-              hovering the clip row also live-previews -- click-to-seek
-              stays ruler-only below, since a click on a clip is already
-              spoken for (selects it).
-            */}
-            <div
-              className="relative flex flex-col gap-1.5"
-              onPointerMove={handleRulerPointerMove}
-              onPointerLeave={handleRulerPointerLeave}
-              onPointerUp={handleHoverRelease}
-            >
+            <div className="relative flex flex-col gap-1.5">
               <div
                 onClick={handleRulerClick}
                 title={
@@ -792,17 +785,6 @@ export function CutTimeline(): JSX.Element {
                 ))}
               </div>
 
-              {/*
-                Kept clips draw as individual rounded pills with a real gap
-                between them (not one continuous bar) -- each pill is
-                absolutely positioned from `segmentLayouts`' own left/width
-                percent (inset by `CLIP_GAP_PX` on both edges) rather than
-                laid out with a flex `gap`, so the percentages stay exact and
-                every other track's percent-based math (ruler ticks,
-                playhead) keeps lining up regardless of clip count.
-                `marginTop` reserves room above for the floating
-                scissors/duration badges to sit fully above the row.
-              */}
               <div
                 className="relative"
                 style={{ height: CLIP_PILL_HEIGHT_PX, marginTop: CUT_MARKER_RESERVED_PX }}
@@ -810,32 +792,10 @@ export function CutTimeline(): JSX.Element {
                 {segmentLayouts.map(({ segment, leftPercent, widthPercent }, index) => {
                   const isSelected = selectedSegmentId === segment.id;
                   const gapBeforeMs = gapBeforeSegmentMs(segments, index);
-                  // Any boundary with a previous kept clip is a cut, whether
-                  // or not it later grew a visible ripple gap -- a plain
-                  // split leaves `gapBeforeMs` at 0, but the cut itself still
-                  // happened and should keep marking the timeline. Only the
-                  // very first clip's own head trim needs the threshold
-                  // check, since an untrimmed recording start is never a cut.
+
                   const hasCutBoundary = index > 0 || gapBeforeMs > MIN_CUT_MARKER_GAP_MS;
                   const dragHandlers = getDragHandlers(index);
                   return (
-                    // The outer `motion.div` owns only position (`left`/
-                    // `width`, animated via `layout="position"` so a
-                    // preceding clip's delete/trim ripples this one to its
-                    // new spot instead of teleporting) -- it can't also carry
-                    // the native HTML5 drag-to-reorder handlers below, since
-                    // `motion.div` shadows `onDragStart`/`onDrag`/`onDragEnd`
-                    // for its own (unused here) pan-gesture API, which
-                    // conflicts with `useSegmentReorderDrag`'s native drag
-                    // events. So interaction stays on the plain inner `div`,
-                    // sized to fill it via `inset-0`. ContextMenu.Root
-                    // doesn't render a DOM node of its own, so it's a
-                    // transparent wrapper around the same element structure
-                    // this used to return directly -- the inner element
-                    // still owns position/interaction only (no
-                    // `overflow-hidden`), since a trim badge is `absolute
-                    // -top-*` from *this* box and must live outside the inner
-                    // pill's own `overflow-hidden`, or it'd clip its own badge.
                     <motion.div
                       key={segment.id}
                       layout="position"
@@ -857,12 +817,6 @@ export function CutTimeline(): JSX.Element {
                               {...dragHandlers}
                               draggable={!isPointerToolActive && dragHandlers.draggable}
                               onClick={(e) => {
-                                // A tool armed: a click anywhere on a clip
-                                // cuts/places a keyframe at the exact cursor
-                                // position (via the shared whole-track-area
-                                // calculations), rather than selecting --
-                                // which segment was clicked doesn't matter,
-                                // both helpers resolve position on their own.
                                 if (isCutToolActive) {
                                   splitFromClientX(e.clientX);
                                   return;
@@ -1024,20 +978,22 @@ export function CutTimeline(): JSX.Element {
                             </ContextMenu.SubmenuRoot>
                           )}
                           <ContextMenu.Separator />
-                          <ContextMenu.Item
-                            onClick={() =>
-                              setSegmentCursorHidden(segment.id, !segment.cursorHidden)
-                            }
-                          >
-                            <span className="flex items-center gap-2">
-                              {segment.cursorHidden ? (
-                                <EyeOff size={13} className="shrink-0" />
-                              ) : (
-                                <Eye size={13} className="shrink-0" />
-                              )}
-                              {segment.cursorHidden ? 'Show mouse cursor' : 'Hide mouse cursor'}
-                            </span>
-                          </ContextMenu.Item>
+                          {!isLikelyLinux && (
+                            <ContextMenu.Item
+                              onClick={() =>
+                                setSegmentCursorHidden(segment.id, !segment.cursorHidden)
+                              }
+                            >
+                              <span className="flex items-center gap-2">
+                                {segment.cursorHidden ? (
+                                  <EyeOff size={13} className="shrink-0" />
+                                ) : (
+                                  <Eye size={13} className="shrink-0" />
+                                )}
+                                {segment.cursorHidden ? 'Show mouse cursor' : 'Hide mouse cursor'}
+                              </span>
+                            </ContextMenu.Item>
+                          )}
                           {hasWebcamTrack && webcamEnabled && (
                             <ContextMenu.Item
                               onClick={() =>
@@ -1113,23 +1069,22 @@ export function CutTimeline(): JSX.Element {
                   </div>
                 )}
               </div>
-
-              {/* Plain gray hover-scrub marker -- swapped out for the cut-tool's pin preview above while that tool is armed, so the two don't visually double up. */}
-              {effectiveHoverFraction !== null && !isCutToolActive && (
-                <div
-                  className="pointer-events-none absolute inset-y-0.5 z-5 mx-0.5"
-                  style={{ left: `${effectiveHoverFraction * 100}%` }}
-                >
-                  <div className="absolute inset-y-0 left-0 w-0.5 bg-muted-foreground/60" />
-                  <div className="absolute -left-1 top-0 h-2.5 w-2.5 rounded-full border border-border-dark bg-surface" />
-                </div>
-              )}
             </div>
 
             <ZoomTrack previewAtSourceMs={zoomPreviewSourceMs} />
             <CaptionTrack />
             <AnnotationTrack />
             <BlurMaskTrack />
+
+            {effectiveHoverFraction !== null && !isCutToolActive && (
+              <div
+                className="pointer-events-none absolute inset-y-0 z-5 mx-0.5"
+                style={{ left: `${effectiveHoverFraction * 100}%` }}
+              >
+                <div className="absolute inset-y-0 left-0 w-0.5 bg-muted-foreground/40" />
+                <div className="absolute -left-1 top-0 h-2.5 w-2.5 rounded-full border border-border-dark bg-surface" />
+              </div>
+            )}
 
             <Playhead
               segments={segments}

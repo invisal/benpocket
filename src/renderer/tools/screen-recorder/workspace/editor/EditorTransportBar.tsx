@@ -6,6 +6,7 @@ import type { PreviewVideoController } from '@screen-recorder/types/editor';
 import { Select } from '@renderer/components/ui/Select';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
 import { useExportStore } from '../../features/export/store/export-store';
+import { useBackgroundStore } from '../../features/background/store/background-store';
 import { cn } from '../../lib/utils';
 import { ASPECT_LABELS } from './editorTools';
 import { Button } from '@renderer/components/ui/Button';
@@ -39,6 +40,7 @@ export function EditorTransportBar({
 }: EditorTransportBarProps): JSX.Element {
   const aspectRatio = useExportStore((s) => s.aspectRatio);
   const setAspectRatio = useExportStore((s) => s.setAspectRatio);
+  const backgroundEnabled = useBackgroundStore((s) => s.enabled);
 
   function togglePlay(): void {
     const video = videoRef.current;
@@ -52,8 +54,16 @@ export function EditorTransportBar({
       <Select.Root
         value={aspectRatio}
         onValueChange={(value) => setAspectRatio(value as AspectRatio)}
+        disabled={!backgroundEnabled}
       >
-        <Select.Trigger size="sm">{ASPECT_LABELS[aspectRatio]}</Select.Trigger>
+        <Select.Trigger
+          size="sm"
+          title={
+            backgroundEnabled ? undefined : 'Aspect ratio follows the recording with no background'
+          }
+        >
+          {ASPECT_LABELS[aspectRatio]}
+        </Select.Trigger>
         <Select.Content>
           {(Object.keys(ASPECT_LABELS) as AspectRatio[]).map((ratio) => (
             <Select.Item key={ratio} value={ratio}>

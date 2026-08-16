@@ -9,6 +9,20 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  # Source + build-artifact trees for the native recorder helpers -- the
+  # compiled binary recording-helper.ts actually spawns at runtime ships
+  # separately via extraResources below (native/bin/<platform>-<arch>/).
+  # Without these exclusions, electron-builder swept the whole .build/
+  # (Swift) and build/ (CMake/MSBuild) output -- including the helper
+  # executable itself -- straight into app.asar. That path then won out as
+  # findHelperPath()'s first accessible candidate (asar entries pass
+  # accessSync's X_OK check) over the real extraResources copy, and
+  # spawn() on a path *inside* app.asar fails with ENOTDIR since asar
+  # archives aren't real directories the OS can execve into -- silently
+  # forcing every packaged build onto the MediaRecorder fallback.
+  - '!native/macos-recorder/**'
+  - '!native/windows-recorder/**'
+  - '!native/linux-recorder/**'
 asarUnpack:
   - resources/**
   # Linux capture addon -- a compiled .node binary can't be dlopen'd from
@@ -46,12 +60,12 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: true
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-    - NSAppleEventsUsageDescription: Application requests permission to control System Events, to
-        read a booted iOS Simulator window's on-screen position and size while recording it.
+    NSCameraUsageDescription: Application requests access to the device's camera.
+    NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    NSAppleEventsUsageDescription: Application requests permission to control System Events, to
+      read a booted iOS Simulator window's on-screen position and size while recording it.
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:

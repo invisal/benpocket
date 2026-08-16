@@ -1,6 +1,6 @@
 /** Matches the `h-7` pill height used across Zoom/Trim/Speed/Crop/Caption tracks. */
 export const LANE_HEIGHT_PX = 28;
-export const LANE_GAP_PX = 4;
+export const LANE_GAP_PX = 6;
 
 /**
  * CutTimeline's clip row height -- lives here (not on CutTimeline itself) so

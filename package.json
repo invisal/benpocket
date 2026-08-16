@@ -24,7 +24,7 @@
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
-    "build:native:macos": "cd native/macos-recorder && swift build -c release && cd ../.. && node scripts/package-native-helper.mjs macos",
+    "build:native:macos": "cd native/macos-recorder && swift build -c release --arch arm64 && swift build -c release --arch x86_64 && cd ../.. && node scripts/package-native-helper.mjs macos",
     "build:native:windows": "node scripts/build-native-windows.mjs",
     "build:native:linux": "cmake -S native/linux-recorder -B native/linux-recorder/build && cmake --build native/linux-recorder/build && node scripts/package-native-helper.mjs linux",
     "release:win": "electron-vite build && electron-builder --win --publish always",

@@ -1,6 +1,10 @@
 import type { VideoCodec } from 'mediabunny';
 import type { ExportCodec, ExportFormat } from '@screen-recorder/types/export';
 
+export function codecFallbackOrder(codec: ExportCodec): ExportCodec[] {
+  return codec === 'h265' ? ['h265', 'h264'] : [codec];
+}
+
 const ENCODER_STALL_TIMEOUT_MS = 15_000;
 const ENCODER_FLUSH_TIMEOUT_MS = 20_000;
 const ENCODER_SUPPORT_CHECK_TIMEOUT_MS = 15_000;
@@ -31,25 +35,6 @@ export function resolveCodecCandidate(format: ExportFormat, codec: ExportCodec):
   }
 }
 
-/**
- * Bits-per-pixel tiers for `quality` (0-100) -> target bitrate. WebCodecs'
- * `VideoEncoder` is bitrate-controlled (no CRF-equivalent constant-quality
- * mode exposed), same constraint the previous pipeline's hardware encoders
- * (VideoToolbox/NVENC/QSV/AMF) had.
- *
- * These tiers are tuned against typical screen-recording content -- mostly
- * static UI, text, and cursor movement, which compresses efficiently even
- * at a low bpp target. A composited webcam PiP is ordinary high-motion
- * natural video (a face, hair, background) layered into the same single
- * frame the encoder rate-controls as a whole; when the overall budget is
- * screen-content-sized, the codec spends it where the frame actually needs
- * it (the moving/detailed webcam region) and the static desktop background
- * barely costs anything either way -- so a shared budget that already reads
- * as "fine" for a screen-only export visibly starves just the webcam PiP
- * once one is composited in, not the recording as a whole. `hasWebcam`
- * bumps every tier by 1.5x to cover that extra complexity instead of
- * penalizing screen-only exports with the same higher budget.
- */
 function qualityToBitsPerPixel(quality: number, hasWebcam: boolean): number {
   const base = quality <= 25 ? 0.06 : quality <= 60 ? 0.1 : quality <= 90 ? 0.14 : 0.2;
   return hasWebcam ? base * 1.5 : base;

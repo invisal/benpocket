@@ -744,7 +744,7 @@ export function CutTimeline(): JSX.Element {
         >
           <div
             ref={trackAreaRef}
-            className="relative flex min-h-full flex-col gap-1.5"
+            className="relative flex min-h-full flex-col gap-1.25"
             style={{ width: `${zoom * 100}%`, minWidth: '100%' }}
             onPointerMove={handleRulerPointerMove}
             onPointerLeave={handleRulerPointerLeave}
@@ -785,17 +785,6 @@ export function CutTimeline(): JSX.Element {
                 ))}
               </div>
 
-              {/*
-                Kept clips draw as individual rounded pills with a real gap
-                between them (not one continuous bar) -- each pill is
-                absolutely positioned from `segmentLayouts`' own left/width
-                percent (inset by `CLIP_GAP_PX` on both edges) rather than
-                laid out with a flex `gap`, so the percentages stay exact and
-                every other track's percent-based math (ruler ticks,
-                playhead) keeps lining up regardless of clip count.
-                `marginTop` reserves room above for the floating
-                scissors/duration badges to sit fully above the row.
-              */}
               <div
                 className="relative"
                 style={{ height: CLIP_PILL_HEIGHT_PX, marginTop: CUT_MARKER_RESERVED_PX }}
@@ -803,32 +792,10 @@ export function CutTimeline(): JSX.Element {
                 {segmentLayouts.map(({ segment, leftPercent, widthPercent }, index) => {
                   const isSelected = selectedSegmentId === segment.id;
                   const gapBeforeMs = gapBeforeSegmentMs(segments, index);
-                  // Any boundary with a previous kept clip is a cut, whether
-                  // or not it later grew a visible ripple gap -- a plain
-                  // split leaves `gapBeforeMs` at 0, but the cut itself still
-                  // happened and should keep marking the timeline. Only the
-                  // very first clip's own head trim needs the threshold
-                  // check, since an untrimmed recording start is never a cut.
+
                   const hasCutBoundary = index > 0 || gapBeforeMs > MIN_CUT_MARKER_GAP_MS;
                   const dragHandlers = getDragHandlers(index);
                   return (
-                    // The outer `motion.div` owns only position (`left`/
-                    // `width`, animated via `layout="position"` so a
-                    // preceding clip's delete/trim ripples this one to its
-                    // new spot instead of teleporting) -- it can't also carry
-                    // the native HTML5 drag-to-reorder handlers below, since
-                    // `motion.div` shadows `onDragStart`/`onDrag`/`onDragEnd`
-                    // for its own (unused here) pan-gesture API, which
-                    // conflicts with `useSegmentReorderDrag`'s native drag
-                    // events. So interaction stays on the plain inner `div`,
-                    // sized to fill it via `inset-0`. ContextMenu.Root
-                    // doesn't render a DOM node of its own, so it's a
-                    // transparent wrapper around the same element structure
-                    // this used to return directly -- the inner element
-                    // still owns position/interaction only (no
-                    // `overflow-hidden`), since a trim badge is `absolute
-                    // -top-*` from *this* box and must live outside the inner
-                    // pill's own `overflow-hidden`, or it'd clip its own badge.
                     <motion.div
                       key={segment.id}
                       layout="position"
@@ -850,12 +817,6 @@ export function CutTimeline(): JSX.Element {
                               {...dragHandlers}
                               draggable={!isPointerToolActive && dragHandlers.draggable}
                               onClick={(e) => {
-                                // A tool armed: a click anywhere on a clip
-                                // cuts/places a keyframe at the exact cursor
-                                // position (via the shared whole-track-area
-                                // calculations), rather than selecting --
-                                // which segment was clicked doesn't matter,
-                                // both helpers resolve position on their own.
                                 if (isCutToolActive) {
                                   splitFromClientX(e.clientX);
                                   return;

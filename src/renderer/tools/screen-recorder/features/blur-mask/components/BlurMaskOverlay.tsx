@@ -17,7 +17,7 @@ function clamp01(n: number): number {
 }
 
 function isActive(atMs: number, region: BlurMaskRegion): boolean {
-  return atMs >= region.atMs && atMs <= region.atMs + region.durationMs;
+  return region.enabled && atMs >= region.atMs && atMs <= region.atMs + region.durationMs;
 }
 
 interface BlurMaskOverlayProps {

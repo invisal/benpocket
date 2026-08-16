@@ -109,6 +109,8 @@ export interface BlurMaskRegion {
   intensity: number;
   /** Solid fill color -- used when kind === 'mask'. */
   color: string;
+  /** Off but not deleted -- skipped entirely in both the editor preview and export, same as `ZoomKeyframe.enabled`/`AnnotationBase.enabled`. */
+  enabled: boolean;
 }
 
 export interface Project {

@@ -161,6 +161,7 @@ function resolveBlurMasks(
 ): BlurMaskSceneData[] {
   const active: BlurMaskSceneData[] = [];
   for (const region of project.blurMasks) {
+    if (!region.enabled) continue;
     if (atMs < region.atMs || atMs > region.atMs + region.durationMs) continue;
     const widthPx = region.rect.width * innerRect.width;
     const heightPx = region.rect.height * innerRect.height;

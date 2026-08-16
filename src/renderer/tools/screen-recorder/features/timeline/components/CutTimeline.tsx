@@ -736,7 +736,7 @@ export function CutTimeline(): JSX.Element {
         */}
         <div
           ref={scrollContainerRef}
-          className="min-h-0 flex-1 overflow-auto"
+          className="min-h-0 flex-1 overflow-auto bg-dotted"
           style={{
             paddingLeft: TIMELINE_SCROLL_PADDING_PX,
             paddingRight: TIMELINE_SCROLL_PADDING_PX

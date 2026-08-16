@@ -32,6 +32,7 @@ export function BlurMaskTrack(): JSX.Element | null {
   const regions = useBlurMaskStore((s) => s.regions);
   const updateRegion = useBlurMaskStore((s) => s.updateRegion);
   const removeRegion = useBlurMaskStore((s) => s.removeRegion);
+  const duplicateRegion = useBlurMaskStore((s) => s.duplicateRegion);
   const selectedRegionId = useBlurMaskStore((s) => s.selectedRegionId);
 
   return (
@@ -88,6 +89,15 @@ export function BlurMaskTrack(): JSX.Element | null {
         });
       }}
       onDelete={(r) => removeRegion(r.id)}
+      isDisabled={(r) => !r.enabled}
+      onToggleDisabled={(r) => updateRegion(r.id, { enabled: !r.enabled })}
+      onDuplicate={(r) => {
+        const newId = duplicateRegion(r.id);
+        if (!newId) return;
+        requestSeek(r.atMs + r.durationMs);
+        setActiveTool('blur-mask');
+        selectBlurMaskRegion(newId);
+      }}
     />
   );
 }

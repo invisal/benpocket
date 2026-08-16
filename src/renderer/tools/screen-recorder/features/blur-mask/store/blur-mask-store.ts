@@ -24,6 +24,8 @@ interface BlurMaskStoreState {
   selectedRegionId: string | null;
   addBlurRegion: (atMs: number) => string;
   addMaskRegion: (atMs: number) => string;
+  /** Copies the region to right after its own end -- returns the new id, or `null` if the source no longer exists. */
+  duplicateRegion: (id: string) => string | null;
   removeRegion: (id: string) => void;
   updateRegion: (id: string, patch: BlurMaskPatch) => void;
   setSelectedRegionId: (id: string | null) => void;
@@ -47,7 +49,8 @@ export const useBlurMaskStore = create<BlurMaskStoreState>(
           shape: 'rectangle',
           rect: { ...DEFAULT_RECT },
           intensity: DEFAULT_BLUR_INTENSITY,
-          color: DEFAULT_MASK_COLOR
+          color: DEFAULT_MASK_COLOR,
+          enabled: true
         };
         set((state) => ({ regions: [...state.regions, region], selectedRegionId: id }));
         return id;
@@ -63,10 +66,25 @@ export const useBlurMaskStore = create<BlurMaskStoreState>(
           shape: 'rectangle',
           rect: { ...DEFAULT_RECT },
           intensity: DEFAULT_BLUR_INTENSITY,
-          color: DEFAULT_MASK_COLOR
+          color: DEFAULT_MASK_COLOR,
+          enabled: true
         };
         set((state) => ({ regions: [...state.regions, region], selectedRegionId: id }));
         return id;
+      },
+
+      duplicateRegion: (id) => {
+        let newId: string | null = null;
+        set((state) => {
+          const source = state.regions.find((r) => r.id === id);
+          if (!source) return state;
+          newId = crypto.randomUUID();
+          // Placed right after the source ends -- regions (like annotations)
+          // have no overlap constraint, so no clamping needed.
+          const duplicate = { ...source, id: newId, atMs: source.atMs + source.durationMs };
+          return { regions: [...state.regions, duplicate] };
+        });
+        return newId;
       },
 
       removeRegion: (id) =>

@@ -51,7 +51,14 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
   useCursorStore.setState(project.cursor);
   useCaptionsStore.setState(project.captions);
   useAnnotationsStore.setState({ annotations: project.annotations, selectedAnnotationId: null });
-  useBlurMaskStore.setState({ regions: project.blurMasks, selectedRegionId: null });
+  useBlurMaskStore.setState({
+    // `enabled` defaults to `true` -- projects saved before this field
+    // existed on `BlurMaskRegion` have no such key on their regions at all,
+    // which would otherwise read as `false` and make every region from an
+    // older project appear disabled/invisible the moment it's opened.
+    regions: project.blurMasks.map((r) => ({ ...r, enabled: r.enabled ?? true })),
+    selectedRegionId: null
+  });
   // `?? null`, not just `project.crop` -- projects saved before `crop` existed
   // on `Project` have no such key at all, so this also guards against
   // inheriting a stale crop left over from whatever was open before this one.

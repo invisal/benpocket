@@ -2,29 +2,30 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 import { PillTab } from '@renderer/components/ui/Tabs';
 import { ChevronDown, ChevronRight, Redo2, Undo2 } from 'lucide-react';
-import type { HttpBodyType } from '../../../../preload/http-client/types';
+import type { HttpAuthType, HttpBodyType } from '../../../../preload/http-client/types';
 import type { UseHttpResult } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { useCollectionsStore } from '../store/collections.store';
 import { getAutoHeaders } from '../lib/autoHeaders';
-import { authTypeLabel } from '../lib/auth';
+import { AUTH_TYPE_OPTIONS, authTypeLabel } from '../lib/auth';
 import { resolveInheritedAuth } from '../lib/authInheritance';
 import { KeyValueEditor } from './KeyValueEditor';
 import { MultipartBodyEditor } from './MultipartBodyEditor';
 import { COMMON_HTTP_HEADERS } from './httpHeaderSuggestions';
 import { BodyEditor } from './BodyEditor';
 import { AuthEditor } from './AuthEditor';
+import { Menu } from '@renderer/components/ui/Menu';
 
 type RequestTabValue = 'params' | 'headers' | 'auth' | 'body';
 
-const BODY_TYPES: { value: HttpBodyType; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'json', label: 'JSON' },
-  { value: 'text', label: 'Text' },
-  { value: 'form', label: 'Form (urlencoded)' },
-  { value: 'multipart', label: 'Form (multipart)' }
-];
+const BODY_TYPE_LABELS: Record<HttpBodyType, string> = {
+  none: 'None',
+  json: 'JSON',
+  text: 'Text',
+  form: 'URL Encoded',
+  multipart: 'Multi-Part'
+};
 
 interface RequestEditorPanelProps {
   http: UseHttpResult;
@@ -83,10 +84,79 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({ http, bi
             Headers{activeHeaderCount > 0 ? ` (${activeHeaderCount})` : ''}
           </PillTab.Item>
           <PillTab.Item value="auth">
-            Authorization{auth.type !== 'noauth' ? ` (${authTypeLabel(auth.type)})` : ''}
+            {activeTab === 'auth' ? (
+              <Menu.Root>
+                <Menu.Trigger
+                  render={<span />}
+                  nativeButton={false}
+                  className="flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{authTypeLabel(auth.type)}</span>
+                  <ChevronDown size={14} />
+                </Menu.Trigger>
+                <Menu.Content sideOffset={10} alignOffset={-10} align="start">
+                  <Menu.RadioGroup
+                    value={auth.type}
+                    onValueChange={(value) =>
+                      onAuthChange({ ...auth, type: value as HttpAuthType })
+                    }
+                  >
+                    {AUTH_TYPE_OPTIONS.map((opt) => (
+                      <Menu.RadioItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </Menu.RadioItem>
+                    ))}
+                  </Menu.RadioGroup>
+                </Menu.Content>
+              </Menu.Root>
+            ) : (
+              <span className="flex items-center gap-1">
+                {authTypeLabel(auth.type)}
+                <ChevronDown size={14} />
+              </span>
+            )}
           </PillTab.Item>
           <PillTab.Item value="body">
-            Body{bodyType !== 'none' ? ` (${bodyType})` : ''}
+            {activeTab === 'body' ? (
+              <Menu.Root>
+                <Menu.Trigger
+                  render={<span />}
+                  nativeButton={false}
+                  className="flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{bodyType === 'none' ? 'Body' : BODY_TYPE_LABELS[bodyType]}</span>
+                  <ChevronDown size={14} />
+                </Menu.Trigger>
+                <Menu.Content sideOffset={10} alignOffset={-10} align="start">
+                  <Menu.RadioGroup
+                    value={bodyType}
+                    onValueChange={(value) => onBodyTypeChange(value as HttpBodyType)}
+                  >
+                    <Menu.Group>
+                      <Menu.GroupLabel>Form Data</Menu.GroupLabel>
+                      <Menu.RadioItem value="form">{BODY_TYPE_LABELS.form}</Menu.RadioItem>
+                      <Menu.RadioItem value="multipart">
+                        {BODY_TYPE_LABELS.multipart}
+                      </Menu.RadioItem>
+                    </Menu.Group>
+                    <Menu.Group>
+                      <Menu.GroupLabel>Text Content</Menu.GroupLabel>
+                      <Menu.RadioItem value="json">{BODY_TYPE_LABELS.json}</Menu.RadioItem>
+                      <Menu.RadioItem value="text">{BODY_TYPE_LABELS.text}</Menu.RadioItem>
+                    </Menu.Group>
+                    <Menu.Group>
+                      <Menu.GroupLabel>Other</Menu.GroupLabel>
+                      <Menu.RadioItem value="none">{BODY_TYPE_LABELS.none}</Menu.RadioItem>
+                    </Menu.Group>
+                  </Menu.RadioGroup>
+                </Menu.Content>
+              </Menu.Root>
+            ) : (
+              <span className="flex items-center gap-1">
+                {bodyType === 'none' ? 'Body' : BODY_TYPE_LABELS[bodyType]}
+                <ChevronDown size={14} />
+              </span>
+            )}
           </PillTab.Item>
           <PillTab.Indicator />
         </PillTab.List>
@@ -173,40 +243,27 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({ http, bi
         <AuthEditor auth={auth} onChange={onAuthChange} />
       </PillTab.Panel>
 
-      <PillTab.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2 p-3 overflow-auto">
-        <div className="flex gap-3 text-[11px] shrink-0">
-          {BODY_TYPES.map((bt) => (
-            <label
-              key={bt.value}
-              className="flex items-center gap-1.5 cursor-pointer text-zinc-400"
-            >
-              <input
-                type="radio"
-                name="body-type"
-                checked={bodyType === bt.value}
-                onChange={() => onBodyTypeChange(bt.value)}
-                className="accent-accent cursor-pointer"
-              />
-              {bt.label}
-            </label>
-          ))}
-        </div>
+      <PillTab.Panel value="body" className="flex-1 min-h-0 flex flex-col gap-2 overflow-auto">
         {bodyType === 'form' && (
-          <KeyValueEditor
-            rows={bodyRows}
-            onUpdate={onUpdateBodyRow}
-            onRemove={onRemoveBodyRow}
-            keyPlaceholder="Key"
-            valuePlaceholder="Value or {{var}}"
-          />
+          <div className="p-3 flex-1">
+            <KeyValueEditor
+              rows={bodyRows}
+              onUpdate={onUpdateBodyRow}
+              onRemove={onRemoveBodyRow}
+              keyPlaceholder="Key"
+              valuePlaceholder="Value or {{var}}"
+            />
+          </div>
         )}
         {bodyType === 'multipart' && (
-          <MultipartBodyEditor
-            rows={multipartRows}
-            onUpdate={onUpdateMultipartRow}
-            onRemove={onRemoveMultipartRow}
-            onPickFile={onPickMultipartFile}
-          />
+          <div className="p-3 flex-1">
+            <MultipartBodyEditor
+              rows={multipartRows}
+              onUpdate={onUpdateMultipartRow}
+              onRemove={onRemoveMultipartRow}
+              onPickFile={onPickMultipartFile}
+            />
+          </div>
         )}
         {bodyType !== 'none' && bodyType !== 'form' && bodyType !== 'multipart' && (
           <BodyEditor
@@ -214,7 +271,7 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({ http, bi
             onChange={onBodyChange}
             bodyType={bodyType}
             variables={variables}
-            placeholder={bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
+            placeholder="..."
           />
         )}
       </PillTab.Panel>

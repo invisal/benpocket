@@ -127,8 +127,8 @@ const OpenTabItem: React.FC<OpenTabItemProps> = ({
             className={cn(
               'flex items-center gap-2 p-1.5 rounded text-xs cursor-pointer border transition-all group',
               isActive
-                ? 'bg-accent/10 border-accent/60'
-                : 'bg-surface-3/40 border-transparent hover:border-border-dark'
+                ? 'bg-list-selected border-transparent'
+                : 'border-transparent hover:bg-list-hover hover:border-border-dark'
             )}
           >
             <TabMethodBadge tab={tab} />

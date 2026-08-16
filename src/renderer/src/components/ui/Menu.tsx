@@ -1,5 +1,6 @@
 import { Menu as MenuPrimitive } from '@base-ui/react';
 import { cn } from 'cnfast';
+import { Check } from 'lucide-react';
 import { type ComponentProps } from 'react';
 
 export function MenuContent({
@@ -31,7 +32,7 @@ export function MenuItem({ className, ...props }: ComponentProps<typeof MenuPrim
   return (
     <MenuPrimitive.Item
       className={cn(
-        'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-2 text-[13px] outline-none select-none',
+        'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-2 text-xs outline-none select-none text-foreground',
         'data-[highlighted]:bg-border-dark/60 data-[highlighted]:text-text-base',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className
@@ -41,13 +42,38 @@ export function MenuItem({ className, ...props }: ComponentProps<typeof MenuPrim
   );
 }
 
+export function MenuRadioItem({
+  className,
+  children,
+  closeOnClick = true,
+  ...props
+}: ComponentProps<typeof MenuPrimitive.RadioItem>) {
+  return (
+    <MenuPrimitive.RadioItem
+      className={cn(
+        'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-7 text-xs outline-none select-none text-foreground',
+        'data-[highlighted]:bg-border-dark/60 data-[highlighted]:text-text-base',
+        'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        className
+      )}
+      closeOnClick={closeOnClick}
+      {...props}
+    >
+      <MenuPrimitive.RadioItemIndicator className="absolute left-2 flex items-center text-accent">
+        <Check className="size-3.5" />
+      </MenuPrimitive.RadioItemIndicator>
+      {children}
+    </MenuPrimitive.RadioItem>
+  );
+}
+
 export function MenuGroupLabel({
   className,
   ...props
 }: ComponentProps<typeof MenuPrimitive.GroupLabel>) {
   return (
     <MenuPrimitive.GroupLabel
-      className={cn('px-2 py-1.5 text-[11px] font-medium text-text-dim', className)}
+      className={cn('px-2 py-1.5 text-[11px] font-medium', className)}
       {...props}
     />
   );
@@ -71,6 +97,8 @@ export const Menu = {
   Trigger: MenuPrimitive.Trigger,
   Content: MenuContent,
   Item: MenuItem,
+  RadioGroup: MenuPrimitive.RadioGroup,
+  RadioItem: MenuRadioItem,
   Group: MenuPrimitive.Group,
   GroupLabel: MenuGroupLabel,
   Separator: MenuSeparator

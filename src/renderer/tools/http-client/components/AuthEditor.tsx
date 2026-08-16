@@ -1,7 +1,6 @@
 import type React from 'react';
-import type { HttpAuth, HttpAuthType } from '../../../../preload/http-client/types';
+import type { HttpAuth } from '../../../../preload/http-client/types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
-import { AUTH_TYPE_OPTIONS, authTypeLabel } from '../lib/auth';
 import { VariableSuggestInput } from './VariableSuggestInput';
 import { OAuth2AuthFields } from './OAuth2AuthFields';
 import { Select } from '@renderer/components/ui/Select';
@@ -23,26 +22,6 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange }) => {
 
   return (
     <div className="flex flex-col gap-3 max-w-md">
-      <label className="flex flex-col gap-1">
-        <span className={fieldLabelClass}>Type</span>
-        <Select.Root
-          value={auth.type}
-          onValueChange={(value) => onChange({ ...auth, type: value as HttpAuthType })}
-        >
-          <Select.Trigger size="sm" className="w-full justify-between">
-            {/* base-ui's Select.Value renders the raw value ("noauth"), so render the label ourselves. */}
-            <Select.Value>{(value: HttpAuthType) => authTypeLabel(value)}</Select.Value>
-          </Select.Trigger>
-          <Select.Content side="bottom" align="start">
-            {AUTH_TYPE_OPTIONS.map((opt) => (
-              <Select.Item key={opt.value} value={opt.value}>
-                <Select.ItemText>{opt.label}</Select.ItemText>
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-      </label>
-
       {auth.type === 'inherit' && (
         <p className="text-[11px] text-muted-foreground italic">
           Uses the auth configured on the parent folder/collection, or no auth if none of them have

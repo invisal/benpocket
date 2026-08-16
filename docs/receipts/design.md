@@ -8,6 +8,8 @@ isn't covered here.
 
 - `Button` — styled `<button>`; `variant` (primary/secondary/destructive/ghost/outline) x `size` (sm/md/lg).
 - `Input` — styled `<input>`; same `size` scale as `Button`.
+- `Checkbox` — native `<input type="checkbox">` tinted with `accent-strong` (pure black in light mode, pure white in dark mode). Pass `label` to wrap it in a `<label>`; omit it to render the bare input.
+- `Radio` — native radio group (`Radio.Group/Item`), tinted with `accent-accent` (the standard blue accent), not `accent-strong` — Chromium's native radio also tints the _unchecked_ ring from `accent-color`, and pure black/white there reads as a filled disc rather than a ring. `Radio.Group` owns `name`/`value`/`onValueChange`; each `Radio.Item` takes a `value` and optional `label`.
 - `Dialog` — modal (`Dialog.Root/Trigger/Content/Title/Description`), built on `@base-ui/react`.
 - `Drawer` — slide-in panel from an edge of the viewport, built on `@base-ui/react`.
 - `Chat` — agent chat surface (`Chat.Root/MessageContainer/UserMessage/AssistantMessage/Thinking/PermissionRequest/Input`).

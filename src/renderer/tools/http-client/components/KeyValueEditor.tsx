@@ -1,5 +1,6 @@
 import type React from 'react';
 import { Trash2 } from 'lucide-react';
+import { Checkbox } from '@renderer/components/ui/Checkbox';
 import type { KeyValueRow } from '../lib/keyValueRows';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
 import { KeySuggestInput } from './KeySuggestInput';
@@ -42,12 +43,10 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
             className="h-8 w-full flex items-center justify-center"
             onClick={() => onUpdate(row.id, { enabled: !row.enabled })}
           >
-            <input
-              type="checkbox"
+            <Checkbox
               checked={row.enabled}
               onChange={() => onUpdate(row.id, { enabled: !row.enabled })}
               tabIndex={-1}
-              className="accent-accent"
             />
           </div>
           {keySuggestions ? (

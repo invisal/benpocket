@@ -1108,16 +1108,14 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
     <TreeList.Item
       meta={meta}
       dragMode="none"
+      isActive={isActive}
       onClick={() => onOpen()}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onOpen({ preview: false });
       }}
       title={`${example.response.status === 0 ? 'ERROR' : `${example.response.status} ${example.response.statusText}`}\nDouble-click to open in a permanent tab`}
-      className={cn(
-        'text-xs cursor-pointer border',
-        isActive ? 'bg-accent/10 border-accent/60' : 'border-transparent hover:border-border-dark'
-      )}
+      className="text-xs cursor-pointer"
       actions={
         <ActionsMenu
           idleContent={

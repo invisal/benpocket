@@ -19,7 +19,7 @@ export function PillTabItem({ className, ...props }: ComponentProps<typeof TabsP
   return (
     <TabsPrimitive.Tab
       className={cn(
-        'relative z-10 flex items-center gap-1.5 px-2 h-6 text-xs cursor-pointer outline-none transition-colors',
+        'relative z-10 flex items-center gap-1.5 px-2 h-7 text-xs cursor-pointer outline-none transition-colors',
         'text-muted-foreground hover:text-foreground',
         'data-[active]:text-strong',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
@@ -38,7 +38,7 @@ export function PillTabIndicator({
   return (
     <TabsPrimitive.Indicator
       className={cn(
-        'absolute rounded-sm bg-list-selected transition-all duration-200 ease-out',
+        'absolute rounded-sm bg-surface-2 transition-all duration-200 ease-out border border-border',
         'left-[var(--active-tab-left)] top-[var(--active-tab-top)]',
         'h-[var(--active-tab-height)] w-[var(--active-tab-width)]',
         className

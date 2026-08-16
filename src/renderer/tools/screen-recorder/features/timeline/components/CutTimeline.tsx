@@ -1081,7 +1081,7 @@ export function CutTimeline(): JSX.Element {
                 className="pointer-events-none absolute inset-y-0 z-5 mx-0.5"
                 style={{ left: `${effectiveHoverFraction * 100}%` }}
               >
-                <div className="absolute inset-y-0 left-0 w-0.5 bg-muted-foreground/60" />
+                <div className="absolute inset-y-0 left-0 w-0.5 bg-muted-foreground/40" />
                 <div className="absolute -left-1 top-0 h-2.5 w-2.5 rounded-full border border-border-dark bg-surface" />
               </div>
             )}

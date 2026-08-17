@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Loader2, Upload } from 'lucide-react';
-import { useToastStore } from '../../app/toast-store';
+import { useToastStore } from '../../store/toast-store';
 import { importVideoFile } from '../../features/project/lib/import-video';
 import { Button } from '@renderer/components/ui/Button';
 

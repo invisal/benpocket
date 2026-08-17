@@ -13,7 +13,7 @@ import { resolveTextAnimationPreset } from '../presets/text-animation-presets';
 import { applySnapOffset, computeDragBBoxPx, snapAxis, type DragPatch } from '../lib/drag-snap';
 import { RESIZE_HANDLES, handlePointPx, resizeImage } from '../lib/image-resize';
 import { beginGesture, endGesture } from '../../history/store/history-store';
-import { selectAnnotation } from '../../../app/selection-coordinator';
+import { selectAnnotation } from '../../../store/selection-coordinator';
 import { cn } from '../../../lib/utils';
 
 interface AnnotationOverlayProps {

@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { useAppStore } from '../../app/app-store';
+import { useScreenRecorderStore } from '../../store/screen-recorder-store';
 import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
@@ -30,10 +30,10 @@ import { useEditorKeyboardShortcuts } from './hooks/use-editor-keyboard-shortcut
 import { isLikelyLinux } from '../../lib/platform';
 
 export function EditorPage(): JSX.Element {
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const isOpeningProject = useAppStore((state) => state.isOpeningProject);
-  const toolPanelWidth = useAppStore((state) => state.toolPanelWidth);
-  const setToolPanelWidth = useAppStore((state) => state.setToolPanelWidth);
+  const lastRecording = useScreenRecorderStore((state) => state.lastRecording);
+  const isOpeningProject = useScreenRecorderStore((state) => state.isOpeningProject);
+  const toolPanelWidth = useScreenRecorderStore((state) => state.toolPanelWidth);
+  const setToolPanelWidth = useScreenRecorderStore((state) => state.setToolPanelWidth);
 
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
@@ -116,7 +116,7 @@ export function EditorPage(): JSX.Element {
     setSourceResolution(resolution);
     // Also mirrored into the app store -- see its `sourceResolution` doc for
     // why useExportAction.ts (outside this component entirely) needs it too.
-    useAppStore.getState().setSourceResolution(resolution);
+    useScreenRecorderStore.getState().setSourceResolution(resolution);
   }
 
   return (

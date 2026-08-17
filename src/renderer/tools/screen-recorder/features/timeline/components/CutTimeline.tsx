@@ -27,8 +27,8 @@ import {
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
-import { useAppStore, EMPTY_CURSOR_PATH } from '../../../app/app-store';
-import { selectClipSegment, selectZoomKeyframe } from '../../../app/selection-coordinator';
+import { useScreenRecorderStore, EMPTY_CURSOR_PATH } from '../../../store/screen-recorder-store';
+import { selectClipSegment, selectZoomKeyframe } from '../../../store/selection-coordinator';
 import { useHistoryStore } from '../../history/store/history-store';
 import { useTimelineStore, MIN_TIMELINE_ZOOM, MAX_TIMELINE_ZOOM } from '../store/timeline-store';
 import { useWaveformStore } from '../store/waveform-store';
@@ -226,15 +226,17 @@ export function CutTimeline(): JSX.Element {
   // interactions the same way, so their guards share this one flag.
   const isPointerToolActive = isCutToolActive || isZoomToolActive;
 
-  const previewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
-  const panelHeightPx = useAppStore((s) => s.timelinePanelHeight);
-  const setPanelHeightPx = useAppStore((s) => s.setTimelinePanelHeight);
-  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
-  const cursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH);
+  const previewUrl = useScreenRecorderStore((s) => s.lastRecording?.previewUrl);
+  const panelHeightPx = useScreenRecorderStore((s) => s.timelinePanelHeight);
+  const setPanelHeightPx = useScreenRecorderStore((s) => s.setTimelinePanelHeight);
+  const clickPath = useScreenRecorderStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
+  const cursorPath = useScreenRecorderStore(
+    (s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH
+  );
   // "Hide webcam" only makes sense to offer when this recording actually has
   // a webcam track and the PiP overlay is currently on -- same gate WebcamPip
   // itself uses to decide whether to render at all.
-  const hasWebcamTrack = useAppStore((s) => Boolean(s.lastRecording?.webcamPreviewUrl));
+  const hasWebcamTrack = useScreenRecorderStore((s) => Boolean(s.lastRecording?.webcamPreviewUrl));
   const webcamEnabled = useWebcamStore((s) => s.enabled);
   const waveformPeaks = useWaveformStore((s) => s.peaks);
   const loadWaveformForUrl = useWaveformStore((s) => s.loadForUrl);
@@ -285,8 +287,9 @@ export function CutTimeline(): JSX.Element {
       const requiredPx =
         toolbarRow!.offsetHeight + trackArea!.offsetHeight + PANEL_CONTENT_CHROME_PX;
       const clampedPx = Math.min(MAX_PANEL_HEIGHT_PX, Math.max(MIN_PANEL_HEIGHT_PX, requiredPx));
-      const currentPx = useAppStore.getState().timelinePanelHeight;
-      if (clampedPx > currentPx) useAppStore.getState().setTimelinePanelHeight(clampedPx);
+      const currentPx = useScreenRecorderStore.getState().timelinePanelHeight;
+      if (clampedPx > currentPx)
+        useScreenRecorderStore.getState().setTimelinePanelHeight(clampedPx);
     }
 
     const observer = new ResizeObserver(recalcAutoHeight);

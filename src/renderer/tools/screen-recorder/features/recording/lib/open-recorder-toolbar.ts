@@ -2,7 +2,7 @@ import type { CaptureSource } from '@screen-recorder/types/recording';
 import { useRecordingStore } from '../store/recording-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useCursorStore } from '../../cursor/store/cursor-store';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 
 /**
  * Hides this window and opens the floating recorder-toolbar -- see
@@ -28,7 +28,7 @@ export async function openRecorderToolbarFor(source?: CaptureSource): Promise<vo
   // immediately on click -- see ScreenRecorderSidebar.tsx -- rather than
   // staying clickable for the moment it takes the main process to minimize
   // this window and load the toolbar.
-  useAppStore.getState().setRecorderToolbarOpen(true);
+  useScreenRecorderStore.getState().setRecorderToolbarOpen(true);
   try {
     await window.screenRecorder.recorderToolbar.open({
       source,
@@ -41,7 +41,7 @@ export async function openRecorderToolbarFor(source?: CaptureSource): Promise<vo
     // The toolbar never actually opened, so it'll never send back the
     // RecorderToolbarClosed that normally clears this -- clear it directly,
     // or "Launch Recorder" would stay disabled forever.
-    useAppStore.getState().setRecorderToolbarOpen(false);
+    useScreenRecorderStore.getState().setRecorderToolbarOpen(false);
     throw err;
   }
 }

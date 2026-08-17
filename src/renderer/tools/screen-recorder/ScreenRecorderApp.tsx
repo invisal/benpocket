@@ -1,8 +1,8 @@
 import type { JSX } from 'react';
 import { Activity, useCallback, useEffect, useState } from 'react';
 import { Flag, Loader2, Save } from 'lucide-react';
-import { useAppStore } from './app/app-store';
-import { useToastStore } from './app/toast-store';
+import { useScreenRecorderStore } from './store/screen-recorder-store';
+import { useToastStore } from './store/toast-store';
 import { cn } from './lib/utils';
 import { EditorPage } from './workspace/editor/EditorPage';
 import { LibraryPage } from './workspace/library/LibraryPage';
@@ -37,14 +37,14 @@ const routes = [
   }
 ];
 export function ScreenRecorderApp(): JSX.Element {
-  const route = useAppStore((state) => state.route);
-  const sidebarWidth = useAppStore((state) => state.sidebarWidth);
-  const setSidebarWidth = useAppStore((state) => state.setSidebarWidth);
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const currentProjectId = useAppStore((state) => state.currentProjectId);
-  const projectName = useAppStore((state) => state.projectName);
-  const setCurrentProjectId = useAppStore((state) => state.setCurrentProjectId);
-  const bumpProjectsVersion = useAppStore((state) => state.bumpProjectsVersion);
+  const route = useScreenRecorderStore((state) => state.route);
+  const sidebarWidth = useScreenRecorderStore((state) => state.sidebarWidth);
+  const setSidebarWidth = useScreenRecorderStore((state) => state.setSidebarWidth);
+  const lastRecording = useScreenRecorderStore((state) => state.lastRecording);
+  const currentProjectId = useScreenRecorderStore((state) => state.currentProjectId);
+  const projectName = useScreenRecorderStore((state) => state.projectName);
+  const setCurrentProjectId = useScreenRecorderStore((state) => state.setCurrentProjectId);
+  const bumpProjectsVersion = useScreenRecorderStore((state) => state.bumpProjectsVersion);
   const showToast = useToastStore((state) => state.showToast);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isQuickSaving, setIsQuickSaving] = useState(false);
@@ -80,7 +80,7 @@ export function ScreenRecorderApp(): JSX.Element {
   // resulting `handleSaveClick` call happens from within the subscription's
   // own callback rather than synchronously in this effect's body.
   useEffect(() => {
-    return useAppStore.subscribe((state, prevState) => {
+    return useScreenRecorderStore.subscribe((state, prevState) => {
       if (state.saveRequestToken === prevState.saveRequestToken) return;
       if (route !== 'editor' || !lastRecording || isQuickSaving) return;
       void handleSaveClick();

@@ -1,6 +1,6 @@
 import type { Project } from '@screen-recorder/types/project';
 import { toRecordingMediaUrl } from '@shared/media-protocol';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useBackgroundStore } from '../../background/store/background-store';
@@ -72,7 +72,7 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
   // inheriting a stale crop left over from whatever was open before this one.
   useCropStore.setState({ rect: project.crop ?? null });
 
-  useAppStore.setState({
+  useScreenRecorderStore.setState({
     projectName: project.name,
     currentProjectId: project.id,
     lastRecording: {
@@ -92,5 +92,5 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
   });
 
   resetHistory();
-  useAppStore.getState().setRoute('editor');
+  useScreenRecorderStore.getState().setRoute('editor');
 }

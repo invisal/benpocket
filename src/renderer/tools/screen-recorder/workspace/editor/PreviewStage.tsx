@@ -11,7 +11,7 @@ import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
 } from '../../features/timeline/store/timeline-store';
-import { useAppStore, EMPTY_CURSOR_PATH } from '../../app/app-store';
+import { useScreenRecorderStore, EMPTY_CURSOR_PATH } from '../../store/screen-recorder-store';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
 import { isLikelyLinux } from '../../lib/platform';
 import { AnnotationOverlay } from '../../features/annotations/components/AnnotationOverlay';
@@ -59,11 +59,13 @@ export function PreviewStage({
   const exportAspectRatio = useExportStore((s) => s.aspectRatio);
   const zoomKeyframes = useZoomStore((s) => s.keyframes);
   const cursor = useCursorStore();
-  const rawCursorPath = useAppStore((s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH);
-  const clickPath = useAppStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
-  const isImportedProject = useAppStore((s) => s.lastRecording?.source === 'imported');
-  const webcamPreviewUrl = useAppStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
-  const webcamOffsetMs = useAppStore((s) => s.lastRecording?.webcamOffsetMs ?? 0);
+  const rawCursorPath = useScreenRecorderStore(
+    (s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH
+  );
+  const clickPath = useScreenRecorderStore((s) => s.lastRecording?.clickPath ?? EMPTY_CURSOR_PATH);
+  const isImportedProject = useScreenRecorderStore((s) => s.lastRecording?.source === 'imported');
+  const webcamPreviewUrl = useScreenRecorderStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
+  const webcamOffsetMs = useScreenRecorderStore((s) => s.lastRecording?.webcamOffsetMs ?? 0);
   const webcamVideoRef = useRef<HTMLVideoElement>(null);
   const videoWrapperRef = useRef<HTMLDivElement>(null);
 

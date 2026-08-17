@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 import { useRef } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useAnnotationsStore } from '../store/annotations-store';
-import { selectAnnotation } from '../../../app/selection-coordinator';
+import { selectAnnotation } from '../../../store/selection-coordinator';
 import { annotationLabel } from '../lib/annotation-label';
 import { AddAnnotationButtons } from './AddAnnotationButtons';
 import { AnnotationList } from './AnnotationList';

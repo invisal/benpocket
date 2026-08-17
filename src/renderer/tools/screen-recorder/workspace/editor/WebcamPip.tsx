@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useAppStore } from '../../app/app-store';
+import { useScreenRecorderStore } from '../../store/screen-recorder-store';
 import { useWebcamStore } from '../../features/webcam/store/webcam-store';
 import { clampWebcamPosition } from '@shared/webcam-position';
 import { useWebcamDrag } from './hooks/use-webcam-drag';
@@ -23,7 +23,7 @@ export default function WebcamPip({
   webcamHidden = false
 }: WebcamPipProps) {
   const webcam = useWebcamStore();
-  const webcamPreviewUrl = useAppStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
+  const webcamPreviewUrl = useScreenRecorderStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
   // Clamped at render time (not written back to the store) so a position
   // that's only out of bounds because the aspect ratio changed since it was
   // last set doesn't need reconciling on every aspect-ratio change -- see

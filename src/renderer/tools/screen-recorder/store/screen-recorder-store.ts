@@ -48,7 +48,7 @@ interface LastRecording {
   source: 'recorded' | 'imported';
 }
 
-interface AppStoreState {
+interface ScreenRecorderStoreState {
   route: ScreenRecorderRoute;
   setRoute: (route: ScreenRecorderRoute) => void;
   isRecording: boolean;
@@ -117,8 +117,8 @@ interface AppStoreState {
   requestSave: () => void;
 }
 
-export const useAppStore = create<AppStoreState>((set) => ({
-  route: 'library',
+export const useScreenRecorderStore = create<ScreenRecorderStoreState>((set) => ({
+  route: 'editor',
   setRoute: (route) => set({ route }),
   isRecording: false,
   setIsRecording: (isRecording) => set({ isRecording }),

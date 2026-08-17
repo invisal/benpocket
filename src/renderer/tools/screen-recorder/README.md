@@ -18,14 +18,14 @@ AppShell
     └─ ScreenRecorderWorkspace   src/renderer/src/components/layout/workspaces/ScreenRecorderWorkspace.tsx
         └─ ScreenRecorderApp     tools/screen-recorder/ScreenRecorderApp.tsx
             Owns a small top nav (Record / Library / Presets / Editor / Settings)
-            and renders whichever workspace/ page matches useAppStore().route.
+            and renders whichever workspace/ page matches useScreenRecorderStore().route.
 ```
 
 `recording-hud` is a `ScreenRecorderRoute` value but is **not** one of the nav items and is never rendered by `ScreenRecorderApp` — `workspace/recording-hud/RecordingHudPage.tsx` is meant to load into its own frameless always-on-top window (see "Known gaps" below), not the main tab content.
 
 ## Navigation model
 
-There's no router. `app/app-store.ts` (`useAppStore`, a zustand store) holds a single `route: ScreenRecorderRoute` field; `ScreenRecorderApp` and `ScreenRecorderSidebar` both read/write it directly. It also holds `isRecording`, `lastRecording` (preview URL + on-disk path + size + timestamp of the most recent recording), and `projectName`.
+There's no router. `store/screen-recorder-store.ts` (`useScreenRecorderStore`, a zustand store) holds a single `route: ScreenRecorderRoute` field; `ScreenRecorderApp` and `ScreenRecorderSidebar` both read/write it directly. It also holds `isRecording`, `lastRecording` (preview URL + on-disk path + size + timestamp of the most recent recording), and `projectName`.
 
 Everything else is its own independent zustand store under `features/*/store/`, each scoped to one concern (`recording-store`, `background-store`, `cursor-store`, `webcam-store`, `captions-store`, `zoom-store`, `crop-store`, `annotations-store`, `blur-mask-store`, `timeline-store`, `export-store`, `shortcuts-store`). Feature panels read/write their store directly — nothing is prop-drilled from `EditorPage` down.
 
@@ -33,7 +33,7 @@ Everything else is its own independent zustand store under `features/*/store/`, 
 
 ```
 ScreenRecorderApp.tsx        Root component: top nav + route switch
-app/app-store.ts           Global route/recording state (see above)
+store/screen-recorder-store.ts  Global route/recording state (see above)
 sidebar/                   ScreenRecorderSidebar (mounted by the outer app's LeftPanel)
 components/ui/             Local button.tsx / slider.tsx (this tool's own tiny design
                             system — deliberately separate from src/renderer/src/components/ui)
@@ -79,7 +79,7 @@ CSP is set dynamically per-response from `main/screen-recorder/security/content-
 
 ## Editor tool panel
 
-`EditorToolRail` (icon rail) + `EditorToolPanel` (the panel body) is a single mutually-exclusive switcher over `EditorTool = 'background' | 'cursor' | 'webcam' | 'captions' | 'annotations' | 'blur-mask' | 'zoom' | 'clip' | 'export'`. Every panel is self-contained — no props from `EditorPage`, each reads its own feature store directly — **except** it's still worth checking `ExportSidePanel` if you're touching this, since it's the newest addition and pulls from `app-store`/`timeline-store` directly rather than the feature's own store (there is no dedicated UI store for export beyond `export-store`'s format/codec/quality fields).
+`EditorToolRail` (icon rail) + `EditorToolPanel` (the panel body) is a single mutually-exclusive switcher over `EditorTool = 'background' | 'cursor' | 'webcam' | 'captions' | 'annotations' | 'blur-mask' | 'zoom' | 'clip' | 'export'`. Every panel is self-contained — no props from `EditorPage`, each reads its own feature store directly — **except** it's still worth checking `ExportSidePanel` if you're touching this, since it's the newest addition and pulls from `screen-recorder-store`/`timeline-store` directly rather than the feature's own store (there is no dedicated UI store for export beyond `export-store`'s format/codec/quality fields).
 
 The export flow itself (save-path dialog → `export.start` → live progress via `export.onProgress` → error surfacing) lives once in `features/export/hooks/useExportAction.ts` and is shared by both `ExportButton` (quick top-nav export using whatever's currently in `export-store`) and `ExportSidePanel`'s full config panel — don't duplicate that flow a third time.
 
@@ -89,7 +89,6 @@ These exist in the tree but nothing calls them — don't assume they're live jus
 
 - **`workspace/recording-hud/RecordingHudPage.tsx`** and **`main/screen-recorder/windows/recorder-bar-window.ts`** — a small always-on-top recording control bar, meant to be a separate `BrowserWindow` loading this page. `recorder-bar-window.ts` creates a window but never calls `loadURL`/`loadFile`, so it's a no-op today.
 - **`main/screen-recorder/windows/main-window.ts`** and **`windows/editor-window.ts`** — a more complete, frameless/custom-titlebar standalone window setup for ScreenRecorder, plus a placeholder for a dedicated multi-window editor. Not used — the app actually runs inside CraftBox's single shared window (`src/main/index.ts`'s `createWindow()`). Don't wire these up without checking whether that's still the intended architecture.
-- **`hooks/useStore.ts`** (`useScreenRecorderStore`) — an earlier/parallel version of `app/app-store.ts`'s state (same shape, different route typing). Nothing imports it. Use `app/app-store.ts`.
 - **`main/screen-recorder/shortcuts/global-shortcuts.ts`** — registers global hotkeys with no-op callbacks (`// TODO: dispatch binding.action`); not called from `main/index.ts`. Registering it as-is would just grab system-wide shortcuts that do nothing.
 - **`features/recording/hooks/useRecordingSession.ts`**, **`lib/use-electron-api.ts`** — thin convenience wrappers around `window.screenRecorder`, unused (current code calls `window.screenRecorder.recording.*` directly).
 - **`features/cursor/engine/cursor-smoothing-engine.ts`**, **`features/zoom/engine/auto-zoom-engine.ts`**, **`features/captions/engine/on-device-transcriber.ts`** — stub implementations for post-processing that hasn't been built yet (cursor jitter smoothing, auto-zoom keyframe generation, on-device transcription). All explicitly marked `TODO` and return no-ops.

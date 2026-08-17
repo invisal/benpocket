@@ -9,8 +9,8 @@ import {
   Upload
 } from 'lucide-react';
 import type { ProjectSummary } from '@screen-recorder/types/project';
-import { useAppStore, type ScreenRecorderRoute } from '../app/app-store';
-import { useToastStore } from '../app/toast-store';
+import { useScreenRecorderStore, type ScreenRecorderRoute } from '../store/screen-recorder-store';
+import { useToastStore } from '../store/toast-store';
 import { useExportStore } from '../features/export/store/export-store';
 import { useOpenProject } from '../features/project/hooks/useOpenProject';
 import { DiscardChangesDialog } from '../features/project/components/DiscardChangesDialog';
@@ -34,10 +34,10 @@ const NAV_ITEMS: {
 ];
 
 export const ScreenRecorderSidebar: React.FC = () => {
-  const route = useAppStore((state) => state.route);
-  const setRoute = useAppStore((state) => state.setRoute);
-  const currentProjectId = useAppStore((state) => state.currentProjectId);
-  const projectsVersion = useAppStore((state) => state.projectsVersion);
+  const route = useScreenRecorderStore((state) => state.route);
+  const setRoute = useScreenRecorderStore((state) => state.setRoute);
+  const currentProjectId = useScreenRecorderStore((state) => state.currentProjectId);
+  const projectsVersion = useScreenRecorderStore((state) => state.projectsVersion);
   const isExporting = useExportStore((state) => state.isExporting);
   const showToast = useToastStore((state) => state.showToast);
 
@@ -47,37 +47,15 @@ export const ScreenRecorderSidebar: React.FC = () => {
     useOpenProject();
   const hasAutoSelectedRef = useRef(false);
 
-  // Recent-projects list is separate from `lastRecording`'s persisted
-  // metadata index -- it re-fetches on `projectsVersion` since, unlike
-  // LibraryPage, this sidebar stays mounted across route changes and would
-  // otherwise never notice a project saved during the current session.
-  //
-  // On the very first fetch (app launch), also resume the most recently
-  // edited project automatically -- guarded by the ref so a save later in
-  // the session (which bumps `projectsVersion` and re-runs this effect)
-  // never does it again, and by `currentProjectId` so it doesn't clobber a
-  // project the user already has open by the time this resolves.
   useEffect(() => {
     let cancelled = false;
     void window.screenRecorder.project.list().then((list) => {
       if (cancelled) return;
-      // Kept unsliced (unlike each rendered section below, which caps
-      // independently at MAX_RECENT_PROJECTS) so `list[0]` here is always
-      // the single most-recently-updated project across both sources, for
-      // auto-resume.
       setRecentProjects(list);
-
       if (!hasAutoSelectedRef.current) {
         hasAutoSelectedRef.current = true;
         const [mostRecent] = list;
         if (mostRecent && !currentProjectId) {
-          // Switches to the editor route immediately, before `openProject`
-          // has even started its IPC round trip -- EditorPage shows
-          // `EditorLoading` for `isOpeningProject` (set inside
-          // `useOpenProject`) rather than this leaving the user on whatever
-          // screen they launched into with nothing visibly happening until
-          // the whole load -- project JSON read, video file stat, store
-          // hydration -- finishes and the route flips out from under them.
           setRoute('editor');
           void openProject(mostRecent);
         }

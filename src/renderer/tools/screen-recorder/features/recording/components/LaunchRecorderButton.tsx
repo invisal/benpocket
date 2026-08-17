@@ -1,12 +1,12 @@
 import { Circle, Square } from 'lucide-react';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { Button } from '@renderer/components/ui/Button';
 import { openRecorderToolbarFor } from '../lib/open-recorder-toolbar';
 
 export function LaunchRecorderButton() {
-  const isRecording = useAppStore((state) => state.isRecording);
-  const route = useAppStore((state) => state.route);
-  const lastRecording = useAppStore((state) => state.lastRecording);
+  const isRecording = useScreenRecorderStore((state) => state.isRecording);
+  const route = useScreenRecorderStore((state) => state.route);
+  const lastRecording = useScreenRecorderStore((state) => state.lastRecording);
   // Only warn about losing unsaved changes when the editor actually has
   // something loaded -- its empty state (browse-video prompt, no
   // `lastRecording` yet) has nothing to lose.

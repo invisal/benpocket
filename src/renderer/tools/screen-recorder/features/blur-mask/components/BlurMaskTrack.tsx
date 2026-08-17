@@ -5,7 +5,7 @@ import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/t
 import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useBlurMaskStore } from '../store/blur-mask-store';
-import { selectBlurMaskRegion } from '../../../app/selection-coordinator';
+import { selectBlurMaskRegion } from '../../../store/selection-coordinator';
 
 const MIN_REGION_DURATION_MS = 300;
 

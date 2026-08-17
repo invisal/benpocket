@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useCropStore } from '../../crop/store/crop-store';
@@ -45,8 +45,8 @@ interface UseExportActionResult {
  * Both report progress and errors the same way, and both can be cancelled.
  */
 export function useExportAction(): UseExportActionResult {
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const sourceResolution = useAppStore((state) => state.sourceResolution);
+  const lastRecording = useScreenRecorderStore((state) => state.lastRecording);
+  const sourceResolution = useScreenRecorderStore((state) => state.sourceResolution);
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );

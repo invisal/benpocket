@@ -96,7 +96,7 @@ interface TimelineStoreState {
   seekRequestMs: number | null;
   /**
    * Bumped to ask EditorPage's video to pause -- same one-shot cross-tree
-   * request shape as `saveRequestToken` (app-store.ts), needed because
+   * request shape as `saveRequestToken` (screen-recorder-store.ts), needed because
    * callers like ExportDialogButton (rendered as ScreenRecorderApp's nav
    * sibling, not inside EditorPage) can't reach `videoRef` directly. A
    * counter (not a boolean) so repeated requests each fire their own

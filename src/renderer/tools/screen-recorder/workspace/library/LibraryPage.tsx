@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import type { ProjectSummary } from '@screen-recorder/types/project';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
-import { useAppStore } from '../../app/app-store';
+import { useScreenRecorderStore } from '../../store/screen-recorder-store';
 import { useOpenProject } from '../../features/project/hooks/useOpenProject';
 import { DiscardChangesDialog } from '../../features/project/components/DiscardChangesDialog';
 import { ProjectVideoThumbnail } from '../../features/project/components/ProjectVideoThumbnail';
@@ -17,7 +17,7 @@ function formatDuration(ms: number): string {
 }
 
 export function LibraryPage(): JSX.Element {
-  const projectsVersion = useAppStore((state) => state.projectsVersion);
+  const projectsVersion = useScreenRecorderStore((state) => state.projectsVersion);
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const {

@@ -27,10 +27,8 @@ const NAV_ITEMS: {
   route: ScreenRecorderRoute;
   label: string;
   icon: typeof FolderOpen;
-  /** Only 'editor' needs this -- there's nothing to edit until a recording exists. */
-  requiresRecording?: boolean;
 }[] = [
-  { route: 'editor', label: 'Editor', icon: Clapperboard, requiresRecording: true },
+  { route: 'editor', label: 'Editor', icon: Clapperboard },
   { route: 'library', label: 'Library', icon: FolderOpen },
   { route: 'settings', label: 'Settings', icon: Settings }
 ];
@@ -38,7 +36,6 @@ const NAV_ITEMS: {
 export const ScreenRecorderSidebar: React.FC = () => {
   const route = useAppStore((state) => state.route);
   const setRoute = useAppStore((state) => state.setRoute);
-  const lastRecording = useAppStore((state) => state.lastRecording);
   const currentProjectId = useAppStore((state) => state.currentProjectId);
   const projectsVersion = useAppStore((state) => state.projectsVersion);
   const isExporting = useExportStore((state) => state.isExporting);
@@ -158,9 +155,8 @@ export const ScreenRecorderSidebar: React.FC = () => {
       />
       <Tooltip.Provider delay={200} closeDelay={0}>
         <nav className="flex w-11 shrink-0 flex-col items-center gap-0.5 border-r border-line py-3">
-          {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon, requiresRecording }) => {
-            const needsRecording = requiresRecording && !lastRecording;
-            const itemDisabled = isExporting || needsRecording;
+          {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon }) => {
+            const itemDisabled = isExporting;
             return (
               <Tooltip.Root key={itemRoute}>
                 <Tooltip.Trigger
@@ -181,11 +177,7 @@ export const ScreenRecorderSidebar: React.FC = () => {
                   }
                 />
                 <Tooltip.Content side="right">
-                  {isExporting
-                    ? 'Export in progress'
-                    : needsRecording
-                      ? 'Record something first'
-                      : label}
+                  {isExporting ? 'Export in progress' : label}
                 </Tooltip.Content>
               </Tooltip.Root>
             );

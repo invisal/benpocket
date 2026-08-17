@@ -13,6 +13,7 @@ import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
 import { EditorToolPanel } from './EditorToolPanel';
+import EditorEmpty from './EditorEmpty';
 import { CropDialog } from '../../features/crop/components/CropDialog';
 import { useCropStore } from '../../features/crop/store/crop-store';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
@@ -105,13 +106,7 @@ export function EditorPage(): JSX.Element {
   }, [isImportedProject, activeTool, setActiveTool]);
 
   if (!lastRecording && !isOpeningProject) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-8">
-        <p className="text-sm text-muted-foreground">
-          Record something first, then come back here to export it.
-        </p>
-      </div>
-    );
+    return <EditorEmpty />;
   }
 
   function handleLoadedMetadata(event: React.SyntheticEvent<HTMLVideoElement>): void {

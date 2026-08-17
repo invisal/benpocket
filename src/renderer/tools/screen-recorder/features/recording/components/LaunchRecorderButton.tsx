@@ -6,7 +6,11 @@ import { openRecorderToolbarFor } from '../lib/open-recorder-toolbar';
 export function LaunchRecorderButton() {
   const isRecording = useAppStore((state) => state.isRecording);
   const route = useAppStore((state) => state.route);
-  const isEditor = route === 'editor' || isRecording;
+  const lastRecording = useAppStore((state) => state.lastRecording);
+  // Only warn about losing unsaved changes when the editor actually has
+  // something loaded -- its empty state (browse-video prompt, no
+  // `lastRecording` yet) has nothing to lose.
+  const isEditor = (route === 'editor' && Boolean(lastRecording)) || isRecording;
 
   async function handleNewRecord() {
     if (isEditor) {

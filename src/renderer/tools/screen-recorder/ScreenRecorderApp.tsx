@@ -120,7 +120,7 @@ export function ScreenRecorderApp(): JSX.Element {
                 Report an issue
               </span>
             </button>
-            <ExportDialogButton disabled={route !== 'editor'} />
+            <ExportDialogButton disabled={route !== 'editor' || !lastRecording} />
           </div>
         </nav>
 
@@ -155,7 +155,7 @@ export function ScreenRecorderApp(): JSX.Element {
             </div>
           </div>
 
-          <Activity mode={route === 'editor' ? 'visible' : 'hidden'}>
+          <Activity mode={route === 'editor' && lastRecording ? 'visible' : 'hidden'}>
             <CutTimeline />
           </Activity>
         </div>

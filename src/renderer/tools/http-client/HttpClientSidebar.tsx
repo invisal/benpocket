@@ -379,7 +379,9 @@ export const HttpClientSidebar: React.FC = () => {
       });
       const versionLabel =
         result.schemaVersion && result.schemaVersion !== 'unknown'
-          ? ` (Collection v${result.schemaVersion})`
+          ? result.sourceFormat === 'openapi'
+            ? ` (OpenAPI ${result.schemaVersion})`
+            : ` (Collection v${result.schemaVersion})`
           : '';
       const variablesLabel = result.importedVariableCount
         ? `, ${result.importedVariableCount} variable${result.importedVariableCount === 1 ? '' : 's'}`
@@ -465,7 +467,7 @@ export const HttpClientSidebar: React.FC = () => {
             <div className="flex items-center gap-0.5">
               <button
                 onClick={handleImportCollection}
-                title="Import Collection — supports Collection Format v2.0 and v2.1 (.json)"
+                title="Import Collection — supports Postman Collection v2.0/v2.1 and OpenAPI v3.0/v3.1 (.json, .yaml, .yml)"
                 className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
               >
                 <Upload size={13} />

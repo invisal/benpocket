@@ -1,7 +1,9 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
+import * as jsYaml from 'js-yaml';
 import type {
+  Collection,
   Environment,
   ExportCollectionPayload,
   ExportCollectionResult,
@@ -13,13 +15,16 @@ import { readEnvironments, writeEnvironments } from './environments';
 import {
   exportCollectionFile,
   importCollectionFile,
+  importOpenApiFile,
   isLegacyCollectionV1File,
-  isCollectionFile
+  isCollectionFile,
+  isOpenApiFile,
+  isSwaggerV2File
 } from '../httpClientFormat';
 import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
 const SUPPORTED_SCHEMAS_MESSAGE =
-  'benpocket supports Postman Collection Format v2.0 and v2.1 (.json exports from Postman).';
+  'benpocket supports Postman Collection Format v2.0/v2.1 and OpenAPI Description v3.0/v3.1 (.json, .yaml, .yml).';
 
 /** Adds/updates `incoming` variables into `existing` by key, preserving any variables `existing` already has that aren't in `incoming`. */
 function mergeVariables(existing: KeyValuePair[], incoming: KeyValuePair[]): KeyValuePair[] {
@@ -57,6 +62,35 @@ async function upsertImportedVariables(
   environments.push(environment);
   await writeEnvironments(environments);
   return environment.id;
+}
+
+/** Persists a freshly-imported collection and, if it brought variables along, writes them into a matching environment. Shared by the Postman and OpenAPI import paths. */
+async function finishImport(
+  collection: Collection,
+  sourceFormat: 'postman' | 'openapi',
+  schemaVersion: string,
+  variables: KeyValuePair[]
+): Promise<ImportCollectionResult> {
+  const collections = await readCollections();
+  collections.push(collection);
+  await writeCollections(collections);
+
+  if (variables.length === 0) {
+    return { ok: true, collection, sourceFormat, schemaVersion };
+  }
+  const environmentId = await upsertImportedVariables(
+    collection.workspaceId,
+    collection.name,
+    variables
+  );
+  return {
+    ok: true,
+    collection,
+    sourceFormat,
+    schemaVersion,
+    importedVariableCount: variables.length,
+    environmentId
+  };
 }
 
 export function registerCollectionTransferHandlers(): void {
@@ -98,9 +132,12 @@ export function registerCollectionTransferHandlers(): void {
     async (event, workspaceId: string): Promise<ImportCollectionResult> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const openOptions = {
-        title: 'Import Collection (v2.0 / v2.1)',
+        title: 'Import Collection or OpenAPI Document',
         properties: ['openFile' as const],
-        filters: [{ name: 'HTTP Client Collection (v2.0 / v2.1)', extensions: ['json'] }]
+        filters: [
+          { name: 'Collection / OpenAPI', extensions: ['json', 'yaml', 'yml'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
       };
       const result = win
         ? await dialog.showOpenDialog(win, openOptions)
@@ -110,9 +147,16 @@ export function registerCollectionTransferHandlers(): void {
       let parsed: unknown;
       try {
         const raw = await fs.promises.readFile(result.filePaths[0], 'utf-8');
-        parsed = JSON.parse(raw);
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          parsed = jsYaml.load(raw);
+        }
       } catch {
-        return { ok: false, error: `File is not valid JSON. ${SUPPORTED_SCHEMAS_MESSAGE}` };
+        return {
+          ok: false,
+          error: `File is not valid JSON or YAML. ${SUPPORTED_SCHEMAS_MESSAGE}`
+        };
       }
 
       if (isLegacyCollectionV1File(parsed)) {
@@ -122,28 +166,26 @@ export function registerCollectionTransferHandlers(): void {
         };
       }
 
-      if (!isCollectionFile(parsed)) {
+      if (isSwaggerV2File(parsed)) {
         return {
           ok: false,
-          error: `File is not a recognized Collection export. ${SUPPORTED_SCHEMAS_MESSAGE}`
+          error: `This file looks like a Swagger / OpenAPI v2.0 document, which isn't supported yet. Please convert it to OpenAPI v3.0/v3.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
         };
       }
 
-      const { collection, schemaVersion, variables } = importCollectionFile(parsed, workspaceId);
-      const collections = await readCollections();
-      collections.push(collection);
-      await writeCollections(collections);
-
-      if (variables.length === 0) {
-        return { ok: true, collection, schemaVersion };
+      if (isCollectionFile(parsed)) {
+        const { collection, schemaVersion, variables } = importCollectionFile(parsed, workspaceId);
+        return finishImport(collection, 'postman', schemaVersion, variables);
       }
-      const environmentId = await upsertImportedVariables(workspaceId, collection.name, variables);
+
+      if (isOpenApiFile(parsed)) {
+        const { collection, openApiVersion, variables } = importOpenApiFile(parsed, workspaceId);
+        return finishImport(collection, 'openapi', openApiVersion, variables);
+      }
+
       return {
-        ok: true,
-        collection,
-        schemaVersion,
-        importedVariableCount: variables.length,
-        environmentId
+        ok: false,
+        error: `File is not a recognized Collection or OpenAPI export. ${SUPPORTED_SCHEMAS_MESSAGE}`
       };
     }
   );

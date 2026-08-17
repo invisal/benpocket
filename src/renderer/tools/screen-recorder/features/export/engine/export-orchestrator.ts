@@ -71,6 +71,11 @@ export function isSourceCopyEligible(
   }
   if (project.motionBlur) return false;
   if (project.captions.enabled && project.captions.segments.length > 0) return false;
+  // A verbatim byte copy can't have the click-sound overlay mixed in --
+  // AudioProcessor.process() (which does that mixing) never runs on this
+  // path. `options.includeAudio` (checked above) already guarantees there's
+  // an audio track for it to mix into.
+  if (project.cursor.clickSoundEnabled && project.clickPath.length > 0) return false;
 
   return true;
 }

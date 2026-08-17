@@ -8,7 +8,7 @@ import type {
 import type { ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import { StreamingVideoDecoder } from './streaming-decoder';
 import { VideoMuxer } from './muxer';
-import { AudioProcessor } from './audio-encoder';
+import { AudioProcessor, type ClickSoundOptions } from './audio-encoder';
 import { isSourceCopyEligible } from './export-orchestrator';
 import { resolveWebDemuxerWasmPath } from './wasm-path';
 import { EXPORT_CANCELLED_MESSAGE } from './cancel';
@@ -208,6 +208,14 @@ async function finishVideoExport(
       const audioProcessor = new AudioProcessor();
       const onAbort = () => audioProcessor.cancel();
       signal?.addEventListener('abort', onAbort);
+      // Only bothers building this when there's actually a click to mix --
+      // `AudioProcessor` treats an all-zero-clicks options object the same
+      // as `null` anyway, but skipping construction keeps the common
+      // no-clicks-recorded case a no-op here too.
+      const clickSoundOptions: ClickSoundOptions | null =
+        options.project.cursor.clickSoundEnabled && options.project.clickPath.length > 0
+          ? { clickPath: options.project.clickPath, intensity: options.project.cursor.clickBounce }
+          : null;
       try {
         await audioProcessor.process(
           sourceFile,
@@ -215,7 +223,8 @@ async function finishVideoExport(
           sourceObjectUrl,
           options.segments,
           exportCodec,
-          wasmUrl
+          wasmUrl,
+          clickSoundOptions
         );
       } finally {
         signal?.removeEventListener('abort', onAbort);

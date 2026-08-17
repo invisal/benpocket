@@ -69,6 +69,7 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
       motionBlur: cursorState.motionBlur,
       clickBounce: cursorState.clickBounce,
       clickRippleEnabled: cursorState.clickRippleEnabled,
+      clickSoundEnabled: cursorState.clickSoundEnabled,
       handGestureEnabled: cursorState.handGestureEnabled
     },
     cursorPath: lastRecording?.cursorPath ?? [],

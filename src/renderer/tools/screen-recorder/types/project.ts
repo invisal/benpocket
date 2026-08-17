@@ -41,6 +41,8 @@ export interface CursorSettings {
   clickBounce: number;
   /** Whether the expanding click-ripple ring (resolveClickRipple, cursor-path.ts) draws at all -- independent of `clickBounce`'s own icon squash/pop, which stays on regardless. Off by default. */
   clickRippleEnabled: boolean;
+  /** Whether a short synthesized "click" sound plays on each recorded mousedown, both in the live preview and baked into exported audio -- see `@shared/click-sound`. Reuses `clickBounce` as its intensity, same as `clickRippleEnabled` does. Off by default. */
+  clickSoundEnabled: boolean;
   /** Whether resolveCursorGesture's hover/drag hand icon can ever show at all -- off means the cursor stays the plain arrow the entire time, regardless of what the recording's click/movement data would otherwise infer. On by default. */
   handGestureEnabled: boolean;
 }

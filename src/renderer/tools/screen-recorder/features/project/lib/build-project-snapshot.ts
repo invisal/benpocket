@@ -70,6 +70,7 @@ export function buildProjectSnapshot(name: string): Project | null {
       motionBlur: cursorState.motionBlur,
       clickBounce: cursorState.clickBounce,
       clickRippleEnabled: cursorState.clickRippleEnabled,
+      clickSoundEnabled: cursorState.clickSoundEnabled,
       handGestureEnabled: cursorState.handGestureEnabled
     },
     cursorPath: lastRecording.cursorPath,

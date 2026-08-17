@@ -13,6 +13,7 @@ import {
 } from '../../features/timeline/store/timeline-store';
 import { useScreenRecorderStore, EMPTY_CURSOR_PATH } from '../../store/screen-recorder-store';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
+import { useClickSound } from '../../features/cursor/lib/use-click-sound';
 import { isLikelyLinux } from '../../lib/platform';
 import { AnnotationOverlay } from '../../features/annotations/components/AnnotationOverlay';
 import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOverlay';
@@ -104,6 +105,13 @@ export function PreviewStage({
     onTimeUpdate,
     onLoadedMetadata
   });
+
+  useClickSound(
+    clickPath,
+    zoomTimeMs,
+    !isImportedProject && !isLikelyLinux && cursor.clickSoundEnabled,
+    cursor.clickBounce
+  );
 
   const { stageRef, stageWidthPx } = useStageWidth();
 

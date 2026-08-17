@@ -56,7 +56,13 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
     ...project.background,
     enabled: project.background.enabled ?? true
   });
-  useCursorStore.setState(project.cursor);
+  useCursorStore.setState({
+    ...project.cursor,
+    // Projects saved before this field existed on `CursorSettings` have no
+    // such key at all -- guard against inheriting whatever the previously
+    // open project's toggle happened to be, same reasoning as `crop` below.
+    clickSoundEnabled: project.cursor.clickSoundEnabled ?? false
+  });
   useCaptionsStore.setState(project.captions);
   useAnnotationsStore.setState({ annotations: project.annotations, selectedAnnotationId: null });
   useBlurMaskStore.setState({

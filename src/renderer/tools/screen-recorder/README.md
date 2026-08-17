@@ -1,7 +1,7 @@
 # Screen Recorder
 
 Record a screen, a single window, or a dragged region; edit the result on a
-clip timeline; export to video or GIF. One of CraftBox's tools, running in
+clip timeline; export to video or GIF. One of Benpocket's tools, running in
 the same shared app window as the others.
 
 ## Recording

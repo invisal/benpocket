@@ -140,14 +140,24 @@ function mostRecentClick(clickPath: CursorPathPoint[], atMs: number): CursorPath
 
 /**
  * Cursor scale multiplier for the click-bounce effect at a given timeline
- * position -- a quick squash-and-pop (damped oscillation) starting at the
- * most recent real mousedown, so the cursor visibly "presses" on click, the
- * way Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.
+ * position -- a single smooth scale-in/scale-out pulse starting at the most
+ * recent real mousedown, so the cursor visibly "presses" on click, the way
+ * Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.
  * clickBounce`); returns 1 (no effect) when there's no click within the
  * animation window or `intensity` is 0.
  *
- * Amplitude scales up to +-0.5 at max intensity (previously +-0.18) --
- * the original range read as a barely-perceptible wobble, not something a
+ * Uses a raised-cosine (Hann) envelope rather than a damped oscillation --
+ * `hann(p)` is 0 at both ends of the window *and* has zero slope there, so
+ * the scale eases in from 1 with no snap at the click instant, smoothly
+ * bottoms out at the halfway point, then eases back out to exactly 1 with no
+ * snap at the window's end either. A previous version used a decaying
+ * `cos(p * Math.PI * 3)` oscillation (squash, overshoot past 1, a couple of
+ * quickly-decaying wobbles) -- punchier, but the extra wobbles read as
+ * jittery rather than a clean press; this trades that for one smooth in/out
+ * motion.
+ *
+ * Amplitude scales up to +-0.5 at max intensity (previously +-0.18) -- the
+ * original range read as a barely-perceptible wobble, not something a
  * viewer could reliably notice as "a click just happened" the way this is
  * meant to communicate. Pair with `resolveClickRipple` below for a second,
  * unambiguous signal independent of the icon's own size.
@@ -164,12 +174,10 @@ export function resolveClickBounceScale(
   const elapsed = atMs - click.atMs;
   if (elapsed < 0 || elapsed > CLICK_BOUNCE_DURATION_MS) return 1;
 
-  // A damped cosine: squashes hard immediately on click (p=0), pops back
-  // past 1 on release, then a couple of quickly-decaying overshoots
-  // settling back to 1 by the end of the window.
   const p = elapsed / CLICK_BOUNCE_DURATION_MS;
   const amplitude = (Math.min(intensity, 5) / 5) * 0.5;
-  return 1 - amplitude * Math.exp(-p * 5) * Math.cos(p * Math.PI * 3);
+  const hann = (1 - Math.cos(p * Math.PI * 2)) / 2;
+  return 1 - amplitude * hann;
 }
 
 export interface ClickRipple {

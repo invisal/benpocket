@@ -1,4 +1,4 @@
-import { ipcRenderer, type IpcRendererEvent } from 'electron';
+import { ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
 import type {
   Collection,
   CreateCollectionPayload,
@@ -52,6 +52,9 @@ export interface HttpClientBridge {
     /** Opens a native "choose a file" dialog for a multipart body's file field. Resolves to
      * `null` if the user cancels. */
     pickFile: () => Promise<PickFileResult | null>;
+    /** Resolves the real filesystem path of a `File` dropped in from the OS (e.g. a collection
+     * export dragged onto the sidebar). Empty string if the file has no on-disk path. */
+    getPathForFile: (file: File) => string;
   };
   ws: {
     connect: (payload: WsConnectPayload) => Promise<WsAckResult>;
@@ -79,6 +82,8 @@ export interface HttpClientBridge {
     setFolderAuth: (payload: SetFolderAuthPayload) => Promise<WsAckResult>;
     exportToFile: (payload: ExportCollectionPayload) => Promise<ExportCollectionResult>;
     importFromFile: (workspaceId: string) => Promise<ImportCollectionResult>;
+    /** Imports a collection/OpenAPI file already known on disk (e.g. dropped onto the sidebar), skipping the open-file dialog. */
+    importFromPath: (filePath: string, workspaceId: string) => Promise<ImportCollectionResult>;
   };
   environments: {
     list: (workspaceId: string) => Promise<Environment[]>;
@@ -108,7 +113,8 @@ export const httpClientApi: HttpClientBridge = {
       ipcRenderer.invoke('http:send', payload),
     oauth2GetToken: (payload: OAuth2TokenRequest): Promise<OAuth2TokenResult> =>
       ipcRenderer.invoke('http:oauth2GetToken', payload),
-    pickFile: (): Promise<PickFileResult | null> => ipcRenderer.invoke('http:pickFile')
+    pickFile: (): Promise<PickFileResult | null> => ipcRenderer.invoke('http:pickFile'),
+    getPathForFile: (file: File): string => webUtils.getPathForFile(file)
   },
 
   // WebSocket client - sockets live in the main process; the renderer only
@@ -165,7 +171,9 @@ export const httpClientApi: HttpClientBridge = {
     exportToFile: (payload: ExportCollectionPayload): Promise<ExportCollectionResult> =>
       ipcRenderer.invoke('collections:exportToFile', payload),
     importFromFile: (workspaceId: string): Promise<ImportCollectionResult> =>
-      ipcRenderer.invoke('collections:importFromFile', workspaceId)
+      ipcRenderer.invoke('collections:importFromFile', workspaceId),
+    importFromPath: (filePath: string, workspaceId: string): Promise<ImportCollectionResult> =>
+      ipcRenderer.invoke('collections:importFromPath', filePath, workspaceId)
   },
 
   // Environments - named sets of {{variable}} values, persisted to disk.

@@ -93,6 +93,56 @@ async function finishImport(
   };
 }
 
+/** Parses a collection/OpenAPI file already on disk and imports it - shared by the open-dialog and drag-and-drop import paths. */
+async function importCollectionFromPath(
+  filePath: string,
+  workspaceId: string
+): Promise<ImportCollectionResult> {
+  let parsed: unknown;
+  try {
+    const raw = await fs.promises.readFile(filePath, 'utf-8');
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = jsYaml.load(raw);
+    }
+  } catch {
+    return {
+      ok: false,
+      error: `File is not valid JSON or YAML. ${SUPPORTED_SCHEMAS_MESSAGE}`
+    };
+  }
+
+  if (isLegacyCollectionV1File(parsed)) {
+    return {
+      ok: false,
+      error: `This file looks like a Collection Format v1 export, which isn't supported. Please re-export the collection as v2.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
+    };
+  }
+
+  if (isSwaggerV2File(parsed)) {
+    return {
+      ok: false,
+      error: `This file looks like a Swagger / OpenAPI v2.0 document, which isn't supported yet. Please convert it to OpenAPI v3.0/v3.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
+    };
+  }
+
+  if (isCollectionFile(parsed)) {
+    const { collection, schemaVersion, variables } = importCollectionFile(parsed, workspaceId);
+    return finishImport(collection, 'postman', schemaVersion, variables);
+  }
+
+  if (isOpenApiFile(parsed)) {
+    const { collection, openApiVersion, variables } = importOpenApiFile(parsed, workspaceId);
+    return finishImport(collection, 'openapi', openApiVersion, variables);
+  }
+
+  return {
+    ok: false,
+    error: `File is not a recognized Collection or OpenAPI export. ${SUPPORTED_SCHEMAS_MESSAGE}`
+  };
+}
+
 export function registerCollectionTransferHandlers(): void {
   ipcMain.handle(
     'collections:exportToFile',
@@ -144,49 +194,13 @@ export function registerCollectionTransferHandlers(): void {
         : await dialog.showOpenDialog(openOptions);
       if (result.canceled || result.filePaths.length === 0) return { ok: true, canceled: true };
 
-      let parsed: unknown;
-      try {
-        const raw = await fs.promises.readFile(result.filePaths[0], 'utf-8');
-        try {
-          parsed = JSON.parse(raw);
-        } catch {
-          parsed = jsYaml.load(raw);
-        }
-      } catch {
-        return {
-          ok: false,
-          error: `File is not valid JSON or YAML. ${SUPPORTED_SCHEMAS_MESSAGE}`
-        };
-      }
-
-      if (isLegacyCollectionV1File(parsed)) {
-        return {
-          ok: false,
-          error: `This file looks like a Collection Format v1 export, which isn't supported. Please re-export the collection as v2.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
-        };
-      }
-
-      if (isSwaggerV2File(parsed)) {
-        return {
-          ok: false,
-          error: `This file looks like a Swagger / OpenAPI v2.0 document, which isn't supported yet. Please convert it to OpenAPI v3.0/v3.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
-        };
-      }
-
-      if (isCollectionFile(parsed)) {
-        const { collection, schemaVersion, variables } = importCollectionFile(parsed, workspaceId);
-        return finishImport(collection, 'postman', schemaVersion, variables);
-      }
-
-      if (isOpenApiFile(parsed)) {
-        const { collection, openApiVersion, variables } = importOpenApiFile(parsed, workspaceId);
-        return finishImport(collection, 'openapi', openApiVersion, variables);
-      }
-
-      return {
-        ok: false,
-        error: `File is not a recognized Collection or OpenAPI export. ${SUPPORTED_SCHEMAS_MESSAGE}`
-      };
+      return importCollectionFromPath(result.filePaths[0], workspaceId);
     }
+  );
+
+  ipcMain.handle(
+    'collections:importFromPath',
+    (_event, filePath: string, workspaceId: string): Promise<ImportCollectionResult> =>
+      importCollectionFromPath(filePath, workspaceId)
   );
 }

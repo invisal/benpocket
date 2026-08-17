@@ -1,6 +1,7 @@
 import { Age } from '../../../Age';
 import type React from 'react';
 import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useLayoutStore } from '../../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from '../KubePropertiesTable';
@@ -13,10 +14,17 @@ import {
   type PodToleration,
   type PodVolume
 } from './types';
+import { type K8sResource } from '../../../../types/K8sResource';
 import { MetricsSection } from '../metrics';
 import { PodTolerationsSection } from './PodTolerationsSection';
 import { PodVolumesSection } from './PodVolumesSection';
 import { PodContainersSection } from './PodContainersSection';
+import {
+  useOpenNamespaceDetail,
+  useOpenNodeDetail,
+  useOpenConfigDetail,
+  useOpenResourceDetail
+} from '../../../../hooks/open-detail';
 
 export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) => {
   const [portForwardModalConfig, setPortForwardModalConfig] = useState<{
@@ -26,7 +34,10 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
   }>({ isOpen: false, containerPort: 80 });
 
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openNodeDetail } = useOpenNodeDetail();
+  const { openServiceAccountDetail } = useOpenConfigDetail();
+  const { openResourceDetail } = useOpenResourceDetail();
   const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
   const kuberneterInstanceConfigPath = useKuberneterStore((s) => s.kuberneterInstanceConfigPath);
 
@@ -37,13 +48,40 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
   const addPortForward = usePortForwardingStore((s) => s.addPortForward);
   const removePortForward = usePortForwardingStore((s) => s.removePortForward);
 
+  // Fetch full Pod data if needed and cache it to prevent reload flicker on tab switch
+  const { data: fetchedPod } = useQuery<PodRawResource | null>({
+    queryKey: ['kuberneter', 'pod-detail-raw', configPath, cluster, payload?.ns, payload?.name],
+    queryFn: async () => {
+      if (!cluster || !payload?.ns || !payload?.name) return null;
+      const configPathArg = configPath === 'default' ? undefined : configPath;
+      try {
+        const res = await window.kuberneter.getResources(
+          configPathArg,
+          cluster,
+          'pods',
+          payload.ns
+        );
+        const items = (res?.items || []) as K8sResource[];
+        const match = items.find((i) => i.metadata?.name === payload.name);
+        return (match as unknown as PodRawResource) || null;
+      } catch (err) {
+        console.warn('Failed to fetch pod in PodDetail:', err);
+        return null;
+      }
+    },
+    enabled: !!cluster && !!payload?.ns && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No pod details available.</div>;
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 
@@ -121,7 +159,7 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
     removePortForward(id);
   };
 
-  const rawItem = payload.rawItem as unknown as PodRawResource | undefined;
+  const rawItem = (fetchedPod || payload.rawItem) as unknown as PodRawResource | undefined;
 
   const createdTime = rawItem?.metadata?.creationTimestamp
     ? new Date(rawItem.metadata.creationTimestamp).toLocaleString()
@@ -145,9 +183,7 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       tolerationSeconds: 300
     }
   ];
-  const volumes: PodVolume[] = rawItem?.spec?.volumes || [
-    { name: 'kube-api-access-rtcgm', defaultMode: '0o644', sourcesCount: 3 }
-  ];
+  const volumes: PodVolume[] = rawItem?.spec?.volumes || [];
 
   // Controlled By
   const ownerRef = rawItem?.metadata?.ownerReferences?.[0];
@@ -156,52 +192,24 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
     ownerRef?.name || (payload.name ? `${payload.name.split('-').slice(0, -1).join('-')}` : '');
 
   // Node Name
-  const nodeName = rawItem?.spec?.nodeName || 'l192-kube-8gb-38awx6';
+  const nodeName = rawItem?.spec?.nodeName || '';
 
   // IPs
-  const podIP = rawItem?.status?.podIP || '10.244.4.171';
+  const podIP = rawItem?.status?.podIP || '';
   const podIPsArr = rawItem?.status?.podIPs || [];
-  const podIPsStr = podIPsArr.map((ipObj) => ipObj.ip).join(', ') || podIP;
+  const podIPsStr = podIPsArr.map((ipObj) => ipObj.ip).join(', ') || podIP || '—';
 
   // Service Account
-  const serviceAccount = rawItem?.spec?.serviceAccountName || 'default';
+  const serviceAccount = rawItem?.spec?.serviceAccountName || '';
 
   // QoS Class
-  const qosClass = rawItem?.status?.qosClass || 'Burstable';
+  const qosClass = rawItem?.status?.qosClass || '—';
 
   // Conditions
-  const conditions = rawItem?.status?.conditions || [
-    { type: 'PodReadyToStartContainers', status: 'True' },
-    { type: 'Initialized', status: 'True' },
-    { type: 'Ready', status: 'True' },
-    { type: 'ContainersReady', status: 'True' },
-    { type: 'PodScheduled', status: 'True' }
-  ];
+  const conditions = rawItem?.status?.conditions || [];
 
   // Containers
-  const containers = rawItem?.spec?.containers || [
-    {
-      name: payload.name ? payload.name.split('-')[0] : 'container',
-      image: 'registry.digitalocean.com/groupin-registry/l192-graph:479',
-      imagePullPolicy: 'IfNotPresent',
-      ports: [{ containerPort: 80, protocol: 'TCP' }],
-      env: Array.from({ length: 63 }).map((_, i) => ({
-        name: `ENV_VAR_${i + 1}`,
-        value: `value_${i + 1}`
-      })),
-      volumeMounts: [
-        {
-          name: 'kube-api-access-rtcgm',
-          mountPath: '/var/run/secrets/kubernetes.io/serviceaccount',
-          readOnly: true
-        }
-      ],
-      resources: {
-        requests: { cpu: '—', memory: '1Gi' },
-        limits: { cpu: '—', memory: '1Gi' }
-      }
-    }
-  ];
+  const containers = rawItem?.spec?.containers || [];
   const containerStatuses = rawItem?.status?.containerStatuses || [];
 
   const propertiesData: PropertyItem[] = [
@@ -245,7 +253,7 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
             <span
               key={k}
               className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
-              title={`${k}=${v}`}
+              title={`${k}={v}`}
             >
               {k}={v}
             </span>
@@ -264,7 +272,7 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
             <span
               key={k}
               className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
-              title={`${k}=${v}`}
+              title={`${k}={v}`}
             >
               {k}={v}
             </span>
@@ -281,7 +289,12 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       value: (
         <span>
           {controlledByKind}{' '}
-          <span className="text-accent hover:underline cursor-pointer">{controlledByName}</span>
+          <span
+            onClick={() => openResourceDetail(controlledByKind, payload.ns, controlledByName)}
+            className="text-accent hover:underline cursor-pointer font-mono"
+          >
+            {controlledByName}
+          </span>
         </span>
       )
     });
@@ -306,7 +319,10 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       id: 'node',
       name: 'Node',
       value: (
-        <span className="font-mono text-accent hover:underline cursor-pointer self-start">
+        <span
+          onClick={() => openNodeDetail(nodeName)}
+          className="font-mono text-accent hover:underline cursor-pointer self-start"
+        >
           {nodeName}
         </span>
       )
@@ -328,7 +344,10 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       id: 'serviceAccount',
       name: 'Service Account',
       value: (
-        <span className="font-mono text-accent hover:underline cursor-pointer self-start">
+        <span
+          onClick={() => openServiceAccountDetail(payload.ns, serviceAccount)}
+          className="font-mono text-accent hover:underline cursor-pointer self-start"
+        >
           {serviceAccount}
         </span>
       )
@@ -380,7 +399,7 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       <PodTolerationsSection tolerations={tolerations} />
 
       {/* Pod Volumes Section */}
-      <PodVolumesSection volumes={volumes} />
+      <PodVolumesSection volumes={volumes} namespace={payload.ns} />
 
       {/* Containers Section */}
       <PodContainersSection

@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface CronJobData {
   id: string;
   name: string;
@@ -11,4 +13,5 @@ export interface CronJobData {
   age: string;
   rawAge: string;
   hasWarning: boolean;
+  rawItem?: K8sResource;
 }

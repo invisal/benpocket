@@ -1,19 +1,69 @@
 import type React from 'react';
 import { Filter } from 'lucide-react';
 import { KubeTable } from '../../../kubeTable';
+import type { Column } from '../../../kubeTable';
 import { type PodVolume } from './types';
+import { useOpenConfigDetail, useOpenStorageDetail } from '../../../../hooks/open-detail';
 
 interface PodVolumesSectionProps {
   volumes: PodVolume[];
+  namespace?: string;
 }
 
-export const PodVolumesSection: React.FC<PodVolumesSectionProps> = ({ volumes }) => {
-  const volumeColumns = [
+export const PodVolumesSection: React.FC<PodVolumesSectionProps> = ({ volumes, namespace }) => {
+  const { openConfigMapDetail, openSecretDetail } = useOpenConfigDetail();
+  const { openPvcDetail } = useOpenStorageDetail();
+
+  const volumeColumns: Column<PodVolume>[] = [
     {
       key: 'name',
       header: 'Name',
-      className: 'font-mono text-zinc-300 font-semibold',
-      render: (row: PodVolume) => row.name
+      className: 'font-mono text-zinc-300',
+      render: (row: PodVolume) => {
+        if (row.configMap?.name) {
+          return (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                openConfigMapDetail(namespace || '', row.configMap!.name);
+              }}
+              className="text-accent hover:underline cursor-pointer font-mono"
+              title={`ConfigMap: ${row.configMap.name}`}
+            >
+              {row.name}
+            </span>
+          );
+        }
+        if (row.secret?.secretName) {
+          return (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                openSecretDetail(namespace || '', row.secret!.secretName);
+              }}
+              className="text-accent hover:underline cursor-pointer font-mono"
+              title={`Secret: ${row.secret.secretName}`}
+            >
+              {row.name}
+            </span>
+          );
+        }
+        if (row.persistentVolumeClaim?.claimName) {
+          return (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                openPvcDetail(namespace || '', row.persistentVolumeClaim!.claimName);
+              }}
+              className="text-accent hover:underline cursor-pointer font-mono"
+              title={`PVC: ${row.persistentVolumeClaim.claimName}`}
+            >
+              {row.name}
+            </span>
+          );
+        }
+        return <span className="font-mono text-zinc-300 font-semibold">{row.name}</span>;
+      }
     },
     {
       key: 'defaultMode',
@@ -25,7 +75,15 @@ export const PodVolumesSection: React.FC<PodVolumesSectionProps> = ({ volumes })
       key: 'sources',
       header: 'Sources',
       className: 'font-mono text-zinc-400',
-      render: (row: PodVolume) => (row.sourcesCount !== undefined ? String(row.sourcesCount) : '3')
+      render: (row: PodVolume) => {
+        if (row.configMap?.name) return `ConfigMap: ${row.configMap.name}`;
+        if (row.secret?.secretName) return `Secret: ${row.secret.secretName}`;
+        if (row.persistentVolumeClaim?.claimName)
+          return `PVC: ${row.persistentVolumeClaim.claimName}`;
+        if (row.emptyDir) return 'emptyDir';
+        if (row.hostPath) return `hostPath: ${row.hostPath.path}`;
+        return row.sourcesCount !== undefined ? String(row.sourcesCount) : '—';
+      }
     }
   ];
 
@@ -48,6 +106,15 @@ export const PodVolumesSection: React.FC<PodVolumesSectionProps> = ({ volumes })
             columns={volumeColumns}
             data={volumes}
             getRowKey={(row) => row.name}
+            onRowClick={(row) => {
+              if (row.configMap?.name) {
+                openConfigMapDetail(namespace || '', row.configMap.name);
+              } else if (row.secret?.secretName) {
+                openSecretDetail(namespace || '', row.secret.secretName);
+              } else if (row.persistentVolumeClaim?.claimName) {
+                openPvcDetail(namespace || '', row.persistentVolumeClaim.claimName);
+              }
+            }}
             resizable={false}
           />
         </div>

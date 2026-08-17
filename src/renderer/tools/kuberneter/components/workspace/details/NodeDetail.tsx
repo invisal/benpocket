@@ -1,7 +1,8 @@
 import { NodeMetricsSection } from './metrics';
 import { Age } from '../../Age';
 import type React from 'react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type NodeData } from '../../../types/NodeData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
@@ -16,6 +17,7 @@ import {
   parseMemoryToMiB
 } from '../../../utils/formatCapacity';
 import { MoreVertical, AlertTriangle } from 'lucide-react';
+import { useOpenNamespaceDetail, useOpenPodDetail } from '../../../hooks/open-detail';
 
 interface NodeDetailProps {
   payload: NodeData;
@@ -32,38 +34,50 @@ interface ResourceStatsRow {
   pods: string;
 }
 
-interface NodeAddress {
-  type: string;
-  address: string;
-}
-
-interface NodeCondition {
-  type: string;
-  status: string;
-  message?: string;
-}
-
 interface NodeRawResource {
   metadata?: {
     name?: string;
-    namespace?: string;
-    creationTimestamp?: string;
     labels?: Record<string, string>;
     annotations?: Record<string, string>;
+    creationTimestamp?: string;
   };
   status?: {
-    addresses?: NodeAddress[];
-    capacity?: Record<string, string>;
-    allocatable?: Record<string, string>;
+    addresses?: Array<{ type: string; address: string }>;
     nodeInfo?: {
+      machineID?: string;
+      systemUUID?: string;
+      bootID?: string;
+      kernelVersion?: string;
+      osImage?: string;
+      containerRuntimeVersion?: string;
       kubeletVersion?: string;
+      kubeProxyVersion?: string;
       operatingSystem?: string;
       architecture?: string;
-      osImage?: string;
-      kernelVersion?: string;
-      containerRuntimeVersion?: string;
     };
-    conditions?: NodeCondition[];
+    capacity?: Record<string, string>;
+    allocatable?: Record<string, string>;
+    images?: Array<{ names?: string[]; sizeBytes?: number }>;
+    conditions?: Array<{
+      type: string;
+      status: string;
+      reason?: string;
+      message?: string;
+      lastHeartbeatTime?: string;
+      lastTransitionTime?: string;
+    }>;
+  };
+  spec?: {
+    podCIDR?: string;
+    podCIDRs?: string[];
+    providerID?: string;
+    taints?: Array<{
+      key: string;
+      value?: string;
+      effect: string;
+      timeAdded?: string;
+    }>;
+    unschedulable?: boolean;
   };
 }
 
@@ -97,7 +111,8 @@ interface PodTableRow {
 
 export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openPodDetail } = useOpenPodDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const configPath = useKuberneterStore(
@@ -106,76 +121,57 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
 
   const nodeName = payload?.name || '';
 
-  const [loading, setLoading] = useState(true);
-  const [rawNode, setRawNode] = useState<NodeRawResource | null>(null);
-  const [nodePods, setNodePods] = useState<PodRawResource[]>([]);
-  const [topPods, setTopPods] = useState<
-    { name?: string; namespace?: string; cpu?: string; memory?: string }[]
-  >([]);
+  // Fetch Node and Pods in parallel with React Query caching
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['kuberneter', 'node-detail', configPath, cluster, nodeName],
+    queryFn: async () => {
+      if (!cluster || !nodeName) return null;
+      const configPathArg = configPath === 'default' ? undefined : configPath;
+      const [nodesRes, podsRes, topPodsRes] = await Promise.all([
+        window.kuberneter.getResources(configPathArg, cluster, 'nodes'),
+        window.kuberneter.getResources(configPathArg, cluster, 'pods'),
+        window.kuberneter.getTopPods(configPathArg, cluster, 'All Namespaces')
+      ]);
 
-  // Fetch Node and Pods in parallel
-  useEffect(() => {
-    if (!cluster || !activeInstanceId || !nodeName) return;
+      const nodes = Array.isArray(nodesRes?.items) ? (nodesRes.items as K8sResource[]) : [];
+      const foundNode =
+        (nodes.find((n) => n.metadata?.name === nodeName) as NodeRawResource | undefined) || null;
 
-    let active = true;
+      const pods = Array.isArray(podsRes?.items)
+        ? (podsRes.items as unknown as PodRawResource[])
+        : [];
+      const filteredPods = pods.filter((p) => p.spec?.nodeName === nodeName);
 
-    const fetchAll = async () => {
-      setLoading(true);
-      try {
-        const configPathArg = configPath === 'default' ? undefined : configPath;
-        const [nodesRes, podsRes, topPodsRes] = await Promise.all([
-          window.kuberneter.getResources(configPathArg, cluster, 'nodes'),
-          window.kuberneter.getResources(configPathArg, cluster, 'pods'),
-          window.kuberneter.getTopPods(configPathArg, cluster, 'All Namespaces')
-        ]);
+      const topPodsItems = Array.isArray(topPodsRes?.items)
+        ? (topPodsRes.items as {
+            name?: string;
+            namespace?: string;
+            cpu?: string;
+            memory?: string;
+          }[])
+        : [];
 
-        if (active) {
-          const nodes = Array.isArray(nodesRes?.items) ? (nodesRes.items as K8sResource[]) : [];
-          const foundNode = nodes.find((n) => n.metadata?.name === nodeName) as
-            NodeRawResource | undefined;
-          if (foundNode) {
-            setRawNode(foundNode);
-          }
+      return {
+        rawNode: foundNode,
+        nodePods: filteredPods,
+        topPods: topPodsItems
+      };
+    },
+    enabled: !!cluster && !!nodeName && !!activeInstanceId,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
 
-          const pods = Array.isArray(podsRes?.items)
-            ? (podsRes.items as unknown as PodRawResource[])
-            : [];
-          const filteredPods = pods.filter((p) => p.spec?.nodeName === nodeName);
-          setNodePods(filteredPods);
-
-          const topPodsItems = Array.isArray(topPodsRes?.items)
-            ? (topPodsRes.items as {
-                name?: string;
-                namespace?: string;
-                cpu?: string;
-                memory?: string;
-              }[])
-            : [];
-          setTopPods(topPodsItems);
-        }
-      } catch (err) {
-        console.error('Failed to load Node details and Pods:', err);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchAll();
-
-    return () => {
-      active = false;
-    };
-  }, [cluster, configPath, activeInstanceId, nodeName]);
+  const rawNode = data?.rawNode ?? null;
 
   const handleNamespaceClick = useCallback(
     (ns: string) => {
-      if (ns && activeInstanceId) {
-        setNamespace(activeInstanceId, ns);
+      if (ns) {
+        openNamespaceDetail(ns);
       }
     },
-    [activeInstanceId, setNamespace]
+    [openNamespaceDetail]
   );
 
   // Address details helper
@@ -384,7 +380,9 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
 
   // Pods table preparation
   const podsData = useMemo<PodTableRow[]>(() => {
-    return nodePods.map((p, idx) => {
+    const pods = data?.nodePods || [];
+    const metrics = data?.topPods || [];
+    return pods.map((p, idx) => {
       const name = p.metadata?.name || '';
       const namespace = p.metadata?.namespace || '';
       const containerStatuses = p.status?.containerStatuses || [];
@@ -396,7 +394,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       const hasWarning = phase !== 'Running' && phase !== 'Succeeded';
 
       // Find metric
-      const metric = topPods.find((m) => m.name === name && m.namespace === namespace);
+      const metric = metrics.find((m) => m.name === name && m.namespace === namespace);
       const cpuVal = metric?.cpu ? parseCpu(metric.cpu) : 0;
       const memVal = metric?.memory ? parseMemoryToMiB(metric.memory) : 0;
 
@@ -413,7 +411,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
         rawItem: p
       };
     });
-  }, [nodePods, topPods]);
+  }, [data?.nodePods, data?.topPods]);
 
   const podsColumns = useMemo<Column<PodTableRow>[]>(
     () => [
@@ -421,11 +419,18 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
         key: 'name',
         header: 'Name',
         render: (row) => (
-          <span className="text-zinc-300 font-sans text-xs truncate block" title={row.name}>
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              openPodDetail(row.namespace, row.name, row.rawItem as unknown as K8sResource);
+            }}
+            className="text-accent hover:underline cursor-pointer font-sans text-xs truncate block"
+            title={row.name}
+          >
             {row.name}
           </span>
         ),
-        className: 'text-zinc-300 font-sans max-w-[200px] truncate',
+        className: 'text-accent font-sans max-w-[200px] truncate',
         initialWidth: 200
       },
       {
@@ -560,8 +565,12 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
         resizable: false
       }
     ],
-    [handleNamespaceClick]
+    [handleNamespaceClick, openPodDetail]
   );
+
+  if (!payload) {
+    return <div className="p-4 text-xs text-zinc-500">No node details available.</div>;
+  }
 
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
@@ -638,6 +647,9 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
               columns={podsColumns}
               data={podsData}
               getRowKey={(row) => row.id}
+              onRowClick={(row) =>
+                openPodDetail(row.namespace, row.name, row.rawItem as unknown as K8sResource)
+              }
               resizable={false}
             />
           </div>

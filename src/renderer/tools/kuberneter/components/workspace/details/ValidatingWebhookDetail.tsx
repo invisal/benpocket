@@ -22,6 +22,7 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
 
   const labels = payload.labels ? Object.entries(payload.labels) : [];
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
+  const webhooks = payload.webhooks || [];
 
   const propertiesData: PropertyItem[] = [
     {
@@ -101,11 +102,11 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
         <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider mb-1">
           Webhooks
         </span>
-        {payload.webhooks.length === 0 ? (
+        {webhooks.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No webhooks defined.</div>
         ) : (
           <div className="flex flex-col gap-4">
-            {payload.webhooks.map((w, idx) => (
+            {webhooks.map((w, idx) => (
               <div
                 key={w.name + idx}
                 className="flex flex-col gap-2.5 text-xs text-zinc-350 bg-surface-2/40 border border-border/40 rounded-lg p-3"

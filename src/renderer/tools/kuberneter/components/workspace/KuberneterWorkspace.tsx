@@ -35,7 +35,10 @@ import { NetworkPolicies } from './networkpolicies/NetworkPolicies';
 import { AlertCircle } from 'lucide-react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
+import { KubeWorkspaceLayout } from './KubeWorkspaceLayout';
 import { DetailContent } from './details/DetailContent';
+import { DetailHeaderActions } from './details/DetailHeaderActions';
+import { getDetailHeaderTitle } from '../../utils/detailHeaderTitle';
 import { HelmCharts } from './helm-charts/HelmCharts';
 import { HelmReleases } from './helm-releases/HelmReleases';
 import { ServiceAccounts } from './serviceaccounts/ServiceAccounts';
@@ -86,15 +89,35 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0">
-      {resource.endsWith('-detail') && activeTab && (
-        <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-surface p-4 overflow-y-auto">
-          <DetailContent
-            contentType={resource.replace('-detail', '')}
-            payload={(activeTab.meta as { payload?: unknown })?.payload}
-            isTab
-          />
-        </div>
-      )}
+      {resource.endsWith('-detail') &&
+        activeTab &&
+        (() => {
+          const contentType = resource.replace('-detail', '');
+          const payload = (activeTab.meta as { payload?: unknown })?.payload;
+          const headerTitle = getDetailHeaderTitle(contentType, payload) || activeTab.title;
+
+          return (
+            <KubeWorkspaceLayout
+              header={
+                <div className="flex items-center justify-between w-full min-w-0 gap-2">
+                  <span
+                    className="text-xs font-bold text-strong uppercase tracking-wider truncate min-w-0 flex-1"
+                    title={headerTitle}
+                  >
+                    {headerTitle}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <DetailHeaderActions contentType={contentType} payload={payload} />
+                  </div>
+                </div>
+              }
+            >
+              <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-surface p-4 overflow-y-auto">
+                <DetailContent contentType={contentType} payload={payload} isTab />
+              </div>
+            </KubeWorkspaceLayout>
+          );
+        })()}
 
       {resource === 'overview' && <ClusterOverview />}
 

@@ -5,6 +5,8 @@ import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
+
 interface PersistentVolumeClaimDetailProps {
   payload: PersistentVolumeClaimData;
   isTab?: boolean;
@@ -18,6 +20,7 @@ export const PersistentVolumeClaimDetail: React.FC<PersistentVolumeClaimDetailPr
   const openTab = useLayoutStore((s) => s.openTab);
   const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return (
@@ -26,8 +29,8 @@ export const PersistentVolumeClaimDetail: React.FC<PersistentVolumeClaimDetailPr
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 
@@ -49,6 +52,7 @@ export const PersistentVolumeClaimDetail: React.FC<PersistentVolumeClaimDetailPr
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
   const labels = payload.labels ? Object.entries(payload.labels) : [];
   const finalizers = payload.finalizers || [];
+  const pods = payload.pods || [];
   const matchLabels = payload.selector?.matchLabels
     ? Object.entries(payload.selector.matchLabels)
     : [];
@@ -170,22 +174,22 @@ export const PersistentVolumeClaimDetail: React.FC<PersistentVolumeClaimDetailPr
       id: 'pods',
       name: 'Pods',
       value:
-        payload.pods.length === 0 ? (
+        pods.length === 0 ? (
           '—'
-        ) : payload.pods.length === 1 ? (
+        ) : pods.length === 1 ? (
           <span
-            onClick={() => handlePodClick(payload.pods[0])}
+            onClick={() => handlePodClick(pods[0])}
             className="font-mono text-accent hover:underline cursor-pointer"
           >
-            {payload.pods[0]}
+            {pods[0]}
           </span>
         ) : (
-          `${payload.pods.length} Pods`
+          `${pods.length} Pods`
         ),
-      hasDetail: payload.pods.length > 1,
+      hasDetail: pods.length > 1,
       renderDetail: () => (
         <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
-          {payload.pods.map((podName) => (
+          {pods.map((podName) => (
             <span
               key={podName}
               onClick={() => handlePodClick(podName)}

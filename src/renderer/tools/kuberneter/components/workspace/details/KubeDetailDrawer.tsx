@@ -6,19 +6,26 @@ import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { DetailContent } from './DetailContent';
 import { DetailHeaderActions } from './DetailHeaderActions';
+import { getDetailHeaderTitle, getDetailResourceName } from '../../../utils/detailHeaderTitle';
 
 interface KubeDetailDrawerProps {
   tabId: string;
 }
 
 export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => {
-  const { activeInstanceId, openTab } = useLayoutStore();
+  const { activeInstanceId, openTab, pinTab } = useLayoutStore();
   const drawerState = useKuberneterStore((s) => s.kuberneterTabDrawers[tabId]);
   const setDrawerState = useKuberneterStore((s) => s.setKuberneterTabDrawerState);
 
   const drawerRef = useRef<HTMLDivElement>(null);
   const width = drawerState?.width ?? 320;
   const widthRef = useRef(width);
+
+  const handleDrawerInteraction = () => {
+    if (tabId) {
+      pinTab(tabId);
+    }
+  };
 
   useEffect(() => {
     widthRef.current = width;
@@ -32,81 +39,8 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
   }
 
   const { contentType, payload } = drawerState;
-
-  const prefixMap: Record<string, string> = {
-    pod: 'Pod',
-    deployment: 'Deployment',
-    daemonset: 'Daemon Set',
-    statefulset: 'Stateful Set',
-    replicaset: 'Replica Set',
-    job: 'Job',
-    cronjob: 'Cron Job',
-    configmap: 'Config Map',
-    secret: 'Secret',
-    resourcequota: 'Resource Quota',
-    limitrange: 'Limit Range',
-    horizontalpodautoscaler: 'Horizontal Pod Autoscaler',
-    hpa: 'Horizontal Pod Autoscaler',
-    poddisruptionbudget: 'Pod Disruption Budget',
-    pdb: 'Pod Disruption Budget',
-    priorityclass: 'Priority Class',
-    runtimeclass: 'Runtime Class',
-    lease: 'Lease',
-    service: 'Service',
-    persistentvolumeclaim: 'Persistent Volume Claim',
-    pvc: 'Persistent Volume Claim',
-    persistentvolume: 'Persistent Volume',
-    pv: 'Persistent Volume',
-    storageclass: 'Storage Class',
-    namespace: 'Namespace',
-    clusterrole: 'Cluster Role',
-    role: 'Role',
-    clusterrolebinding: 'Cluster Role Binding',
-    rolebinding: 'Role Binding',
-    application: 'Application',
-    app: 'Application',
-    nodes: 'Node',
-    node: 'Node',
-    event: 'Event',
-    endpointslice: 'Endpoint Slice',
-    endpoints: 'Endpoints',
-    endpoint: 'Endpoints',
-    ingresses: 'Ingress',
-    ingress: 'Ingress',
-    ingressclasses: 'Ingress Class',
-    ingressclass: 'Ingress Class',
-    networkpolicies: 'Network Policy',
-    networkpolicy: 'Network Policy',
-    mutatingwebhook: 'Mutating Webhook',
-    validatingwebhook: 'Validating Webhook',
-    serviceaccount: 'Service Account',
-    'helm-chart': 'Helm Chart',
-    'helm-release': 'Helm Release',
-    portforwarding: 'Port Forward'
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getResourceName = (data: any): string => {
-    if (!data) return '';
-    if (contentType === 'portforwarding') {
-      return data.url || data.name || '';
-    }
-    return (
-      data.name ||
-      data.metadata?.name ||
-      data.instance ||
-      data.releaseName ||
-      data.chartName ||
-      data.involvedObject ||
-      data.reason ||
-      data.id ||
-      ''
-    );
-  };
-
-  const resourceName = getResourceName(payload);
-  const prefix = prefixMap[contentType] || (payload as { kind?: string })?.kind || contentType;
-  const headerTitle = resourceName ? `${prefix}: ${resourceName}` : `${prefix}: Details`;
+  const resourceName = getDetailResourceName(contentType, payload);
+  const headerTitle = getDetailHeaderTitle(contentType, payload);
 
   const handleClose = () => {
     setDrawerState(tabId, { isOpen: false });
@@ -114,6 +48,11 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
 
   const handleMaximize = () => {
     if (!payload || !contentType) return;
+
+    // Pin the current tab so it won't be replaced
+    if (tabId) {
+      pinTab(tabId);
+    }
 
     // Close drawer first
     setDrawerState(tabId, { isOpen: false });
@@ -166,6 +105,9 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
     <div
       ref={drawerRef}
       style={{ width: `${width}px` }}
+      onPointerDownCapture={handleDrawerInteraction}
+      onClickCapture={handleDrawerInteraction}
+      onKeyDownCapture={handleDrawerInteraction}
       className="absolute top-0 right-0 z-30 bg-surface-2 border-l border-border-dark flex flex-col h-full select-none shadow-2xl"
     >
       {/* Resize Handle on the left side of the drawer */}

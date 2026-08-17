@@ -1,9 +1,9 @@
 import { Age } from '../../Age';
 import type React from 'react';
 import { type ResourceQuotaData } from '../../../types/ResourceQuotaData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface ResourceQuotaDetailProps {
   payload: ResourceQuotaData;
@@ -14,16 +14,15 @@ export const ResourceQuotaDetail: React.FC<ResourceQuotaDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No resource quota details available.</div>;
   }
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 

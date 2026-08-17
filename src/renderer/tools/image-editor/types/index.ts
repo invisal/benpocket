@@ -1,5 +1,5 @@
 export type ImageToolId =
-  'preview' | 'generative' | 'resize' | 'crop' | 'context-resize' | 'context-removal';
+  'preview' | 'generative' | 'resize' | 'crop' | 'context-resize' | 'context-removal' | 'upscale';
 
 export interface ImageToolProps {
   /** Raw encoded image bytes (the format named by `mimeType`). */

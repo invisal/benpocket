@@ -13,6 +13,18 @@ import { isSourceCopyEligible } from './export-orchestrator';
 import { resolveWebDemuxerWasmPath } from './wasm-path';
 import { EXPORT_CANCELLED_MESSAGE } from './cancel';
 
+export interface RunExportResult {
+  actualBytes: number;
+  /**
+   * `false` for the "source copy" fast path below, which writes the
+   * original file verbatim without ever touching the encoder -- its size
+   * says nothing about real VBR behavior, so callers doing size-estimate
+   * calibration (see export-store.ts's `recordActualExportSize`) should
+   * skip recording a sample when this is `false`.
+   */
+  wasEncoded: boolean;
+}
+
 /**
  * Runs on the renderer's main thread (called directly from
  * `useExportAction.ts` -- no IPC round trip for orchestration, only for the
@@ -26,7 +38,7 @@ export async function runExport(
   options: ExportOptions,
   onProgress: (progress: ExportProgress) => void,
   signal?: AbortSignal
-): Promise<void> {
+): Promise<RunExportResult> {
   if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
 
   const wasmUrl = resolveWebDemuxerWasmPath();
@@ -47,7 +59,7 @@ export async function runExport(
         onProgress({ percent: 100, stage: 'encoding' });
         await window.screenRecorder.export.writeFileBytes(options.outputPath, sourceBytes);
         onProgress({ percent: 100, stage: 'done' });
-        return;
+        return { actualBytes: sourceBytes.byteLength, wasEncoded: false };
       }
     } finally {
       probeDecoder.destroy();
@@ -82,6 +94,7 @@ export async function runExport(
     onProgress({ percent: 100, stage: 'encoding' });
     await window.screenRecorder.export.writeFileBytes(options.outputPath, outputBytes);
     onProgress({ percent: 100, stage: 'done' });
+    return { actualBytes: outputBytes.byteLength, wasEncoded: true };
   } finally {
     worker.terminate();
   }

@@ -8,6 +8,7 @@ import { useExportStore, toEven } from '../store/export-store';
 import { buildExportProject } from '../lib/build-export-project';
 import { runExport } from '../engine/export-coordinator';
 import { isExportCancelled } from '../engine/cancel';
+import { estimateRawExportBytes } from '../lib/estimate-export';
 import { WALLPAPER_IMAGE_PRESETS } from '../../background/lib/wallpaper-images';
 
 export type ExportStatus = 'idle' | 'exporting' | 'error';
@@ -108,7 +109,11 @@ export function useExportAction(): UseExportActionResult {
     try {
       const durationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
       const project = buildExportProject(sourceVideoPath, durationMs);
-      await runExport(
+      // No separate global toggle -- skip audio entirely when every kept
+      // clip is muted, rather than encoding a track that would be silent
+      // from end to end anyway.
+      const includeAudio = segments.some((s) => !s.audioMuted);
+      const { actualBytes, wasEncoded } = await runExport(
         {
           format: store.format,
           codec: store.codec,
@@ -116,10 +121,7 @@ export function useExportAction(): UseExportActionResult {
           resolution: effectiveResolution,
           frameRate: store.frameRate,
           quality: store.quality,
-          // No separate global toggle -- skip audio entirely when every kept
-          // clip is muted, rather than encoding a track that would be
-          // silent from end to end anyway.
-          includeAudio: segments.some((s) => !s.audioMuted),
+          includeAudio,
           outputPath,
           sourceVideoPath,
           crop,
@@ -139,6 +141,22 @@ export function useExportAction(): UseExportActionResult {
         },
         controller.signal
       );
+      // Fold this real export's actual size into the size-estimate's
+      // learned calibration -- skipped for the "source copy" fast path
+      // (see RunExportResult's own doc), which never touches the encoder.
+      if (wasEncoded) {
+        const rawEstimatedBytes = estimateRawExportBytes({
+          durationMs,
+          width: effectiveResolution.width,
+          height: effectiveResolution.height,
+          frameRate: store.frameRate,
+          quality: store.quality,
+          includeAudio,
+          format: store.format,
+          hasWebcam: project.webcam.enabled
+        });
+        store.recordActualExportSize(rawEstimatedBytes, actualBytes);
+      }
       if (afterSuccess) await afterSuccess();
       setStatus('idle');
       setProgress(null);

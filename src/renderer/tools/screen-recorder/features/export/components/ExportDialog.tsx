@@ -115,16 +115,19 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
   );
   const selectedQuality = closestByQuality(QUALITY_CHOICES, store.quality);
 
-  const estimate = estimateExport({
-    durationMs,
-    width: store.resolution.width,
-    height: store.resolution.height,
-    frameRate: store.frameRate,
-    quality: store.quality,
-    includeAudio,
-    format: store.format,
-    hasWebcam
-  });
+  const estimate = estimateExport(
+    {
+      durationMs,
+      width: store.resolution.width,
+      height: store.resolution.height,
+      frameRate: store.frameRate,
+      quality: store.quality,
+      includeAudio,
+      format: store.format,
+      hasWebcam
+    },
+    store.sizeCalibrationRatio
+  );
 
   return (
     <Dialog.Root

@@ -114,6 +114,25 @@ jobs:
         if: runner.os == 'Linux'
         run: npx electron-builder --linux AppImage --publish never
 
+      # TEMPORARY -- diagnosing why the AppImage stays large even after
+      # prune-onnxruntime.mjs confirms it correctly pruned down to the single
+      # linux/x64 onnxruntime binary (~37MB raw, nowhere near enough to explain
+      # the remaining size gap vs Windows/macOS). Remove once root-caused.
+      - name: Debug Linux package size (temporary)
+        if: runner.os == 'Linux'
+        run: |
+          echo "--- dist/linux-unpacked/resources top-level ---"
+          du -sh dist/linux-unpacked/resources/* 2>/dev/null | sort -rh | head -20
+          echo "--- app.asar.unpacked/node_modules top 30 ---"
+          du -sh dist/linux-unpacked/resources/app.asar.unpacked/node_modules/* 2>/dev/null | sort -rh | head -30
+          echo "--- app.asar size ---"
+          ls -lh dist/linux-unpacked/resources/app.asar 2>/dev/null
+          echo "--- onnxruntime-node bin/napi-v6 (post-prune) ---"
+          find dist/linux-unpacked/resources/app.asar.unpacked/node_modules/onnxruntime-node/bin/napi-v6 2>/dev/null
+          du -sh dist/linux-unpacked/resources/app.asar.unpacked/node_modules/onnxruntime-node 2>/dev/null
+          echo "--- full linux-unpacked total ---"
+          du -sh dist/linux-unpacked 2>/dev/null
+
       # Always writes size-report.json locally (picked up by the "Upload size
       # report" step below on PRs). Only POSTs to benpocket-backend -- recording
       # size history -- on pushes to main; BENPOCKET_BACKEND_URL/CI_METRICS_SECRET

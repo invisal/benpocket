@@ -13,3 +13,4 @@ const tools = createTabProvider(allTools, {
 
 export const useToolTabs = tools.useTabs;
 export const ToolTabContents = tools.TabSwitcher;
+export const registerToolLeaveGuard = tools.registerLeaveGuard;

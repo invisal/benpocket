@@ -85,6 +85,11 @@ export function EditorPage(): JSX.Element {
       videoRef.current?.pause();
     });
   }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => videoRef.current?.pause();
+  }, []);
   useInitializeTimelineForRecording({
     previewUrl: lastRecording?.previewUrl,
     durationSec: duration,

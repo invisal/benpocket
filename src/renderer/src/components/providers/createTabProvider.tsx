@@ -94,6 +94,21 @@ export function createTabProvider<TTool extends Tool<string, any>>(
 
   const initialTabs = options.initialTabs?.() ?? [];
 
+  const leaveGuards = new Map<string, () => boolean>();
+
+  function registerLeaveGuard(tabId: string, guard: () => boolean): () => void {
+    leaveGuards.set(tabId, guard);
+    return () => {
+      if (leaveGuards.get(tabId) === guard) leaveGuards.delete(tabId);
+    };
+  }
+
+  function canLeave(tabId: string | undefined): boolean {
+    if (!tabId) return true;
+    const guard = leaveGuards.get(tabId);
+    return !guard || guard();
+  }
+
   const useTabsStore = create<TabsState<TTool>>()(
     persist(
       (set, get) => ({
@@ -118,6 +133,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(
         }) as TabsState<TTool>['openTab'],
 
         closeTab: (id) => {
+          if (id === get().activeTabId && !canLeave(id)) return;
           set((prev) => {
             const idx = prev.tabs.findIndex((t) => t.id === id);
             if (idx === -1) return prev;
@@ -130,7 +146,11 @@ export function createTabProvider<TTool extends Tool<string, any>>(
           });
         },
 
-        selectTab: (id) => set({ activeTabId: id }),
+        selectTab: (id) => {
+          if (id === get().activeTabId) return;
+          if (!canLeave(get().activeTabId)) return;
+          set({ activeTabId: id });
+        },
 
         renameTab: (id, title) =>
           set((prev) => ({
@@ -215,5 +235,5 @@ export function createTabProvider<TTool extends Tool<string, any>>(
     );
   }
 
-  return { useTabs, TabSwitcher, toolsByName };
+  return { useTabs, TabSwitcher, toolsByName, registerLeaveGuard };
 }

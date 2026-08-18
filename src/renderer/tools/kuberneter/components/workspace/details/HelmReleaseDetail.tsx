@@ -8,6 +8,7 @@ import { parseReleaseChart } from '../helm-releases/parseReleaseChart';
 import { parseHelmTimestamp } from '../helm-releases/parseHelmTimestamp';
 import { type HelmReleaseItem } from '../../../../../../preload/kuberneter/api';
 import { Loader2 } from 'lucide-react';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface HelmReleaseDetailProps {
   payload: HelmReleaseItem;
@@ -28,7 +29,7 @@ export const HelmReleaseDetail: React.FC<HelmReleaseDetailProps> = ({
   isTab = false
 }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
   const activeConfigPath = useKuberneterStore(
     (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
@@ -79,8 +80,8 @@ export const HelmReleaseDetail: React.FC<HelmReleaseDetailProps> = ({
   }
 
   const handleNamespaceClick = () => {
-    if (release.namespace && activeInstanceId) {
-      setNamespace(activeInstanceId, release.namespace);
+    if (release.namespace) {
+      openNamespaceDetail(release.namespace);
     }
   };
 

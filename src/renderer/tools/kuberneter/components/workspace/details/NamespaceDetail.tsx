@@ -1,9 +1,19 @@
 import { Age } from '../../Age';
 import type React from 'react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type NamespaceData } from '../../../types/NamespaceData';
+import { type DeployRelatedPod } from '../../../types/DeployData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
-import { Cpu, Layers, ArrowUpDown, Database, Flag, MoreVertical } from 'lucide-react';
+import { KubeTable } from '../../kubeTable';
+import { MetricsSection } from './metrics';
+import { Select } from '@renderer/components/ui/Select';
+import { useInstantMetrics } from '../../../hooks/useMetrics';
+import { useOpenPodDetail, useOpenNodeDetail } from '../../../hooks/open-detail';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
+import { type K8sResource } from '../../../types/K8sResource';
 
 interface NamespaceDetailProps {
   payload: NamespaceData;
@@ -11,37 +21,93 @@ interface NamespaceDetailProps {
 }
 
 export const NamespaceDetail: React.FC<NamespaceDetailProps> = ({ payload, isTab = false }) => {
-  const [selectedMetric, setSelectedMetric] = useState<'cpu' | 'memory' | 'network' | 'disk'>(
-    'cpu'
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
+  const rawConfigPath = useKuberneterStore(
+    (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
-  const [timeRange, setTimeRange] = useState('1h');
 
-  // Generate mock chart bar heights based on selected metric
-  const mockBars = useMemo(() => {
-    const count = 48;
-    const bars: number[] = [];
-    let base = 2.0;
-    if (selectedMetric === 'memory') base = 3.2;
-    if (selectedMetric === 'network') base = 1.5;
-    if (selectedMetric === 'disk') base = 0.8;
+  const { openPodDetail } = useOpenPodDetail();
+  const { openNodeDetail } = useOpenNodeDetail();
 
-    for (let i = 0; i < count; i++) {
-      // Create some realistic looking noise/waves
-      const wave = Math.sin(i / 3) * 0.4 + Math.sin(i / 1.5) * 0.2;
-      const pseudoRandomVal = Math.sin(i * 12.9898) * 43758.5453;
-      const noise = (pseudoRandomVal - Math.floor(pseudoRandomVal)) * 0.3 - 0.15;
-      const val = Math.max(0.1, Math.min(4.0, base + wave + noise));
-      bars.push(val);
-    }
-    return bars;
-  }, [selectedMetric]);
+  const [selectedTarget, setSelectedTarget] = useState<string>('all');
+
+  const metricsQuery = useInstantMetrics(true);
+  const metricItems = metricsQuery.data ?? [];
+
+  // Fetch full Namespace resource and its Pods with React Query caching
+  const { data: queryData } = useQuery({
+    queryKey: ['kuberneter', 'namespace-detail-data', rawConfigPath, cluster, payload?.name],
+    queryFn: async () => {
+      if (!cluster || !payload?.name) return null;
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+      const [nsRes, podsRes] = await Promise.all([
+        window.kuberneter.getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.NAMESPACES),
+        window.kuberneter
+          .getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.PODS, payload.name)
+          .catch(() => ({ items: [] }))
+      ]);
+
+      const nsItem = ((nsRes?.items || []) as K8sResource[]).find(
+        (i) => i.metadata?.name === payload.name
+      );
+      const allPods = (podsRes?.items || []) as K8sResource[];
+
+      const podsList: DeployRelatedPod[] = allPods.map((pod) => {
+        const podName = pod.metadata?.name || '';
+        const node = (pod.spec?.nodeName as string) || '—';
+        const containerStatuses =
+          (pod.status?.containerStatuses as Array<{ ready?: boolean }>) || [];
+        const readyCount = containerStatuses.filter((c) => c.ready).length;
+        const totalCount = containerStatuses.length;
+        const phase = (pod.status?.phase as string) || 'Unknown';
+        return {
+          name: podName,
+          node,
+          ns: payload.name,
+          ready: `${readyCount}/${totalCount}`,
+          cpu: 'N/A',
+          memory: 'N/A',
+          status: phase,
+          hasWarning: phase !== 'Running' && phase !== 'Succeeded',
+          rawItem: pod
+        } as DeployRelatedPod & { rawItem?: K8sResource };
+      });
+
+      return {
+        nsItem,
+        podsList
+      };
+    },
+    enabled: !!cluster && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Namespace details available.</div>;
   }
 
-  const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
-  const labels = payload.labels ? Object.entries(payload.labels) : [];
+  const pods = queryData?.podsList || payload?.podsList || [];
+  const rawItem = queryData?.nsItem || payload.rawItem;
+
+  const allPodNames = pods.map((p) => p.name);
+  const targetPodNames =
+    selectedTarget === 'all'
+      ? allPodNames
+      : pods.some((p) => p.name === selectedTarget)
+        ? [selectedTarget]
+        : allPodNames;
+
+  const creationTimestamp = rawItem?.metadata?.creationTimestamp || payload.creationTimestamp || '';
+  const createdTime =
+    payload.createdTime ||
+    (creationTimestamp ? new Date(creationTimestamp).toLocaleString() : 'N/A');
+
+  const annotations = Object.entries(rawItem?.metadata?.annotations || payload.annotations || {});
+  const labels = Object.entries(rawItem?.metadata?.labels || payload.labels || {});
+  const statusPhase = (rawItem?.status?.phase as string) || payload.status || 'Active';
 
   const propertiesData: PropertyItem[] = [
     {
@@ -49,10 +115,8 @@ export const NamespaceDetail: React.FC<NamespaceDetailProps> = ({ payload, isTab
       name: 'Created',
       value: (
         <span>
-          <Age
-            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
-          />{' '}
-          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+          {creationTimestamp ? <Age timestamp={creationTimestamp} /> : payload.age || '—'} ago (
+          {createdTime})
         </span>
       )
     },
@@ -105,171 +169,64 @@ export const NamespaceDetail: React.FC<NamespaceDetailProps> = ({ payload, isTab
       value: (
         <span
           className={
-            payload.status === 'Active'
+            statusPhase === 'Active'
               ? 'text-emerald-500 font-semibold'
               : 'text-red-500 font-semibold'
           }
         >
-          {payload.status}
+          {statusPhase}
         </span>
       )
     }
   ];
 
-  const metricLabel = {
-    cpu: 'CPU Usage',
-    memory: 'Memory Usage',
-    network: 'Network Traffic',
-    disk: 'Disk I/O'
-  }[selectedMetric];
-
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
-      {/* Metrics Section */}
-      <div className="flex flex-col bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        {/* Toolbar Header */}
-        <div className="flex justify-between items-center pb-2 border-b border-border/40 mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">
+      {/* Live Metrics Section */}
+      <div className="flex flex-col gap-2">
+        {pods.length > 0 && (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Metrics
             </span>
-            <MoreVertical className="size-3.5 text-zinc-600" />
+            <Select.Root
+              value={selectedTarget}
+              onValueChange={(val) => val && setSelectedTarget(val)}
+            >
+              <Select.Trigger
+                variant="outline"
+                className="w-24 h-5 text-[10px] font-mono px-1.5 py-0 bg-surface-3 border border-border/60 rounded text-foreground flex items-center justify-between gap-1 outline-none shadow-none font-normal"
+              >
+                <Select.Value>
+                  {(value: string) => (value === 'all' ? `All (${pods.length})` : value)}
+                </Select.Value>
+              </Select.Trigger>
+              <Select.Content
+                side="bottom"
+                align="end"
+                className="min-w-[140px] max-w-[260px] text-[10px] font-mono"
+              >
+                <Select.Item value="all" className="text-[10px] font-mono py-1 px-2">
+                  <Select.ItemText>All ({pods.length})</Select.ItemText>
+                </Select.Item>
+                {pods.map((p) => (
+                  <Select.Item
+                    key={p.name}
+                    value={p.name}
+                    className="text-[10px] font-mono py-1 px-2 truncate"
+                  >
+                    <Select.ItemText className="truncate">{p.name}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
           </div>
-          <div className="flex items-center gap-1.5">
-            {/* Time range selector */}
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="bg-surface-3 border border-border/60 rounded text-[10px] px-1 py-0.5 text-zinc-300 focus:outline-none focus:ring-0 cursor-pointer"
-            >
-              <option value="1h">1h</option>
-              <option value="6h">6h</option>
-              <option value="24h">24h</option>
-              <option value="7d">7d</option>
-            </select>
-
-            <span className="h-4 w-px bg-border/40 mx-1" />
-
-            {/* Metric buttons */}
-            <button
-              onClick={() => setSelectedMetric('cpu')}
-              title="CPU"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'cpu'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Cpu className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setSelectedMetric('memory')}
-              title="Memory"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'memory'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Layers className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setSelectedMetric('network')}
-              title="Network"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'network'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <ArrowUpDown className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setSelectedMetric('disk')}
-              title="Disk"
-              className={`p-1 rounded cursor-pointer border-none bg-transparent transition-colors ${
-                selectedMetric === 'disk'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Database className="size-3.5" />
-            </button>
-
-            <span className="h-4 w-px bg-border/40 mx-1" />
-
-            <button
-              title="Filter"
-              className="p-1 rounded cursor-pointer border-none bg-transparent text-zinc-555"
-            >
-              <Flag className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="text-[10px] text-zinc-500 mb-2 pl-0.5">
-          Displaying metrics from Prometheus:{' '}
-          <span className="text-accent/80 hover:underline cursor-pointer">lens-metrics</span> /{' '}
-          <span className="text-accent/80 hover:underline cursor-pointer">prometheus:80</span>
-        </div>
-
-        {/* Bar Chart Area */}
-        <div className="h-32 w-full bg-black/10 rounded border border-border-dark/30 relative flex flex-col justify-end p-2 pr-4">
-          {/* Y Axis Labels */}
-          <div className="absolute left-2 top-2 bottom-6 flex flex-col justify-between text-[8px] font-mono text-zinc-650">
-            <span>4.000</span>
-            <span>3.000</span>
-            <span>2.000</span>
-            <span>1.000</span>
-            <span>0</span>
-          </div>
-
-          {/* Grid lines & Bars container */}
-          <div className="ml-10 flex-1 relative border-b border-l border-zinc-800/60 flex items-end justify-between px-0.5">
-            {/* Horizontal Grid lines */}
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-              <div className="border-t border-dashed border-zinc-500 h-0 w-full" />
-            </div>
-
-            {/* Render bars */}
-            {mockBars.map((val, idx) => {
-              const heightPercent = (val / 4.0) * 100;
-              return (
-                <div
-                  key={idx}
-                  style={{ height: `${heightPercent}%` }}
-                  className="w-[1.5%] bg-accent/30 border-t border-accent rounded-t-[1px]"
-                  title={`${val.toFixed(3)}`}
-                />
-              );
-            })}
-          </div>
-
-          {/* Timeline X Axis */}
-          <div className="ml-10 mt-1.5 flex justify-between text-[8px] font-mono text-zinc-650">
-            <span>11:29</span>
-            <span>11:35</span>
-            <span>11:41</span>
-            <span>11:47</span>
-            <span>11:53</span>
-            <span>11:59</span>
-            <span>12:05</span>
-            <span>12:11</span>
-            <span>12:17</span>
-            <span>12:23</span>
-          </div>
-        </div>
-
-        {/* Chart Legend Footer */}
-        <div className="flex items-center gap-1.5 mt-2 pl-10">
-          <div className="size-2 bg-accent rounded-[1px]" />
-          <span className="text-[10px] text-zinc-400 font-medium">{metricLabel}</span>
-        </div>
+        )}
+        <MetricsSection
+          namespace={payload.name}
+          podNames={targetPodNames}
+          resourceLabel="namespace"
+        />
       </div>
 
       {/* Properties Section */}
@@ -278,6 +235,131 @@ export const NamespaceDetail: React.FC<NamespaceDetailProps> = ({ payload, isTab
           Properties
         </span>
         <KubePropertiesTable properties={propertiesData} />
+      </div>
+
+      {/* Pods Section */}
+      <div className="flex flex-col gap-2 mt-2 border-t border-border-dark/60 pt-3">
+        <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider">Pods</span>
+        {pods.length === 0 ? (
+          <div className="text-xs text-zinc-500 italic pl-1">No pods found</div>
+        ) : (
+          <div className="border-y border-border/40 flex flex-col max-h-[220px] h-auto w-full overflow-y-auto">
+            <KubeTable<DeployRelatedPod>
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Name',
+                  className: 'py-2 px-3 text-zinc-200 font-semibold truncate max-w-[180px]',
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPodDetail(
+                          row.ns,
+                          row.name,
+                          (row as unknown as { rawItem?: K8sResource }).rawItem
+                        );
+                      }}
+                      className="text-accent hover:underline cursor-pointer font-sans"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </span>
+                  )
+                },
+                {
+                  key: 'node',
+                  header: 'Node',
+                  className: 'py-2 px-3 text-zinc-300 truncate max-w-[100px]',
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        if (row.node && row.node !== '—') {
+                          e.stopPropagation();
+                          openNodeDetail(row.node);
+                        }
+                      }}
+                      className={
+                        row.node && row.node !== '—'
+                          ? 'text-accent hover:underline cursor-pointer font-mono'
+                          : 'text-zinc-400'
+                      }
+                      title={row.node}
+                    >
+                      {row.node}
+                    </span>
+                  )
+                },
+                {
+                  key: 'ready',
+                  header: 'Ready',
+                  className: 'py-2 px-3 text-zinc-400 font-mono'
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  className: 'py-2 px-3',
+                  render: (row) => {
+                    const isOk = row.status === 'Running' || row.status === 'Succeeded';
+                    return (
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          isOk
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    );
+                  }
+                },
+                {
+                  key: 'cpu',
+                  header: 'CPU',
+                  className: 'py-2 px-3 text-zinc-400 font-mono',
+                  render: (row) => {
+                    const m = metricItems.find(
+                      (item) => item.namespace === payload.name && item.name === row.name
+                    );
+                    return m ? `${m.cpu}` : row.cpu || 'N/A';
+                  }
+                },
+                {
+                  key: 'memory',
+                  header: 'Memory',
+                  className: 'py-2 px-3 text-zinc-400 font-mono',
+                  render: (row) => {
+                    const m = metricItems.find(
+                      (item) => item.namespace === payload.name && item.name === row.name
+                    );
+                    return m ? `${m.memory}` : row.memory || 'N/A';
+                  }
+                },
+                {
+                  key: 'age',
+                  header: 'Age',
+                  className: 'py-2 px-3 text-zinc-450 font-mono',
+                  render: (row) => {
+                    const raw = (row as unknown as { rawItem?: K8sResource }).rawItem;
+                    const cTime = raw?.metadata?.creationTimestamp;
+                    return cTime ? <Age timestamp={cTime} /> : '—';
+                  }
+                }
+              ]}
+              data={pods}
+              getRowKey={(row) => row.name}
+              onRowClick={(row) =>
+                openPodDetail(
+                  row.ns,
+                  row.name,
+                  (row as unknown as { rawItem?: K8sResource }).rawItem
+                )
+              }
+              resizable={false}
+            />
+          </div>
+        )}
       </div>
 
       {/* Events Section */}

@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import {
+  BarChart2,
   Cpu,
   MemoryStick,
   ArrowUpDown,
@@ -14,12 +15,29 @@ import { EChartsMetricChart, type ChartSeries } from './EChartsMetricChart';
 import { useLayoutStore } from '../../../../../../src/store/layout.store';
 import { useKuberneterStore, DEFAULT_METRICS_CONFIG } from '../../../../store/kuberneter.store';
 import { useNodeMetricsRange, metricsKeys } from '../../../../hooks/useMetrics';
+import { useOpenNamespaceDetail, useOpenServiceDetail } from '../../../../hooks/open-detail';
+import { parseMetricSource } from '../../../../utils/parseMetricSource';
 import { Menu } from '@renderer/components/ui/Menu';
+import { Select } from '@renderer/components/ui/Select';
 
 export type NodeMetricCategory = 'cpu' | 'memory' | 'network' | 'filesystem';
 
 export interface NodeMetricsSectionProps {
   nodeName: string;
+}
+
+function generatePlaceholderTimeLabels(range: '1h' | '6h' | '24h'): string[] {
+  const count = 12;
+  const now = Date.now();
+  const stepMs = ((range === '24h' ? 24 * 3600 : range === '6h' ? 6 * 3600 : 3600) * 1000) / count;
+  const labels: string[] = [];
+  for (let i = count; i >= 0; i--) {
+    const d = new Date(now - i * stepMs);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    labels.push(`${hh}:${mm}`);
+  }
+  return labels;
 }
 
 export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName }) => {
@@ -29,6 +47,8 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const openTab = useLayoutStore((s) => s.openTab);
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openServiceDetail } = useOpenServiceDetail();
 
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const rawConfigPath = useKuberneterStore(
@@ -88,40 +108,10 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
 
   if (metricsConfig.source === 'none') return null;
 
-  if (isFetching && !data?.timeLabels.length) {
-    return (
-      <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground font-mono">
-          <RefreshCw className="size-4 animate-spin text-accent" />
-          <span>Loading node metrics...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!nodeName || !data?.timeLabels.length) {
-    return (
-      <div className="flex flex-col gap-2 bg-surface-2/40 border border-border/40 rounded-lg p-3 select-none">
-        <div className="flex items-center justify-between gap-2 py-2 text-xs text-muted-foreground font-mono">
-          <div className="flex items-center gap-2">
-            <span>
-              No node metrics available for <b className="text-foreground">{nodeName}</b> (source:{' '}
-              <span className="text-accent font-medium">{metricsConfig.provider}</span>)
-            </span>
-          </div>
-          {nodeName && (
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-surface-3 border border-border text-[10px] text-foreground hover:bg-surface-2 cursor-pointer transition-colors"
-            >
-              <RefreshCw className="size-3" />
-              <span>Retry</span>
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const timeLabels =
+    data?.timeLabels && data.timeLabels.length > 0
+      ? data.timeLabels
+      : generatePlaceholderTimeLabels(timeRange);
 
   let activeSeries: ChartSeries[] = [];
   let activeUnit = '';
@@ -212,37 +202,50 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
 
         {/* Time range & Refresh on the Right */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <select
+          <Select.Root
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as '1h' | '6h' | '24h')}
-            className="bg-surface-3 border border-border rounded text-[10px] px-1.5 py-0.5 text-foreground focus:outline-none cursor-pointer"
+            onValueChange={(val) => val && setTimeRange(val as '1h' | '6h' | '24h')}
           >
-            <option value="1h">1h</option>
-            <option value="6h">6h</option>
-            <option value="24h">24h</option>
-          </select>
+            <Select.Trigger
+              variant="outline"
+              className="h-5 text-[10px] font-mono font-medium px-1.5 py-0 bg-surface-3 border border-border rounded text-foreground flex items-center justify-between gap-1 outline-none shadow-none"
+            >
+              <Select.Value />
+            </Select.Trigger>
+            <Select.Content
+              side="bottom"
+              align="end"
+              className="min-w-[60px] text-[10px] font-mono"
+            >
+              <Select.Item value="1h" className="text-[10px] font-mono py-1 px-2">
+                <Select.ItemText>1h</Select.ItemText>
+              </Select.Item>
+              <Select.Item value="6h" className="text-[10px] font-mono py-1 px-2">
+                <Select.ItemText>6h</Select.ItemText>
+              </Select.Item>
+              <Select.Item value="24h" className="text-[10px] font-mono py-1 px-2">
+                <Select.ItemText>24h</Select.ItemText>
+              </Select.Item>
+            </Select.Content>
+          </Select.Root>
           <button
             onClick={handleRefresh}
             title="Refresh metrics"
             disabled={isFetching}
             className="p-1 rounded bg-surface-3 border border-border text-foreground hover:bg-surface-2 disabled:opacity-50 cursor-pointer transition-colors flex items-center justify-center"
           >
-            <RefreshCw className={`size-3 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-3.5 ${isFetching ? 'animate-spin' : ''}`} />
           </button>
           <Menu.Root>
             <Menu.Trigger
-              render={
-                <button
-                  title="More actions"
-                  className="p-1 rounded bg-surface-3 border border-border text-foreground hover:bg-surface-2 cursor-pointer transition-colors flex items-center justify-center"
-                >
-                  <MoreVertical className="size-3" />
-                </button>
-              }
-            />
-            <Menu.Content side="bottom" align="end" className="w-40">
-              <Menu.Item onClick={handleOpenMetricsSettings} className="gap-2 text-xs">
-                <Settings className="size-3.5 text-muted-foreground" />
+              className="p-1 text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-none transition-colors outline-none flex items-center justify-center rounded"
+              title="Metrics options"
+            >
+              <MoreVertical className="size-3.5" />
+            </Menu.Trigger>
+            <Menu.Content align="end">
+              <Menu.Item onClick={handleOpenMetricsSettings}>
+                <Settings className="size-3.5 text-muted-foreground mr-1.5" />
                 <span>Metrics Settings</span>
               </Menu.Item>
             </Menu.Content>
@@ -250,14 +253,55 @@ export const NodeMetricsSection: React.FC<NodeMetricsSectionProps> = ({ nodeName
         </div>
       </div>
 
-      <div className="pt-2 min-w-0">
+      <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono truncate min-w-0 pt-2 pb-1">
+        <BarChart2 className="size-3 text-muted-foreground shrink-0" />
+        <span className="truncate">
+          Resource:{' '}
+          {(() => {
+            const parsedSource = parseMetricSource(data?.source);
+            if (parsedSource) {
+              return (
+                <>
+                  <span
+                    onClick={() => openNamespaceDetail(parsedSource.namespace)}
+                    className="text-accent font-medium hover:underline cursor-pointer"
+                    title={`Open namespace "${parsedSource.namespace}" in new tab`}
+                  >
+                    {parsedSource.namespace}
+                  </span>
+                  <span className="text-muted-foreground mx-1">/</span>
+                  <span
+                    onClick={() => openServiceDetail(parsedSource.namespace, parsedSource.service)}
+                    className="text-accent font-medium hover:underline cursor-pointer"
+                    title={`Open service "${parsedSource.service}" in new tab`}
+                  >
+                    {parsedSource.service}
+                  </span>
+                  {parsedSource.port ? (
+                    <span className="text-accent font-medium">:{parsedSource.port}</span>
+                  ) : null}
+                  {parsedSource.extra ? (
+                    <span className="text-muted-foreground ml-1">{parsedSource.extra}</span>
+                  ) : null}
+                </>
+              );
+            }
+            return (
+              <span className="text-accent font-medium">
+                {data?.source || metricsConfig.provider || '—'}
+              </span>
+            );
+          })()}
+        </span>
+      </div>
+
+      <div className="w-full pt-1 min-w-0">
         <EChartsMetricChart
-          title={data.source ? `Resource: ${data.source}` : undefined}
-          timeLabels={data.timeLabels}
+          timeLabels={timeLabels}
           series={activeSeries}
           unit={activeUnit}
           showLegend={false}
-          height={170}
+          height={150}
         />
       </div>
     </div>

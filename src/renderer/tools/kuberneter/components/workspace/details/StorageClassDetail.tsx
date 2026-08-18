@@ -39,6 +39,7 @@ export const StorageClassDetail: React.FC<StorageClassDetailProps> = ({
 
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
   const labels = payload.labels ? Object.entries(payload.labels) : [];
+  const pvs = payload.pvs || [];
 
   const propertiesData: PropertyItem[] = [
     {
@@ -128,7 +129,7 @@ export const StorageClassDetail: React.FC<StorageClassDetailProps> = ({
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
           Persistent Volumes
         </span>
-        {payload.pvs.length === 0 ? (
+        {pvs.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No persistent volumes found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-[220px]">
@@ -148,26 +149,30 @@ export const StorageClassDetail: React.FC<StorageClassDetailProps> = ({
                 {
                   key: 'capacity',
                   header: 'Capacity',
-                  className: 'font-mono text-zinc-450'
+                  className: 'font-mono text-zinc-300'
+                },
+                {
+                  key: 'accessModes',
+                  header: 'Access Modes',
+                  className: 'font-mono text-zinc-300'
+                },
+                {
+                  key: 'reclaimPolicy',
+                  header: 'Reclaim Policy',
+                  className: 'font-mono text-zinc-300'
                 },
                 {
                   key: 'status',
                   header: 'Status',
-                  className: 'font-semibold',
-                  render: (row) => (
-                    <span
-                      className={
-                        row.status === 'Bound' || row.status === 'Available'
-                          ? 'text-emerald-500'
-                          : 'text-red-500'
-                      }
-                    >
-                      {row.status}
-                    </span>
-                  )
+                  className: 'font-mono text-emerald-500'
+                },
+                {
+                  key: 'claim',
+                  header: 'Claim',
+                  className: 'font-mono text-zinc-300 truncate max-w-[180px]'
                 }
               ]}
-              data={payload.pvs}
+              data={pvs}
               getRowKey={(row) => row.name}
               resizable={false}
             />

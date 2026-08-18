@@ -3,10 +3,9 @@ import type React from 'react';
 import { useState, useMemo, useCallback } from 'react';
 import { type ClusterRoleBindingData } from '../../../types/ClusterRoleBindingData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubeTable } from '../../kubeTable';
 import type { Column } from '../../kubeTable';
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface ClusterRoleBindingDetailProps {
   payload: ClusterRoleBindingData;
@@ -24,22 +23,21 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
   payload,
   isTab = false
 }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
 
   const handleNamespaceClick = useCallback(
     (ns: string) => {
-      if (ns && activeInstanceId) {
-        setNamespace(activeInstanceId, ns);
+      if (ns) {
+        openNamespaceDetail(ns);
       }
     },
-    [activeInstanceId, setNamespace]
+    [openNamespaceDetail]
   );
 
-  const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
-  const labels = payload.labels ? Object.entries(payload.labels) : [];
+  const annotations = payload?.annotations ? Object.entries(payload.annotations) : [];
+  const labels = payload?.labels ? Object.entries(payload.labels) : [];
 
   const propertiesData: PropertyItem[] = [
     {
@@ -48,16 +46,16 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
       value: (
         <span>
           <Age
-            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+            timestamp={(payload as unknown as Record<string, unknown>)?.creationTimestamp as string}
           />{' '}
-          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+          ago ({((payload as unknown as Record<string, unknown>)?.createdTime as string) || 'N/A'})
         </span>
       )
     },
     {
       id: 'name',
       name: 'Name',
-      value: payload.name
+      value: payload?.name || ''
     },
     {
       id: 'labels',
@@ -103,29 +101,30 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
     {
       id: 'kind',
       name: 'Kind',
-      value: payload.roleRef?.kind || '—'
+      value: payload?.roleRef?.kind || '—'
     },
     {
       id: 'name',
       name: 'Name',
-      value: payload.roleRef?.name || '—'
+      value: payload?.roleRef?.name || '—'
     },
     {
       id: 'apiGroup',
       name: 'API Group',
-      value: payload.roleRef?.apiGroup || '—'
+      value: payload?.roleRef?.apiGroup || '—'
     }
   ];
 
+  const subjects = payload?.subjects;
   const subjectsData = useMemo<SubjectTableRow[]>(() => {
-    const list = payload.subjects || [];
+    const list = subjects || [];
     return list.map((sub, idx) => ({
       id: `${sub.kind}-${sub.name}-${idx}`,
       kind: sub.kind,
       name: sub.name,
       namespace: sub.namespace
     }));
-  }, [payload.subjects]);
+  }, [subjects]);
 
   const handleSelectAllSubjects = useCallback(
     (checked: boolean) => {
@@ -217,6 +216,12 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
       handleNamespaceClick
     ]
   );
+
+  if (!payload) {
+    return (
+      <div className="p-4 text-xs text-zinc-500">No Cluster Role Binding details available.</div>
+    );
+  }
 
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>

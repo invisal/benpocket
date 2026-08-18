@@ -629,7 +629,7 @@ export const HttpClientSidebar: React.FC = () => {
             <div className="flex items-center gap-0.5">
               <button
                 onClick={handleImportCollection}
-                title="Import Collection — supports Postman Collection v2.0/v2.1, OpenAPI v3.0/v3.1, and Insomnia export v4 (.json, .yaml, .yml), or drag and drop a file anywhere in the sidebar"
+                title="Import Collection — supports Postman Collection v2.0/v2.1, OpenAPI v3.x, and Insomnia export v4/v5 (.json, .yaml, .yml), or drag and drop a file anywhere in the sidebar"
                 className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
               >
                 <Upload size={13} />

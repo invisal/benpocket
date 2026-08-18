@@ -28,7 +28,7 @@ import {
 import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
 const SUPPORTED_SCHEMAS_MESSAGE =
-  'benpocket supports Postman Collection Format v2.0/v2.1, OpenAPI Description v3.0/v3.1, and Insomnia export format v4/v5 (.json, .yaml, .yml).';
+  'benpocket supports Postman Collection Format v2.0/v2.1, OpenAPI Description v3.x, and Insomnia export format v4/v5 (.json, .yaml, .yml).';
 
 /** Adds/updates `incoming` variables into `existing` by key, preserving any variables `existing` already has that aren't in `incoming`. */
 function mergeVariables(existing: KeyValuePair[], incoming: KeyValuePair[]): KeyValuePair[] {
@@ -142,19 +142,28 @@ async function importCollectionFromPath(
   filePath: string,
   workspaceId: string
 ): Promise<ImportCollectionResult> {
-  let parsed: unknown;
+  let raw: string;
   try {
-    const raw = await fs.promises.readFile(filePath, 'utf-8');
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      parsed = jsYaml.load(raw);
-    }
-  } catch {
+    raw = await fs.promises.readFile(filePath, 'utf-8');
+  } catch (err) {
     return {
       ok: false,
-      error: `File is not valid JSON or YAML. ${SUPPORTED_SCHEMAS_MESSAGE}`
+      error: `Could not read file: ${err instanceof Error ? err.message : String(err)}`
     };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    try {
+      parsed = jsYaml.load(raw);
+    } catch {
+      return {
+        ok: false,
+        error: `File is not valid JSON or YAML. ${SUPPORTED_SCHEMAS_MESSAGE}`
+      };
+    }
   }
 
   if (isLegacyCollectionV1File(parsed)) {
@@ -167,7 +176,7 @@ async function importCollectionFromPath(
   if (isSwaggerV2File(parsed)) {
     return {
       ok: false,
-      error: `This file looks like a Swagger / OpenAPI v2.0 document, which isn't supported yet. Please convert it to OpenAPI v3.0/v3.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
+      error: `This file looks like a Swagger / OpenAPI v2.0 document, which isn't supported yet. Please convert it to OpenAPI v3.x and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
     };
   }
 

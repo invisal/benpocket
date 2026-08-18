@@ -497,7 +497,7 @@ export function exportCollectionFile(
 }
 
 // --- OpenAPI 3.x document import (permissive; only the fields we read) ---
-// benpocket supports importing OpenAPI Description v3.0/v3.1 documents (JSON or YAML),
+// benpocket supports importing OpenAPI Description v3.x documents (JSON or YAML),
 // generating one request per operation and grouping them into folders nested by URL path
 // segment, matching Postman's own OpenAPI importer.
 // Swagger / OpenAPI v2.0 ("swagger": "2.0") is not supported.
@@ -931,7 +931,7 @@ export interface OpenApiImportResult {
   variables: KeyValuePair[];
 }
 
-/** OpenAPI v3.x document -> our internal Collection, one request per operation grouped by tag into folders. */
+/** OpenAPI v3.x document -> our internal Collection, one request per operation nested into folders by URL path segment. */
 export function importOpenApiFile(file: OpenApiFile, workspaceId: string): OpenApiImportResult {
   const baseUrl = resolveServerUrl(file.servers);
   const schemas = file.components?.schemas ?? {};

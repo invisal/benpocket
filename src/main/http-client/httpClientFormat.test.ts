@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import type { CollectionFolder, SavedRequest } from '../../preload/http-client/types';
 import {
   importOpenApiFile,
   isOpenApiFile,
   isSwaggerV2File,
   type OpenApiFile
 } from './httpClientFormat';
+
+/** Collects every request in a collection/folder tree, regardless of which nested folder it landed in. */
+function flattenRequests(container: {
+  requests: SavedRequest[];
+  folders: CollectionFolder[];
+}): SavedRequest[] {
+  return [...container.requests, ...container.folders.flatMap(flattenRequests)];
+}
 
 describe('isOpenApiFile', () => {
   it('accepts a 3.x document with a paths object', () => {
@@ -58,10 +67,17 @@ describe('importOpenApiFile', () => {
     expect(collection.name).toBe('Pet Store');
     expect(collection.workspaceId).toBe('workspace-1');
     expect(variables).toEqual([]);
-    expect(collection.folders).toEqual([]);
-    expect(collection.requests).toHaveLength(1);
+    expect(collection.requests).toEqual([]);
 
-    const request = collection.requests[0];
+    // Each URL path segment nests into its own folder, mirroring Postman's importer.
+    expect(collection.folders).toHaveLength(1);
+    expect(collection.folders[0].name).toBe('pets');
+    expect(collection.folders[0].requests).toEqual([]);
+    expect(collection.folders[0].folders).toHaveLength(1);
+    expect(collection.folders[0].folders[0].name).toBe('{petId}');
+    expect(collection.folders[0].folders[0].requests).toHaveLength(1);
+
+    const request = collection.folders[0].folders[0].requests[0];
     expect(request.name).toBe('Get a pet');
     expect(request.method).toBe('GET');
     expect(request.url).toBe('https://api.example.com/v1/pets/{{petId}}?limit=10');
@@ -70,13 +86,16 @@ describe('importOpenApiFile', () => {
     ]);
   });
 
-  it('groups operations into one folder per first tag, leaving untagged ones at the root', () => {
+  it('nests requests into folders by URL path segment, sharing folders across paths with a common prefix', () => {
     const file: OpenApiFile = {
       openapi: '3.1.0',
       paths: {
         '/pets': {
-          get: { tags: ['Pets'], operationId: 'listPets' },
-          post: { tags: ['Pets'], operationId: 'createPet' }
+          get: { operationId: 'listPets' },
+          post: { operationId: 'createPet' }
+        },
+        '/pets/{petId}': {
+          get: { operationId: 'getPet' }
         },
         '/health': {
           get: { operationId: 'health' }
@@ -86,10 +105,17 @@ describe('importOpenApiFile', () => {
 
     const { collection } = importOpenApiFile(file, 'workspace-1');
 
-    expect(collection.requests.map((r) => r.name)).toEqual(['health']);
-    expect(collection.folders).toHaveLength(1);
-    expect(collection.folders[0].name).toBe('Pets');
-    expect(collection.folders[0].requests.map((r) => r.name)).toEqual(['listPets', 'createPet']);
+    expect(collection.requests).toEqual([]);
+    expect(collection.folders.map((f) => f.name)).toEqual(['pets', 'health']);
+
+    const pets = collection.folders[0];
+    expect(pets.requests.map((r) => r.name)).toEqual(['listPets', 'createPet']);
+    expect(pets.folders).toHaveLength(1);
+    expect(pets.folders[0].name).toBe('{petId}');
+    expect(pets.folders[0].requests.map((r) => r.name)).toEqual(['getPet']);
+
+    const health = collection.folders[1];
+    expect(health.requests.map((r) => r.name)).toEqual(['health']);
   });
 
   it('builds a JSON body from an inline example, falling back to a schema-derived stub', () => {
@@ -127,8 +153,9 @@ describe('importOpenApiFile', () => {
     };
 
     const { collection } = importOpenApiFile(file, 'workspace-1');
-    const withExample = collection.requests.find((r) => r.name === 'createPet')!;
-    const fromSchema = collection.requests.find((r) => r.name === 'createOwner')!;
+    const requests = flattenRequests(collection);
+    const withExample = requests.find((r) => r.name === 'createPet')!;
+    const fromSchema = requests.find((r) => r.name === 'createOwner')!;
 
     expect(withExample.bodyType).toBe('json');
     expect(JSON.parse(withExample.body)).toEqual({ name: 'Rex' });
@@ -160,7 +187,7 @@ describe('importOpenApiFile', () => {
     };
 
     const { collection } = importOpenApiFile(file, 'workspace-1');
-    expect(JSON.parse(collection.requests[0].body)).toEqual({ name: 'string' });
+    expect(JSON.parse(flattenRequests(collection)[0].body)).toEqual({ name: 'string' });
   });
 
   it('maps bearer and apiKey security schemes to structured auth with variable-token placeholders', () => {
@@ -183,8 +210,9 @@ describe('importOpenApiFile', () => {
     };
 
     const { collection } = importOpenApiFile(file, 'workspace-1');
-    const bearerRequest = collection.requests.find((r) => r.name === 'secureBearer')!;
-    const apiKeyRequest = collection.requests.find((r) => r.name === 'secureKey')!;
+    const requests = flattenRequests(collection);
+    const bearerRequest = requests.find((r) => r.name === 'secureBearer')!;
+    const apiKeyRequest = requests.find((r) => r.name === 'secureKey')!;
 
     expect(bearerRequest.auth).toEqual({ type: 'bearer', bearer: { token: '{{bearerAuth}}' } });
     expect(apiKeyRequest.auth).toEqual({
@@ -206,7 +234,7 @@ describe('importOpenApiFile', () => {
     };
 
     const { collection, variables } = importOpenApiFile(file, 'workspace-1');
-    expect(collection.requests[0].url).toBe('https://{{host}}/v1/ping');
+    expect(flattenRequests(collection)[0].url).toBe('https://{{host}}/v1/ping');
     expect(variables).toEqual([expect.objectContaining({ key: 'host', value: '', enabled: true })]);
   });
 });

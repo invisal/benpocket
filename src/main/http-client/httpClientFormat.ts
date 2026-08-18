@@ -498,7 +498,8 @@ export function exportCollectionFile(
 
 // --- OpenAPI 3.x document import (permissive; only the fields we read) ---
 // benpocket supports importing OpenAPI Description v3.0/v3.1 documents (JSON or YAML),
-// generating one request per operation and grouping them into folders by tag.
+// generating one request per operation and grouping them into folders nested by URL path
+// segment, matching Postman's own OpenAPI importer.
 // Swagger / OpenAPI v2.0 ("swagger": "2.0") is not supported.
 
 interface OpenApiSchema {
@@ -539,7 +540,6 @@ type OpenApiSecurityRequirement = Record<string, string[]>;
 interface OpenApiOperation {
   summary?: string;
   operationId?: string;
-  tags?: string[];
   parameters?: OpenApiParameter[];
   requestBody?: OpenApiRequestBody;
   security?: OpenApiSecurityRequirement[];
@@ -852,7 +852,27 @@ function toSavedRequestFromOperation(
   };
 }
 
-/** Walks every operation in `paths`, grouping requests into one folder per first tag (untagged operations land at the collection root). */
+interface PathFolderNode {
+  name: string;
+  folders: Map<string, PathFolderNode>;
+  requests: SavedRequest[];
+}
+
+function toPathFolders(nodes: Map<string, PathFolderNode>): CollectionFolder[] {
+  return [...nodes.values()].map((node) => ({
+    id: randomUUID(),
+    name: node.name,
+    requests: node.requests,
+    folders: toPathFolders(node.folders)
+  }));
+}
+
+/**
+ * Walks every operation in `paths`, mirroring Postman's own OpenAPI importer: each URL path
+ * segment becomes a nested folder (e.g. `/items/{id}` -> folder "items" -> folder "{id}"),
+ * with an operation's request landing in the folder for its full path. A bare `/` path has no
+ * segments, so its operations land at the collection root.
+ */
 function importOpenApiPaths(
   paths: Record<string, OpenApiPathItem>,
   baseUrl: string,
@@ -861,10 +881,11 @@ function importOpenApiPaths(
   globalSecurity: OpenApiSecurityRequirement[] | undefined
 ): { requests: SavedRequest[]; folders: CollectionFolder[] } {
   const rootRequests: SavedRequest[] = [];
-  const folderOrder: string[] = [];
-  const folderRequests = new Map<string, SavedRequest[]>();
+  const rootFolders = new Map<string, PathFolderNode>();
 
   for (const [path, pathItem] of Object.entries(paths)) {
+    const segments = path.split('/').filter(Boolean);
+
     for (const [key, method] of OPENAPI_METHODS) {
       const operation = pathItem[key];
       if (!operation) continue;
@@ -880,27 +901,26 @@ function importOpenApiPaths(
         globalSecurity
       );
 
-      const tag = operation.tags?.[0]?.trim();
-      if (!tag) {
+      if (segments.length === 0) {
         rootRequests.push(request);
         continue;
       }
-      if (!folderRequests.has(tag)) {
-        folderRequests.set(tag, []);
-        folderOrder.push(tag);
+
+      let siblings = rootFolders;
+      let node: PathFolderNode | undefined;
+      for (const segment of segments) {
+        node = siblings.get(segment);
+        if (!node) {
+          node = { name: segment, folders: new Map(), requests: [] };
+          siblings.set(segment, node);
+        }
+        siblings = node.folders;
       }
-      folderRequests.get(tag)!.push(request);
+      node!.requests.push(request);
     }
   }
 
-  const folders: CollectionFolder[] = folderOrder.map((tag) => ({
-    id: randomUUID(),
-    name: tag,
-    requests: folderRequests.get(tag)!,
-    folders: []
-  }));
-
-  return { requests: rootRequests, folders };
+  return { requests: rootRequests, folders: toPathFolders(rootFolders) };
 }
 
 export interface OpenApiImportResult {

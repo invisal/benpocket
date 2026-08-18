@@ -6,6 +6,7 @@ import { looksLikeCurlCommand, parseCurlCommand, type ParsedCurlRequest } from '
 import { VariableSuggestInput } from './VariableSuggestInput';
 import { Menu } from '@renderer/components/ui/Menu';
 import { Button } from '@renderer/components/ui/Button';
+import { methodBadgeClass } from '../lib/methodBadge';
 
 /** The address bar's method selector doubles as the HTTP/WebSocket protocol switch. */
 export type ComposerMethod = HttpMethod | 'WEBSOCKET';
@@ -59,13 +60,13 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
       <div className="flex border border-border h-9 rounded flex-1 bg-surface-2">
         <Menu.Root>
           <Menu.Trigger className="text-xs min-w-24 justify-between font-medium px-3 h-full flex items-center gap-1 border-r border-border cursor-pointer">
-            <span>{selectedLabel}</span>
+            <span className={methodBadgeClass(method)}>{selectedLabel}</span>
             <ChevronDownIcon size={14} />
           </Menu.Trigger>
           <Menu.Content align="start">
             {METHODS.map((m) => (
               <Menu.Item key={m.value} onClick={() => onMethodChange(m.value)}>
-                {m.label}
+                <span className={methodBadgeClass(m.value)}>{m.label}</span>
               </Menu.Item>
             ))}
           </Menu.Content>

@@ -274,6 +274,11 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({ http, bi
             placeholder="..."
           />
         )}
+        {bodyType === 'none' && (
+          <p className="text-[11px] text-muted-foreground italic p-3">
+            This request does not have a body. Pick a type from the Body dropdown above to add one.
+          </p>
+        )}
       </PillTab.Panel>
     </PillTab.Root>
   );

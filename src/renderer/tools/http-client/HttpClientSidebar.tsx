@@ -10,6 +10,7 @@ import { disposeApiClientTab } from './hooks/useApiClient';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
 import { EnvironmentSelector } from './components/EnvironmentSelector';
 import { CollectionsTree } from './components/CollectionsTree';
+import { DeleteConfirmDialog } from './components/DeleteConfirmDialog';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import type {
   Collection,
@@ -22,6 +23,7 @@ import type { RequestTabSeed } from './types';
 import {
   collectAllFolderIds,
   countRequestsRecursive,
+  findFolderById,
   findFolderChainForRequest
 } from './lib/collectionTree';
 import { methodBadgeClass } from './lib/methodBadge';
@@ -214,6 +216,11 @@ export const HttpClientSidebar: React.FC = () => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [draftCollectionName, setDraftCollectionName] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: 'collection'; collectionId: string }
+    | { kind: 'folder'; collectionId: string; folderId: string }
+    | null
+  >(null);
   const [statusMessage, setStatusMessage] = useState<{
     type: 'error' | 'success';
     text: string;
@@ -550,6 +557,29 @@ export const HttpClientSidebar: React.FC = () => {
     for (const t of tabs) handleCloseTab(t.id);
   };
 
+  const requestCascade = (count: number): string | undefined =>
+    count > 0 ? `${count} request${count === 1 ? '' : 's'}` : undefined;
+
+  const deleteTarget = ((): { kind: string; name: string; cascade?: string } | null => {
+    if (!pendingDelete) return null;
+    const collection = collections.find((c) => c.id === pendingDelete.collectionId);
+    if (!collection) return null;
+    if (pendingDelete.kind === 'collection') {
+      return {
+        kind: 'collection',
+        name: collection.name,
+        cascade: requestCascade(countRequestsRecursive(collection))
+      };
+    }
+    const folder = findFolderById(collection.folders, pendingDelete.folderId);
+    if (!folder) return null;
+    return {
+      kind: 'folder',
+      name: folder.name,
+      cascade: requestCascade(countRequestsRecursive(folder))
+    };
+  })();
+
   return (
     <div
       onDragOver={handleSidebarDragOver}
@@ -682,7 +712,9 @@ export const HttpClientSidebar: React.FC = () => {
             onRenameCollection={(collectionId, name) =>
               runMutation(() => renameCollection(collectionId, name))
             }
-            onDeleteCollection={(collectionId) => runMutation(() => deleteCollection(collectionId))}
+            onDeleteCollection={(collectionId) =>
+              setPendingDelete({ kind: 'collection', collectionId })
+            }
             onExportCollection={(collectionId) => handleExportCollection(collectionId)}
             onSetCollectionAuth={(collectionId, auth) => setCollectionAuth(collectionId, auth)}
             onCreateFolder={(collectionId, parentFolderId, name) =>
@@ -692,7 +724,7 @@ export const HttpClientSidebar: React.FC = () => {
               runMutation(() => renameFolder(collectionId, folderId, name))
             }
             onDeleteFolder={(collectionId, folderId) =>
-              runMutation(() => deleteFolder(collectionId, folderId))
+              setPendingDelete({ kind: 'folder', collectionId, folderId })
             }
             onMoveFolder={(collectionId, folderId, targetParentFolderId) =>
               runMutation(() => moveFolder(collectionId, folderId, targetParentFolderId))
@@ -729,6 +761,20 @@ export const HttpClientSidebar: React.FC = () => {
           Collection, OpenAPI, or Insomnia file
         </div>
       )}
+
+      <DeleteConfirmDialog
+        target={deleteTarget}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          if (pendingDelete.kind === 'collection') {
+            runMutation(() => deleteCollection(pendingDelete.collectionId));
+          } else {
+            runMutation(() => deleteFolder(pendingDelete.collectionId, pendingDelete.folderId));
+          }
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };

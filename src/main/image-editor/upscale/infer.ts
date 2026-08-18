@@ -1,43 +1,11 @@
-import { InferenceSession, Tensor } from 'onnxruntime-node';
+import { Tensor } from 'onnxruntime-node';
 import sharp from 'sharp';
 import type { UpscaleModel } from './models';
 import { graphPath } from './modelCache';
-import type { RawPlane } from './pixels';
+import { loadSession } from '../model/session';
+import type { RawPlane } from '../model/pixels';
 
 export const UPSCALE_CANCELLED_MESSAGE = 'upscale cancelled';
-
-const sessions = new Map<string, Promise<InferenceSession>>();
-
-function executionProviders(): InferenceSession.ExecutionProviderConfig[] {
-  if (process.platform === 'win32') return ['dml', 'cpu'];
-  if (process.platform === 'darwin') return ['coreml', 'cpu'];
-  return ['cpu'];
-}
-
-/** Sessions are created once per model id and kept alive for the app session (same rationale as
- * `sharp`'s handlers keeping no per-call state) -- creation loads and compiles the graph, which
- * is too slow to redo on every Apply click. */
-function loadSession(cacheRoot: string, model: UpscaleModel): Promise<InferenceSession> {
-  const cached = sessions.get(model.id);
-  if (cached) return cached;
-
-  const path = graphPath(cacheRoot, model);
-  const promise = InferenceSession.create(path, {
-    executionProviders: executionProviders()
-  }).catch(async (err) => {
-    // A GPU execution provider (DirectML/CoreML) can fail to load on machines without a
-    // compatible GPU/driver -- fall back to CPU rather than breaking the feature entirely.
-    console.warn(
-      `[upscale] GPU execution provider unavailable for ${model.id}, falling back to CPU:`,
-      err
-    );
-    return InferenceSession.create(path, { executionProviders: ['cpu'] });
-  });
-
-  sessions.set(model.id, promise);
-  promise.catch(() => sessions.delete(model.id));
-  return promise;
-}
 
 export interface AxisTile {
   coreStart: number;
@@ -130,7 +98,7 @@ export async function upscaleRgb(
   onProgress: (done: number, total: number) => void,
   signal?: AbortSignal
 ): Promise<RawPlane> {
-  const session = await loadSession(cacheRoot, model);
+  const session = await loadSession(`upscale:${model.id}`, graphPath(cacheRoot, model));
   const { tileSize, overlap, scale, inputName, outputName } = model;
   const stride = tileSize - 2 * overlap;
 

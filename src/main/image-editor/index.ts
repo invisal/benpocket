@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import sharp, { type Sharp } from 'sharp';
 import { getCloudflareSettings } from '../store/cloudflareSettings';
 import { registerUpscaleHandlers } from './upscale/ipc';
+import { registerBgRemoveHandlers } from './bg-remove/ipc';
 
 // sharp caches decoded/processed image data at the libvips level by default -- fine for a
 // short-lived CLI script, but this handler lives inside Electron's main process for the entire
@@ -281,4 +282,5 @@ export function registerImageEditorHandlers(): void {
   );
 
   registerUpscaleHandlers();
+  registerBgRemoveHandlers();
 }

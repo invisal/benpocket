@@ -9,6 +9,7 @@ import { CropTool } from './components/CropTool';
 import { ContextResizeTool } from './components/ContextResizeTool';
 import { ContextRemovalTool } from './components/ContextRemovalTool';
 import { UpscaleTool } from './components/UpscaleTool';
+import { BgRemoveTool } from './components/BgRemoveTool';
 import type { ImageToolProps } from './types';
 
 export type { ImageToolProps, ImageToolId } from './types';
@@ -66,6 +67,7 @@ export function ImageTool({ binary, mimeType, onChange, tool, className }: Image
       {tool === 'context-resize' && <ContextResizeTool {...toolProps} />}
       {tool === 'context-removal' && <ContextRemovalTool {...toolProps} />}
       {tool === 'upscale' && <UpscaleTool {...toolProps} />}
+      {tool === 'bg-remove' && <BgRemoveTool {...toolProps} />}
     </div>
   );
 }

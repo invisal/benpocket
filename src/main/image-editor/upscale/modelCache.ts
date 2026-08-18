@@ -1,12 +1,11 @@
-import { createHash } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import extractZip from 'extract-zip';
+import { DOWNLOAD_CANCELLED_MESSAGE, downloadWithProgress, fileMatches } from '../model/download';
 import type { UpscaleModel, UpscaleModelFile } from './models';
 
-export const MODEL_DOWNLOAD_CANCELLED_MESSAGE = 'model download cancelled';
+export const MODEL_DOWNLOAD_CANCELLED_MESSAGE = DOWNLOAD_CANCELLED_MESSAGE;
 
 /** `cacheRoot` is `userData/models` (see `ipc.ts`) -- kept as a plain parameter instead of
  * reaching into `app.getPath` here so this module has no Electron dependency of its own. */
@@ -18,59 +17,9 @@ export function graphPath(cacheRoot: string, model: UpscaleModel): string {
   return path.join(modelDir(cacheRoot, model), model.graph.filename);
 }
 
-async function sha256File(filePath: string): Promise<string> {
-  const buffer = await readFile(filePath);
-  return createHash('sha256').update(buffer).digest('hex');
-}
-
-async function fileMatches(dir: string, file: UpscaleModelFile): Promise<boolean> {
-  const filePath = path.join(dir, file.filename);
-  try {
-    const info = await stat(filePath);
-    if (info.size !== file.sizeBytes) return false;
-    return (await sha256File(filePath)) === file.sha256;
-  } catch {
-    return false;
-  }
-}
-
 export async function isModelCached(cacheRoot: string, model: UpscaleModel): Promise<boolean> {
   const dir = modelDir(cacheRoot, model);
   return (await fileMatches(dir, model.graph)) && (await fileMatches(dir, model.data));
-}
-
-async function downloadWithProgress(
-  url: string,
-  destPath: string,
-  expectedBytes: number,
-  onProgress: (percent: number) => void,
-  signal?: AbortSignal
-): Promise<void> {
-  const response = await fetch(url, { signal });
-  if (!response.ok || !response.body) {
-    throw new Error(`Download failed (${response.status}): ${url}`);
-  }
-
-  const total = Number(response.headers.get('content-length')) || expectedBytes;
-  let received = 0;
-
-  const fileStream = createWriteStream(destPath);
-  const reader = response.body.getReader();
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      received += value.byteLength;
-      onProgress(total > 0 ? Math.min(100, Math.round((received / total) * 100)) : 0);
-      if (!fileStream.write(value)) {
-        await new Promise<void>((resolve) => fileStream.once('drain', () => resolve()));
-      }
-    }
-  } finally {
-    await new Promise<void>((resolve, reject) => {
-      fileStream.end((err?: Error | null) => (err ? reject(err) : resolve()));
-    });
-  }
 }
 
 /** The archive nests its files one level down (e.g. `real_esrgan_x4plus-onnx-float/<file>`) --
@@ -123,7 +72,7 @@ export async function ensureModel(
       );
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error(MODEL_DOWNLOAD_CANCELLED_MESSAGE);
+        throw new Error(DOWNLOAD_CANCELLED_MESSAGE);
       }
       throw err;
     }
@@ -131,7 +80,7 @@ export async function ensureModel(
     const extractDir = path.join(tempDir, 'extracted');
     await extractZip(zipPath, { dir: extractDir });
 
-    for (const file of [model.graph, model.data]) {
+    for (const file of [model.graph, model.data] as UpscaleModelFile[]) {
       const found = await findExtractedFile(extractDir, file.filename);
       if (!found) {
         throw new Error(`Downloaded archive for "${model.label}" is missing ${file.filename}.`);

@@ -21,6 +21,19 @@ export interface UpscaleProgress {
   total: number;
 }
 
+export interface BgRemoveModelStatus {
+  id: 'u2netp' | 'isnet-general-use';
+  label: string;
+  description: string;
+  downloadSizeBytes: number;
+  cached: boolean;
+}
+
+export interface BgRemoveDownloadProgress {
+  modelId: string;
+  percent: number;
+}
+
 export interface ImageEditorApi {
   /**
    * `input` is a compressed image (the original file bytes, or whatever a previous resize/crop
@@ -82,6 +95,28 @@ export interface ImageEditorApi {
   cancelUpscale: () => Promise<void>;
   onUpscaleDownloadProgress: (callback: (progress: UpscaleDownloadProgress) => void) => () => void;
   onUpscaleProgress: (callback: (progress: UpscaleProgress) => void) => () => void;
+  /** Same registry/caching shape as `getUpscaleModels`, for the local background-removal models
+   * (see `src/main/image-editor/bg-remove/`). */
+  getBgRemoveModels: () => Promise<BgRemoveModelStatus[]>;
+  /** Same shape as `ensureUpscaleModel`. Progress pushed via `onBgRemoveDownloadProgress`. */
+  ensureBgRemoveModel: (modelId: string) => Promise<{ error?: string }>;
+  /**
+   * Runs `modelId` over `input` (compressed image bytes) entirely in the main process, producing
+   * an RGBA image with the background masked to transparent -- same round-trip shape as
+   * `upscale`. Assumes the model is already cached; call `ensureBgRemoveModel` first. `mimeType`
+   * without alpha support (e.g. image/jpeg) flattens the transparent result onto white, same as
+   * every other tool's re-encode -- use PNG/WebP to keep the cutout.
+   */
+  removeBackground: (
+    input: Uint8Array,
+    mimeType: string,
+    modelId: string
+  ) => Promise<EncodeResponse>;
+  /** Aborts whichever of `ensureBgRemoveModel`/`removeBackground` is currently running. */
+  cancelBgRemove: () => Promise<void>;
+  onBgRemoveDownloadProgress: (
+    callback: (progress: BgRemoveDownloadProgress) => void
+  ) => () => void;
 }
 
 export const imageEditorApi: ImageEditorApi = {
@@ -108,5 +143,17 @@ export const imageEditorApi: ImageEditorApi = {
       callback(progress);
     ipcRenderer.on('image-editor:upscale-progress', listener);
     return () => ipcRenderer.removeListener('image-editor:upscale-progress', listener);
+  },
+  getBgRemoveModels: () => ipcRenderer.invoke('image-editor:bg-remove-models'),
+  ensureBgRemoveModel: (modelId) =>
+    ipcRenderer.invoke('image-editor:bg-remove-ensure-model', modelId),
+  removeBackground: (input, mimeType, modelId) =>
+    ipcRenderer.invoke('image-editor:bg-remove', input, mimeType, modelId),
+  cancelBgRemove: () => ipcRenderer.invoke('image-editor:bg-remove-cancel'),
+  onBgRemoveDownloadProgress: (callback) => {
+    const listener = (_event: IpcRendererEvent, progress: BgRemoveDownloadProgress): void =>
+      callback(progress);
+    ipcRenderer.on('image-editor:bg-remove-download-progress', listener);
+    return () => ipcRenderer.removeListener('image-editor:bg-remove-download-progress', listener);
   }
 };

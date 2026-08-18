@@ -5,7 +5,7 @@ import { encodePipeline, toUint8Array, type EncodeResult } from '../index';
 import { UPSCALE_CANCELLED_MESSAGE, upscaleRgb } from './infer';
 import { ensureModel, isModelCached, MODEL_DOWNLOAD_CANCELLED_MESSAGE } from './modelCache';
 import { UPSCALE_MODELS, type UpscaleModelId } from './models';
-import { decodeForUpscale, recombineWithAlpha } from './pixels';
+import { decodeRgba, recombineWithAlpha } from '../model/pixels';
 
 function cacheRoot(): string {
   return path.join(app.getPath('userData'), 'models');
@@ -92,7 +92,7 @@ export function registerUpscaleHandlers(): void {
       const controller = new AbortController();
       currentRun = controller;
       try {
-        const { rgb, alpha } = await decodeForUpscale(input);
+        const { rgb, alpha } = await decodeRgba(input);
         const upscaled = await upscaleRgb(
           cacheRoot(),
           model,

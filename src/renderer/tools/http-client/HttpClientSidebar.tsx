@@ -391,7 +391,9 @@ export const HttpClientSidebar: React.FC = () => {
       result.schemaVersion && result.schemaVersion !== 'unknown'
         ? result.sourceFormat === 'openapi'
           ? ` (OpenAPI ${result.schemaVersion})`
-          : ` (Collection v${result.schemaVersion})`
+          : result.sourceFormat === 'insomnia'
+            ? ` (Insomnia v${result.schemaVersion})`
+            : ` (Collection v${result.schemaVersion})`
         : '';
     const variablesLabel = result.importedVariableCount
       ? `, ${result.importedVariableCount} variable${result.importedVariableCount === 1 ? '' : 's'}`
@@ -597,7 +599,7 @@ export const HttpClientSidebar: React.FC = () => {
             <div className="flex items-center gap-0.5">
               <button
                 onClick={handleImportCollection}
-                title="Import Collection — supports Postman Collection v2.0/v2.1 and OpenAPI v3.0/v3.1 (.json, .yaml, .yml), or drag and drop a file anywhere in the sidebar"
+                title="Import Collection — supports Postman Collection v2.0/v2.1, OpenAPI v3.0/v3.1, and Insomnia export v4 (.json, .yaml, .yml), or drag and drop a file anywhere in the sidebar"
                 className="p-1 text-zinc-500 hover:text-foreground hover:bg-border-dark/60 rounded cursor-pointer transition-colors"
               >
                 <Upload size={13} />
@@ -656,7 +658,8 @@ export const HttpClientSidebar: React.FC = () => {
           {collections.length === 0 && !isCreatingCollection && (
             <div className="text-[11px] text-zinc-650 italic px-1 py-1 leading-relaxed">
               No collections yet. Collections group related saved requests together, so you can find
-              and re-run them later. Save a request, or import/drag in a Postman or OpenAPI file.
+              and re-run them later. Save a request, or import/drag in a Postman, OpenAPI, or
+              Insomnia file.
             </div>
           )}
 
@@ -723,7 +726,7 @@ export const HttpClientSidebar: React.FC = () => {
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded border border-dashed border-accent bg-surface/90 text-center text-[11px] font-medium text-accent">
           Drop to import
           <br />
-          Collection or OpenAPI file
+          Collection, OpenAPI, or Insomnia file
         </div>
       )}
     </div>

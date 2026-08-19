@@ -65,6 +65,13 @@ export function EditorPage(): JSX.Element {
   const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<PreviewVideoController>(null);
 
+  const previewUrlRef = useRef(lastRecording?.previewUrl);
+  if (lastRecording?.previewUrl !== previewUrlRef.current) {
+    previewUrlRef.current = lastRecording?.previewUrl;
+    setDuration(0);
+    setSourceResolution(null);
+  }
+
   useSyncSelectedSegment({
     segments,
     selectedSegmentId,

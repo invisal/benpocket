@@ -1,6 +1,6 @@
 import type * as UiohookNapiModule from 'uiohook-napi';
 import type { UiohookMouseEvent } from 'uiohook-napi';
-import type { WebContents } from 'electron';
+import { screen, type WebContents } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
 import type { CursorTrackerBounds } from './cursor-tracker';
 
@@ -72,8 +72,27 @@ export class ClickTracker {
         this.stop();
         return;
       }
-      const x = (event.x - this.bounds.x) / this.bounds.width;
-      const y = (event.y - this.bounds.y) / this.bounds.height;
+      // uiohook-napi's native hook reports screen *physical* pixels on
+      // win32/linux (unlike Electron's own screen APIs, always DIP -- see
+      // cursor-tracker.ts's `getCursorScreenPoint()`), so on a scaled
+      // display (125%/150%/200%, the common case on Windows) a raw
+      // `event.x`/`event.y` doesn't line up with `this.bounds` (sourced
+      // from `display.bounds`, DIP) without this conversion first --
+      // clicks would normalize to the wrong fraction of the frame, and
+      // anything in the right/bottom portion of a scaled screen would
+      // compute `x`/`y` > 1 and get silently dropped by the out-of-bounds
+      // check below. `screenToDipPoint` is documented `@platform
+      // win32,linux` -- macOS points already match Electron's DIP space
+      // natively (Quartz Event Services reports the same global point
+      // space `NSScreen`/Electron's `screen` module uses, Retina
+      // included), so skip the conversion there rather than call an API
+      // that's only defined for the other two platforms.
+      const point =
+        process.platform === 'darwin'
+          ? { x: event.x, y: event.y }
+          : screen.screenToDipPoint({ x: event.x, y: event.y });
+      const x = (point.x - this.bounds.x) / this.bounds.width;
+      const y = (point.y - this.bounds.y) / this.bounds.height;
       // Same reasoning as cursor-tracker.ts: ignore clicks outside the
       // recorded screen rather than clamping them to the edge.
       if (x < 0 || x > 1 || y < 0 || y > 1) return;

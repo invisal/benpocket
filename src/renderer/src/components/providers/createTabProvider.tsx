@@ -123,6 +123,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(
           payload: unknown,
           opts?: { title?: string; subtitle?: string }
         ) => {
+          if (!canLeave(get().activeTabId)) return '';
           const id = crypto.randomUUID();
           const tool = toolsByName[type];
           const count = get().tabs.filter((t) => t.type === type).length + 1;

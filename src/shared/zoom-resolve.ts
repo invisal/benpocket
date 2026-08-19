@@ -2,23 +2,28 @@ import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import type { CursorPathPoint } from './cursor-path';
 import { sampleCursorPath } from './cursor-path';
 
-/** Simulation step (ms) for the camera spring below -- same reasoning as cursor-path.ts's own SPRING_STEP_MS. */
+/** Simulation step (ms) for the camera spring below -- same as cursor-path.ts's own SPRING_STEP_MS. */
 const CAMERA_STEP_MS = 8;
-/** Close to critically damped (1 = critically damped) -- once the camera
- * actually starts moving, it should ease to a stop at the new hold point
- * without the cursor icon's own small deliberate overshoot; overshooting a
- * whole zoomed viewport's pan would read as a mistake, not "alive". */
-const CAMERA_DAMPING_RATIO = 0.92;
+/** Same slight underdamping as the cursor icon's own spring (see
+ * cursor-path.ts's `DAMPING_RATIO`) -- a small, natural overshoot/settle on
+ * direction changes reads as "alive", the way Screen Studio's camera motion
+ * does, rather than a dead stop. */
+const CAMERA_DAMPING_RATIO = 0.72;
 /** Spring stiffness (1/s^2) for the camera catching up once triggered --
- * fixed, not user-tunable (unlike cursor-icon smoothing); a best-effort
- * starting point pending real playback feedback, see this function's own
- * doc. */
-const CAMERA_STIFFNESS = 55;
+ * softer than even the cursor icon's own softest setting (`MIN_STIFFNESS` =
+ * 18 in cursor-path.ts), since panning a whole zoomed viewport is a much
+ * bigger motion than the glyph nudging a few pixels and needs a
+ * proportionally slower, gentler glide to read as smooth rather than
+ * jittery. */
+const CAMERA_STIFFNESS = 16;
 /**
  * Fraction of the zoomed viewport's own visible half-width/half-height the
  * cursor can wander within before the camera reacts at all -- e.g. 0.55
  * means the camera holds still until the cursor is more than 55% of the
- * way from center to the edge of what's currently visible.
+ * way from center to the edge of what's currently visible. This is what
+ * keeps the camera still while the cursor stays inside the visible zoomed
+ * area, only moving when the cursor would otherwise near/leave frame --
+ * not a camera that's always chasing the cursor around.
  */
 const CAMERA_DEADZONE_FRACTION = 0.55;
 /**
@@ -45,11 +50,11 @@ const MAX_CAMERA_SAMPLES = 200_000;
  * own `depth` actually leaves visible -- deeper zoom means a smaller
  * deadzone in absolute screen-fraction terms), and only eases toward the
  * cursor once it drifts far enough to approach the edge of the visible,
- * zoomed-in area. This is what stops auto-zoom from re-centering on every
- * small movement or every click -- the camera only pans when the cursor
- * would otherwise go out of (or near the edge of) view, then holds again
- * once it's caught up, rather than continuously tracking raw cursor
- * position for the keyframe's whole duration.
+ * zoomed-in area -- i.e. only moving to keep the cursor in frame, not
+ * continuously tracking it around inside a frame it's already comfortably
+ * inside. Once moving, it's a damped spring easing toward the cursor (same
+ * shape as the cursor icon's own `smoothCursorPath` spring, just softer),
+ * so the catch-up itself glides rather than snapping.
  *
  * A best-effort tuning (`CAMERA_STIFFNESS`/`CAMERA_DAMPING_RATIO`/
  * `CAMERA_DEADZONE_FRACTION` above) -- there's no way to A/B this against
@@ -95,7 +100,7 @@ export function computeAutoZoomFocalPath(
     // Target the camera's *own current position* (i.e. don't move) unless
     // the cursor has drifted outside the deadzone on that axis -- the
     // spring only ever engages once actually needed, rather than
-    // continuously chasing every small movement or every new click.
+    // continuously chasing every small movement.
     const targetX = Math.abs(dx) > deadzoneHalfWidth ? cursor.x : x;
     const targetY = Math.abs(dy) > deadzoneHalfHeight ? cursor.y : y;
 

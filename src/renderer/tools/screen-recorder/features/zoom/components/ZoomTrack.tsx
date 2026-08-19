@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { Mouse, MousePointerClick, Target, ZoomIn } from 'lucide-react';
 import type { ZoomKeyframe } from '@screen-recorder/types/timeline';
 import { DEFAULT_ZOOM_DEPTH, ZOOM_MIN_DURATION_MS } from '@shared/constants';
+import { remapPathToCropSpace } from '@shared/cursor-path';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { useScreenRecorderStore, EMPTY_CURSOR_PATH } from '../../../store/screen-recorder-store';
 import { selectZoomKeyframe } from '../../../store/selection-coordinator';
@@ -13,6 +14,7 @@ import {
   sourceRangeToOutputPercent
 } from '../../timeline/lib/segment-duration';
 import { useZoomStore, findKeyframeContaining } from '../store/zoom-store';
+import { useCropStore } from '../../crop/store/crop-store';
 import { resolveFixedPosition } from '../lib/resolve-fixed-position';
 
 // Deliberately shorter than `DEFAULT_ZOOM_DURATION_MS` -- this only sizes
@@ -58,16 +60,26 @@ export function ZoomTrack({ previewAtSourceMs = null }: ZoomTrackProps): JSX.Ele
   const cursorPath = useScreenRecorderStore(
     (s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH
   );
+  const activeCrop = useCropStore((s) => s.rect);
 
   // Disabling "follow cursor" needs *some* fixed point to land on -- see
-  // `resolveFixedPosition`'s own doc for the fallback chain.
+  // `resolveFixedPosition`'s own doc for the fallback chain. A fixed
+  // `position` is consumed the same way as any other keyframe position --
+  // as a fraction of the (possibly cropped) content box -- so it has to be
+  // resolved from crop-remapped paths, not the raw captured ones (see
+  // `remapPathToCropSpace`'s own doc).
   function toggleFollowCursor(kf: ZoomKeyframe): void {
     if (kf.position !== 'auto-cursor') {
       updateKeyframe(kf.id, { position: 'auto-cursor' });
       return;
     }
     updateKeyframe(kf.id, {
-      position: resolveFixedPosition(clickPath, cursorPath, kf.atMs, kf.durationMs)
+      position: resolveFixedPosition(
+        remapPathToCropSpace(clickPath, activeCrop),
+        remapPathToCropSpace(cursorPath, activeCrop),
+        kf.atMs,
+        kf.durationMs
+      )
     });
   }
 

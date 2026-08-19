@@ -19,6 +19,7 @@ import { AnnotationOverlay } from '../../features/annotations/components/Annotat
 import { BlurMaskOverlay } from '../../features/blur-mask/components/BlurMaskOverlay';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { resolveZoom } from '@shared/zoom-resolve';
+import { remapPathToCropSpace } from '@shared/cursor-path';
 import { cn } from '../../lib/utils';
 import EditorLoading from './EditorLoading';
 import VideoErrorOverlay from './VideoErrorOverlay';
@@ -70,7 +71,25 @@ export function PreviewStage({
   const webcamVideoRef = useRef<HTMLVideoElement>(null);
   const videoWrapperRef = useRef<HTMLDivElement>(null);
 
-  const autoZoomFocalPaths = useAutoZoomFocalPaths(rawCursorPath, zoomKeyframes);
+  // Crop (see CropDialog, opened from EditorTransportBar's Crop button) --
+  // a single rect for the whole recording, not per-clip. Declared here
+  // (rather than alongside `videoCropStyle` below, where it's also used)
+  // because `rawCursorPath`/`clickPath` are captured in full-source-frame
+  // space and everything that positions itself as a fraction of the
+  // (possibly cropped) content box -- cursor icon, click ripples,
+  // auto-zoom's focal point -- needs the crop-remapped versions instead;
+  // see `remapPathToCropSpace`'s own doc.
+  const activeCrop = useCropStore((s) => s.rect);
+  const croppedCursorPath = useMemo(
+    () => remapPathToCropSpace(rawCursorPath, activeCrop),
+    [rawCursorPath, activeCrop]
+  );
+  const croppedClickPath = useMemo(
+    () => remapPathToCropSpace(clickPath, activeCrop),
+    [clickPath, activeCrop]
+  );
+
+  const autoZoomFocalPaths = useAutoZoomFocalPaths(croppedCursorPath, zoomKeyframes);
 
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
@@ -159,7 +178,6 @@ export function PreviewStage({
   // `object-fit: fill` on top so the video's own aspect-corrective
   // letterboxing doesn't fight this transform's own (already
   // aspect-correct, per the math below) scaling.
-  const activeCrop = useCropStore((s) => s.rect);
   const croppedAspectRatio =
     activeCrop && sourceResolution
       ? (activeCrop.width * sourceResolution.width) / (activeCrop.height * sourceResolution.height)
@@ -275,8 +293,8 @@ export function PreviewStage({
             {!isImportedProject && !isLikelyLinux && (
               <CursorOverlay
                 cursor={cursor}
-                rawPath={rawCursorPath}
-                clickPath={clickPath}
+                rawPath={croppedCursorPath}
+                clickPath={croppedClickPath}
                 currentTimeMs={zoomTimeMs}
                 stageWidthPx={stageWidthPx}
                 cursorHidden={activeSegment?.cursorHidden ?? false}

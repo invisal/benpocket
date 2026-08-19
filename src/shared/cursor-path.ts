@@ -1,3 +1,5 @@
+import type { CropRect } from '@screen-recorder/types/timeline';
+
 /**
  * Cursor path smoothing/sampling, shared between the renderer (live editor
  * preview) and the main-process export compositor so both draw the exact
@@ -111,6 +113,32 @@ export function sampleCursorPath(
   const span = next.atMs - prev.atMs;
   const t = span > 0 ? (atMs - prev.atMs) / span : 0;
   return { x: prev.x + (next.x - prev.x) * t, y: prev.y + (next.y - prev.y) * t };
+}
+
+/**
+ * Remaps a whole cursor/click path from full-source-frame-normalized [0,1]
+ * space (how it's captured -- see `CursorPathPoint`'s own doc) into
+ * crop-relative [0,1] space -- i.e. what fraction of the *cropped* content
+ * box each point falls at. Every consumer that positions something as a
+ * percentage of the (possibly cropped) video box -- the cursor icon, click
+ * ripples, `computeAutoZoomFocalPath`'s camera simulation -- needs points in
+ * this space, not the raw captured one, or a crop shifts/scales the video
+ * without the cursor/zoom following: a point near the original frame's edge
+ * would still read as "near the edge" of the now-smaller cropped frame
+ * instead of the (likely off-screen, if the crop excludes it) position it
+ * actually belongs at. `crop === null` (no crop active) returns `path`
+ * unchanged.
+ */
+export function remapPathToCropSpace(
+  path: CursorPathPoint[],
+  crop: CropRect | null
+): CursorPathPoint[] {
+  if (!crop || crop.width <= 0 || crop.height <= 0) return path;
+  return path.map((p) => ({
+    atMs: p.atMs,
+    x: (p.x - crop.x) / crop.width,
+    y: (p.y - crop.y) / crop.height
+  }));
 }
 
 /** How long the click-bounce squash/pop icon animation lasts, in ms. */

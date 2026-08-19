@@ -1,7 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { resolveClickBounceScale, type CursorPathPoint } from './cursor-path';
+import { resolveClickBounceScale, remapPathToCropSpace, type CursorPathPoint } from './cursor-path';
 
 const CLICK_AT: CursorPathPoint[] = [{ atMs: 1000, x: 0.5, y: 0.5 }];
+
+describe('remapPathToCropSpace', () => {
+  const path: CursorPathPoint[] = [
+    { atMs: 0, x: 0, y: 0 },
+    { atMs: 100, x: 0.5, y: 0.75 },
+    { atMs: 200, x: 1, y: 1 }
+  ];
+
+  it('returns the path unchanged when there is no crop', () => {
+    expect(remapPathToCropSpace(path, null)).toBe(path);
+  });
+
+  it('maps a point at the crop rect origin to (0, 0)', () => {
+    const [remapped] = remapPathToCropSpace(path, { x: 0.25, y: 0.25, width: 0.5, height: 0.5 });
+    expect(remapped.x).toBeCloseTo(-0.5);
+    expect(remapped.y).toBeCloseTo(-0.5);
+  });
+
+  it('maps a point already inside the crop back into [0, 1]', () => {
+    const [, mid] = remapPathToCropSpace(path, { x: 0.25, y: 0.25, width: 0.5, height: 0.5 });
+    expect(mid.x).toBeCloseTo(0.5);
+    expect(mid.y).toBeCloseTo(1);
+  });
+
+  it('leaves a full-frame crop (x:0,y:0,width:1,height:1) as the identity transform', () => {
+    const remapped = remapPathToCropSpace(path, { x: 0, y: 0, width: 1, height: 1 });
+    expect(remapped).toEqual(path);
+  });
+});
 
 describe('resolveClickBounceScale', () => {
   it('has no effect outside the bounce window, at zero intensity, or with no clicks', () => {

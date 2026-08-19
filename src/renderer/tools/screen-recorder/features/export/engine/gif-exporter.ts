@@ -2,7 +2,7 @@ import GIF from 'gif.js';
 
 import gifWorkerUrl from 'gif.js/dist/gif.worker.js?url';
 import type { ExportProgress } from '@screen-recorder/types/export';
-import { smoothCursorPath } from '@shared/cursor-path';
+import { smoothCursorPath, remapPathToCropSpace } from '@shared/cursor-path';
 import { computeAutoZoomFocalPath } from '@shared/zoom-resolve';
 import { evaluateSceneAtMs } from './rendering/timeline-evaluator';
 import { PixiSceneRenderer } from './rendering/pixi-scene-renderer';
@@ -47,8 +47,13 @@ export async function exportGif(
       ? cropRect.width / cropRect.height
       : sourceInfo.width / sourceInfo.height;
 
+    // See export-orchestrator.ts's identical remap for why this has to
+    // happen before smoothing/simulation, not after.
+    const croppedCursorPath = remapPathToCropSpace(options.project.cursorPath, options.crop);
+    const croppedClickPath = remapPathToCropSpace(options.project.clickPath, options.crop);
+
     const smoothedCursorPath = smoothCursorPath(
-      options.project.cursorPath,
+      croppedCursorPath,
       options.project.cursor.smoothing
     );
     // One deadzone-camera-simulated path per 'auto-cursor' keyframe -- see
@@ -57,7 +62,7 @@ export async function exportGif(
     const autoZoomFocalPaths = new Map(
       options.project.zoomKeyframes
         .filter((kf) => kf.position === 'auto-cursor')
-        .map((kf) => [kf.id, computeAutoZoomFocalPath(options.project.cursorPath, kf)])
+        .map((kf) => [kf.id, computeAutoZoomFocalPath(croppedCursorPath, kf)])
     );
 
     renderer = await PixiSceneRenderer.create(
@@ -157,6 +162,7 @@ export async function exportGif(
             options.resolution.height,
             sourceAspect,
             smoothedCursorPath,
+            croppedClickPath,
             autoZoomFocalPaths,
             segment.cursorHidden,
             segment.webcamHidden

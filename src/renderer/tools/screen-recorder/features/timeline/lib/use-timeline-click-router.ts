@@ -1,9 +1,11 @@
 import { useCallback, type RefObject } from 'react';
 import type { TimelineSegment } from '@screen-recorder/types/timeline';
+import { remapPathToCropSpace } from '@shared/cursor-path';
 import { useScreenRecorderStore, EMPTY_CURSOR_PATH } from '../../../store/screen-recorder-store';
 import { selectZoomKeyframe } from '../../../store/selection-coordinator';
 import { useTimelineStore } from '../store/timeline-store';
 import { useZoomStore, findKeyframeContaining } from '../../zoom/store/zoom-store';
+import { useCropStore } from '../../crop/store/crop-store';
 import { resolveFixedPosition } from '../../zoom/lib/resolve-fixed-position';
 import { outputMsToSourceMs } from './segment-duration';
 
@@ -56,6 +58,7 @@ export function useTimelineClickRouter({
   const cursorPath = useScreenRecorderStore(
     (s) => s.lastRecording?.cursorPath ?? EMPTY_CURSOR_PATH
   );
+  const activeCrop = useCropStore((s) => s.rect);
 
   const fractionFromClientX = useCallback(
     (clientX: number): number | null => {
@@ -115,8 +118,15 @@ export function useTimelineClickRouter({
       const id = addZoomKeyframe(sourceMs);
       const created = useZoomStore.getState().keyframes.find((kf) => kf.id === id);
       if (created) {
+        // Fixed `position` is consumed as a fraction of the (possibly
+        // cropped) content box -- see ZoomTrack.tsx's identical remap.
         updateZoomKeyframe(id, {
-          position: resolveFixedPosition(clickPath, cursorPath, created.atMs, created.durationMs)
+          position: resolveFixedPosition(
+            remapPathToCropSpace(clickPath, activeCrop),
+            remapPathToCropSpace(cursorPath, activeCrop),
+            created.atMs,
+            created.durationMs
+          )
         });
       }
       selectZoomKeyframe(id);
@@ -131,6 +141,7 @@ export function useTimelineClickRouter({
       updateZoomKeyframe,
       clickPath,
       cursorPath,
+      activeCrop,
       setActiveTool
     ]
   );

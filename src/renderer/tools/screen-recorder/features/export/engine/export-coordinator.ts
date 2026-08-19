@@ -11,7 +11,7 @@ import { VideoMuxer } from './muxer';
 import { AudioProcessor, type ClickSoundOptions } from './audio-encoder';
 import { isSourceCopyEligible } from './export-orchestrator';
 import { resolveWebDemuxerWasmPath } from './wasm-path';
-import { EXPORT_CANCELLED_MESSAGE } from './cancel';
+import { EXPORT_CANCELLED_MESSAGE, isExportCancelled } from './cancel';
 
 export interface RunExportResult {
   actualBytes: number;
@@ -204,16 +204,23 @@ async function finishVideoExport(
     // Short-lived, used only to pick a codec -- destroyed before real audio
     // processing starts so AudioProcessor.process() (which may itself open
     // demuxers) never has two WebDemuxer-spawned WASM Workers alive at once.
-    const probeDemuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
-    let exportCodec: Awaited<ReturnType<typeof AudioProcessor.selectSupportedExportCodecForSource>>;
+    let exportCodec: Awaited<
+      ReturnType<typeof AudioProcessor.selectSupportedExportCodecForSource>
+    > = null;
     try {
-      await probeDemuxer.load(sourceFile);
-      exportCodec = await AudioProcessor.selectSupportedExportCodecForSource(
-        probeDemuxer,
-        audioMuxerCodec
-      );
-    } finally {
-      probeDemuxer.destroy();
+      const probeDemuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
+      try {
+        await probeDemuxer.load(sourceFile);
+        exportCodec = await AudioProcessor.selectSupportedExportCodecForSource(
+          probeDemuxer,
+          audioMuxerCodec
+        );
+      } finally {
+        probeDemuxer.destroy();
+      }
+    } catch (err) {
+      if (signal?.aborted || isExportCancelled(err)) throw err;
+      console.warn('[export] failed to probe source audio, exporting without audio:', err);
     }
 
     if (exportCodec) {
@@ -240,6 +247,9 @@ async function finishVideoExport(
           clickSoundOptions
         );
         audioActuallyProcessed = true;
+      } catch (err) {
+        if (signal?.aborted || isExportCancelled(err)) throw err;
+        console.warn('[export] failed to process source audio, exporting without audio:', err);
       } finally {
         signal?.removeEventListener('abort', onAbort);
         URL.revokeObjectURL(sourceObjectUrl);

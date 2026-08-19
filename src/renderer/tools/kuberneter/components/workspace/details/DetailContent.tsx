@@ -112,10 +112,13 @@ export const DetailContent: React.FC<DetailContentProps> = ({
     case 'secret':
       return <SecretDetail payload={payload as SecretData} isTab={isTab} />;
     case 'resourcequota':
+    case 'quota':
       return <ResourceQuotaDetail payload={payload as ResourceQuotaData} isTab={isTab} />;
     case 'limitrange':
+    case 'limits':
       return <LimitRangeDetail payload={payload as LimitRangeData} isTab={isTab} />;
     case 'horizontalpodautoscaler':
+    case 'hpa':
       return (
         <HorizontalPodAutoscalerDetail
           payload={payload as HorizontalPodAutoscalerData}
@@ -123,6 +126,7 @@ export const DetailContent: React.FC<DetailContentProps> = ({
         />
       );
     case 'poddisruptionbudget':
+    case 'pdb':
       return (
         <PodDisruptionBudgetDetail payload={payload as PodDisruptionBudgetData} isTab={isTab} />
       );
@@ -170,6 +174,7 @@ export const DetailContent: React.FC<DetailContentProps> = ({
     case 'networkpolicies':
       return <NetworkPolicyDetail payload={payload as NetworkPolicyData} isTab={isTab} />;
     case 'mutatingwebhook':
+    case 'mutatingwebhookconfiguration':
       return (
         <MutatingWebhookDetail
           payload={payload as MutatingWebhookConfigurationData}
@@ -177,6 +182,7 @@ export const DetailContent: React.FC<DetailContentProps> = ({
         />
       );
     case 'validatingwebhook':
+    case 'validatingwebhookconfiguration':
       return (
         <ValidatingWebhookDetail
           payload={payload as ValidatingWebhookConfigurationData}

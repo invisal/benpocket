@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface HpaMetric {
   name: string;
   current: string;
@@ -19,4 +21,5 @@ export interface HorizontalPodAutoscalerData {
   replicas: number;
   statusText: string;
   metrics: HpaMetric[];
+  rawItem?: K8sResource;
 }

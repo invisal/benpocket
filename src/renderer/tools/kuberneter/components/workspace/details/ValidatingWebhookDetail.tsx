@@ -1,7 +1,15 @@
 import { Age } from '../../Age';
 import type React from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type ValidatingWebhookConfigurationData } from '../../../types/ValidatingWebhookConfigurationData';
+import { type WebhookItem } from '../../../types/MutatingWebhookConfigurationData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+import { useOpenNamespaceDetail, useOpenServiceDetail } from '../../../hooks/open-detail';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
+import { type K8sResource } from '../../../types/K8sResource';
+import { buildValidatingWebhookDetailPayload } from '../../../hooks/open-detail/transformers/config.transformer';
 
 interface ValidatingWebhookDetailProps {
   payload: ValidatingWebhookConfigurationData;
@@ -12,6 +20,44 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
   payload,
   isTab = false
 }) => {
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
+  const rawConfigPath = useKuberneterStore(
+    (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
+  );
+
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openServiceDetail } = useOpenServiceDetail();
+
+  // Fetch fresh ValidatingWebhookConfiguration with React Query caching
+  const { data: queryData } = useQuery({
+    queryKey: [
+      'kuberneter',
+      'validatingwebhook-detail-data',
+      rawConfigPath,
+      cluster,
+      payload?.name
+    ],
+    queryFn: async () => {
+      if (!cluster || !payload?.name) return null;
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+
+      const res = await window.kuberneter.getResources(
+        configPathArg,
+        cluster,
+        K8S_RESOURCE_KEYS.VALIDATING_WEBHOOK_CONFIGURATIONS
+      );
+      const item = ((res?.items || []) as K8sResource[]).find(
+        (i) => i.metadata?.name === payload.name
+      );
+      return item || null;
+    },
+    enabled: !!cluster && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
   if (!payload) {
     return (
       <div className="p-4 text-xs text-zinc-500">
@@ -20,9 +66,18 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
     );
   }
 
-  const labels = payload.labels ? Object.entries(payload.labels) : [];
-  const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
-  const webhooks = payload.webhooks || [];
+  const rawItem = queryData || payload.rawItem;
+  const currentData: ValidatingWebhookConfigurationData = rawItem
+    ? buildValidatingWebhookDetailPayload(payload.name, rawItem)
+    : payload;
+
+  const labels = currentData.labels ? Object.entries(currentData.labels) : [];
+  const annotations = currentData.annotations ? Object.entries(currentData.annotations) : [];
+  const webhooks: WebhookItem[] = currentData.webhooks || [];
+
+  const createdTime = rawItem?.metadata?.creationTimestamp
+    ? new Date(rawItem.metadata.creationTimestamp).toLocaleString()
+    : currentData.createdTime || '';
 
   const propertiesData: PropertyItem[] = [
     {
@@ -31,16 +86,29 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
       value: (
         <span>
           <Age
-            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
+            timestamp={
+              rawItem?.metadata?.creationTimestamp ||
+              ((payload as unknown as Record<string, unknown>).creationTimestamp as string)
+            }
           />{' '}
-          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+          ago ({createdTime || 'N/A'})
         </span>
       )
     },
     {
       id: 'name',
       name: 'Name',
-      value: payload.name
+      value: currentData.name
+    },
+    {
+      id: 'webhooksCount',
+      name: 'Webhooks Count',
+      value: <span className="font-mono">{webhooks.length}</span>
+    },
+    {
+      id: 'apiVersion',
+      name: 'API Version',
+      value: <span className="font-mono text-zinc-300">{currentData.apiVersion}</span>
     },
     {
       id: 'labels',
@@ -79,11 +147,6 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
           ))}
         </div>
       )
-    },
-    {
-      id: 'apiVersion',
-      name: 'API Version',
-      value: payload.apiVersion
     }
   ];
 
@@ -98,14 +161,14 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
       </div>
 
       {/* Webhooks List */}
-      <div className="flex flex-col gap-2.5 mt-2">
+      <div className="flex flex-col gap-2.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider mb-1">
-          Webhooks
+          Webhooks ({webhooks.length})
         </span>
         {webhooks.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No webhooks defined.</div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {webhooks.map((w, idx) => (
               <div
                 key={w.name + idx}
@@ -124,12 +187,40 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
                     {w.clientConfig.url ? (
                       <div>URL: {w.clientConfig.url}</div>
                     ) : (
-                      <>
-                        <div>Name: {w.clientConfig.name || '—'}</div>
-                        <div>Namespace: {w.clientConfig.namespace || '—'}</div>
+                      <div className="flex flex-col gap-0.5">
+                        <div>
+                          Service:{' '}
+                          {w.clientConfig.name && w.clientConfig.namespace ? (
+                            <span
+                              onClick={() =>
+                                openServiceDetail(w.clientConfig.namespace!, w.clientConfig.name!)
+                              }
+                              className="text-accent hover:underline cursor-pointer"
+                              title={`Open Service ${w.clientConfig.name} in new tab`}
+                            >
+                              {w.clientConfig.name}
+                            </span>
+                          ) : (
+                            w.clientConfig.name || '—'
+                          )}
+                        </div>
+                        <div>
+                          Namespace:{' '}
+                          {w.clientConfig.namespace ? (
+                            <span
+                              onClick={() => openNamespaceDetail(w.clientConfig.namespace!)}
+                              className="text-accent hover:underline cursor-pointer"
+                              title={`Open Namespace ${w.clientConfig.namespace} in new tab`}
+                            >
+                              {w.clientConfig.namespace}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
                         {w.clientConfig.path && <div>Path: {w.clientConfig.path}</div>}
                         {w.clientConfig.port && <div>Port: {w.clientConfig.port}</div>}
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -146,7 +237,7 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[10px] text-zinc-555 uppercase">Admission Review</span>
                     <span className="font-mono text-zinc-300">
-                      {w.admissionReviewVersions.join(', ')}
+                      {w.admissionReviewVersions.join(', ') || '—'}
                     </span>
                   </div>
                   <div className="flex flex-col gap-0.5">
@@ -159,7 +250,7 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
                   </div>
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[10px] text-zinc-555 uppercase">Timeout Seconds</span>
-                    <span className="font-mono text-zinc-300">{w.timeoutSeconds}</span>
+                    <span className="font-mono text-zinc-300">{w.timeoutSeconds}s</span>
                   </div>
                 </div>
 
@@ -179,7 +270,9 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
 
                 {w.rules.length > 0 && (
                   <div className="flex flex-col gap-1 border-t border-border/20 pt-2">
-                    <span className="text-[10px] text-zinc-555 uppercase">Rules</span>
+                    <span className="text-[10px] text-zinc-555 uppercase">
+                      Rules ({w.rules.length})
+                    </span>
                     <div className="flex flex-col gap-2 mt-1">
                       {w.rules.map((rule, ruleIdx) => (
                         <div

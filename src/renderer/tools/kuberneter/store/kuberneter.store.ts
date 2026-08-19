@@ -108,6 +108,16 @@ interface KuberneterState {
   closeAllKuberneterBottomPanelTabs: () => void;
   openPodTerminalTab: (podName: string, namespace?: string, containerName?: string) => void;
   openPodLogsTab: (podName: string, namespace?: string, containerName?: string) => void;
+  openDeploymentLogsTab: (
+    deploymentName: string,
+    namespace?: string,
+    containerName?: string
+  ) => void;
+  openReplicaSetLogsTab: (
+    replicaSetName: string,
+    namespace?: string,
+    containerName?: string
+  ) => void;
   openPodEditTab: (podName: string, namespace?: string, rawItem?: unknown) => Promise<void>;
   openNodeEditTab: (nodeName: string, rawItem?: unknown) => Promise<void>;
   openResourceEditTab: (
@@ -304,6 +314,94 @@ export const useKuberneterStore = create<KuberneterState>()(
         const nsFlag = namespace ? `-n ${namespace} ` : '';
         const cFlag = containerName ? `-c ${containerName}` : `--all-containers=true`;
         const command = `kubectl logs -f ${podName} ${nsFlag}${cFlag}`;
+
+        const newTab: KuberneterBottomPanelTab = {
+          id: newId,
+          type: 'terminal',
+          title: tabTitle,
+          initialCommand: command
+        };
+
+        set({
+          kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, newTab],
+          kuberneterActiveBottomPanelTabId: newId
+        });
+      },
+
+      openDeploymentLogsTab: (deploymentName, namespace, containerName) => {
+        if (!deploymentName) return;
+        const state = get();
+
+        window.kuberneter.checkKubectl(state.kuberneterKubectlPath).then((res) => {
+          if (!res.available) {
+            get().showKubectlMissingToast(
+              'Deployment Logs Tailing requires the kubectl CLI executable. Please configure kubectl in Settings.'
+            );
+          }
+        });
+
+        const tabTitle = containerName
+          ? `Logs: deploy/${deploymentName} (${containerName})`
+          : `Logs: deploy/${deploymentName}`;
+        const existing = state.kuberneterBottomPanelTabs.find(
+          (t) => t.title === tabTitle && t.type === 'terminal'
+        );
+
+        useLayoutStore.getState().openBottomPanelWithTab('terminal');
+
+        if (existing) {
+          set({ kuberneterActiveBottomPanelTabId: existing.id });
+          return;
+        }
+
+        const newId = `term-logs-deploy-${deploymentName}-${containerName || 'default'}-${Date.now()}`;
+        const nsFlag = namespace ? `-n ${namespace} ` : '';
+        const cFlag = containerName ? `-c ${containerName}` : `--all-containers=true`;
+        const command = `kubectl logs -f deployment/${deploymentName} ${nsFlag}${cFlag}`;
+
+        const newTab: KuberneterBottomPanelTab = {
+          id: newId,
+          type: 'terminal',
+          title: tabTitle,
+          initialCommand: command
+        };
+
+        set({
+          kuberneterBottomPanelTabs: [...state.kuberneterBottomPanelTabs, newTab],
+          kuberneterActiveBottomPanelTabId: newId
+        });
+      },
+
+      openReplicaSetLogsTab: (replicaSetName, namespace, containerName) => {
+        if (!replicaSetName) return;
+        const state = get();
+
+        window.kuberneter.checkKubectl(state.kuberneterKubectlPath).then((res) => {
+          if (!res.available) {
+            get().showKubectlMissingToast(
+              'ReplicaSet Logs Tailing requires the kubectl CLI executable. Please configure kubectl in Settings.'
+            );
+          }
+        });
+
+        const tabTitle = containerName
+          ? `Logs: rs/${replicaSetName} (${containerName})`
+          : `Logs: rs/${replicaSetName}`;
+        const existing = state.kuberneterBottomPanelTabs.find(
+          (t) => t.title === tabTitle && t.type === 'terminal'
+        );
+
+        useLayoutStore.getState().openBottomPanelWithTab('terminal');
+
+        if (existing) {
+          set({ kuberneterActiveBottomPanelTabId: existing.id });
+          return;
+        }
+
+        const newId = `term-logs-rs-${replicaSetName}-${containerName || 'default'}-${Date.now()}`;
+        const nsFlag = namespace ? `-n ${namespace} ` : '';
+        const cFlag = containerName ? `-c ${containerName}` : `--all-containers=true`;
+        const command = `kubectl logs -f rs/${replicaSetName} ${nsFlag}${cFlag}`;
 
         const newTab: KuberneterBottomPanelTab = {
           id: newId,

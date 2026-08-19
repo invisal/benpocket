@@ -24,7 +24,8 @@ export function KubeTable<T>({
   borderTop = false,
   showHeader = true,
   renderRowExpansion,
-  expandedRowKeys
+  expandedRowKeys,
+  renderRowWrapper
 }: KubeTableProps<T>) {
   // Initialize column widths from initialWidth prop or default
   const [colWidths, setColWidths] = useState<Record<string, number>>(() =>
@@ -311,6 +312,7 @@ export function KubeTable<T>({
                         colWidths={effectiveColWidths}
                         resizable={resizable}
                         isExpanded={isExpanded}
+                        renderRowWrapper={renderRowWrapper}
                       />
                       {renderRowExpansion && isExpanded && (
                         <tr className="bg-surface-1/10 border-b border-border-dark/20">

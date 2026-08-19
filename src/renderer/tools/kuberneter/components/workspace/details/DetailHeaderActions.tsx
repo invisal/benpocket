@@ -1,11 +1,13 @@
 import type React from 'react';
 import { PodHeaderActions } from './pod-detail';
+import { DeploymentHeaderActions } from './deployment-detail';
 import { NodeHeaderActions } from './NodeHeaderActions';
 import { IngressClassHeaderActions } from './IngressClassHeaderActions';
 import { EditDeleteHeaderActions } from './EditDeleteHeaderActions';
 import { ConfigSecretHeaderActions } from './ConfigSecretHeaderActions';
 import { GenericHeaderActions } from './GenericHeaderActions';
 import { type PodData } from '../../../types/PodData';
+import { type DeployData } from '../../../types/DeployData';
 import { type NodeData } from '../../../types/NodeData';
 import { type IngressClassData } from '../../../types/IngressClassData';
 
@@ -24,6 +26,10 @@ export const DetailHeaderActions: React.FC<DetailHeaderActionsProps> = ({
     case 'app':
     case 'apps':
       return null;
+    case 'deployment':
+    case 'deployments':
+    case 'deploy':
+      return <DeploymentHeaderActions payload={payload as DeployData} />;
     case 'pod':
     case 'pods':
       return <PodHeaderActions payload={payload as PodData} />;

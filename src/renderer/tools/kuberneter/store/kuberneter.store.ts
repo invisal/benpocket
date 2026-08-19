@@ -12,6 +12,12 @@ export interface RecentConnection {
   timestamp: number;
 }
 
+export interface LocalKubeconfig {
+  path: string;
+  name: string;
+  isDefault?: boolean;
+}
+
 export interface DrawerState {
   isOpen: boolean;
   width: number;
@@ -69,6 +75,7 @@ interface KuberneterState {
   showHelmNoReposToast: (customMessage?: string) => void;
 
   kuberneterKubeconfigs: string[];
+  kuberneterLocalKubeconfigs: LocalKubeconfig[];
   kuberneterRecentConnections: RecentConnection[];
   kuberneterTabDrawers: Record<string, DrawerState>;
   kuberneterInstanceSidebarOpen: Record<string, boolean>;
@@ -114,6 +121,7 @@ interface KuberneterState {
   addKuberneterKubeconfig: (filePath: string) => void;
   removeKuberneterKubeconfig: (filePath: string) => void;
   setKuberneterKubeconfigs: (filePaths: string[]) => void;
+  setKuberneterLocalKubeconfigs: (configs: LocalKubeconfig[]) => void;
   addKuberneterRecentConnection: (contextName: string, configPath: string, server?: string) => void;
 
   initInstance: (
@@ -133,6 +141,7 @@ export const useKuberneterStore = create<KuberneterState>()(
       kuberneterInstanceRefreshInterval: {},
       kuberneterMetricsConfig: {},
       kuberneterKubeconfigs: [],
+      kuberneterLocalKubeconfigs: [],
       kuberneterRecentConnections: [],
       kuberneterTabDrawers: {},
       kuberneterInstanceSidebarOpen: {},
@@ -606,6 +615,8 @@ export const useKuberneterStore = create<KuberneterState>()(
         })),
 
       setKuberneterKubeconfigs: (filePaths) => set({ kuberneterKubeconfigs: filePaths }),
+
+      setKuberneterLocalKubeconfigs: (configs) => set({ kuberneterLocalKubeconfigs: configs }),
 
       addKuberneterRecentConnection: (contextName, configPath, server) =>
         set((state) => {

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { useKuberneterStore, type LocalKubeconfig } from '../../../store/kuberneter.store';
 import { useToolTabs } from '../../../../../src/components/providers/ToolProvider';
 import { Input } from '../../../../../src/components/ui/Input';
 import {
@@ -12,7 +12,10 @@ import {
   Trash2,
   Search,
   AlertCircle,
-  Loader2
+  Loader2,
+  Laptop,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 
 interface K8sContext {
@@ -44,19 +47,23 @@ function highlightText(text: string, search: string): React.ReactNode {
 }
 
 interface ConfigTreeProps {
+  localConfigs?: LocalKubeconfig[];
   configPaths: string[];
   activeConfigPath: string;
   activeContext: string;
   onConnect: (contextName: string, configPath: string, server?: string, namespace?: string) => void;
   onRemoveConfig: (configPath: string) => void;
+  onRefreshLocalConfigs?: () => void;
 }
 
 export const ConfigTree: React.FC<ConfigTreeProps> = ({
+  localConfigs = [],
   configPaths,
   activeConfigPath,
   activeContext,
   onConnect,
-  onRemoveConfig
+  onRemoveConfig,
+  onRefreshLocalConfigs
 }) => {
   const { addActivityInstance } = useLayoutStore();
   const { addKuberneterRecentConnection } = useKuberneterStore();
@@ -70,6 +77,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
   const [expandedConfigs, setExpandedConfigs] = useState<Record<string, boolean>>({
     default: true
   });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [contextMenu, setContextMenu] = useState<{
     show: boolean;
@@ -122,7 +130,12 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 
-  const allConfigs = configPaths;
+  // Filter out synced paths that are already listed as local configs to avoid duplicate entries
+  const syncedConfigs = configPaths.filter((p) => !localConfigs.some((loc) => loc.path === p));
+
+  const allConfigPaths = Array.from(
+    new Set([...localConfigs.map((c) => c.path), ...syncedConfigs])
+  );
 
   // Fetch contexts for a single configuration file path
   const fetchConfigContexts = async (configPath: string) => {
@@ -156,12 +169,12 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
 
   // Load contexts for all config files on change/mount
   useEffect(() => {
-    for (const configPath of allConfigs) {
+    for (const configPath of allConfigPaths) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchConfigContexts(configPath);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(configPaths)]);
+  }, [JSON.stringify(allConfigPaths)]);
 
   const toggleExpand = (configPath: string) => {
     setExpandedConfigs((prev) => ({
@@ -169,6 +182,162 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
       [configPath]: !prev[configPath]
     }));
   };
+
+  const handleRefreshLocal = async () => {
+    if (!onRefreshLocalConfigs || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onRefreshLocalConfigs();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 400);
+    }
+  };
+
+  const renderConfigFileNode = (
+    configPath: string,
+    options?: { displayName?: string; isLocal?: boolean }
+  ) => {
+    const filename = options?.displayName || configPath.split(/[/\\]/).pop() || configPath;
+    const displayPath = configPath;
+    const isLocal = !!options?.isLocal;
+
+    const configContexts = contextsMap[configPath] || [];
+    const isLoading = loadingMap[configPath];
+    const error = errorMap[configPath];
+    const isExpanded = expandedConfigs[configPath];
+
+    // Filter contexts based on search input
+    const filteredContexts = configContexts.filter((ctx) => {
+      const matchesSearch =
+        ctx.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (ctx.server && ctx.server.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesSearch;
+    });
+
+    // Skip rendering if search is active and this config folder has zero matches
+    if (searchTerm && filteredContexts.length === 0) return null;
+
+    return (
+      <div key={configPath} className="flex flex-col select-none">
+        {/* Folder Node Header */}
+        <div className="flex items-center justify-between group/folder hover:bg-surface-3/30 py-1 px-1.5 rounded transition-colors">
+          <button
+            onClick={() => toggleExpand(configPath)}
+            className="flex-1 flex items-center gap-1.5 text-xs text-left text-zinc-400 font-semibold cursor-pointer min-w-0"
+          >
+            {isExpanded ? (
+              <ChevronDown className="size-3.5 text-zinc-500 shrink-0" />
+            ) : (
+              <ChevronRight className="size-3.5 text-zinc-500 shrink-0" />
+            )}
+            {isLocal ? (
+              <Laptop className="size-3.5 text-emerald-400/80 shrink-0" />
+            ) : (
+              <Folder className="size-3.5 text-zinc-500 shrink-0 fill-zinc-500/10" />
+            )}
+            <span className="truncate pr-1 max-w-[220px]" title={filename}>
+              {filename}
+            </span>
+            {isLocal ? (
+              <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium shrink-0">
+                Local
+              </span>
+            ) : (
+              <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-medium shrink-0">
+                Synced
+              </span>
+            )}
+            <span className="text-[10px] text-zinc-500 font-normal shrink-0">
+              ({filteredContexts.length})
+            </span>
+          </button>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover/folder:opacity-100 transition-opacity pl-2">
+            <span
+              className="text-[9px] font-mono text-zinc-500 truncate max-w-44"
+              title={displayPath}
+            >
+              {displayPath}
+            </span>
+            {!isLocal && (
+              <button
+                onClick={() => onRemoveConfig(configPath)}
+                className="size-5 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 flex items-center justify-center cursor-pointer transition-colors"
+                title="Remove Config"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Folder Content items */}
+        {isExpanded && (
+          <div className="flex flex-col pl-6 border-l border-border-dark/30 ml-3.5 mt-0.5 gap-0.5">
+            {isLoading && (
+              <div className="flex items-center gap-2 py-1 px-2.5 text-[10px] text-zinc-500 italic">
+                <Loader2 className="size-3 animate-spin text-accent" />
+                Loading contexts...
+              </div>
+            )}
+
+            {error && (
+              <div className="flex items-center gap-1.5 py-1 px-2.5 text-[10px] text-red-400 leading-4">
+                <AlertCircle className="size-3 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {!isLoading && !error && filteredContexts.length === 0 && (
+              <p className="py-1 px-2.5 text-[10px] text-zinc-500 italic">
+                No contexts available in this config.
+              </p>
+            )}
+
+            {!isLoading &&
+              !error &&
+              filteredContexts.map((ctx) => {
+                const isConnected = ctx.name === activeContext && activeConfigPath === configPath;
+                return (
+                  <button
+                    key={ctx.name}
+                    onClick={() => onConnect(ctx.name, configPath, ctx.server, ctx.namespace)}
+                    onContextMenu={(e) => handleContextMenu(e, ctx, configPath)}
+                    className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded text-left cursor-pointer transition-colors ${
+                      isConnected
+                        ? 'bg-accent/10 text-strong font-semibold'
+                        : 'text-zinc-400 hover:bg-surface-3/30 hover:text-zinc-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Globe
+                        className={`size-3.5 shrink-0 ${
+                          isConnected ? 'text-accent' : 'text-zinc-500'
+                        }`}
+                      />
+                      <div className="truncate pr-2">
+                        <span className="text-xs font-semibold">
+                          {highlightText(ctx.name, searchTerm)}
+                        </span>
+                        <span className="text-[9px] text-zinc-500 pl-2 font-mono truncate">
+                          {highlightText(ctx.server || ctx.cluster, searchTerm)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isConnected && (
+                      <span className="size-2 rounded-full bg-emerald-400 shrink-0 shadow-emerald-500/20 shadow-sm" />
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const totalConfigsCount = localConfigs.length + syncedConfigs.length;
 
   return (
     <div className="flex-1 flex flex-col gap-4 min-h-0 min-w-0">
@@ -193,144 +362,83 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
       </div>
 
       {/* Collapsible Config Tree list */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-2 min-h-[300px]">
-        {allConfigs.length === 0 ? (
+      <div className="flex-1 overflow-y-auto flex flex-col gap-4 min-h-[300px]">
+        {totalConfigsCount === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-zinc-550 gap-2 p-8 border border-dashed border-border-dark/60 rounded-lg select-none">
             <Folder className="size-8 text-zinc-650" />
-            <span className="text-xs font-semibold text-zinc-400">No Kubeconfig files added</span>
+            <span className="text-xs font-semibold text-zinc-400">
+              No Kubeconfig files detected
+            </span>
             <p className="text-[11px] text-zinc-550 text-center max-w-xs leading-normal">
               Click &quot;Add Kubeconfig File&quot; or &quot;Paste Config&quot; to load your
-              Kubernetes configurations.
+              Kubernetes configurations. Local configurations in ~/.kube are also detected
+              automatically.
             </p>
           </div>
         ) : (
-          allConfigs.map((configPath) => {
-            const filename = configPath.split(/[/\\]/).pop() || configPath;
-            const displayPath = configPath;
-
-            const configContexts = contextsMap[configPath] || [];
-            const isLoading = loadingMap[configPath];
-            const error = errorMap[configPath];
-            const isExpanded = expandedConfigs[configPath];
-
-            // Filter contexts based on search input
-            const filteredContexts = configContexts.filter((ctx) => {
-              const matchesSearch =
-                ctx.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (ctx.server && ctx.server.toLowerCase().includes(searchTerm.toLowerCase()));
-              return matchesSearch;
-            });
-
-            // Skip rendering if search is active and this config folder has zero matches
-            if (searchTerm && filteredContexts.length === 0) return null;
-
-            return (
-              <div key={configPath} className="flex flex-col select-none">
-                {/* Folder Node Header */}
-                <div className="flex items-center justify-between group/folder hover:bg-surface-3/30 py-1 px-1.5 rounded transition-colors">
-                  <button
-                    onClick={() => toggleExpand(configPath)}
-                    className="flex-1 flex items-center gap-1.5 text-xs text-left text-zinc-400 font-semibold cursor-pointer"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="size-3.5 text-zinc-500 shrink-0" />
-                    ) : (
-                      <ChevronRight className="size-3.5 text-zinc-500 shrink-0" />
-                    )}
-                    <Folder className="size-4 text-zinc-500 shrink-0 fill-zinc-500/10" />
-                    <span className="truncate pr-1 max-w-[200px]" title={filename}>
-                      {filename}
+          <>
+            {/* Section 1: Local Machine Kubeconfigs */}
+            {localConfigs.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between px-1 pb-1 border-b border-border-dark/40">
+                  <div className="flex items-center gap-1.5">
+                    <Laptop className="size-3.5 text-emerald-400" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                      Local Machine
                     </span>
-                    <span className="text-[10px] text-zinc-500 font-normal shrink-0">
-                      ({filteredContexts.length})
+                    <span className="text-[10px] text-zinc-500 font-normal">
+                      ({localConfigs.length})
                     </span>
-                  </button>
-
-                  <div className="flex items-center gap-1 opacity-0 group-hover/folder:opacity-100 transition-opacity pl-2">
-                    <span
-                      className="text-[9px] font-mono text-zinc-650 truncate max-w-40"
-                      title={displayPath}
-                    >
-                      {displayPath}
+                    <span className="text-[9px] text-zinc-600 pl-1 hidden sm:inline">
+                      • Local only, not synced
                     </span>
-                    <button
-                      onClick={() => onRemoveConfig(configPath)}
-                      className="size-5 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 flex items-center justify-center cursor-pointer transition-colors"
-                      title="Remove Config"
-                    >
-                      <Trash2 className="size-3" />
-                    </button>
                   </div>
+
+                  {onRefreshLocalConfigs && (
+                    <button
+                      onClick={handleRefreshLocal}
+                      className="size-5 rounded hover:bg-surface-3 text-zinc-500 hover:text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
+                      title="Rescan local kubeconfigs"
+                    >
+                      <RefreshCw
+                        className={`size-3 ${isRefreshing ? 'animate-spin text-accent' : ''}`}
+                      />
+                    </button>
+                  )}
                 </div>
 
-                {/* Folder Content items */}
-                {isExpanded && (
-                  <div className="flex flex-col pl-6 border-l border-border-dark/30 ml-3.5 mt-0.5 gap-0.5">
-                    {isLoading && (
-                      <div className="flex items-center gap-2 py-1 px-2.5 text-[10px] text-zinc-500 italic">
-                        <Loader2 className="size-3 animate-spin text-accent" />
-                        Loading contexts...
-                      </div>
-                    )}
-
-                    {error && (
-                      <div className="flex items-center gap-1.5 py-1 px-2.5 text-[10px] text-red-400 leading-4">
-                        <AlertCircle className="size-3 shrink-0" />
-                        <span>{error}</span>
-                      </div>
-                    )}
-
-                    {!isLoading && !error && filteredContexts.length === 0 && (
-                      <p className="py-1 px-2.5 text-[10px] text-zinc-500 italic">
-                        No contexts available in this config.
-                      </p>
-                    )}
-
-                    {!isLoading &&
-                      !error &&
-                      filteredContexts.map((ctx) => {
-                        const isConnected =
-                          ctx.name === activeContext && activeConfigPath === configPath;
-                        return (
-                          <button
-                            key={ctx.name}
-                            onClick={() =>
-                              onConnect(ctx.name, configPath, ctx.server, ctx.namespace)
-                            }
-                            onContextMenu={(e) => handleContextMenu(e, ctx, configPath)}
-                            className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded text-left cursor-pointer transition-colors ${
-                              isConnected
-                                ? 'bg-accent/10 text-strong font-semibold'
-                                : 'text-zinc-400 hover:bg-surface-3/30 hover:text-zinc-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <Globe
-                                className={`size-3.5 shrink-0 ${
-                                  isConnected ? 'text-accent' : 'text-zinc-500'
-                                }`}
-                              />
-                              <div className="truncate pr-2">
-                                <span className="text-xs font-semibold">
-                                  {highlightText(ctx.name, searchTerm)}
-                                </span>
-                                <span className="text-[9px] text-zinc-500 pl-2 font-mono truncate">
-                                  {highlightText(ctx.server || ctx.cluster, searchTerm)}
-                                </span>
-                              </div>
-                            </div>
-
-                            {isConnected && (
-                              <span className="size-2 rounded-full bg-emerald-400 shrink-0 shadow-emerald-500/20 shadow-sm" />
-                            )}
-                          </button>
-                        );
-                      })}
-                  </div>
-                )}
+                <div className="flex flex-col gap-1 pl-0.5">
+                  {localConfigs.map((cfg) =>
+                    renderConfigFileNode(cfg.path, {
+                      displayName: cfg.name,
+                      isLocal: true
+                    })
+                  )}
+                </div>
               </div>
-            );
-          })
+            )}
+
+            {/* Section 2: Synced / Custom Kubeconfigs */}
+            {syncedConfigs.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-2">
+                <div className="flex items-center gap-1.5 px-1 pb-1 border-b border-border-dark/40">
+                  <Cloud className="size-3.5 text-sky-400" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                    Synced & Custom Configs
+                  </span>
+                  <span className="text-[10px] text-zinc-500 font-normal">
+                    ({syncedConfigs.length})
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1 pl-0.5">
+                  {syncedConfigs.map((configPath) =>
+                    renderConfigFileNode(configPath, { isLocal: false })
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

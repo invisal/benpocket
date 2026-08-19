@@ -17,13 +17,22 @@ export const KuberneterActivityContextMenu: React.FC<KuberneterActivityContextMe
 }) => {
   const { selectTab } = useToolTabs();
   const { closeAll, openTab, setActiveInstanceId } = useLayoutStore();
-  const { kuberneterInstanceCluster, initInstance, kuberneterKubeconfigs } = useKuberneterStore();
+  const {
+    kuberneterInstanceCluster,
+    initInstance,
+    kuberneterKubeconfigs,
+    kuberneterLocalKubeconfigs
+  } = useKuberneterStore();
 
   const [availableClusters, setAvailableClusters] = useState<AvailableCluster[]>([]);
 
   useEffect(() => {
     let active = true;
-    loadAllClusters(kuberneterKubeconfigs).then((clusters) => {
+    const allPaths = Array.from(
+      new Set([...kuberneterLocalKubeconfigs.map((c) => c.path), ...kuberneterKubeconfigs])
+    );
+
+    loadAllClusters(allPaths).then((clusters) => {
       if (active) {
         setAvailableClusters(clusters);
       }
@@ -31,7 +40,7 @@ export const KuberneterActivityContextMenu: React.FC<KuberneterActivityContextMe
     return () => {
       active = false;
     };
-  }, [kuberneterKubeconfigs]);
+  }, [kuberneterKubeconfigs, kuberneterLocalKubeconfigs]);
 
   const instanceId = (payload as { instanceId?: string })?.instanceId || tabId;
   const currentCluster = kuberneterInstanceCluster[instanceId];

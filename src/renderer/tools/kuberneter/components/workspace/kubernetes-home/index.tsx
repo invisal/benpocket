@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import * as Y from 'yjs';
 import { usePersistStore } from '@renderer/hooks/usePersistStore';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
@@ -26,9 +26,11 @@ export const KuberneterHomeView: React.FC = () => {
 
   const {
     kuberneterKubeconfigs,
+    kuberneterLocalKubeconfigs,
     addKuberneterKubeconfig,
     removeKuberneterKubeconfig,
     setKuberneterKubeconfigs,
+    setKuberneterLocalKubeconfigs,
     kuberneterInstanceCluster,
     setKuberneterInstanceCluster,
     setKuberneterInstanceServer,
@@ -48,6 +50,22 @@ export const KuberneterHomeView: React.FC = () => {
 
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Detect local kubeconfig files from ambient machine / ~/.kube without syncing to Yjs/server
+  const detectLocalConfigs = useCallback(async () => {
+    try {
+      const local = await window.kuberneter.detectLocalKubeconfigs();
+      if (Array.isArray(local)) {
+        setKuberneterLocalKubeconfigs(local);
+      }
+    } catch (err) {
+      console.warn('Failed to detect local kubeconfigs:', err);
+    }
+  }, [setKuberneterLocalKubeconfigs]);
+
+  useEffect(() => {
+    detectLocalConfigs();
+  }, [detectLocalConfigs]);
 
   // Sync Yjs persisted map with local store on mount/update across devices
   useEffect(() => {
@@ -234,11 +252,13 @@ export const KuberneterHomeView: React.FC = () => {
         {/* Right Side: Searchable tree of config files & contexts (7 cols) */}
         <div className="md:col-span-7 flex flex-col min-h-0 min-w-0">
           <ConfigTree
+            localConfigs={kuberneterLocalKubeconfigs}
             configPaths={kuberneterKubeconfigs}
             activeConfigPath={activeConfigPath}
             activeContext={activeContext}
             onConnect={handleConnectContext}
             onRemoveConfig={handleRemoveConfig}
+            onRefreshLocalConfigs={detectLocalConfigs}
           />
         </div>
       </div>

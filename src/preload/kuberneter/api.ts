@@ -63,8 +63,15 @@ export interface KubectlCheckResult {
   error?: string;
 }
 
+export interface LocalKubeconfig {
+  path: string;
+  name: string;
+  isDefault?: boolean;
+}
+
 export interface KuberneterApi {
   listContexts: (kubeconfigPath?: string) => Promise<ListContextsResponse>;
+  detectLocalKubeconfigs: () => Promise<LocalKubeconfig[]>;
   selectKubeconfigFile: () => Promise<string | null>;
   saveKubeconfig: (content: string, filename: string) => Promise<string | { error: string }>;
   readKubeconfigFile: (
@@ -312,6 +319,7 @@ export interface HelmReleaseItem {
 
 export const kuberneterApi: KuberneterApi = {
   listContexts: (kubeconfigPath) => ipcRenderer.invoke('kuberneter:list-contexts', kubeconfigPath),
+  detectLocalKubeconfigs: () => ipcRenderer.invoke('kuberneter:detect-local-kubeconfigs'),
   selectKubeconfigFile: () => ipcRenderer.invoke('kuberneter:select-kubeconfig-file'),
   saveKubeconfig: (content, filename) =>
     ipcRenderer.invoke('kuberneter:save-kubeconfig', content, filename),

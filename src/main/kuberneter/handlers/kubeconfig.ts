@@ -15,6 +15,16 @@ export function registerKubeconfigHandlers(): void {
     }
   });
 
+  // Detect ambient and local kubeconfig files on host machine
+  ipcMain.handle('kuberneter:detect-local-kubeconfigs', async () => {
+    try {
+      return KubeConfigService.detectLocalKubeconfigs();
+    } catch (err) {
+      console.warn('Failed to detect local kubeconfigs:', err);
+      return [];
+    }
+  });
+
   // Select and load local kubeconfig file via OS file dialog
   ipcMain.handle('kuberneter:select-kubeconfig-file', async () => {
     const result = await dialog.showOpenDialog({

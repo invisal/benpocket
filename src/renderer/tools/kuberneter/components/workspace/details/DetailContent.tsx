@@ -1,6 +1,6 @@
 import type React from 'react';
 import { PodDetail } from './pod-detail';
-import { DeploymentDetail } from './DeploymentDetail';
+import { DeploymentDetail } from './deployment-detail';
 import { DaemonSetDetail } from './DaemonSetDetail';
 import { StatefulSetDetail } from './StatefulSetDetail';
 import { ReplicaSetDetail } from './ReplicaSetDetail';

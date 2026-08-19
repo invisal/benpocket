@@ -84,12 +84,19 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
     lastRecording: {
       previewUrl: source.url,
       filePath: project.sourceVideoPath,
+      // `?? project.sourceVideoPath`, not left `undefined` -- legacy
+      // projects saved before this field existed (or one where recording
+      // never produced a separate export-source file) should still fall
+      // back to the same file everything else uses, same as
+      // `exportSourceVideoPath`'s own doc describes for a fresh recording.
+      exportSourceFilePath: project.exportSourceVideoPath ?? project.sourceVideoPath,
       sizeBytes: source.sizeBytes,
       createdAt: project.createdAt,
       cursorPath: project.cursorPath,
       clickPath: project.clickPath,
       webcamPreviewUrl: webcam?.url ?? null,
       webcamFilePath: project.webcamVideoPath,
+      webcamExportSourceFilePath: project.webcamExportSourceVideoPath ?? project.webcamVideoPath,
       webcamOffsetMs: project.webcamOffsetMs,
       // Legacy project JSONs predate this field -- see project-handlers.ts's
       // `ListProjects` for why the missing case defaults to 'imported'.

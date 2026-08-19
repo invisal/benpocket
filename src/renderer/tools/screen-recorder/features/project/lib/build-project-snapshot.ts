@@ -39,6 +39,7 @@ export function buildProjectSnapshot(name: string): Project | null {
     updatedAt: now,
     source: lastRecording.source,
     sourceVideoPath: lastRecording.filePath,
+    exportSourceVideoPath: lastRecording.exportSourceFilePath ?? null,
     durationMs: sourceDurationMs,
     tracks,
     zoomKeyframes,
@@ -51,6 +52,7 @@ export function buildProjectSnapshot(name: string): Project | null {
       shadow: webcamState.shadow
     },
     webcamVideoPath: lastRecording.webcamFilePath,
+    webcamExportSourceVideoPath: lastRecording.webcamExportSourceFilePath ?? null,
     webcamOffsetMs: lastRecording.webcamOffsetMs,
     background: {
       enabled: backgroundState.enabled,

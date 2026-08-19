@@ -16,6 +16,7 @@ import { useOpenProject } from '../features/project/hooks/useOpenProject';
 import { DiscardChangesDialog } from '../features/project/components/DiscardChangesDialog';
 import { importVideoFile } from '../features/project/lib/import-video';
 import { groupProjectsBySource } from '../features/project/lib/group-projects-by-source';
+import { closeCurrentProject } from '../features/project/lib/close-current-project';
 import { formatTimeAgo } from '../lib/format';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
@@ -69,7 +70,11 @@ export const ScreenRecorderSidebar: React.FC = () => {
   async function handleDeleteProject(project: ProjectSummary): Promise<void> {
     if (!window.confirm(`Delete "${project.name}"? This can't be undone.`)) return;
     const ok = await window.screenRecorder.project.remove(project.id);
-    if (ok) setRecentProjects((prev) => prev.filter((p) => p.id !== project.id));
+    if (!ok) return;
+    setRecentProjects((prev) => prev.filter((p) => p.id !== project.id));
+    // Same reasoning as LibraryPage.tsx's own delete handler -- don't leave
+    // the editor pointed at a file that was just deleted.
+    if (project.id === currentProjectId) closeCurrentProject();
   }
 
   async function handleImport(): Promise<void> {

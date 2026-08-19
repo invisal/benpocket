@@ -253,6 +253,14 @@ export interface KuberneterApi {
     nodeName: string,
     unschedulable: boolean
   ) => Promise<{ success: boolean; message?: string; error?: string }>;
+  /** Deletes a Kubernetes resource from the cluster. */
+  deleteResource: (
+    kubeconfigPath: string | undefined,
+    contextName: string | undefined,
+    resource: string,
+    name: string,
+    namespace?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   /** Spawn a PTY-backed shell session for the given terminal id. */
   terminalCreate: (
     id: string,
@@ -417,6 +425,15 @@ export const kuberneterApi: KuberneterApi = {
       contextName,
       nodeName,
       unschedulable
+    ),
+  deleteResource: (kubeconfigPath, contextName, resource, name, namespace) =>
+    ipcRenderer.invoke(
+      'kuberneter:delete-resource',
+      kubeconfigPath,
+      contextName,
+      resource,
+      name,
+      namespace
     ),
   terminalCreate: (id, options) => ipcRenderer.invoke('kuberneter:terminal-create', id, options),
   terminalInput: (id, data) => ipcRenderer.send('kuberneter:terminal-input', id, data),

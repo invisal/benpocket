@@ -86,4 +86,24 @@ export function registerResourcesHandler(): void {
       );
     }
   );
+
+  ipcMain.handle(
+    'kuberneter:delete-resource',
+    async (
+      _,
+      kubeconfigPath: string | undefined,
+      contextName: string | undefined,
+      resource: string,
+      name: string,
+      namespace?: string
+    ) => {
+      return KubeClientService.deleteResourceDirect(
+        kubeconfigPath,
+        contextName,
+        resource,
+        name,
+        namespace
+      );
+    }
+  );
 }

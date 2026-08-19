@@ -3,6 +3,7 @@ import { PodHeaderActions } from './pod-detail';
 import { NodeHeaderActions } from './NodeHeaderActions';
 import { IngressClassHeaderActions } from './IngressClassHeaderActions';
 import { EditDeleteHeaderActions } from './EditDeleteHeaderActions';
+import { ConfigSecretHeaderActions } from './ConfigSecretHeaderActions';
 import { GenericHeaderActions } from './GenericHeaderActions';
 import { type PodData } from '../../../types/PodData';
 import { type NodeData } from '../../../types/NodeData';
@@ -32,6 +33,11 @@ export const DetailHeaderActions: React.FC<DetailHeaderActionsProps> = ({
     case 'ingressclass':
     case 'ingressclasses':
       return <IngressClassHeaderActions payload={payload as IngressClassData} />;
+    case 'configmap':
+    case 'configmaps':
+    case 'secret':
+    case 'secrets':
+      return <ConfigSecretHeaderActions contentType={contentType} payload={payload} />;
     case 'clusterrole':
     case 'role':
     case 'clusterrolebinding':

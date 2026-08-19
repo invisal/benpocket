@@ -1,22 +1,11 @@
 import { Age } from '../../Age';
-import type React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, memo, type FC } from 'react';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { type ConfigMapData } from '../../../types/ConfigMapData';
-import {
-  Copy,
-  Check,
-  Search,
-  Plus,
-  Trash2,
-  RotateCcw,
-  Save,
-  Loader2,
-  Maximize2,
-  Minimize2
-} from 'lucide-react';
+import { Copy, Search, Plus, Trash2, RotateCcw, Save, Loader2, MoreVertical } from 'lucide-react';
 import * as jsYaml from 'js-yaml';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+import { KeyValueCodeEditor } from './KeyValueCodeEditor';
 import { useOpenNamespaceDetail, useOpenResourceDetail } from '../../../hooks/open-detail';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
@@ -24,6 +13,9 @@ import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
 import { type K8sResource } from '../../../types/K8sResource';
 import { buildConfigMapDetailPayload } from '../../../hooks/open-detail/transformers/config.transformer';
 import { Button } from '@renderer/components/ui/Button';
+import { Menu } from '@renderer/components/ui/Menu';
+import { ContextMenu } from '@renderer/components/ui/ContextMenu';
+import { Tooltip } from '@renderer/components/ui/Tooltip';
 
 interface ConfigMapDetailProps {
   payload: ConfigMapData;
@@ -34,10 +26,115 @@ interface KeyValueEntry {
   id: string;
   key: string;
   value: string;
-  isMultiline?: boolean;
 }
 
-export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab = false }) => {
+interface ConfigMapEntryRowProps {
+  id: string;
+  entryKey: string;
+  value: string;
+  onKeyChange: (id: string, newKey: string) => void;
+  onValueChange: (id: string, newValue: string) => void;
+  onDelete: (id: string) => void;
+  onCopy: (key: string, value: string) => void;
+}
+
+const ConfigMapEntryRow: FC<ConfigMapEntryRowProps> = memo(function ConfigMapEntryRow({
+  id,
+  entryKey,
+  value,
+  onKeyChange,
+  onValueChange,
+  onDelete,
+  onCopy
+}: ConfigMapEntryRowProps) {
+  const handleValueChange = useCallback(
+    (newVal: string) => {
+      onValueChange(id, newVal);
+    },
+    [id, onValueChange]
+  );
+
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger
+        render={
+          <div
+            id={`configmap-entry-row-${id}`}
+            className="grid grid-cols-[1fr_1.5fr_auto] gap-2 p-2.5 items-start hover:bg-surface-2/30 transition-colors"
+          >
+            <div className="flex flex-col min-w-0">
+              <input
+                type="text"
+                placeholder="KEY_NAME"
+                value={entryKey}
+                onChange={(e) => onKeyChange(id, e.target.value)}
+                className="w-full h-8 px-2.5 text-xs font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors truncate"
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <KeyValueCodeEditor
+                value={value}
+                onChange={handleValueChange}
+                placeholder="Value..."
+              />
+            </div>
+            <div className="flex items-center justify-center shrink-0 pt-0.5 w-8">
+              <Menu.Root>
+                <Menu.Trigger
+                  render={
+                    <button
+                      type="button"
+                      className="size-7 rounded hover:bg-surface-3 text-zinc-500 hover:text-zinc-200 transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center outline-none"
+                      title="Actions"
+                    >
+                      <MoreVertical className="size-3.5" />
+                    </button>
+                  }
+                />
+                <Menu.Content align="end" className="min-w-32">
+                  <Menu.Item
+                    onClick={() => onCopy(entryKey, value)}
+                    className="flex items-center gap-2"
+                  >
+                    <Copy className="size-3.5 text-zinc-400" />
+                    <span>Copy</span>
+                  </Menu.Item>
+                  <Menu.Separator />
+                  <Menu.Item
+                    onClick={() => onDelete(id)}
+                    className="flex items-center gap-2 text-rose-500 hover:text-rose-400"
+                  >
+                    <Trash2 className="size-3.5 text-rose-500" />
+                    <span>Delete</span>
+                  </Menu.Item>
+                </Menu.Content>
+              </Menu.Root>
+            </div>
+          </div>
+        }
+      />
+      <ContextMenu.Content className="min-w-32">
+        <ContextMenu.Item
+          onClick={() => onCopy(entryKey, value)}
+          className="flex items-center gap-2"
+        >
+          <Copy className="size-3.5 text-zinc-400" />
+          <span>Copy</span>
+        </ContextMenu.Item>
+        <ContextMenu.Separator />
+        <ContextMenu.Item
+          onClick={() => onDelete(id)}
+          className="flex items-center gap-2 text-rose-500 hover:text-rose-400"
+        >
+          <Trash2 className="size-3.5 text-rose-500" />
+          <span>Delete</span>
+        </ContextMenu.Item>
+      </ContextMenu.Content>
+    </ContextMenu.Root>
+  );
+});
+
+export const ConfigMapDetail: FC<ConfigMapDetailProps> = ({ payload, isTab = false }) => {
   const queryClient = useQueryClient();
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
@@ -45,13 +142,11 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
     (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
 
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
 
   const { openNamespaceDetail } = useOpenNamespaceDetail();
   const { openResourceDetail } = useOpenResourceDetail();
 
-  // Fetch fresh ConfigMap with React Query caching
   const { data: queryData } = useQuery({
     queryKey: [
       'kuberneter',
@@ -83,87 +178,112 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
   });
 
   const rawItem = queryData || payload?.rawItem;
-  const currentData: ConfigMapData = rawItem
-    ? buildConfigMapDetailPayload(payload.name, payload.ns, rawItem)
+  const currentData: ConfigMapData | undefined = rawItem
+    ? buildConfigMapDetailPayload(
+        payload?.name || rawItem.metadata?.name || '',
+        payload?.ns || rawItem.metadata?.namespace || '',
+        rawItem
+      )
     : payload;
 
-  const [prevData, setPrevData] = useState(currentData.data);
+  const [prevData, setPrevData] = useState(currentData?.data);
   const [entries, setEntries] = useState<KeyValueEntry[]>(() => {
-    return currentData.data
+    return currentData?.data
       ? Object.entries(currentData.data).map(([k, v], idx) => ({
           id: `entry-${idx}-${k}`,
           key: k,
-          value: v,
-          isMultiline: v.includes('\n') || v.length > 80
+          value: v
         }))
       : [];
   });
   const [isDirty, setIsDirty] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
 
-  if (currentData.data !== prevData) {
-    setPrevData(currentData.data);
+  if (currentData?.data !== prevData) {
+    setPrevData(currentData?.data);
     if (!isDirty) {
       setEntries(
-        currentData.data
+        currentData?.data
           ? Object.entries(currentData.data).map(([k, v], idx) => ({
               id: `entry-${idx}-${k}`,
               key: k,
-              value: v,
-              isMultiline: v.includes('\n') || v.length > 80
+              value: v
             }))
           : []
       );
     }
   }
 
-  const handleAddEntry = () => {
-    setEntries((prev) => [
-      ...prev,
-      { id: `new-${Date.now()}-${prev.length}`, key: '', value: '', isMultiline: false }
-    ]);
-    setIsDirty(true);
-  };
+  const targetFocusIdRef = useRef<string | null>(null);
 
-  const handleKeyChange = (id: string, newKey: string) => {
+  const handleAddEntry = useCallback(() => {
+    const newId = `new-${Date.now()}`;
+    if (searchFilter) setSearchFilter('');
+    setEntries((prev) => [...prev, { id: newId, key: '', value: '' }]);
+    setIsDirty(true);
+    targetFocusIdRef.current = newId;
+  }, [searchFilter]);
+
+  useEffect(() => {
+    if (targetFocusIdRef.current) {
+      const el = document.getElementById(`configmap-entry-row-${targetFocusIdRef.current}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const input = el.querySelector<HTMLInputElement>('input[type="text"]');
+        if (input) {
+          input.focus();
+        }
+      }
+      targetFocusIdRef.current = null;
+    }
+  }, [entries]);
+
+  const handleKeyChange = useCallback((id: string, newKey: string) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, key: newKey } : e)));
     setIsDirty(true);
-  };
+  }, []);
 
-  const handleValueChange = (id: string, newValue: string) => {
+  const handleValueChange = useCallback((id: string, newValue: string) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, value: newValue } : e)));
     setIsDirty(true);
-  };
+  }, []);
 
-  const handleDeleteEntry = (id: string) => {
+  const handleDeleteEntry = useCallback((id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     setIsDirty(true);
-  };
+  }, []);
 
-  const toggleMultiline = (id: string) => {
-    setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, isMultiline: !e.isMultiline } : e))
-    );
-  };
-
-  const handleReset = () => {
-    const initial = currentData.data
+  const handleReset = useCallback(() => {
+    const initial = currentData?.data
       ? Object.entries(currentData.data).map(([k, v], idx) => ({
           id: `entry-${idx}-${k}`,
           key: k,
-          value: v,
-          isMultiline: v.includes('\n') || v.length > 80
+          value: v
         }))
       : [];
     setEntries(initial);
     setIsDirty(false);
-  };
+  }, [currentData]);
 
-  const handleCopy = (id: string, value: string) => {
+  const handleCopy = useCallback((key: string, value: string) => {
     navigator.clipboard.writeText(value);
-    setCopiedKey(id);
-    setTimeout(() => setCopiedKey(null), 2000);
-  };
+    useKuberneterStore.getState().addToast({
+      type: 'info',
+      title: 'Copied to Clipboard',
+      message: key ? `Copied value of "${key}"` : 'Value copied to clipboard.'
+    });
+  }, []);
+
+  const handleCopyAllAsEnv = useCallback(() => {
+    if (entries.length === 0) return;
+    const lines = entries.map((e) => `${e.key}=${e.value}`).join('\n');
+    navigator.clipboard.writeText(lines);
+    useKuberneterStore.getState().addToast({
+      type: 'info',
+      title: 'Copied to Clipboard',
+      message: 'All entries copied in key=value format.'
+    });
+  }, [entries]);
 
   const handleApply = async () => {
     const emptyKeyEntry = entries.find((e) => !e.key.trim());
@@ -259,9 +379,9 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
     }
   };
 
-  const labels = currentData.labels ? Object.entries(currentData.labels) : [];
-  const annotations = currentData.annotations ? Object.entries(currentData.annotations) : [];
-  const binaryEntries = currentData.binaryData ? Object.entries(currentData.binaryData) : [];
+  const labels = currentData?.labels ? Object.entries(currentData.labels) : [];
+  const annotations = currentData?.annotations ? Object.entries(currentData.annotations) : [];
+  const binaryEntries = currentData?.binaryData ? Object.entries(currentData.binaryData) : [];
 
   const filteredEntries = useMemo(() => {
     if (!searchFilter.trim()) return entries;
@@ -276,9 +396,9 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
 
   const createdTime = rawItem?.metadata?.creationTimestamp
     ? new Date(rawItem.metadata.creationTimestamp).toLocaleString()
-    : currentData.createdTime || '';
+    : currentData?.createdTime || '';
 
-  if (!payload) {
+  if (!payload && !currentData) {
     return <div className="p-4 text-xs text-zinc-500">No config map details available.</div>;
   }
 
@@ -291,7 +411,7 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
           <Age
             timestamp={
               rawItem?.metadata?.creationTimestamp ||
-              ((payload as unknown as Record<string, unknown>).creationTimestamp as string)
+              ((payload as unknown as Record<string, unknown>)?.creationTimestamp as string)
             }
           />{' '}
           ago ({createdTime || 'N/A'})
@@ -301,17 +421,20 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
     {
       id: 'name',
       name: 'Name',
-      value: currentData.name
+      value: currentData?.name || payload?.name || ''
     },
     {
       id: 'namespace',
       name: 'Namespace',
       value: (
         <span
-          onClick={() => currentData.ns && openNamespaceDetail(currentData.ns)}
+          onClick={() =>
+            (currentData?.ns || payload?.ns) &&
+            openNamespaceDetail(currentData?.ns || payload?.ns || '')
+          }
           className="font-mono text-accent hover:underline cursor-pointer"
         >
-          {currentData.ns}
+          {currentData?.ns || payload?.ns}
         </span>
       )
     }
@@ -420,6 +543,24 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
                 />
               </div>
             )}
+            <Tooltip.Provider delay={200} closeDelay={0}>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyAllAsEnv}
+                      disabled={entries.length === 0}
+                      className="size-6 p-0 flex items-center justify-center bg-surface-3 hover:bg-surface-4 text-zinc-300 disabled:opacity-40"
+                    >
+                      <Copy className="size-3" />
+                    </Button>
+                  }
+                />
+                <Tooltip.Content side="bottom">Copy all as .env</Tooltip.Content>
+              </Tooltip.Root>
+            </Tooltip.Provider>
             <Button
               variant="outline"
               size="sm"
@@ -437,7 +578,7 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
           <div className="grid grid-cols-[1fr_1.5fr_auto] gap-2 px-3 py-2 bg-surface-3/50 border-b border-border/60 text-[11px] font-semibold text-zinc-400">
             <span>Name</span>
             <span>Value</span>
-            <span className="w-16 text-right">Actions</span>
+            <span className="w-8 text-center">Actions</span>
           </div>
 
           {filteredEntries.length === 0 ? (
@@ -448,84 +589,18 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ payload, isTab
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-border/40">
-              {filteredEntries.map((entry) => {
-                const isCopied = copiedKey === entry.id;
-                return (
-                  <div
-                    key={entry.id}
-                    className="grid grid-cols-[1fr_1.5fr_auto] gap-2 p-2.5 items-start hover:bg-surface-2/30 transition-colors"
-                  >
-                    {/* Key Name Input */}
-                    <div className="flex flex-col min-w-0">
-                      <input
-                        type="text"
-                        placeholder="KEY_NAME"
-                        value={entry.key}
-                        onChange={(e) => handleKeyChange(entry.id, e.target.value)}
-                        className="w-full h-8 px-2.5 text-xs font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors truncate"
-                      />
-                    </div>
-
-                    {/* Value Input / Textarea */}
-                    <div className="flex flex-col min-w-0 relative">
-                      {entry.isMultiline ? (
-                        <textarea
-                          rows={4}
-                          placeholder="Value..."
-                          value={entry.value}
-                          onChange={(e) => handleValueChange(entry.id, e.target.value)}
-                          className="w-full p-2 text-xs font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors resize-y leading-relaxed"
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          placeholder="Value..."
-                          value={entry.value}
-                          onChange={(e) => handleValueChange(entry.id, e.target.value)}
-                          className="w-full h-8 px-2.5 text-xs font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors"
-                        />
-                      )}
-                    </div>
-
-                    {/* Row Actions */}
-                    <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                      <button
-                        onClick={() => toggleMultiline(entry.id)}
-                        className="size-7 rounded hover:bg-surface-3 text-zinc-500 hover:text-zinc-200 transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center"
-                        title={
-                          entry.isMultiline ? 'Collapse to single-line' : 'Expand to multiline'
-                        }
-                      >
-                        {entry.isMultiline ? (
-                          <Minimize2 className="size-3.5" />
-                        ) : (
-                          <Maximize2 className="size-3.5" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => handleCopy(entry.id, entry.value)}
-                        className="size-7 rounded hover:bg-surface-3 text-zinc-500 hover:text-zinc-200 transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center"
-                        title="Copy value"
-                      >
-                        {isCopied ? (
-                          <Check className="size-3.5 text-emerald-500" />
-                        ) : (
-                          <Copy className="size-3.5" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteEntry(entry.id)}
-                        className="size-7 rounded hover:bg-rose-500/10 text-rose-500/80 hover:text-rose-400 transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center"
-                        title="Delete entry"
-                      >
-                        <Trash2 className="size-3.5 text-rose-500" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredEntries.map((entry) => (
+                <ConfigMapEntryRow
+                  key={entry.id}
+                  id={entry.id}
+                  entryKey={entry.key}
+                  value={entry.value}
+                  onKeyChange={handleKeyChange}
+                  onValueChange={handleValueChange}
+                  onDelete={handleDeleteEntry}
+                  onCopy={handleCopy}
+                />
+              ))}
             </div>
           )}
         </div>

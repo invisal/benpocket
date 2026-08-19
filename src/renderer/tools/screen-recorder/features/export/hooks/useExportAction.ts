@@ -111,8 +111,18 @@ export function useExportAction(): UseExportActionResult {
       const project = buildExportProject(sourceVideoPath, durationMs);
       // No separate global toggle -- skip audio entirely when every kept
       // clip is muted, rather than encoding a track that would be silent
-      // from end to end anyway.
-      const includeAudio = segments.some((s) => !s.audioMuted);
+      // from end to end anyway. Except when the click-sound overlay (see
+      // audio-encoder.ts's `processMutedSegment`) has something to mix into
+      // that silence -- that overlay only ever gets a chance to run at all
+      // when an audio track is included in the first place, so all-muted
+      // clips would otherwise silently drop click sounds too, contradicting
+      // clickSoundEnabled's own doc (it's meant to ignore audioMuted, same
+      // as clickBounce/clickRipple already do).
+      const includeAudio =
+        segments.some((s) => !s.audioMuted) ||
+        (project.cursor.clickSoundEnabled &&
+          project.clickPath.length > 0 &&
+          store.format !== 'gif');
       const { actualBytes, wasEncoded, includedAudio } = await runExport(
         {
           format: store.format,

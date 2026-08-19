@@ -142,9 +142,9 @@ function mostRecentClick(clickPath: CursorPathPoint[], atMs: number): CursorPath
  * Cursor scale multiplier for the click-bounce effect at a given timeline
  * position -- a single smooth scale-in/scale-out pulse starting at the most
  * recent real mousedown, so the cursor visibly "presses" on click, the way
- * Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.
- * clickBounce`); returns 1 (no effect) when there's no click within the
- * animation window or `intensity` is 0.
+ * Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.clickBounce`);
+ * returns 1 (no effect) when there's no click within the animation window or
+ * `intensity` is 0.
  *
  * Uses a raised-cosine (Hann) envelope rather than a damped oscillation --
  * `hann(p)` is 0 at both ends of the window *and* has zero slope there, so

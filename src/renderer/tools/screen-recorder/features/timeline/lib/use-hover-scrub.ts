@@ -36,7 +36,7 @@ export function useHoverScrub({
   handlePointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
   handlePointerUp: (event: React.PointerEvent<HTMLDivElement>) => void;
   handlePointerLeave: () => void;
-  /** Clears the hover baseline with no side effects -- for callers about to commit their own seek right after (a real ruler click, or the main playhead taking over the drag), so the hover state doesn't linger or fight what they're about to do. */
+  /** Clears the hover baseline (including `isHoverScrubbing` in the store) -- for callers about to commit their own seek right after (a real ruler click, or the main playhead taking over the drag), so the hover state doesn't linger or fight what they're about to do. */
   cancelHover: () => void;
 } {
   const previewSeek = useTimelineStore((s) => s.previewSeek);
@@ -73,7 +73,8 @@ export function useHoverScrub({
   const cancelHover = useCallback(() => {
     setHoverFraction(null);
     preHoverPlayheadMsRef.current = null;
-  }, []);
+    setIsHoverScrubbing(false);
+  }, [setIsHoverScrubbing]);
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -135,17 +136,9 @@ export function useHoverScrub({
       if (event.button === 2) return;
       if (isPlaying || playheadDraggingRef.current || edgeResizingRef.current) return;
       cancelHover();
-      setIsHoverScrubbing(false);
       seekFromClientX(event.clientX);
     },
-    [
-      isPlaying,
-      playheadDraggingRef,
-      edgeResizingRef,
-      cancelHover,
-      setIsHoverScrubbing,
-      seekFromClientX
-    ]
+    [isPlaying, playheadDraggingRef, edgeResizingRef, cancelHover, seekFromClientX]
   );
 
   const handlePointerLeave = useCallback(() => {

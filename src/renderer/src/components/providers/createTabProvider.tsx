@@ -50,13 +50,15 @@ type TabType<TTool extends Tool<string, any>> = Tab<TTool>['type'];
 interface TabsState<TTool extends Tool<string, any>> {
   tabs: Tab<TTool>[];
   activeTabId: string | undefined;
+  /** Returns the new tab's id, or `null` if the currently active tab's own leave guard (see `registerLeaveGuard`) denied switching away from it -- nothing is created in that case. Callers with a follow-up action (closing a picker dialog, opening a companion floating toolbar) must check for `null` and skip it, or that action runs as if a tab had opened when none did. */
   openTab: <T extends TabType<TTool>>(
     type: T,
     payload: Extract<Tab<TTool>, { type: T }>['payload'],
     options?: { title?: string; subtitle?: string }
-  ) => string;
+  ) => string | null;
   closeTab: (id: string) => void;
-  selectTab: (id: string) => void;
+  /** Returns `false` if the leave guard denied switching away from the current tab -- same "check before running a follow-up action" caveat as `openTab`. */
+  selectTab: (id: string) => boolean;
   renameTab: (id: string, title: string) => void;
 }
 
@@ -123,7 +125,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(
           payload: unknown,
           opts?: { title?: string; subtitle?: string }
         ) => {
-          if (!canLeave(get().activeTabId)) return '';
+          if (!canLeave(get().activeTabId)) return null;
           const id = crypto.randomUUID();
           const tool = toolsByName[type];
           const count = get().tabs.filter((t) => t.type === type).length + 1;
@@ -149,9 +151,10 @@ export function createTabProvider<TTool extends Tool<string, any>>(
         },
 
         selectTab: (id) => {
-          if (id === get().activeTabId) return;
-          if (!canLeave(get().activeTabId)) return;
+          if (id === get().activeTabId) return true;
+          if (!canLeave(get().activeTabId)) return false;
           set({ activeTabId: id });
+          return true;
         },
 
         renameTab: (id, title) =>

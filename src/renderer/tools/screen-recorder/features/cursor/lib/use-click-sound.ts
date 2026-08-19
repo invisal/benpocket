@@ -58,12 +58,16 @@ export function useClickSound(
       // One `AudioBufferSourceNode` per crossed click -- each is single-use
       // by spec (can't call `.start()` twice), and overlapping clicks (two
       // very close together in a fast jump) should still both be audible
-      // rather than one cutting the other off.
-      for (let i = 0; i < crossedClicks.length; i++) {
+      // rather than one cutting the other off. `crossedClicks[i]` is that
+      // click's own elapsed-seconds offset since `previousTimeMs` (see
+      // `clickElapsedSecondsInRange`) -- scheduled relative to `now` so
+      // multiple clicks crossed in one jump play spaced apart the same way
+      // they were actually recorded, instead of all firing at once.
+      for (const offsetSec of crossedClicks) {
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContext.destination);
-        source.start();
+        source.start(audioContext.currentTime + offsetSec);
       }
     });
   }, [clickPath, currentTimeMs, enabled, intensity]);

@@ -53,10 +53,15 @@ export async function runExport(
         onProgress({ percent: 100, stage: 'encoding' });
         await window.screenRecorder.export.writeFileBytes(options.outputPath, sourceBytes);
         onProgress({ percent: 100, stage: 'done' });
+        // Moot -- `wasEncoded: false` already makes calibration-recording
+        // callers skip this result entirely -- but a verbatim copy only
+        // actually carries audio when the source itself has an audio stream;
+        // `isSourceCopyEligible` only checked the *request*
+        // (`options.includeAudio`), not whether the source really has one.
         return {
           actualBytes: sourceBytes.byteLength,
           wasEncoded: false,
-          includedAudio: options.includeAudio
+          includedAudio: sourceInfo.hasAudio && options.includeAudio
         };
       }
     } finally {

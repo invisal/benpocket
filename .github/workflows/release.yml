@@ -17,6 +17,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    # Heavy: compiles native recording helpers per-OS, packages with
+    # electron-builder, and (macOS) notarizes with Apple -- allowed the
+    # extended 30min budget.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -89,7 +93,6 @@ jobs:
 
       - name: Release (macOS)
         if: runner.os == 'macOS'
-        timeout-minutes: 30
         run: npm run release:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

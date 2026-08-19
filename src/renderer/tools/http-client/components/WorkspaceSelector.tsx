@@ -3,7 +3,11 @@ import { useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { ChevronDown, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useWorkspacesStore } from '../store/workspaces.store';
+import { useCollectionsStore } from '../store/collections.store';
+import { useEnvironmentsStore } from '../store/environments.store';
 import { nativeSelectClassName } from '../lib/nativeSelectClassName';
+import { countRequestsRecursive } from '../lib/collectionTree';
+import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 
 export const WorkspaceSelector: React.FC = () => {
   const {
@@ -14,12 +18,15 @@ export const WorkspaceSelector: React.FC = () => {
     renameWorkspace,
     deleteWorkspace
   } = useWorkspacesStore();
+  const collections = useCollectionsStore((s) => s.collections);
+  const environments = useEnvironmentsStore((s) => s.environments);
 
   const [open, setOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState('');
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? null;
@@ -48,7 +55,8 @@ export const WorkspaceSelector: React.FC = () => {
     }
   };
 
-  const handleDelete = async (): Promise<void> => {
+  const confirmDelete = async (): Promise<void> => {
+    setIsConfirmingDelete(false);
     if (!activeWorkspace || !canDelete) return;
     try {
       await deleteWorkspace(activeWorkspace.id);
@@ -56,6 +64,26 @@ export const WorkspaceSelector: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     }
   };
+
+  const workspaceCascade = ((): string | undefined => {
+    if (!activeWorkspace) return undefined;
+    const collectionCount = collections.filter((c) => c.workspaceId === activeWorkspace.id).length;
+    const requestCount = collections
+      .filter((c) => c.workspaceId === activeWorkspace.id)
+      .reduce((sum, c) => sum + countRequestsRecursive(c), 0);
+    const environmentCount = environments.filter(
+      (e) => e.workspaceId === activeWorkspace.id
+    ).length;
+    const parts = [
+      collectionCount > 0
+        ? `${collectionCount} collection${collectionCount === 1 ? '' : 's'} (${requestCount} request${requestCount === 1 ? '' : 's'})`
+        : null,
+      environmentCount > 0
+        ? `${environmentCount} environment${environmentCount === 1 ? '' : 's'}`
+        : null
+    ].filter((p): p is string => p !== null);
+    return parts.length > 0 ? parts.join(' and ') : undefined;
+  })();
 
   return (
     <Popover.Root
@@ -154,7 +182,7 @@ export const WorkspaceSelector: React.FC = () => {
                     <Pencil size={11} />
                   </button>
                   <button
-                    onClick={handleDelete}
+                    onClick={() => setIsConfirmingDelete(true)}
                     disabled={!canDelete}
                     title={canDelete ? 'Delete workspace' : "Can't delete the last workspace"}
                     className="p-0.5 text-zinc-555 hover:text-red-400 disabled:opacity-30 disabled:hover:text-zinc-555 disabled:cursor-default cursor-pointer"
@@ -176,6 +204,16 @@ export const WorkspaceSelector: React.FC = () => {
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
+
+      <DeleteConfirmDialog
+        target={
+          isConfirmingDelete && activeWorkspace
+            ? { kind: 'workspace', name: activeWorkspace.name, cascade: workspaceCascade }
+            : null
+        }
+        onConfirm={confirmDelete}
+        onCancel={() => setIsConfirmingDelete(false)}
+      />
     </Popover.Root>
   );
 };

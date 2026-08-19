@@ -54,8 +54,10 @@ interface CollectionsState {
   setFolderAuth: (collectionId: string, folderId: string, auth: HttpAuth) => Promise<void>;
   /** Prompts a save dialog and writes the collection as a Postman v2.1 file. */
   exportCollection: (collectionId: string) => Promise<ExportCollectionResult>;
-  /** Prompts an open dialog, parses a Postman v2.0 or v2.1 collection file, and adds it as a new collection. */
+  /** Prompts an open dialog, parses a Postman v2.0/v2.1 or OpenAPI v3.x file, and adds it as a new collection. */
   importCollection: () => Promise<ImportCollectionResult>;
+  /** Same as `importCollection`, but for a file path already known on disk (e.g. dropped onto the sidebar) - skips the open dialog. */
+  importCollectionFromPath: (filePath: string) => Promise<ImportCollectionResult>;
 }
 
 /**
@@ -200,6 +202,14 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     const workspaceId = useWorkspacesStore.getState().activeWorkspaceId;
     if (!workspaceId) return { ok: false, error: 'No active workspace.' };
     const result = await window.api.collections.importFromFile(workspaceId);
+    if (result.ok && !result.canceled) await get().load();
+    return result;
+  },
+
+  importCollectionFromPath: async (filePath) => {
+    const workspaceId = useWorkspacesStore.getState().activeWorkspaceId;
+    if (!workspaceId) return { ok: false, error: 'No active workspace.' };
+    const result = await window.api.collections.importFromPath(filePath, workspaceId);
     if (result.ok && !result.canceled) await get().load();
     return result;
   }

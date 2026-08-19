@@ -291,9 +291,11 @@ export interface ImportCollectionResult {
   ok: boolean;
   canceled?: boolean;
   collection?: Collection;
-  /** Detected Postman schema version of the imported file, e.g. "2.1.0". "unknown" if it couldn't be determined. */
+  /** Which file format the collection was imported from. */
+  sourceFormat?: 'postman' | 'openapi' | 'insomnia';
+  /** Detected schema version of the imported file - the Postman Collection schema version (e.g. "2.1.0"), the document's `openapi` version (e.g. "3.0.3"), or the Insomnia `__export_format` number (e.g. "4"), depending on `sourceFormat`. "unknown" if it couldn't be determined. */
   schemaVersion?: string;
-  /** Set when the imported file had a collection-level `variable` array, which was written to (or merged into) an environment. */
+  /** Set when the imported file had variables to carry over (Postman's collection-level `variable` array, or OpenAPI server variables with no default), written to (or merged into) an environment. */
   importedVariableCount?: number;
   /** The environment the imported variables were written to, so the renderer can activate it. Present iff `importedVariableCount` is set. */
   environmentId?: string;

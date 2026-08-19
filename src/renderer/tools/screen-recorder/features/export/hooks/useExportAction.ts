@@ -113,7 +113,7 @@ export function useExportAction(): UseExportActionResult {
       // clip is muted, rather than encoding a track that would be silent
       // from end to end anyway.
       const includeAudio = segments.some((s) => !s.audioMuted);
-      const { actualBytes, wasEncoded } = await runExport(
+      const { actualBytes, wasEncoded, includedAudio } = await runExport(
         {
           format: store.format,
           codec: store.codec,
@@ -144,6 +144,12 @@ export function useExportAction(): UseExportActionResult {
       // Fold this real export's actual size into the size-estimate's
       // learned calibration -- skipped for the "source copy" fast path
       // (see RunExportResult's own doc), which never touches the encoder.
+      // Uses `includedAudio` (what the export actually ended up with), not
+      // the `includeAudio` request above -- the source can lack an audio
+      // track entirely even when every clip is unmuted, in which case the
+      // real output has no audio bytes at all; estimating as if it did would
+      // inflate `rawEstimatedBytes` with a phantom audio bitrate and bias
+      // `sizeCalibrationRatio` down for every recording after this one.
       if (wasEncoded) {
         const rawEstimatedBytes = estimateRawExportBytes({
           durationMs,
@@ -151,7 +157,7 @@ export function useExportAction(): UseExportActionResult {
           height: effectiveResolution.height,
           frameRate: store.frameRate,
           quality: store.quality,
-          includeAudio,
+          includeAudio: includedAudio,
           format: store.format,
           hasWebcam: project.webcam.enabled
         });

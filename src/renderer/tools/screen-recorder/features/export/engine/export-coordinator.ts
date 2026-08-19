@@ -15,14 +15,8 @@ import { EXPORT_CANCELLED_MESSAGE } from './cancel';
 
 export interface RunExportResult {
   actualBytes: number;
-  /**
-   * `false` for the "source copy" fast path below, which writes the
-   * original file verbatim without ever touching the encoder -- its size
-   * says nothing about real VBR behavior, so callers doing size-estimate
-   * calibration (see export-store.ts's `recordActualExportSize`) should
-   * skip recording a sample when this is `false`.
-   */
   wasEncoded: boolean;
+  includedAudio: boolean;
 }
 
 /**
@@ -59,7 +53,11 @@ export async function runExport(
         onProgress({ percent: 100, stage: 'encoding' });
         await window.screenRecorder.export.writeFileBytes(options.outputPath, sourceBytes);
         onProgress({ percent: 100, stage: 'done' });
-        return { actualBytes: sourceBytes.byteLength, wasEncoded: false };
+        return {
+          actualBytes: sourceBytes.byteLength,
+          wasEncoded: false,
+          includedAudio: options.includeAudio
+        };
       }
     } finally {
       probeDecoder.destroy();
@@ -80,7 +78,7 @@ export async function runExport(
 
   const worker = new ExportWorker();
   try {
-    const outputBytes = await runWorker(
+    const { bytes: outputBytes, includedAudio } = await runWorker(
       worker,
       options,
       sourceFile,
@@ -94,10 +92,16 @@ export async function runExport(
     onProgress({ percent: 100, stage: 'encoding' });
     await window.screenRecorder.export.writeFileBytes(options.outputPath, outputBytes);
     onProgress({ percent: 100, stage: 'done' });
-    return { actualBytes: outputBytes.byteLength, wasEncoded: true };
+    return { actualBytes: outputBytes.byteLength, wasEncoded: true, includedAudio };
   } finally {
     worker.terminate();
   }
+}
+
+interface WorkerRunResult {
+  bytes: ArrayBuffer;
+  /** `false` for a GIF export -- that format never carries audio at all. */
+  includedAudio: boolean;
 }
 
 function runWorker(
@@ -110,7 +114,7 @@ function runWorker(
   onProgress: (progress: ExportProgress) => void,
   wasmUrl: string,
   signal?: AbortSignal
-): Promise<ArrayBuffer> {
+): Promise<WorkerRunResult> {
   return new Promise((resolve, reject) => {
     const onAbort = () => worker.postMessage({ type: 'cancel' } satisfies ExportWorkerInMessage);
     signal?.addEventListener('abort', onAbort);
@@ -129,7 +133,9 @@ function runWorker(
       }
       if (msg.type === 'gif-result') {
         cleanup();
-        void msg.blob.arrayBuffer().then(resolve, reject);
+        void msg.blob
+          .arrayBuffer()
+          .then((bytes) => resolve({ bytes, includedAudio: false }), reject);
         return;
       }
       // video-result: needs audio processing (main-thread only, see module
@@ -168,9 +174,11 @@ async function finishVideoExport(
   result: Extract<ExportWorkerOutMessage, { type: 'video-result' }>,
   wasmUrl: string,
   signal?: AbortSignal
-): Promise<ArrayBuffer> {
+): Promise<WorkerRunResult> {
   if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
   const includeAudio = result.sourceHasAudio && options.includeAudio;
+
+  let audioActuallyProcessed = false;
   const audioMuxerCodec = options.format === 'webm' ? 'opus' : 'aac';
   const muxer = new VideoMuxer(
     {
@@ -226,6 +234,7 @@ async function finishVideoExport(
           wasmUrl,
           clickSoundOptions
         );
+        audioActuallyProcessed = true;
       } finally {
         signal?.removeEventListener('abort', onAbort);
         URL.revokeObjectURL(sourceObjectUrl);
@@ -236,5 +245,5 @@ async function finishVideoExport(
   if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
 
   const blob = await muxer.finalize();
-  return blob.arrayBuffer();
+  return { bytes: await blob.arrayBuffer(), includedAudio: audioActuallyProcessed };
 }

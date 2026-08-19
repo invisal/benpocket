@@ -1,4 +1,4 @@
-import { useCallback, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
 interface UsePlayheadDragOptions {
   seekFromClientX: (clientX: number) => void;
@@ -64,6 +64,13 @@ export function usePlayheadDrag({ seekFromClientX }: UsePlayheadDragOptions): {
     },
     [seekFromClientX, handleMove, stopPlayheadDrag]
   );
+
+  useEffect(() => {
+    return () => {
+      stopPlayheadDrag();
+      window.removeEventListener('pointerup', stopPlayheadDrag);
+    };
+  }, [stopPlayheadDrag]);
 
   return { startPlayheadDrag, playheadDraggingRef };
 }

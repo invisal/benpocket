@@ -133,7 +133,8 @@ export function createTabProvider<TTool extends Tool<string, any>>(
         }) as TabsState<TTool>['openTab'],
 
         closeTab: (id) => {
-          if (id === get().activeTabId && !canLeave(id)) return;
+          if (!canLeave(id)) return;
+          leaveGuards.delete(id);
           set((prev) => {
             const idx = prev.tabs.findIndex((t) => t.id === id);
             if (idx === -1) return prev;

@@ -8,7 +8,7 @@ interface Props {}
 
 export function ScreenRecordMain({ id }: ToolComponentProps<Props>) {
   useEffect(() => {
-    return registerToolLeaveGuard(id, () => {
+    registerToolLeaveGuard(id, () => {
       if (!hasUnsavedChanges()) return true;
       return window.confirm('Leave the Screen Recorder? Any unsaved changes will be lost.');
     });

@@ -757,7 +757,11 @@ export function RecorderToolbarApp(): JSX.Element | null {
                     'flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50'
                   )}
                 >
-                  <Square size={13} fill="currentColor" />
+                  {mode === 'stopping' ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Square size={13} fill="currentColor" />
+                  )}
                 </Tooltip.Trigger>
                 <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
                   {mode === 'stopping' ? 'Finishing…' : 'Finish'}

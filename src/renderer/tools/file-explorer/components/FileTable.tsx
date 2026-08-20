@@ -6,12 +6,13 @@ import {
   type SortingState,
   type ColumnSizingState
 } from '@tanstack/react-table';
-import { FileText, FolderPlus } from 'lucide-react';
+import { FileText, FolderPlus, FolderTree } from 'lucide-react';
 import { ListView } from '@renderer/components/ui/ListView';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
+import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { columns, compareEntries, extensionKey, type FileEntry, type FileRow } from './columns';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
 import { dispatchMutation } from '../lib/syncDispatcher';
@@ -61,6 +62,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   const [pendingDeletePaths, setPendingDeletePaths] = useState<string[] | null>(null);
   const [transferProgress, setTransferProgress] = useState<TransferProgress | null>(null);
   const capabilities = getCapabilitiesForLocation(currentPath);
+  const { openTab } = useToolTabs();
   const clipboard = useFileExplorerStore((s) => s.clipboard);
   const setClipboard = useFileExplorerStore((s) => s.setClipboard);
   const bumpRefresh = useFileExplorerStore((s) => s.bumpRefresh);
@@ -173,6 +175,15 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   const confirmOpen = () => {
     if (pendingEntry) window.fileExplorer.openPath(pendingEntry.path);
     setPendingEntry(null);
+  };
+
+  // Opening a workspace switches the active top-level tab, which flips this
+  // File Explorer tab's <Activity> subtree to hidden -- deferred a tick so the
+  // context menu's own close/exit-transition finishes first, otherwise it can
+  // get orphaned mid-close and hang open (that subtree going hidden stalls the
+  // transition it's waiting on to actually unmount).
+  const handleOpenWorkspace = (path: string) => {
+    setTimeout(() => openTab('workspace', { path }), 0);
   };
 
   const selectedEntries = useMemo(
@@ -434,6 +445,14 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
               {selectedRows.length <= 1 && (
                 <ContextMenu.Item onClick={() => activateEntry(row)}>
                   {row.isDirectory ? 'Open Folder' : 'Open'}
+                </ContextMenu.Item>
+              )}
+              {selectedRows.length <= 1 && row.isDirectory && (
+                <ContextMenu.Item onClick={() => handleOpenWorkspace(row.path)}>
+                  <span className="flex items-center gap-2">
+                    <FolderTree size={14} className="text-text-dim" />
+                    Open Workspace
+                  </span>
                 </ContextMenu.Item>
               )}
               <ContextMenu.Item onClick={() => handleCopy(paths)} shortcut="mod+c">

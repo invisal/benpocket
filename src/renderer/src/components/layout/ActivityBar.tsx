@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useToolTabs } from '../providers/ToolProvider';
 import {
   FolderOpen,
+  FolderTree,
   GlobeIcon,
   HomeIcon,
   PlusIcon,
@@ -61,6 +62,8 @@ export const ActivityBar: React.FC = () => {
         );
       case 'file-explorer':
         return <FolderOpen size={16} className="text-inherit" />;
+      case 'workspace':
+        return <FolderTree size={16} className="text-inherit" />;
       case 'storybook':
         return <SwatchBookIcon size={16} className="text-inherit" />;
       default:

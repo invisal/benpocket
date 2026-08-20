@@ -13,7 +13,6 @@ import type {
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 import { getWin32WindowBounds } from './win-window-bounds';
 import { focusWin32Window } from './win-window-focus';
-import { focusMacWindow } from './mac-window-focus';
 
 /**
  * Manages the per-platform native recording helper subprocess -- see
@@ -566,20 +565,108 @@ export function getWindowBoundsLive(windowId: number): Promise<WindowBoundsResul
 }
 
 /**
+ * Resolves the display name of the app owning a window -- a one-shot spawn
+ * of the same helper binary the real recording uses, in the same
+ * lightweight query mode as `queryWindowBounds`/`queryWindowBoundsQuartz`
+ * (see `resolveWindowOwnerName()` in main.swift). Deliberately *not* shelled
+ * out to `osascript` for this step (what mac-window-focus.ts, now removed,
+ * used to do for the whole operation): resolving a window's owner needs
+ * Screen Recording permission, scoped to the *calling process's* own TCC
+ * identity -- `osascript` is a separate, Apple-signed binary with no grant
+ * of its own, and nothing in this app ever requested one for it, so that
+ * path silently found nothing on every machine. This helper binary already
+ * holds that grant legitimately, as the actual capture engine.
+ */
+function resolveWindowOwnerNameMac(windowId: number): Promise<string | null> {
+  const helperPath = findHelperPath(MAC_ADAPTER);
+  if (!helperPath) return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: string | null): void => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    const child = spawn(helperPath, [JSON.stringify({ mode: 'focus-window', windowId })], {
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
+
+    let stdout = '';
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => (stdout += chunk));
+    child.once('error', () => finish(null));
+    child.once('exit', () => {
+      const line = stdout.split(/\r?\n/).find((candidate) => candidate.trim());
+      if (!line) {
+        finish(null);
+        return;
+      }
+      try {
+        const payload = JSON.parse(line) as Record<string, unknown>;
+        finish(
+          payload.event === 'focus-window' && typeof payload.ownerName === 'string'
+            ? payload.ownerName
+            : null
+        );
+      } catch {
+        finish(null);
+      }
+    });
+  });
+}
+
+/**
+ * Actually brings `appName` to the foreground via `tell application "..." to
+ * activate` -- confirmed by hand that this reliably works, unlike calling
+ * `NSRunningApplication.activate()` directly from the helper process above
+ * (which returns success but the target never visibly comes forward, almost
+ * certainly macOS's focus-stealing protection for a process with no
+ * foreground/UI activation context of its own -- osascript's AppleScript
+ * `activate` command goes through the Apple Event Manager instead, a
+ * different path that isn't subject to the same restriction). Escapes `"`/`\`
+ * since `appName` is interpolated directly into the script string, same
+ * reasoning as window-bounds.ts's `processName` interpolation.
+ */
+function activateMacApp(appName: string): Promise<boolean> {
+  const escaped = appName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return new Promise((resolve) => {
+    const child = spawn('osascript', ['-e', `tell application "${escaped}" to activate`], {
+      stdio: ['ignore', 'ignore', 'ignore']
+    });
+    child.once('error', () => resolve(false));
+    child.once('exit', (code) => resolve(code === 0));
+  });
+}
+
+/**
+ * macOS half of `focusCaptureWindowById` -- splits the operation across the
+ * two mechanisms each half is actually reliable at (see each function's own
+ * doc for why): the native helper (already holds Screen Recording) resolves
+ * *which app* owns the window, then `osascript` (proven to reliably
+ * activate, unlike calling AppKit directly from a bare command-line process)
+ * actually brings it forward.
+ */
+async function focusWindowMac(windowId: number): Promise<boolean> {
+  const ownerName = await resolveWindowOwnerNameMac(windowId);
+  if (!ownerName) return false;
+  return activateMacApp(ownerName);
+}
+
+/**
  * Brings a 'window' source's target window to the foreground before
  * recording starts (see useRecordingController.ts) -- Win32's
  * `SetForegroundWindow` on Windows (see win-window-focus.ts), app-level
- * `NSRunningApplication.activate` via JXA on macOS (see mac-window-focus.ts).
- * Neither touches the platform's native recording helper binary -- this is
- * pure Electron-main-process shell-out on both platforms, same as the rest
- * of this file's window-bounds queries. No-op (resolves false) on Linux --
- * consistent with the rest of this codebase's Linux disclaimers (see
- * LINUX_ADAPTER's own doc above), there's no verified reference
- * implementation for this there either.
+ * `NSRunningApplication.activate` via the native helper on macOS (see
+ * `focusWindowMac` above). No-op (resolves false) on Linux -- consistent
+ * with the rest of this codebase's Linux disclaimers (see LINUX_ADAPTER's
+ * own doc above), there's no verified reference implementation for this
+ * there either.
  */
 export function focusCaptureWindowById(windowId: number): Promise<boolean> {
   if (process.platform === 'win32') return focusWin32Window(windowId);
-  if (process.platform === 'darwin') return focusMacWindow(windowId);
+  if (process.platform === 'darwin') return focusWindowMac(windowId);
   return Promise.resolve(false);
 }
 

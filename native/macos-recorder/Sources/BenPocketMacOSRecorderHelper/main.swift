@@ -754,6 +754,18 @@ private func queryWindowBoundsQuartz(windowId: CGWindowID) -> CGRect? {
 	}
 	return bounds
 }
+ 
+private func resolveWindowOwnerName(windowId: CGWindowID) -> String? {
+	guard
+		let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, windowId)
+			as? [[String: Any]],
+		let windowInfo = info.first,
+		let ownerName = windowInfo[kCGWindowOwnerName as String] as? String
+	else {
+		return nil
+	}
+	return ownerName
+}
 
 @main
 struct BenPocketMacOSRecorderHelper {
@@ -789,6 +801,19 @@ struct BenPocketMacOSRecorderHelper {
 					])
 				} else {
 					emit(["event": "window-bounds", "found": false])
+				}
+				exit(0)
+			}
+
+			if let rawJson = try? JSONSerialization.jsonObject(with: argData) as? [String: Any],
+				let mode = rawJson["mode"] as? String,
+				mode == "focus-window"
+			{
+				let windowId = (rawJson["windowId"] as? NSNumber)?.uint32Value ?? 0
+				if let ownerName = resolveWindowOwnerName(windowId: CGWindowID(windowId)) {
+					emit(["event": "focus-window", "found": true, "ownerName": ownerName])
+				} else {
+					emit(["event": "focus-window", "found": false])
 				}
 				exit(0)
 			}

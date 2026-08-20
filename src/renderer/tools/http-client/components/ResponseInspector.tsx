@@ -5,6 +5,8 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import type { HttpResponsePayload } from '../../../../preload/http-client/types';
 import { base64ToBytes, bytesToText, formatBytes } from '../lib/bytes';
 import { tabClassName } from '../lib/tabClassName';
+import type { HttpState } from '../hooks/useHttp';
+import type { SavedBinding } from '../types';
 import { ResponseBodyViewer } from './ResponseBodyViewer';
 import { ResponseHeadersTable } from './ResponseHeadersTable';
 
@@ -21,9 +23,16 @@ function statusColorClass(status: number, ok: boolean): string {
 interface ResponseInspectorProps {
   response: HttpResponsePayload | null;
   isLoading: boolean;
+  binding: SavedBinding | null;
+  request: HttpState;
 }
 
-export const ResponseInspector: React.FC<ResponseInspectorProps> = ({ response, isLoading }) => {
+export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
+  response,
+  isLoading,
+  binding,
+  request
+}) => {
   const [activeTab, setActiveTab] = useState<ResponseTabValue>('body');
 
   const bytes = useMemo(
@@ -85,6 +94,9 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({ response, 
                   bytes={bytes}
                   bodyBase64={response.bodyBase64}
                   contentType={contentType}
+                  response={response}
+                  binding={binding}
+                  request={request}
                 />
               </Tabs.Panel>
 

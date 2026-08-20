@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { produce, type Draft } from 'immer';
 import type { WsEvent } from '../../../../preload/http-client/types';
 import { getActiveEnvironmentVariables } from '../store/environments.store';
 import { createTabScopedStore, useTabScopedState } from '../lib/tabScopedStore';
@@ -45,14 +46,14 @@ const wsStore = createTabScopedStore<WsState>(createDefaultWsState, {
   }
 });
 
-function appendLog(
-  state: WsState,
+/** Mutates `draft.log` in place - only meant to run inside a `produce()` recipe. */
+function pushLog(
+  draft: Draft<WsState>,
   direction: WsLogDirection,
   message: string,
   systemKind?: WsSystemKind
-): WsState {
-  const entry: WsLogEntry = { id: makeId(), direction, systemKind, timestamp: Date.now(), message };
-  return { ...state, log: [...state.log, entry] };
+): void {
+  draft.log.push({ id: makeId(), direction, systemKind, timestamp: Date.now(), message });
 }
 
 // A single ws:event subscription for the whole renderer, registered once at
@@ -65,41 +66,35 @@ function ensureWsListenerRegistered(): void {
 
   window.api.ws.onEvent((event: WsEvent) => {
     const tabId = event.connectionId;
-    wsStore.setSnapshot(tabId, (prev) => {
-      switch (event.type) {
-        case 'connecting':
-          return { ...prev, status: 'CONNECTING' };
-        case 'open':
-          return appendLog(
-            { ...prev, status: 'CONNECTED' },
-            'SYSTEM',
-            `Connected to ${prev.url}.`,
-            'connected'
-          );
-        case 'message':
-          return appendLog(
-            prev,
-            'IN',
-            event.isBinary ? `[binary, base64] ${event.data}` : event.data
-          );
-        case 'error':
-          return appendLog(
-            { ...prev, status: 'ERROR' },
-            'SYSTEM',
-            `Error: ${event.message}`,
-            'error'
-          );
-        case 'close':
-          return appendLog(
-            { ...prev, status: 'DISCONNECTED' },
-            'SYSTEM',
-            `Disconnected from ${prev.url}${event.reason ? ` (${event.reason})` : ''} (code ${event.code}).`,
-            'disconnected'
-          );
-        default:
-          return prev;
-      }
-    });
+    wsStore.setSnapshot(tabId, (prev) =>
+      produce(prev, (draft) => {
+        switch (event.type) {
+          case 'connecting':
+            draft.status = 'CONNECTING';
+            break;
+          case 'open':
+            draft.status = 'CONNECTED';
+            pushLog(draft, 'SYSTEM', `Connected to ${draft.url}.`, 'connected');
+            break;
+          case 'message':
+            pushLog(draft, 'IN', event.isBinary ? `[binary, base64] ${event.data}` : event.data);
+            break;
+          case 'error':
+            draft.status = 'ERROR';
+            pushLog(draft, 'SYSTEM', `Error: ${event.message}`, 'error');
+            break;
+          case 'close':
+            draft.status = 'DISCONNECTED';
+            pushLog(
+              draft,
+              'SYSTEM',
+              `Disconnected from ${draft.url}${event.reason ? ` (${event.reason})` : ''} (code ${event.code}).`,
+              'disconnected'
+            );
+            break;
+        }
+      })
+    );
   });
 }
 
@@ -140,23 +135,19 @@ export function useWebSocket(tabId: string, onEdit?: () => void): UseWebSocketRe
 
     const resolvedUrl = resolveVariables(url, getActiveEnvironmentVariables());
     setState((prev) =>
-      appendLog(
-        { ...prev, status: 'CONNECTING' },
-        'SYSTEM',
-        `Connecting to ${resolvedUrl} ...`,
-        'info'
-      )
+      produce(prev, (draft) => {
+        draft.status = 'CONNECTING';
+        pushLog(draft, 'SYSTEM', `Connecting to ${resolvedUrl} ...`, 'info');
+      })
     );
 
     window.api.ws.connect({ connectionId: tabId, url: resolvedUrl }).then((ack) => {
       if (!ack.ok) {
         wsStore.setSnapshot(tabId, (prev) =>
-          appendLog(
-            { ...prev, status: 'ERROR' },
-            'SYSTEM',
-            `Failed to connect: ${ack.error ?? 'unknown error'}`,
-            'error'
-          )
+          produce(prev, (draft) => {
+            draft.status = 'ERROR';
+            pushLog(draft, 'SYSTEM', `Failed to connect: ${ack.error ?? 'unknown error'}`, 'error');
+          })
         );
       }
     });
@@ -176,11 +167,16 @@ export function useWebSocket(tabId: string, onEdit?: () => void): UseWebSocketRe
     window.api.ws.send({ connectionId: tabId, data: resolvedMessage }).then((ack) => {
       if (ack.ok) {
         wsStore.setSnapshot(tabId, (prev) =>
-          appendLog({ ...prev, messageInput: '' }, 'OUT', resolvedMessage)
+          produce(prev, (draft) => {
+            draft.messageInput = '';
+            pushLog(draft, 'OUT', resolvedMessage);
+          })
         );
       } else {
         wsStore.setSnapshot(tabId, (prev) =>
-          appendLog(prev, 'SYSTEM', `Failed to send: ${ack.error ?? 'unknown error'}`, 'error')
+          produce(prev, (draft) => {
+            pushLog(draft, 'SYSTEM', `Failed to send: ${ack.error ?? 'unknown error'}`, 'error');
+          })
         );
       }
     });

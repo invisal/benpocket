@@ -59,61 +59,59 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
   const selectedLabel = METHODS.find((m) => m.value === method)?.label ?? method;
 
   return (
-    <div>
-      <div className="flex items-center gap-2 border-b border-border px-3 py-1 shrink-0">
-        <Menu.Root>
-          <Menu.Trigger className="flex items-center gap-1 h-7 px-2 rounded text-xs font-medium hover:bg-surface-2 cursor-pointer shrink-0">
-            <span className={methodBadgeClass(method)}>{selectedLabel}</span>
-            <ChevronDownIcon size={14} />
-          </Menu.Trigger>
-          <Menu.Content align="start">
-            {METHODS.map((m) => (
-              <Menu.Item key={m.value} onClick={() => onMethodChange(m.value)}>
-                <span className={methodBadgeClass(m.value)}>{m.label}</span>
-              </Menu.Item>
-            ))}
-          </Menu.Content>
-        </Menu.Root>
+    <div className="flex items-center gap-2 border-b border-border px-3 py-1 shrink-0">
+      <Menu.Root>
+        <Menu.Trigger className="flex items-center gap-1 h-7 px-2 rounded text-xs font-medium hover:bg-surface-2 cursor-pointer shrink-0">
+          <span className={methodBadgeClass(method)}>{selectedLabel}</span>
+          <ChevronDownIcon size={14} />
+        </Menu.Trigger>
+        <Menu.Content align="start">
+          {METHODS.map((m) => (
+            <Menu.Item key={m.value} onClick={() => onMethodChange(m.value)}>
+              <span className={methodBadgeClass(m.value)}>{m.label}</span>
+            </Menu.Item>
+          ))}
+        </Menu.Content>
+      </Menu.Root>
 
-        {/* URL input, extra actions (Code/Save) and Send all live in one flat, borderless
+      {/* URL input, extra actions (Code/Save) and Send all live in one flat, borderless
           group - matching the sidebar header's flat style and reading as a single control
           rather than separate boxed elements. */}
-        <div className="flex items-center flex-1 min-w-0 gap-1 h-7 rounded bg-surface-2 pl-2 pr-1">
-          <VariableSuggestInput
-            value={url}
-            onChange={onUrlChange}
-            variables={variables}
-            disabled={urlDisabled}
-            onEnter={() => {
-              if (!action.disabled) action.onClick();
-            }}
-            onPaste={
-              onImportCurl &&
-              ((e) => {
-                const text = e.clipboardData.getData('text');
-                if (!looksLikeCurlCommand(text)) return;
-                const parsed = parseCurlCommand(text);
-                if (!parsed) return;
-                e.preventDefault();
-                onImportCurl(parsed);
-              })
-            }
-            className="flex-1 min-w-0 outline-none text-xs bg-transparent disabled:opacity-60 w-full"
-            placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={action.onClick}
-            disabled={action.disabled}
-            title={action.label}
-            className={action.className}
-          >
-            {action.icon}
-          </Button>
-        </div>
-        {extraActions}
+      <div className="flex items-center flex-1 min-w-0 gap-1 h-7 rounded bg-surface-2 pl-2 pr-1">
+        <VariableSuggestInput
+          value={url}
+          onChange={onUrlChange}
+          variables={variables}
+          disabled={urlDisabled}
+          onEnter={() => {
+            if (!action.disabled) action.onClick();
+          }}
+          onPaste={
+            onImportCurl &&
+            ((e) => {
+              const text = e.clipboardData.getData('text');
+              if (!looksLikeCurlCommand(text)) return;
+              const parsed = parseCurlCommand(text);
+              if (!parsed) return;
+              e.preventDefault();
+              onImportCurl(parsed);
+            })
+          }
+          className="flex-1 min-w-0 outline-none text-xs bg-transparent disabled:opacity-60 w-full"
+          placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={action.onClick}
+          disabled={action.disabled}
+          title={action.label}
+          className={action.className}
+        >
+          {action.icon}
+        </Button>
       </div>
+      {extraActions}
     </div>
   );
 };

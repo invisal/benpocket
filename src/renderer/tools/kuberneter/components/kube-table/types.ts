@@ -35,4 +35,5 @@ export interface KubeTableProps<T> {
   showHeader?: boolean;
   renderRowExpansion?: (row: T) => React.ReactNode;
   expandedRowKeys?: Set<string | number>;
+  renderRowWrapper?: (row: T, children: React.ReactNode) => React.ReactNode;
 }

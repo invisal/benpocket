@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface QuotaItem {
   resourceName: string;
   used: string;
@@ -13,4 +15,6 @@ export interface ResourceQuotaData {
   age: string;
   createdTime?: string;
   quotas: QuotaItem[];
+  scopes?: string[];
+  rawItem?: K8sResource;
 }

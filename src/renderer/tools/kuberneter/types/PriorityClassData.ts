@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface PriorityClassData {
   id: string;
   name: string;
@@ -7,5 +9,7 @@ export interface PriorityClassData {
   createdTime?: string;
   value: number;
   globalDefault: boolean;
+  preemptionPolicy?: string;
   description?: string;
+  rawItem?: K8sResource;
 }

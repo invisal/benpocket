@@ -223,6 +223,71 @@ export class KubeClientService {
   }
 
   /**
+   * Deletes a Kubernetes resource via direct DELETE HTTP/HTTPS REST call.
+   */
+  public static async deleteResourceDirect(
+    configPath: string | undefined,
+    contextName: string | undefined,
+    resource: string,
+    name: string,
+    namespace?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const kc = KubeConfigService.loadKubeConfig(configPath, contextName);
+      const cluster = kc.getCurrentCluster();
+      if (!cluster || !cluster.server) {
+        return { success: false, error: 'No active cluster configuration' };
+      }
+
+      const basePath = this.buildResourcePath(resource, namespace);
+      const fullUrl = `${cluster.server.replace(/\/$/, '')}${basePath}/${name}`;
+      const urlObj = new URL(fullUrl);
+
+      const requestOptions: https.RequestOptions = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path: `${urlObj.pathname}${urlObj.search}`,
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json'
+        }
+      };
+
+      await kc.applyToHTTPSOptions(requestOptions);
+      if (cluster.skipTLSVerify) {
+        requestOptions.rejectUnauthorized = false;
+      }
+
+      const response = await new Promise<{ status: number; data: string }>((resolve, reject) => {
+        const req = https.request(requestOptions, (res) => {
+          let body = '';
+          res.on('data', (chunk) => {
+            body += chunk.toString('utf8');
+          });
+          res.on('end', () => resolve({ status: res.statusCode || 500, data: body }));
+        });
+        req.on('error', reject);
+        req.end();
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        return { success: true };
+      } else {
+        let msg = `HTTP ${response.status}: ${response.data}`;
+        try {
+          const parsed = JSON.parse(response.data);
+          if (parsed.message) msg = parsed.message;
+        } catch {
+          // ignore json parse error
+        }
+        return { success: false, error: msg };
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  /**
    * Sanitizes a Kubernetes manifest for applying by stripping server-managed/read-only fields.
    */
   public static sanitizeManifestForApply(spec: KubernetesObject): KubernetesObject {

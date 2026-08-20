@@ -36,7 +36,8 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const { openNamespaceDetail } = useOpenNamespaceDetail();
   const { openNodeDetail } = useOpenNodeDetail();
-  const { openServiceAccountDetail } = useOpenConfigDetail();
+  const { openServiceAccountDetail, openPriorityClassDetail, openRuntimeClassDetail } =
+    useOpenConfigDetail();
   const { openResourceDetail } = useOpenResourceDetail();
   const kuberneterInstanceCluster = useKuberneterStore((s) => s.kuberneterInstanceCluster);
   const kuberneterInstanceConfigPath = useKuberneterStore((s) => s.kuberneterInstanceConfigPath);
@@ -356,26 +357,62 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       id: 'qosClass',
       name: 'QoS Class',
       value: qosClass
-    },
-    {
-      id: 'conditions',
-      name: 'Conditions',
-      value: `${conditions.length} Conditions`,
-      hasDetail: conditions.length > 0,
-      renderDetail: () => (
-        <div className="flex flex-wrap gap-1.5 py-1 select-text">
-          {conditions.map((c) => (
-            <span
-              key={c.type}
-              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-surface-3 text-zinc-300 border border-border/40"
-            >
-              {c.type}
-            </span>
-          ))}
-        </div>
-      )
     }
   );
+
+  const priorityClassName = (rawItem?.spec as { priorityClassName?: string })?.priorityClassName;
+  const runtimeClassName = (rawItem?.spec as { runtimeClassName?: string })?.runtimeClassName;
+
+  if (priorityClassName) {
+    propertiesData.push({
+      id: 'priorityClass',
+      name: 'Priority Class',
+      value: (
+        <span
+          onClick={() => openPriorityClassDetail(priorityClassName)}
+          className="font-mono text-accent hover:underline cursor-pointer self-start"
+          title={`Open PriorityClass ${priorityClassName} in new tab`}
+        >
+          {priorityClassName}
+        </span>
+      )
+    });
+  }
+
+  if (runtimeClassName) {
+    propertiesData.push({
+      id: 'runtimeClass',
+      name: 'Runtime Class',
+      value: (
+        <span
+          onClick={() => openRuntimeClassDetail(runtimeClassName)}
+          className="font-mono text-accent hover:underline cursor-pointer self-start"
+          title={`Open RuntimeClass ${runtimeClassName} in new tab`}
+        >
+          {runtimeClassName}
+        </span>
+      )
+    });
+  }
+
+  propertiesData.push({
+    id: 'conditions',
+    name: 'Conditions',
+    value: `${conditions.length} Conditions`,
+    hasDetail: conditions.length > 0,
+    renderDetail: () => (
+      <div className="flex flex-wrap gap-1.5 py-1 select-text">
+        {conditions.map((c) => (
+          <span
+            key={c.type}
+            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-surface-3 text-zinc-300 border border-border/40"
+          >
+            {c.type}
+          </span>
+        ))}
+      </div>
+    )
+  });
 
   return (
     <div className={`flex flex-col gap-5 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>

@@ -56,76 +56,68 @@ export const PodContainersSection: React.FC<PodContainersSectionProps> = ({
           {
             id: 'ports',
             name: 'Ports',
-            value: (
-              <div className="flex items-center justify-between w-full">
-                {!c.ports || c.ports.length === 0 ? (
-                  <span className="font-mono text-zinc-500 text-[11px]">—</span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {c.ports.map((p) => {
-                      const activePf = portForwards.find(
-                        (pf) =>
-                          pf.name === podName &&
-                          pf.ns === podNs &&
-                          pf.podPort === p.containerPort &&
-                          pf.status === 'Active'
-                      );
-                      return activePf ? (
-                        <a
-                          key={`${p.containerPort}-${p.protocol}`}
-                          href={activePf.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-mono text-accent text-[11px] hover:underline"
-                        >
-                          {p.containerPort}/{p.protocol}
-                        </a>
-                      ) : (
-                        <span
-                          key={`${p.containerPort}-${p.protocol}`}
-                          className="font-mono text-accent text-[11px]"
-                        >
-                          {p.containerPort}/{p.protocol}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-                {c.ports && c.ports.length > 0 && (
-                  <div>
-                    {c.ports.map((p) => {
-                      const activePf = portForwards.find(
-                        (pf) =>
-                          pf.name === podName &&
-                          pf.ns === podNs &&
-                          pf.podPort === p.containerPort &&
-                          pf.status === 'Active'
-                      );
-                      return activePf ? (
-                        <Button
-                          key={p.containerPort}
-                          variant="primary"
-                          size="sm"
-                          onClick={() => onStopPortForward(activePf.id)}
-                          className="h-6 px-2.5 py-0.5 text-[10px] font-medium bg-sky-600 hover:bg-sky-500 text-strong"
-                        >
-                          Stop/Remove
-                        </Button>
-                      ) : (
-                        <Button
-                          key={p.containerPort}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onOpenPortForwardModal(p.containerPort, p.protocol)}
-                        >
-                          Forward...
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )
+            value:
+              !c.ports || c.ports.length === 0 ? (
+                <span className="font-mono text-zinc-500 text-[11px]">—</span>
+              ) : (
+                <div className="flex flex-col gap-1.5 w-full py-0.5">
+                  {c.ports.map((p) => {
+                    const activePf = portForwards.find(
+                      (pf) =>
+                        pf.name === podName &&
+                        pf.ns === podNs &&
+                        pf.podPort === p.containerPort &&
+                        pf.status === 'Active'
+                    );
+                    return (
+                      <div
+                        key={`${p.containerPort}-${p.protocol}`}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                          {activePf ? (
+                            <a
+                              href={activePf.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-accent hover:underline font-semibold"
+                              title={`Open ${activePf.url}`}
+                            >
+                              {p.containerPort}/{p.protocol}
+                            </a>
+                          ) : (
+                            <span className="text-accent">
+                              {p.containerPort}/{p.protocol}
+                            </span>
+                          )}
+                          {p.name && <span className="text-zinc-500 text-[10px]">({p.name})</span>}
+                        </div>
+                        <div>
+                          {activePf ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => onStopPortForward(activePf.id)}
+                              className="h-5 px-2 py-0 text-[10px] font-medium bg-rose-600/80 hover:bg-rose-600 text-white"
+                            >
+                              Stop/Remove
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onOpenPortForwardModal(p.containerPort, p.protocol)}
+                              className="h-5 px-2 py-0 text-[10px] text-zinc-400 hover:text-zinc-100 hover:bg-surface-3"
+                            >
+                              Forward...
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
           },
           {
             id: 'environment',

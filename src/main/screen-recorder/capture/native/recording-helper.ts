@@ -11,6 +11,9 @@ import type {
   NativeRecordingStopResult
 } from '@shared/native-capture';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
+import { getWin32WindowBounds } from './win-window-bounds';
+import { focusWin32Window } from './win-window-focus';
+import { focusMacWindow } from './mac-window-focus';
 
 /**
  * Manages the per-platform native recording helper subprocess -- see
@@ -536,6 +539,7 @@ function queryWindowBounds(
 }
 
 export function getWindowBoundsById(windowId: number): Promise<WindowBoundsResult | null> {
+  if (process.platform === 'win32') return getWin32WindowBounds(windowId);
   return queryWindowBounds(windowId, 'window-bounds');
 }
 
@@ -554,7 +558,29 @@ export function getWindowBoundsById(windowId: number): Promise<WindowBoundsResul
  * ScreenCaptureKit itself would resolve matters more.
  */
 export function getWindowBoundsLive(windowId: number): Promise<WindowBoundsResult | null> {
+  // No SCStream-interruption concern on Windows (see queryWindowBounds's
+  // doc for why macOS needs two separate lookup strategies) -- the same
+  // DWM-backed query is safe to poll repeatedly here.
+  if (process.platform === 'win32') return getWin32WindowBounds(windowId);
   return queryWindowBounds(windowId, 'window-bounds-live');
+}
+
+/**
+ * Brings a 'window' source's target window to the foreground before
+ * recording starts (see useRecordingController.ts) -- Win32's
+ * `SetForegroundWindow` on Windows (see win-window-focus.ts), app-level
+ * `NSRunningApplication.activate` via JXA on macOS (see mac-window-focus.ts).
+ * Neither touches the platform's native recording helper binary -- this is
+ * pure Electron-main-process shell-out on both platforms, same as the rest
+ * of this file's window-bounds queries. No-op (resolves false) on Linux --
+ * consistent with the rest of this codebase's Linux disclaimers (see
+ * LINUX_ADAPTER's own doc above), there's no verified reference
+ * implementation for this there either.
+ */
+export function focusCaptureWindowById(windowId: number): Promise<boolean> {
+  if (process.platform === 'win32') return focusWin32Window(windowId);
+  if (process.platform === 'darwin') return focusMacWindow(windowId);
+  return Promise.resolve(false);
 }
 
 /** Safety net for abnormal termination -- see main/index.ts's `before-quit` hook. */

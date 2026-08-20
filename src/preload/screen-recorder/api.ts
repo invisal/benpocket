@@ -58,7 +58,10 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.OpenRecordingFile, filePath),
     /** Fresh on-screen bounds for a window source (by its desktopCapturer id) right now, or null if it can't be resolved (source isn't a window, window closed, unsupported platform). */
     refreshWindowBounds: (sourceId: string): Promise<CaptureSource['displayBounds'] | null> =>
-      ipcRenderer.invoke(IpcChannels.RefreshWindowBounds, sourceId)
+      ipcRenderer.invoke(IpcChannels.RefreshWindowBounds, sourceId),
+    /** Restores/foregrounds a window source's target window (by its desktopCapturer id) -- Windows-only, resolves false elsewhere. See win-window-focus.ts. */
+    focusCaptureWindow: (sourceId: string): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannels.FocusCaptureWindow, sourceId)
   },
   /**
    * Native platform recording -- a standalone helper subprocess

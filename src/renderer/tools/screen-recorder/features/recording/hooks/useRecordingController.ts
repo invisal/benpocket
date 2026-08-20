@@ -95,6 +95,22 @@ export function useRecordingController(): RecordingController {
     setError(null);
     setLiveCounts({ cursorCount: 0, clickCount: 0 });
     try {
+      const isWindowSource = !nativePickerStream && selectedSource.type === 'window';
+      // Restores/foregrounds the target window before anything below reads
+      // its bounds or starts capturing it -- picking a source from the list
+      // doesn't itself refocus anything, so without this a minimized (or
+      // just-occluded-by-this-app's-own-picker) window would still be
+      // minimized/behind when recording starts. A minimized window reports
+      // its bounds at Windows' off-screen sentinel position, which would
+      // otherwise make every cursor sample below resolve as "out of bounds"
+      // (see cursor-tracker.ts) and can leave WGC capturing a blank frame.
+      // Windows-only (see win-window-focus.ts); resolves to a no-op
+      // elsewhere.
+      if (isWindowSource) {
+        await window.screenRecorder.recording
+          .focusCaptureWindow(selectedSource.id)
+          .catch(() => false);
+      }
       // `selectedSource.displayBounds` for a window source was whatever was
       // resolved (or not -- see CaptureSource.displayBounds) whenever the
       // source list was last loaded, possibly well before this click, during
@@ -106,16 +122,15 @@ export function useRecordingController(): RecordingController {
       // getWindowBoundsById's doc on the main process side). Not applicable
       // to a native-picker source -- it has no desktopCapturer id to resolve
       // a window handle from.
-      const source =
-        !nativePickerStream && selectedSource.type === 'window'
-          ? {
-              ...selectedSource,
-              displayBounds:
-                (await window.screenRecorder.recording
-                  .refreshWindowBounds(selectedSource.id)
-                  .catch(() => null)) ?? selectedSource.displayBounds
-            }
-          : selectedSource;
+      const source = isWindowSource
+        ? {
+            ...selectedSource,
+            displayBounds:
+              (await window.screenRecorder.recording
+                .refreshWindowBounds(selectedSource.id)
+                .catch(() => null)) ?? selectedSource.displayBounds
+          }
+        : selectedSource;
 
       captureRef.current = await startCapture({
         source,

@@ -1,39 +1,219 @@
 import { Age } from '../../Age';
 import type React from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   type ServiceData,
   type ServiceEndpointSlice,
   type ServiceEndpoint
 } from '../../../types/ServiceData';
+import { type DeployRelatedPod } from '../../../types/DeployData';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
-
-import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
+import {
+  useInstantMetrics,
+  formatInstantCpu,
+  formatInstantMemory
+} from '../../../hooks/useMetrics';
+import {
+  useOpenNamespaceDetail,
+  useOpenPodDetail,
+  useOpenNodeDetail,
+  useOpenNetworkDetail,
+  useOpenResourceDetail
+} from '../../../hooks/open-detail';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
+import { type K8sResource } from '../../../types/K8sResource';
+import { buildServiceDetailPayload } from '../../../hooks/open-detail/transformers/network.transformer';
 
 interface ServiceDetailProps {
   payload: ServiceData;
   isTab?: boolean;
 }
 
+interface ServiceRelatedIngress {
+  name: string;
+  namespace: string;
+  rules: string;
+  age: string;
+  creationTimestamp: string;
+}
+
 export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = false }) => {
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
+  const rawConfigPath = useKuberneterStore(
+    (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
+  );
+
   const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openPodDetail } = useOpenPodDetail();
+  const { openNodeDetail } = useOpenNodeDetail();
+  const { openEndpointSliceDetail, openEndpointDetail, openIngressDetail } =
+    useOpenNetworkDetail();
+  const { openResourceDetail } = useOpenResourceDetail();
+
+  const metricsQuery = useInstantMetrics(true);
+  const metricItems = metricsQuery.data ?? [];
+
+  // Live fetch with React Query
+  const { data: queryData } = useQuery({
+    queryKey: [
+      'kuberneter',
+      'service-detail-data',
+      rawConfigPath,
+      cluster,
+      payload?.ns,
+      payload?.name
+    ],
+    queryFn: async () => {
+      if (!cluster || !payload?.ns || !payload?.name) return null;
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+
+      const [svcRes, epRes, epsRes, podsRes, ingRes] = await Promise.all([
+        window.kuberneter.getResources(
+          configPathArg,
+          cluster,
+          K8S_RESOURCE_KEYS.SERVICES,
+          payload.ns
+        ),
+        window.kuberneter
+          .getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.ENDPOINTS, payload.ns)
+          .catch(() => ({ items: [] })),
+        window.kuberneter
+          .getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.ENDPOINT_SLICES, payload.ns)
+          .catch(() => ({ items: [] })),
+        window.kuberneter
+          .getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.PODS, payload.ns)
+          .catch(() => ({ items: [] })),
+        window.kuberneter
+          .getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.INGRESSES, payload.ns)
+          .catch(() => ({ items: [] }))
+      ]);
+
+      const svcItem = ((svcRes?.items || []) as K8sResource[]).find(
+        (i) => i.metadata?.name === payload.name
+      );
+      const epItems = (epRes?.items || []) as K8sResource[];
+      const epsItems = (epsRes?.items || []) as K8sResource[];
+      const allPods = (podsRes?.items || []) as K8sResource[];
+      const allIngresses = (ingRes?.items || []) as K8sResource[];
+
+      const servicePayload = buildServiceDetailPayload(
+        payload.name,
+        payload.ns,
+        svcItem || (payload.rawItem as K8sResource),
+        epItems,
+        epsItems
+      );
+
+      // Match pods with service selector
+      const selector = servicePayload.selector || {};
+      const selectorEntries = Object.entries(selector);
+      const matchedPods =
+        selectorEntries.length === 0
+          ? []
+          : allPods.filter((pod) => {
+              if (pod.metadata?.namespace !== payload.ns) return false;
+              const podLabels = pod.metadata?.labels || {};
+              return selectorEntries.every(([k, v]) => podLabels[k] === v);
+            });
+
+      const podsList: DeployRelatedPod[] = matchedPods.map((pod) => {
+        const podName = pod.metadata?.name || '';
+        const node = (pod.spec?.nodeName as string) || '—';
+        const containerStatuses =
+          (pod.status?.containerStatuses as Array<{ ready?: boolean }>) || [];
+        const readyCount = containerStatuses.filter((c) => c.ready).length;
+        const totalCount = containerStatuses.length;
+        const phase = (pod.status?.phase as string) || 'Unknown';
+        return {
+          name: podName,
+          node,
+          ns: payload.ns,
+          ready: `${readyCount}/${totalCount}`,
+          cpu: 'N/A',
+          memory: 'N/A',
+          status: phase,
+          hasWarning: phase !== 'Running' && phase !== 'Succeeded',
+          rawItem: pod
+        };
+      });
+
+      // Find ingresses pointing to this service
+      const relatedIngresses: ServiceRelatedIngress[] = [];
+      allIngresses.forEach((ing) => {
+        const ingName = ing.metadata?.name || '';
+        const ingNs = ing.metadata?.namespace || payload.ns;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawIng = ing as any;
+        const rules = rawIng?.spec?.rules || [];
+        let pointsToService = false;
+        const rulePaths: string[] = [];
+
+        rules.forEach((r: { host?: string; http?: { paths?: Array<{ path?: string; backend?: { service?: { name?: string }; serviceName?: string } }> } }) => {
+          (r.http?.paths || []).forEach((p) => {
+            const sName = p.backend?.service?.name || p.backend?.serviceName;
+            if (sName === payload.name) {
+              pointsToService = true;
+              rulePaths.push(`${r.host || '*'}${p.path || ''}`);
+            }
+          });
+        });
+
+        if (pointsToService) {
+          relatedIngresses.push({
+            name: ingName,
+            namespace: ingNs,
+            rules: rulePaths.join(', ') || '—',
+            age: '',
+            creationTimestamp: ing.metadata?.creationTimestamp || ''
+          });
+        }
+      });
+
+      return {
+        servicePayload,
+        podsList,
+        relatedIngresses
+      };
+    },
+    enabled: !!cluster && !!payload?.ns && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Service details available.</div>;
   }
 
+  const currentData = queryData?.servicePayload || payload;
+  const pods = queryData?.podsList || [];
+  const relatedIngresses = queryData?.relatedIngresses || [];
+
   const handleNamespaceClick = () => {
-    if (payload.ns) {
-      openNamespaceDetail(payload.ns);
+    if (currentData.ns) {
+      openNamespaceDetail(currentData.ns);
     }
   };
 
-  const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
-  const labels = payload.labels ? Object.entries(payload.labels) : [];
-  const selectors = payload.selector ? Object.entries(payload.selector) : [];
-  const finalizers = payload.finalizers || [];
-  const endpointSlices = payload.endpointSlices || [];
-  const endpoints = payload.endpoints || [];
+  const annotations = currentData.annotations ? Object.entries(currentData.annotations) : [];
+  const labels = currentData.labels ? Object.entries(currentData.labels) : [];
+  const selectors = currentData.selector ? Object.entries(currentData.selector) : [];
+  const finalizers = currentData.finalizers || [];
+  const endpointSlices = currentData.endpointSlices || [];
+  const endpoints = currentData.endpoints || [];
+
+  const creationTimestamp =
+    currentData.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem?.metadata?.creationTimestamp ||
+    '';
+  const createdTime =
+    currentData.createdTime ||
+    (creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '') ||
+    'N/A';
 
   const propertiesData: PropertyItem[] = [
     {
@@ -41,17 +221,19 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       name: 'Created',
       value: (
         <span>
-          <Age
-            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
-          />{' '}
-          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+          {creationTimestamp ? (
+            <Age timestamp={creationTimestamp} />
+          ) : (
+            currentData.age || '—'
+          )}{' '}
+          ago ({createdTime})
         </span>
       )
     },
     {
       id: 'name',
       name: 'Name',
-      value: payload.name
+      value: currentData.name
     },
     {
       id: 'namespace',
@@ -61,7 +243,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
           onClick={handleNamespaceClick}
           className="font-mono text-accent hover:underline cursor-pointer"
         >
-          {payload.ns}
+          {currentData.ns}
         </span>
       )
     },
@@ -105,14 +287,26 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     }
   ];
 
-  if (payload.controlledByName) {
+  if (currentData.controlledByName) {
     propertiesData.push({
       id: 'controlledBy',
       name: 'Controlled By',
       value: (
         <span>
-          {payload.controlledByKind || 'Owner'}{' '}
-          <span className="text-zinc-300 font-mono">{payload.controlledByName}</span>
+          {currentData.controlledByKind || 'Owner'}{' '}
+          <span
+            onClick={() =>
+              currentData.controlledByName &&
+              openResourceDetail(
+                currentData.controlledByKind || 'Deployment',
+                currentData.ns,
+                currentData.controlledByName
+              )
+            }
+            className="text-accent hover:underline cursor-pointer font-mono"
+          >
+            {currentData.controlledByName}
+          </span>
         </span>
       )
     });
@@ -122,15 +316,12 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     propertiesData.push({
       id: 'selector',
       name: 'Selector',
-      value: `${selectors.length} Selectors`,
-      hasDetail: true,
-      renderDetail: () => (
-        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+      value: (
+        <div className="flex flex-wrap gap-1">
           {selectors.map(([k, v]) => (
             <span
               key={k}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
-              title={`${k}=${v}`}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/70 text-zinc-300"
             >
               {k}={v}
             </span>
@@ -166,44 +357,44 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     {
       id: 'type',
       name: 'Type',
-      value: payload.type
+      value: currentData.type
     },
     {
       id: 'sessionAffinity',
       name: 'Session Affinity',
-      value: payload.sessionAffinity
+      value: currentData.sessionAffinity
     },
     {
       id: 'clusterIp',
       name: 'Cluster IP',
-      value: payload.clusterIp
+      value: currentData.clusterIp
     },
     {
       id: 'clusterIps',
       name: 'Cluster IPs',
-      value: payload.clusterIps?.join(', ') || '—'
+      value: currentData.clusterIps?.join(', ') || '—'
     },
     {
       id: 'ipFamilies',
       name: 'IP Families',
-      value: payload.ipFamilies?.join(', ') || '—'
+      value: currentData.ipFamilies?.join(', ') || '—'
     },
     {
       id: 'ipFamilyPolicy',
       name: 'IP Family Policy',
-      value: payload.ipFamilyPolicy
+      value: currentData.ipFamilyPolicy
     },
     {
       id: 'externalIps',
       name: 'External IPs',
-      value: payload.externalIps
+      value: currentData.externalIps
     },
     {
       id: 'ports',
       name: 'Ports',
       value: (
         <div className="flex items-center justify-between w-full">
-          <span className="font-mono text-accent text-[11px]">{payload.ports}</span>
+          <span className="font-mono text-accent text-[11px]">{currentData.ports}</span>
           <button className="px-2.5 py-1 text-[10px] bg-accent hover:bg-accent/80 text-strong font-medium rounded border-none cursor-pointer select-none transition-colors">
             Forward...
           </button>
@@ -225,7 +416,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       {/* Endpoint Slices */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
-          Endpoint Slices
+          Endpoint Slices ({endpointSlices.length})
         </span>
         {endpointSlices.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No endpoint slices found</div>
@@ -236,8 +427,19 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                 {
                   key: 'name',
                   header: 'Name',
-                  className: 'font-mono text-zinc-300 truncate max-w-[120px]',
-                  render: (row) => <span title={row.name}>{row.name}</span>
+                  className: 'font-mono text-zinc-300 truncate max-w-[140px]',
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEndpointSliceDetail(currentData.ns, row.name);
+                      }}
+                      className="text-accent hover:underline cursor-pointer"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </span>
+                  )
                 },
                 {
                   key: 'endpointsCount',
@@ -278,7 +480,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       {/* Endpoints */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
-          Endpoints
+          Endpoints ({endpoints.length})
         </span>
         {endpoints.length === 0 ? (
           <div className="text-xs text-zinc-500 italic pl-1">No endpoints found</div>
@@ -289,8 +491,19 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                 {
                   key: 'name',
                   header: 'Name',
-                  className: 'font-mono text-zinc-300 truncate max-w-[120px]',
-                  render: (row) => <span title={row.name}>{row.name}</span>
+                  className: 'font-mono text-zinc-300 truncate max-w-[140px]',
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEndpointDetail(currentData.ns, row.name);
+                      }}
+                      className="text-accent hover:underline cursor-pointer"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </span>
+                  )
                 },
                 {
                   key: 'endpoints',
@@ -305,6 +518,187 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
           </div>
         )}
       </div>
+
+      {/* Matching Pods Section */}
+      {selectors.length > 0 && (
+        <div className="flex flex-col gap-2 mt-2 border-t border-border-dark/60 pt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider">
+              Matching Pods ({pods.length})
+            </span>
+          </div>
+          {pods.length === 0 ? (
+            <div className="text-xs text-zinc-500 italic pl-1">
+              No matching pods found in namespace
+            </div>
+          ) : (
+            <div className="border-y border-border/40 flex flex-col max-h-[220px] h-auto w-full overflow-y-auto">
+              <KubeTable<DeployRelatedPod>
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Name',
+                    className: 'py-2 px-3 text-zinc-200 font-semibold truncate max-w-[180px]',
+                    render: (row) => (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPodDetail(
+                            row.ns,
+                            row.name,
+                            (row as unknown as { rawItem?: K8sResource }).rawItem
+                          );
+                        }}
+                        className="text-accent hover:underline cursor-pointer font-sans"
+                        title={row.name}
+                      >
+                        {row.name}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'node',
+                    header: 'Node',
+                    className: 'py-2 px-3 text-zinc-300 truncate max-w-[100px]',
+                    render: (row) => (
+                      <span
+                        onClick={(e) => {
+                          if (row.node && row.node !== '—') {
+                            e.stopPropagation();
+                            openNodeDetail(row.node);
+                          }
+                        }}
+                        className={
+                          row.node && row.node !== '—'
+                            ? 'text-accent hover:underline cursor-pointer font-mono'
+                            : 'text-zinc-400'
+                        }
+                        title={row.node}
+                      >
+                        {row.node}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'ns',
+                    header: 'Namespace',
+                    className: 'py-2 px-3 text-accent hover:underline cursor-pointer',
+                    render: (row) => <span onClick={handleNamespaceClick}>{row.ns}</span>
+                  },
+                  {
+                    key: 'ready',
+                    header: 'Ready',
+                    className: 'py-2 px-3 text-zinc-300'
+                  },
+                  {
+                    key: 'cpu',
+                    header: 'CPU',
+                    className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                    render: (row) => {
+                      const podMetric = metricItems.find(
+                        (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
+                      );
+                      const cpuStr = podMetric?.cpu
+                        ? formatInstantCpu(podMetric.cpu)
+                        : row.cpu && row.cpu !== 'N/A'
+                          ? row.cpu
+                          : 'N/A';
+                      return <span>{cpuStr}</span>;
+                    }
+                  },
+                  {
+                    key: 'memory',
+                    header: 'Memory',
+                    className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                    render: (row) => {
+                      const podMetric = metricItems.find(
+                        (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
+                      );
+                      const memStr = podMetric?.memory
+                        ? formatInstantMemory(podMetric.memory)
+                        : row.memory && row.memory !== 'N/A'
+                          ? row.memory
+                          : 'N/A';
+                      return <span>{memStr}</span>;
+                    }
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    className: 'py-2 px-3 font-semibold text-xs',
+                    render: (row) => (
+                      <span
+                        className={
+                          row.status === 'Running' || row.status === 'Succeeded'
+                            ? 'text-emerald-400'
+                            : 'text-amber-400'
+                        }
+                      >
+                        {row.status}
+                      </span>
+                    )
+                  }
+                ]}
+                data={pods}
+                getRowKey={(row) => row.name}
+                resizable={false}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ingresses Section */}
+      {relatedIngresses.length > 0 && (
+        <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
+          <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
+            Ingresses ({relatedIngresses.length})
+          </span>
+          <div className="border-y border-border/40 flex flex-col h-auto max-h-[160px]">
+            <KubeTable<ServiceRelatedIngress>
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Name',
+                  className: 'font-mono text-zinc-300 truncate max-w-[160px]',
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openIngressDetail(row.namespace, row.name);
+                      }}
+                      className="text-accent hover:underline cursor-pointer"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </span>
+                  )
+                },
+                {
+                  key: 'namespace',
+                  header: 'Namespace',
+                  className: 'font-mono text-accent hover:underline cursor-pointer',
+                  render: (row) => <span onClick={handleNamespaceClick}>{row.namespace}</span>
+                },
+                {
+                  key: 'rules',
+                  header: 'Rules',
+                  className: 'font-mono text-zinc-400'
+                },
+                {
+                  key: 'age',
+                  header: 'Age',
+                  className: 'font-mono text-zinc-500',
+                  render: (row) => <Age timestamp={row.creationTimestamp} />
+                }
+              ]}
+              data={relatedIngresses}
+              getRowKey={(row) => row.name}
+              resizable={false}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">

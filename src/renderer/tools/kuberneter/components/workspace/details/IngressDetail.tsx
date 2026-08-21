@@ -1,99 +1,289 @@
 import { Age } from '../../Age';
 import type React from 'react';
 import { useMemo, useCallback } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type IngressData } from '../../../types/IngressData';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { KubeTable, type Column } from '../../kube-table';
 import { MoreVertical, ChevronDown, ArrowUpDown, Sliders, Flag } from 'lucide-react';
-
-import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
+import {
+  useOpenNamespaceDetail,
+  useOpenNetworkDetail,
+  useOpenConfigDetail,
+  useOpenResourceDetail
+} from '../../../hooks/open-detail';
+import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
+import { type K8sResource } from '../../../types/K8sResource';
+import { buildIngressDetailPayload } from '../../../hooks/open-detail/transformers/network.transformer';
 
 interface IngressDetailProps {
   payload: IngressData;
   isTab?: boolean;
 }
 
+interface IngressTlsItem {
+  hosts: string;
+  secretName: string;
+}
+
 export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = false }) => {
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
+  const rawConfigPath = useKuberneterStore(
+    (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
+  );
+
   const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openServiceDetail, openIngressClassDetail } = useOpenNetworkDetail();
+  const { openSecretDetail } = useOpenConfigDetail();
+  const { openResourceDetail: _openResourceDetail } = useOpenResourceDetail();
+
+  // Live query for Ingress
+  const { data: queryData } = useQuery({
+    queryKey: [
+      'kuberneter',
+      'ingress-detail-data',
+      rawConfigPath,
+      cluster,
+      payload?.ns,
+      payload?.name
+    ],
+    queryFn: async () => {
+      if (!cluster || !payload?.ns || !payload?.name) return null;
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+
+      const ingRes = await window.kuberneter.getResources(
+        configPathArg,
+        cluster,
+        K8S_RESOURCE_KEYS.INGRESSES,
+        payload.ns
+      );
+      const ingItem = ((ingRes?.items || []) as K8sResource[]).find(
+        (i) => i.metadata?.name === payload.name
+      );
+
+      const ingressPayload = buildIngressDetailPayload(
+        payload.name,
+        payload.ns,
+        ingItem || (payload.rawItem as K8sResource)
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = (ingItem || payload.rawItem) as any;
+      const ingressClassName =
+        raw?.spec?.ingressClassName ||
+        raw?.metadata?.annotations?.['kubernetes.io/ingress.class'] ||
+        '';
+
+      const tlsList: IngressTlsItem[] = (raw?.spec?.tls || []).map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (t: any) => ({
+          hosts: (t.hosts || []).join(', ') || '—',
+          secretName: t.secretName || '—'
+        })
+      );
+
+      const defaultBackendSvc = raw?.spec?.defaultBackend?.service?.name;
+
+      return {
+        ingressPayload,
+        ingressClassName,
+        tlsList,
+        defaultBackendSvc
+      };
+    },
+    enabled: !!cluster && !!payload?.ns && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
+  const currentData = queryData?.ingressPayload || payload;
+  const ingressClassName = queryData?.ingressClassName || '';
+  const tlsList = queryData?.tlsList || [];
+  const defaultBackendSvc = queryData?.defaultBackendSvc;
 
   const handleNamespaceClick = useCallback(() => {
-    if (payload?.ns) {
-      openNamespaceDetail(payload.ns);
+    if (currentData?.ns) {
+      openNamespaceDetail(currentData.ns);
     }
-  }, [payload, openNamespaceDetail]);
+  }, [currentData, openNamespaceDetail]);
 
-  const annotations = payload?.annotations ? Object.entries(payload.annotations) : [];
+  const handleServiceClick = useCallback(
+    (serviceName: string) => {
+      if (currentData?.ns && serviceName && serviceName !== '—') {
+        openServiceDetail(currentData.ns, serviceName);
+      }
+    },
+    [currentData, openServiceDetail]
+  );
+
+  const handleIngressClassClick = useCallback(
+    (className: string) => {
+      if (className) {
+        openIngressClassDetail(className);
+      }
+    },
+    [openIngressClassDetail]
+  );
+
+  const handleSecretClick = useCallback(
+    (secretName: string) => {
+      if (currentData?.ns && secretName && secretName !== '—') {
+        openSecretDetail(currentData.ns, secretName);
+      }
+    },
+    [currentData, openSecretDetail]
+  );
+
+  const annotations = currentData?.annotations ? Object.entries(currentData.annotations) : [];
+  const labels = currentData?.labels ? Object.entries(currentData.labels) : [];
+
+  const creationTimestamp =
+    currentData?.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem?.metadata?.creationTimestamp ||
+    '';
+  const createdTime =
+    currentData?.createdTime ||
+    (creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '') ||
+    'N/A';
 
   const propertiesData: PropertyItem[] = [
     {
       id: 'created',
       name: 'Created',
-      value: payload ? (
+      value: (
         <span>
-          <Age
-            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
-          />{' '}
-          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+          {creationTimestamp ? (
+            <Age timestamp={creationTimestamp} />
+          ) : (
+            currentData?.age || '—'
+          )}{' '}
+          ago ({createdTime})
         </span>
-      ) : (
-        ''
       )
     },
     {
       id: 'name',
       name: 'Name',
-      value: payload?.name || ''
+      value: currentData?.name || ''
     },
     {
       id: 'namespace',
       name: 'Namespace',
-      value: payload ? (
+      value: currentData ? (
         <span
           onClick={handleNamespaceClick}
           className="font-mono text-accent hover:underline cursor-pointer"
         >
-          {payload.ns}
+          {currentData.ns}
         </span>
       ) : (
         ''
       )
-    },
-    {
-      id: 'annotations',
-      name: 'Annotations',
-      value: `${annotations.length} Annotations`,
-      hasDetail: annotations.length > 0,
-      renderDetail: () => (
-        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1 select-text w-full">
-          {annotations.map(([k, v]) => (
-            <div
-              key={k}
-              className="flex flex-col gap-0.5 bg-surface-3 border border-border/60 rounded p-1.5 font-mono text-[10px] w-full"
-            >
-              <span className="text-zinc-400 font-semibold break-all">{k}</span>
-              <span className="text-zinc-355 break-all whitespace-normal">{v}</span>
-            </div>
-          ))}
-        </div>
-      )
-    },
-    {
-      id: 'ports',
-      name: 'Ports',
-      value: payload?.ports || '—'
     }
   ];
 
+  if (ingressClassName) {
+    propertiesData.push({
+      id: 'ingressClass',
+      name: 'Ingress Class',
+      value: (
+        <span
+          onClick={() => handleIngressClassClick(ingressClassName)}
+          className="font-mono text-accent hover:underline cursor-pointer"
+        >
+          {ingressClassName}
+        </span>
+      )
+    });
+  }
+
+  if (labels.length > 0) {
+    propertiesData.push({
+      id: 'labels',
+      name: 'Labels',
+      value: `${labels.length} Labels`,
+      hasDetail: true,
+      renderDetail: () => (
+        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+          {labels.map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
+              title={`${k}=${v}`}
+            >
+              {k}={v}
+            </span>
+          ))}
+        </div>
+      )
+    });
+  }
+
+  propertiesData.push({
+    id: 'annotations',
+    name: 'Annotations',
+    value: `${annotations.length} Annotations`,
+    hasDetail: annotations.length > 0,
+    renderDetail: () => (
+      <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1 select-text w-full">
+        {annotations.map(([k, v]) => (
+          <div
+            key={k}
+            className="flex flex-col gap-0.5 bg-surface-3 border border-border/60 rounded p-1.5 font-mono text-[10px] w-full"
+          >
+            <span className="text-zinc-400 font-semibold break-all">{k}</span>
+            <span className="text-zinc-355 break-all whitespace-normal">{v}</span>
+          </div>
+        ))}
+      </div>
+    )
+  });
+
+  if (defaultBackendSvc) {
+    propertiesData.push({
+      id: 'defaultBackend',
+      name: 'Default Backend',
+      value: (
+        <span
+          onClick={() => handleServiceClick(defaultBackendSvc)}
+          className="font-mono text-accent hover:underline cursor-pointer"
+        >
+          {defaultBackendSvc}
+        </span>
+      )
+    });
+  }
+
+  propertiesData.push(
+    {
+      id: 'ports',
+      name: 'Ports',
+      value: currentData?.ports || '—'
+    },
+    {
+      id: 'loadBalancers',
+      name: 'Load Balancers',
+      value: currentData?.loadBalancers || '—'
+    }
+  );
+
   // Map rules into details table rows
   const rulesTableData = useMemo(() => {
-    if (!payload?.rules) return [];
-    return payload.rules.map((r, idx) => ({
+    if (!currentData?.rules) return [];
+    return currentData.rules.map((r, idx) => ({
       id: `rule-${idx}`,
+      host: r.host,
       path: r.path,
       link: r.link,
+      serviceName: r.serviceName,
+      servicePort: r.servicePort,
       backends: `${r.serviceName}:${r.servicePort}`
     }));
-  }, [payload.rules]);
+  }, [currentData?.rules]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ruleColumns = useMemo<Column<any>[]>(
@@ -107,17 +297,81 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
       {
         key: 'link',
         header: 'Link',
-        render: (row) => <span className="font-mono text-zinc-300">{row.link}</span>,
+        render: (row) => (
+          <span className="font-mono text-zinc-300">
+            {row.link ? (
+              <a
+                href={row.link}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:underline"
+              >
+                {row.link}
+              </a>
+            ) : (
+              row.host || '—'
+            )}
+          </span>
+        ),
         initialWidth: 240
       },
       {
         key: 'backends',
         header: 'Backends',
-        render: (row) => <span className="font-mono text-zinc-300">{row.backends}</span>,
-        initialWidth: 180
+        render: (row) => (
+          <span className="font-mono text-zinc-300">
+            {row.serviceName && row.serviceName !== '—' ? (
+              <>
+                <span
+                  onClick={() => handleServiceClick(row.serviceName)}
+                  className="text-accent hover:underline cursor-pointer"
+                >
+                  {row.serviceName}
+                </span>
+                {row.servicePort && row.servicePort !== '—' && (
+                  <span className="text-zinc-400">:{row.servicePort}</span>
+                )}
+              </>
+            ) : (
+              '—'
+            )}
+          </span>
+        ),
+        initialWidth: 200
       }
     ],
-    []
+    [handleServiceClick]
+  );
+
+  // TLS columns
+  const tlsColumns = useMemo<Column<IngressTlsItem>[]>(
+    () => [
+      {
+        key: 'hosts',
+        header: 'Hosts',
+        className: 'font-mono text-zinc-300 truncate max-w-[200px]',
+        render: (row) => <span>{row.hosts}</span>,
+        initialWidth: 220
+      },
+      {
+        key: 'secretName',
+        header: 'Secret',
+        className: 'font-mono text-accent truncate max-w-[200px]',
+        render: (row) =>
+          row.secretName && row.secretName !== '—' ? (
+            <span
+              onClick={() => handleSecretClick(row.secretName)}
+              className="hover:underline cursor-pointer"
+            >
+              {row.secretName}
+            </span>
+          ) : (
+            <span className="text-zinc-500">—</span>
+          ),
+        initialWidth: 220
+      }
+    ],
+    [handleSecretClick]
   );
 
   if (!payload) {
@@ -231,11 +485,11 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
       {/* Rules Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
-          Rules
+          Rules ({rulesTableData.length})
         </span>
 
         {rulesTableData.length > 0 ? (
-          <div className="flex flex-col border-y border-border/40 bg-surface-2/30 h-auto max-h-[160px]">
+          <div className="flex flex-col border-y border-border/40 bg-surface-2/30 h-auto max-h-[180px]">
             <KubeTable
               columns={ruleColumns}
               data={rulesTableData}
@@ -248,6 +502,23 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
           <span className="text-xs text-zinc-500 italic px-1">No rules configured.</span>
         )}
       </div>
+
+      {/* TLS Section */}
+      {tlsList.length > 0 && (
+        <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
+          <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider mb-1">
+            TLS ({tlsList.length})
+          </span>
+          <div className="flex flex-col border-y border-border/40 bg-surface-2/30 h-auto max-h-[160px]">
+            <KubeTable<IngressTlsItem>
+              columns={tlsColumns}
+              data={tlsList}
+              getRowKey={(row) => `${row.hosts}-${row.secretName}`}
+              resizable={false}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">

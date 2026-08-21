@@ -132,6 +132,7 @@ export function useIngresses(enabled: boolean) {
           createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
           labels: ingItem.metadata?.labels,
           annotations: ingItem.metadata?.annotations,
+          creationTimestamp,
           rawItem: ingItem
         };
       });

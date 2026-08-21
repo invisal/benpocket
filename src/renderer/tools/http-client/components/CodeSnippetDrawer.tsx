@@ -6,7 +6,7 @@ import { python as pythonLang } from '@codemirror/lang-python';
 import { StreamLanguage } from '@codemirror/language';
 import { shell as shellMode } from '@codemirror/legacy-modes/mode/shell';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { Check, ChevronDownIcon, Copy, X } from 'lucide-react';
+import { Check, ChevronDownIcon, Code2, Copy, X } from 'lucide-react';
 import { Drawer } from '@renderer/components/ui/Drawer';
 import { Menu } from '@renderer/components/ui/Menu';
 import { Button } from '@renderer/components/ui/Button';
@@ -71,9 +71,9 @@ export const CodeSnippetDrawer: React.FC<CodeSnippetDrawerProps> = ({ request, b
     <Drawer.Root open={open} onOpenChange={setOpen}>
       <Drawer.Trigger
         title="Generate code snippet"
-        render={<Button variant="secondary" size="md" />}
+        render={<Button variant="ghost" size="sm" className="px-1.5 hover:bg-surface-3" />}
       >
-        Code
+        <Code2 size={13} />
       </Drawer.Trigger>
       <Drawer.Content side="right" className="w-md" showClose={false}>
         {/* Drawer.Content's own wrapper is a plain block div, not a flex container - this

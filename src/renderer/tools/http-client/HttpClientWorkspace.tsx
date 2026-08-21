@@ -13,9 +13,8 @@ import { RequestEditorPanel } from './components/RequestEditorPanel';
 import { ResponseInspector } from './components/ResponseInspector';
 import { WebSocketComposer } from './components/WebSocketComposer';
 import { WebSocketLog } from './components/WebSocketLog';
-import { RequestSaveBar, type RequestSaveBarHandle } from './components/RequestSaveBar';
+import { SaveRequestButton, type SaveRequestButtonHandle } from './components/SaveRequestButton';
 import { CodeSnippetDrawer } from './components/CodeSnippetDrawer';
-import { SaveExamplePopover } from './components/SaveExamplePopover';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 
 const RESPONSE_PANEL_HEIGHT_KEY = 'craftbox-http-client-response-height';
@@ -118,7 +117,6 @@ export const HttpClientWorkspace: React.FC = () => {
 
 const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   const tab = useRequestTabsStore((s) => s.tabs.find((t) => t.id === tabId));
-  const renameTab = useRequestTabsStore((s) => s.renameTab);
   const isPreviewTab = useRequestTabsStore((s) => s.previewTabId === tabId);
   const pinTab = useRequestTabsStore((s) => s.pinTab);
   // Editing a preview tab's request promotes it to a permanent tab, same as VS Code:
@@ -129,7 +127,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
   const client = useApiClient(tabId, { onEdit: pinIfPreview });
   const seed = tab?.meta as RequestTabSeed | undefined;
   const [saveError, setSaveError] = useState<string | null>(null);
-  const saveBarRef = useRef<RequestSaveBarHandle>(null);
+  const saveButtonRef = useRef<SaveRequestButtonHandle>(null);
   const [responsePanelHeight, setResponsePanelHeight] = useState<number>(
     readStoredResponsePanelHeight
   );
@@ -149,9 +147,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
     return () => clearTimeout(timer);
   }, [saveError]);
 
-  // Cmd/Ctrl+Enter to send, Cmd/Ctrl+S to save using whatever collection/name is currently set
-  // in the save bar (same action the visible Save button runs), Cmd/Ctrl+Z to undo and
-  // Cmd/Ctrl+Shift+Z or Ctrl+Y to redo the last HTTP draft edit.
+  // Cmd/Ctrl+Enter to send, Cmd/Ctrl+S to save (same action the visible Save button runs),
+  // Cmd/Ctrl+Z to undo and Cmd/Ctrl+Shift+Z or Ctrl+Y to redo the last HTTP draft edit.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (!e.metaKey && !e.ctrlKey) return;
@@ -161,7 +158,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
         client.http.send();
       } else if (key === 's') {
         e.preventDefault();
-        saveBarRef.current?.save();
+        saveButtonRef.current?.save();
       } else if (client.protocol === 'HTTP' && (key === 'z' || key === 'y')) {
         e.preventDefault();
         if (key === 'y' || (key === 'z' && e.shiftKey)) client.http.redo();
@@ -179,33 +176,6 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           {saveError}
         </div>
       )}
-
-      <RequestSaveBar
-        ref={saveBarRef}
-        tabTitle={tab?.title ?? 'New API Request'}
-        protocol={client.protocol}
-        url={client.protocol === 'HTTP' ? client.http.state.url : client.ws.state.url}
-        request={client.protocol === 'HTTP' ? client.http.state : undefined}
-        binding={client.binding}
-        defaultCollectionId={seed?.defaultCollectionId}
-        onSaved={(binding, name) => {
-          client.bindTo(binding);
-          renameTab(tabId, name);
-        }}
-        onError={setSaveError}
-        extraActions={
-          client.protocol === 'HTTP' ? (
-            <>
-              <CodeSnippetDrawer request={client.http.state} binding={client.binding} />
-              <SaveExamplePopover
-                binding={client.binding}
-                response={client.http.state.response}
-                request={client.http.state}
-              />
-            </>
-          ) : undefined
-        }
-      />
 
       <div className="flex flex-col min-h-0 flex-1">
         <RequestComposer
@@ -229,6 +199,24 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
             (client.ws.state.status === 'CONNECTED' || client.ws.state.status === 'CONNECTING')
           }
           onImportCurl={client.protocol === 'HTTP' ? client.http.importCurl : undefined}
+          extraActions={
+            <>
+              {client.protocol === 'HTTP' && (
+                <CodeSnippetDrawer request={client.http.state} binding={client.binding} />
+              )}
+              <SaveRequestButton
+                ref={saveButtonRef}
+                tabTitle={tab?.title ?? 'New API Request'}
+                protocol={client.protocol}
+                url={client.protocol === 'HTTP' ? client.http.state.url : client.ws.state.url}
+                request={client.protocol === 'HTTP' ? client.http.state : undefined}
+                binding={client.binding}
+                defaultCollectionId={seed?.defaultCollectionId}
+                onSaved={client.bindTo}
+                onError={setSaveError}
+              />
+            </>
+          }
           action={
             client.protocol === 'WEBSOCKET'
               ? {
@@ -240,11 +228,11 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                         : 'Connect',
                   icon:
                     client.ws.state.status === 'CONNECTING' ? (
-                      <RefreshCw size={12} className="animate-spin" />
+                      <RefreshCw size={13} className="animate-spin" />
                     ) : client.ws.state.status === 'CONNECTED' ? (
-                      <PlugZap size={12} />
+                      <PlugZap size={13} />
                     ) : (
-                      <Plug size={12} />
+                      <Plug size={13} />
                     ),
                   onClick:
                     client.ws.state.status === 'CONNECTED'
@@ -253,14 +241,17 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                   disabled:
                     client.ws.state.status === 'CONNECTING' ||
                     (client.ws.state.status !== 'CONNECTED' && !client.ws.state.url.trim()),
-                  className: client.ws.state.status === 'CONNECTED' ? 'text-danger' : 'text-accent'
+                  className:
+                    client.ws.state.status === 'CONNECTED'
+                      ? '!bg-danger hover:!bg-danger/80'
+                      : undefined
                 }
               : {
                   label: client.http.state.isLoading ? 'Sending...' : 'Send',
                   icon: client.http.state.isLoading ? (
-                    <RefreshCw size={12} className="animate-spin" />
+                    <RefreshCw size={13} className="animate-spin" />
                   ) : (
-                    <Send size={12} />
+                    <Send size={13} />
                   ),
                   onClick: client.http.send,
                   disabled: client.http.state.isLoading
@@ -286,6 +277,8 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
               <ResponseInspector
                 response={client.http.state.response}
                 isLoading={client.http.state.isLoading}
+                binding={client.binding}
+                request={client.http.state}
               />
             </ResizablePanel>
           </>

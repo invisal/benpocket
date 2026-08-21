@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
+import { cn } from 'cnfast';
 import CodeMirror, { EditorView, type Extension } from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { xml as xmlLang } from '@codemirror/lang-xml';
@@ -9,15 +10,20 @@ import { javascript as javascriptLang } from '@codemirror/lang-javascript';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Select } from '@renderer/components/ui/Select';
 import { PillTab } from '@renderer/components/ui/Tabs';
-import { Check, Copy, Eye, FileText, Table } from 'lucide-react';
+import { Check, Copy, Eye, FileText, Filter, Table } from 'lucide-react';
 import { useThemeStore } from '@renderer/store/theme.store';
 import { getPrettyText } from '../lib/formatters/index';
 import { RESPONSE_FORMATS, detectFormat, isImageContentType } from '../lib/responseFormat';
 import type { ResponseFormat } from '../lib/responseFormat';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
+import { RESPONSE_ACTION_BUTTON_CLASS } from '../lib/responseActionButtonClass';
+import type { HttpResponsePayload } from '../../../../preload/http-client/types';
+import type { HttpState } from '../hooks/useHttp';
+import type { SavedBinding } from '../types';
 import { HexView } from './HexView';
 import { ResponsePreview } from './ResponsePreview';
 import { ResponseTable } from './ResponseTable';
+import { SaveExamplePopover } from './SaveExamplePopover';
 
 const BASE64_LINE_LENGTH = 76;
 
@@ -52,13 +58,19 @@ interface ResponseBodyViewerProps {
   bytes: Uint8Array;
   bodyBase64: string;
   contentType: string | undefined;
+  response: HttpResponsePayload;
+  binding: SavedBinding | null;
+  request: HttpState;
 }
 
 export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
   text,
   bytes,
   bodyBase64,
-  contentType
+  contentType,
+  response,
+  binding,
+  request
 }) => {
   const detected = useMemo(
     () => detectFormat(contentType, text, bytes),
@@ -72,13 +84,36 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
   );
   const [copied, copy] = useCopyFeedback();
   const theme = useThemeStore((s) => s.theme);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
 
   const previewEnabled = format === 'html' || isImageContentType(contentType);
   const tableEnabled = format === 'json' || format === 'yaml';
+  // Line-filtering only makes sense against the flat text views - hex bytes, the table
+  // view's parsed rows, and image/html previews have nothing resembling a line to match.
+  const filterable = format !== 'hex' && viewMode !== 'table' && viewMode !== 'preview';
 
   const prettyText = useMemo(() => getPrettyText(format, text), [format, text]);
   const prettyExtensions = useMemo(() => prettyLanguage(format), [format]);
   const chunkedBase64 = useMemo(() => chunkBase64(bodyBase64), [bodyBase64]);
+
+  const filterLines = (value: string): string => {
+    const needle = filterQuery.trim().toLowerCase();
+    if (!needle) return value;
+    return value
+      .split('\n')
+      .filter((line) => line.toLowerCase().includes(needle))
+      .join('\n');
+  };
+  const displayedPrettyText = filterable ? filterLines(prettyText) : prettyText;
+  const displayedBase64 = filterable ? filterLines(chunkedBase64) : chunkedBase64;
+
+  const toggleFilter = (): void => {
+    setFilterOpen((open) => {
+      if (open) setFilterQuery('');
+      return !open;
+    });
+  };
 
   const copyText = format === 'base64' ? bodyBase64 : prettyText;
 
@@ -127,15 +162,53 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
           )}
         </div>
 
-        <button
-          onClick={() => copy(copyText)}
-          title="Copy body"
-          className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold text-zinc-400 hover:text-foreground bg-surface-3 border border-border-dark rounded cursor-pointer transition-colors"
-        >
-          {copied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
-          {copied ? 'Copied' : 'Copy'}
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={toggleFilter}
+            title="Filter response body"
+            className={cn(
+              RESPONSE_ACTION_BUTTON_CLASS,
+              filterOpen && 'text-accent border-accent bg-accent/10'
+            )}
+          >
+            <Filter size={12} />
+          </button>
+          <SaveExamplePopover binding={binding} response={response} request={request} />
+          <button
+            type="button"
+            onClick={() => copy(copyText)}
+            title={copied ? 'Copied' : 'Copy body'}
+            className={RESPONSE_ACTION_BUTTON_CLASS}
+          >
+            {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+          </button>
+        </div>
       </div>
+
+      {filterOpen && (
+        <div className="flex flex-col gap-1 shrink-0">
+          <input
+            type="text"
+            autoFocus
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setFilterOpen(false);
+                setFilterQuery('');
+              }
+            }}
+            placeholder="Filter body by text..."
+            className="w-full h-7 px-2 text-[11px] bg-surface-2 border border-border rounded outline-none focus:border-accent"
+          />
+          {!filterable && (
+            <span className="text-[10px] text-zinc-500">
+              Filtering isn&apos;t available for this view.
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 overflow-auto">
         {viewMode === 'preview' && previewEnabled ? (
@@ -151,11 +224,11 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
           <HexView bytes={bytes} />
         ) : format === 'base64' ? (
           <pre className="font-mono text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap break-all select-text">
-            {chunkedBase64}
+            {displayedBase64}
           </pre>
         ) : (
           <CodeMirror
-            value={prettyText}
+            value={displayedPrettyText}
             editable={false}
             height="100%"
             className="h-full text-xs"

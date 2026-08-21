@@ -1,8 +1,41 @@
 import type React from 'react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { cn } from 'cnfast';
 import type { KeyValuePair } from '../../../../preload/http-client/types';
 import { findOpenToken, insertVariable, type OpenToken } from '../lib/variableToken';
+
+const VARIABLE_TOKEN_RE = /\{\{([^{}]*)\}\}/g;
+const HAS_VARIABLE_TOKEN_RE = /\{\{[^{}]*\}\}/;
+
+/** Splits `value` into plain-text and `{{name}}` pieces, rendering each variable as a pill
+ * with the braces hidden - used for the read-only "resting" overlay shown while the field
+ * isn't focused. */
+function renderWithPills(value: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  VARIABLE_TOKEN_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = VARIABLE_TOKEN_RE.exec(value))) {
+    if (match.index > lastIndex) {
+      nodes.push(<Fragment key={key++}>{value.slice(lastIndex, match.index)}</Fragment>);
+    }
+    nodes.push(
+      <span
+        key={key++}
+        className="inline-flex items-center rounded bg-accent/15 px-1 font-mono text-[11px] text-accent"
+      >
+        {match[1]}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < value.length) {
+    nodes.push(<Fragment key={key++}>{value.slice(lastIndex)}</Fragment>);
+  }
+  return nodes;
+}
 
 interface VariableSuggestInputProps {
   value: string;
@@ -43,6 +76,12 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
   const [token, setToken] = useState<OpenToken | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [rect, setRect] = useState<DropdownRect | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Resting (unfocused) state shows `{{name}}` tokens as pills instead of raw braces - editing
+  // still happens against the plain string via the real input, so this only kicks in when
+  // there's nothing being actively typed and something to actually highlight.
+  const showPills = !isFocused && !disabled && HAS_VARIABLE_TOKEN_RE.test(value);
 
   const names = useMemo(
     () => Array.from(new Set(variables.map((v) => v.key.trim()).filter(Boolean))),
@@ -102,7 +141,7 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
         type="text"
         value={value}
         placeholder={placeholder}
-        className={className}
+        className={cn(className, showPills && 'opacity-0')}
         disabled={disabled}
         onChange={(e) => {
           onChange(e.target.value);
@@ -113,7 +152,9 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
         onKeyUp={(e) => {
           if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') evaluate(e.currentTarget);
         }}
+        onFocus={() => setIsFocused(true)}
         onBlur={() => {
+          setIsFocused(false);
           // Delay so a suggestion's onMouseDown can fire before the list unmounts.
           setTimeout(() => setToken(null), 120);
         }}
@@ -144,6 +185,24 @@ export const VariableSuggestInput: React.FC<VariableSuggestInputProps> = ({
         autoComplete="off"
         spellCheck={false}
       />
+      {showPills && (
+        <div
+          aria-hidden
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const input = inputRef.current;
+            if (!input) return;
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+          }}
+          className={cn(
+            className,
+            'absolute inset-0 z-10 flex items-center overflow-hidden whitespace-nowrap cursor-text'
+          )}
+        >
+          {renderWithPills(value)}
+        </div>
+      )}
       {showDropdown &&
         rect &&
         createPortal(

@@ -107,7 +107,7 @@ export const PodContainersSection: React.FC<PodContainersSectionProps> = ({
                               variant="ghost"
                               size="sm"
                               onClick={() => onOpenPortForwardModal(p.containerPort, p.protocol)}
-                              className="h-5 px-2 py-0 text-[10px] text-zinc-400 hover:text-zinc-100 hover:bg-surface-3"
+                              className="h-5 px-2 py-0 text-[10px] text-zinc-400 hover:text-foreground hover:bg-surface-3"
                             >
                               Forward...
                             </Button>

@@ -22,7 +22,7 @@ export const GenericKubeDetail: React.FC<GenericKubeDetailProps> = ({ payload })
     {
       id: 'name',
       name: 'Name',
-      value: <span className="font-semibold text-zinc-100">{name}</span>
+      value: <span className="font-semibold text-foreground">{name}</span>
     },
     {
       id: 'kind',
@@ -32,7 +32,7 @@ export const GenericKubeDetail: React.FC<GenericKubeDetailProps> = ({ payload })
     {
       id: 'apiVersion',
       name: 'API Version',
-      value: <span className="text-zinc-400 font-mono">{apiVersion}</span>
+      value: <span className="text-zinc-400 font-mono">{apiVersion || '-'}</span>
     },
     {
       id: 'namespace',
@@ -58,8 +58,16 @@ export const GenericKubeDetail: React.FC<GenericKubeDetailProps> = ({ payload })
       name: 'Created',
       value: metadata.creationTimestamp ? (
         <span className="flex items-center gap-1">
-          <Age timestamp={new Date(metadata.creationTimestamp).toISOString()} />
+          <Age
+            timestamp={
+              metadata.creationTimestamp instanceof Date
+                ? metadata.creationTimestamp.toISOString()
+                : String(metadata.creationTimestamp)
+            }
+          />
         </span>
+      ) : (payload as { age?: string })?.age ? (
+        (payload as { age?: string }).age
       ) : (
         '-'
       )
@@ -113,7 +121,7 @@ export const GenericKubeDetail: React.FC<GenericKubeDetailProps> = ({ payload })
                 className="px-2.5 py-1 rounded bg-surface-2/60 border border-border-dark/50 text-[10px] font-mono flex flex-col gap-0.5"
               >
                 <span className="text-zinc-400 font-semibold">{k}</span>
-                <span className="text-zinc-300 break-all bg-black/20 p-1 rounded">{v}</span>
+                <span className="text-zinc-300 break-all bg-surface-3/40 p-1 rounded">{v}</span>
               </div>
             ))}
           </div>

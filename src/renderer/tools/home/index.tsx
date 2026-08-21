@@ -58,8 +58,8 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         onClick: () =>
           openOrSelect('kuberneter', () => {
             const instanceId = `kuberneter-${Date.now()}`;
+            if (openTab('kuberneter', { instanceId }) === null) return;
             useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
-            openTab('kuberneter', { instanceId });
           })
       },
       {

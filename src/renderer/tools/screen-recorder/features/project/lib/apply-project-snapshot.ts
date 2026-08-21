@@ -1,6 +1,6 @@
 import type { Project } from '@screen-recorder/types/project';
 import { toRecordingMediaUrl } from '@shared/media-protocol';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useBackgroundStore } from '../../background/store/background-store';
@@ -56,7 +56,13 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
     ...project.background,
     enabled: project.background.enabled ?? true
   });
-  useCursorStore.setState(project.cursor);
+  useCursorStore.setState({
+    ...project.cursor,
+    // Projects saved before this field existed on `CursorSettings` have no
+    // such key at all -- guard against inheriting whatever the previously
+    // open project's toggle happened to be, same reasoning as `crop` below.
+    clickSoundEnabled: project.cursor.clickSoundEnabled ?? false
+  });
   useCaptionsStore.setState(project.captions);
   useAnnotationsStore.setState({ annotations: project.annotations, selectedAnnotationId: null });
   useBlurMaskStore.setState({
@@ -72,18 +78,25 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
   // inheriting a stale crop left over from whatever was open before this one.
   useCropStore.setState({ rect: project.crop ?? null });
 
-  useAppStore.setState({
+  useScreenRecorderStore.setState({
     projectName: project.name,
     currentProjectId: project.id,
     lastRecording: {
       previewUrl: source.url,
       filePath: project.sourceVideoPath,
+      // `?? project.sourceVideoPath`, not left `undefined` -- legacy
+      // projects saved before this field existed (or one where recording
+      // never produced a separate export-source file) should still fall
+      // back to the same file everything else uses, same as
+      // `exportSourceVideoPath`'s own doc describes for a fresh recording.
+      exportSourceFilePath: project.exportSourceVideoPath ?? project.sourceVideoPath,
       sizeBytes: source.sizeBytes,
       createdAt: project.createdAt,
       cursorPath: project.cursorPath,
       clickPath: project.clickPath,
       webcamPreviewUrl: webcam?.url ?? null,
       webcamFilePath: project.webcamVideoPath,
+      webcamExportSourceFilePath: project.webcamExportSourceVideoPath ?? project.webcamVideoPath,
       webcamOffsetMs: project.webcamOffsetMs,
       // Legacy project JSONs predate this field -- see project-handlers.ts's
       // `ListProjects` for why the missing case defaults to 'imported'.
@@ -92,5 +105,5 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
   });
 
   resetHistory();
-  useAppStore.getState().setRoute('editor');
+  useScreenRecorderStore.getState().setRoute('editor');
 }

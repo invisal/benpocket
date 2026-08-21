@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Input } from '@renderer/components/ui/Input';
 import { Button } from '@renderer/components/ui/Button';
-import { useAppStore } from '../../../app/app-store';
-import { useToastStore } from '../../../app/toast-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
+import { useToastStore } from '../../../store/toast-store';
 import { buildProjectSnapshot } from '../lib/build-project-snapshot';
 import { resetHistory } from '../../history/store/history-store';
 
@@ -24,9 +24,9 @@ interface SaveProjectFormProps {
  * effect or ref-based reset watching for the closed -> open transition.
  */
 function SaveProjectForm({ initialName, onOpenChange }: SaveProjectFormProps): JSX.Element {
-  const setProjectName = useAppStore((s) => s.setProjectName);
-  const setCurrentProjectId = useAppStore((s) => s.setCurrentProjectId);
-  const bumpProjectsVersion = useAppStore((s) => s.bumpProjectsVersion);
+  const setProjectName = useScreenRecorderStore((s) => s.setProjectName);
+  const setCurrentProjectId = useScreenRecorderStore((s) => s.setCurrentProjectId);
+  const bumpProjectsVersion = useScreenRecorderStore((s) => s.bumpProjectsVersion);
   const showToast = useToastStore((s) => s.showToast);
 
   const [name, setName] = useState(initialName);
@@ -99,7 +99,7 @@ function SaveProjectForm({ initialName, onOpenChange }: SaveProjectFormProps): J
 }
 
 export function SaveProjectDialog({ open, onOpenChange }: SaveProjectDialogProps): JSX.Element {
-  const projectName = useAppStore((s) => s.projectName);
+  const projectName = useScreenRecorderStore((s) => s.projectName);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

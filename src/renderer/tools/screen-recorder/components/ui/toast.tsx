@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
-import { useToastStore } from '../../app/toast-store';
+import { useToastStore } from '../../store/toast-store';
 import { cn } from '../../lib/utils';
 
 /** Fixed bottom-right stack driven by toast-store.ts -- mount once at the app root. */

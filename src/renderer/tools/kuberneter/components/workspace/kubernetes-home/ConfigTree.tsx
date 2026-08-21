@@ -114,12 +114,12 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
   ) => {
     const newInstanceId = `kuberneter-${Date.now()}`;
     addKuberneterRecentConnection(contextName, configPath, server);
+    if (openTab('kuberneter', { instanceId: newInstanceId }) === null) return;
     addActivityInstance('kuberneter', newInstanceId, {
       cluster: contextName,
       configPath,
       namespace: namespace || 'default'
     });
-    openTab('kuberneter', { instanceId: newInstanceId });
   };
 
   useEffect(() => {

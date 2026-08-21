@@ -69,6 +69,7 @@ export const IpcChannels = {
   OpenAutomationSettings: 'permissions:open-automation-settings',
   GetBootedSimulator: 'simulator:get-booted',
   RefreshWindowBounds: 'recording:refresh-window-bounds',
+  FocusCaptureWindow: 'recording:focus-capture-window',
   TrayOpenRecordPicker: 'tray:open-record-picker',
   TraySourceSelected: 'tray:source-selected',
   TrayOpenTool: 'tray:open-tool',

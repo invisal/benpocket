@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
 import { beginGesture, endGesture } from '../../history/store/history-store';
 import { useIndependentObjectUrl } from '../../../lib/use-independent-object-url';
@@ -36,7 +36,7 @@ export function ZoomFocalPreview({
   onPositionChange,
   aspectRatio
 }: ZoomFocalPreviewProps): JSX.Element {
-  const recordingPreviewUrl = useAppStore((s) => s.lastRecording?.previewUrl);
+  const recordingPreviewUrl = useScreenRecorderStore((s) => s.lastRecording?.previewUrl);
 
   const previewUrl = useIndependentObjectUrl(recordingPreviewUrl);
   const previewSeek = useTimelineStore((s) => s.previewSeek);

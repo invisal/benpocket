@@ -1,6 +1,14 @@
 import { useRef, useState } from 'react';
 import { useTimelineStore } from '../store/timeline-store';
 
+export interface SegmentDragHandlers {
+  draggable: true;
+  onDragStart: (event: React.DragEvent) => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (event: React.DragEvent) => void;
+}
+
 /**
  * Native HTML5 drag-and-drop reordering for per-segment pill tracks (e.g.
  * Speed) -- each pill mirrors an actual `TimelineSegment` 1:1, so
@@ -11,13 +19,7 @@ import { useTimelineStore } from '../store/timeline-store';
  */
 export function useSegmentReorderDrag(): {
   dragOverIndex: number | null;
-  getDragHandlers: (index: number) => {
-    draggable: true;
-    onDragStart: (event: React.DragEvent) => void;
-    onDragOver: (event: React.DragEvent) => void;
-    onDragLeave: () => void;
-    onDrop: (event: React.DragEvent) => void;
-  };
+  getDragHandlers: (index: number) => SegmentDragHandlers;
 } {
   const reorderSegments = useTimelineStore((s) => s.reorderSegments);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);

@@ -205,14 +205,21 @@ async function openRecorderToolbar(
   loadToolbarPage(toolbarWindow, payload);
 }
 
-/** Tears down the toolbar and brings the owning window back. */
-function closeRecorderToolbar(): void {
+/**
+ * Tears down the toolbar. `restoreOwner: false` (Cancel/X -- see below) skips
+ * bringing the owning window back: the user dismissed the toolbar without
+ * starting a recording, so there's nothing to show them -- it stays
+ * minimized wherever it already was, reachable from the taskbar/Dock/tray
+ * like any other minimized app, rather than forcing the editor back in front
+ * of whatever they'd switched to it to get out of the way of.
+ */
+function closeRecorderToolbar({ restoreOwner = true }: { restoreOwner?: boolean } = {}): void {
   if (ownerWindow && !ownerWindow.isDestroyed()) {
     ownerWindow.webContents.setBackgroundThrottling(true);
 
     ownerWindow.webContents.send(IpcChannels.RecorderToolbarClosed);
   }
-  void restoreCaptureWindow(ownerWindow, { focus: true });
+  if (restoreOwner) void restoreCaptureWindow(ownerWindow, { focus: true });
   lastTargetBounds = null;
   lastCropRegion = null;
   hideRecordingRegionFrame();
@@ -253,7 +260,7 @@ export function registerRecorderToolbarHandlers(): void {
   });
 
   ipcMain.on(IpcChannels.RecorderToolbarCancel, () => {
-    closeRecorderToolbar();
+    closeRecorderToolbar({ restoreOwner: false });
   });
 
   ipcMain.on(IpcChannels.RecorderToolbarStart, (_event, payload: RecorderToolbarStartPayload) => {

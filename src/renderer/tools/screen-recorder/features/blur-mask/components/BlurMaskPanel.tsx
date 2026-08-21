@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 import { Droplets, Square, Timer, Trash2 } from 'lucide-react';
 import type { BlurMaskRegion } from '@screen-recorder/types/project';
 import { useBlurMaskStore, MIN_BLUR_INTENSITY, MAX_BLUR_INTENSITY } from '../store/blur-mask-store';
-import { selectBlurMaskRegion } from '../../../app/selection-coordinator';
+import { selectBlurMaskRegion } from '../../../store/selection-coordinator';
 import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
 import { cn } from '../../../lib/utils';

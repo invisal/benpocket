@@ -41,6 +41,8 @@ export interface CursorSettings {
   clickBounce: number;
   /** Whether the expanding click-ripple ring (resolveClickRipple, cursor-path.ts) draws at all -- independent of `clickBounce`'s own icon squash/pop, which stays on regardless. Off by default. */
   clickRippleEnabled: boolean;
+  /** Whether a short synthesized "click" sound plays on each recorded mousedown, both in the live preview and baked into exported audio -- see `@shared/click-sound`. Reuses `clickBounce` as its intensity, same as `clickRippleEnabled` does. Off by default. */
+  clickSoundEnabled: boolean;
   /** Whether resolveCursorGesture's hover/drag hand icon can ever show at all -- off means the cursor stays the plain arrow the entire time, regardless of what the recording's click/movement data would otherwise infer. On by default. */
   handGestureEnabled: boolean;
 }
@@ -123,12 +125,27 @@ export interface Project {
   /** Which flow produced this project -- 'recorded' projects own their video files (deleting the project deletes them too); 'imported' projects merely reference a file the user owns elsewhere on disk, which delete must never touch. */
   source: 'recorded' | 'imported';
   sourceVideoPath: string;
+  /**
+   * What export should read instead of `sourceVideoPath`, when it differs --
+   * same file (and same reasoning) as `LastRecording.exportSourceFilePath`
+   * in screen-recorder-store.ts, persisted here so it survives past the
+   * live recording session: without this, reopening a saved project loses
+   * track of this file entirely -- export silently falls back to the
+   * duration-patched `sourceVideoPath` instead of the untouched source, and
+   * the file itself becomes permanently unreferenced (deleting the project
+   * can't clean up what it never knew existed). `undefined`/`null` for
+   * projects saved before this field existed, or where recording never
+   * produced a separate file -- callers fall back to `sourceVideoPath`.
+   */
+  exportSourceVideoPath?: string | null;
   durationMs: number;
   tracks: TimelineTrack[];
   zoomKeyframes: ZoomKeyframe[];
   webcam: WebcamOptions;
   /** Absolute path to the parallel webcam recording (see capture-engine.ts's `CaptureRequest.webcam`), or null if none was recorded. */
   webcamVideoPath: string | null;
+  /** `exportSourceVideoPath`'s own doc, same reasoning for the webcam file. */
+  webcamExportSourceVideoPath?: string | null;
   /** `webcamStartedAt - startedAt` at record time -- added to a `sourceVideoPath`-timeline `atMs` to find the corresponding moment in `webcamVideoPath`. */
   webcamOffsetMs: number;
   background: BackgroundSettings;

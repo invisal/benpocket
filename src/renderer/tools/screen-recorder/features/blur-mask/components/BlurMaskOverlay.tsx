@@ -5,7 +5,7 @@ import type { CropRect } from '@screen-recorder/types/timeline';
 import { REFERENCE_CANVAS_WIDTH } from '@shared/constants';
 import { useBlurMaskStore } from '../store/blur-mask-store';
 import { beginGesture, endGesture } from '../../history/store/history-store';
-import { selectBlurMaskRegion } from '../../../app/selection-coordinator';
+import { selectBlurMaskRegion } from '../../../store/selection-coordinator';
 import { cn } from '../../../lib/utils';
 
 const MIN_SIZE = 0.04;

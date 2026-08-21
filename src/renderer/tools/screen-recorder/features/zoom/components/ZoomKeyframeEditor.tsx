@@ -6,7 +6,7 @@ import type { SourceResolution } from '@screen-recorder/types/editor';
 import { ZOOM_MIN_DURATION_MS } from '@shared/constants';
 import { useZoomStore } from '../store/zoom-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
-import { selectZoomKeyframe } from '../../../app/selection-coordinator';
+import { selectZoomKeyframe } from '../../../store/selection-coordinator';
 import { SliderRow } from '../../../components/ui/slider-row';
 import { Button } from '@renderer/components/ui/Button';
 import { Select } from '@renderer/components/ui/Select';

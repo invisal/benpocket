@@ -1,5 +1,18 @@
 import { WebDemuxer } from 'web-demuxer';
 import type { ExportSegment } from '@screen-recorder/types/export';
+import type { CursorPathPoint } from '@shared/cursor-path';
+import {
+  clickElapsedSecondsInRange,
+  intensityToGain,
+  mixBurstInto,
+  renderClickOverlay,
+  scaleBurst
+} from '@shared/click-sound';
+// Cross-feature import (this is `features/export/engine/`, that's
+// `features/cursor/lib/`) -- both the live preview and this export path
+// decode the exact same bundled asset so the click sound is identical
+// either way; see that file's own doc.
+import { decodeClickSoundBurst } from '../../cursor/lib/click-sound-asset';
 import type { ExportAudioMuxerCodec, VideoMuxer } from './muxer';
 
 /**
@@ -32,6 +45,14 @@ export interface ExportAudioCodec {
 
 type ExportAudioCodecCandidate = Omit<ExportAudioCodec, 'sampleRate' | 'numberOfChannels'>;
 
+/** Bakes a click sound into the exported audio track -- see `AudioProcessor.process`'s own doc and `@shared/click-sound`. */
+export interface ClickSoundOptions {
+  /** Absolute source-timeline `atMs`, same convention as `ExportSegment.range`. */
+  clickPath: CursorPathPoint[];
+  /** 0-5, same convention as `CursorSettings.clickBounce` (reused rather than a second slider). */
+  intensity: number;
+}
+
 const EXPORT_AUDIO_CODECS: ExportAudioCodecCandidate[] = [
   { encoderCodec: 'mp4a.40.2', muxerCodec: 'aac', label: 'AAC' },
   { encoderCodec: 'opus', muxerCodec: 'opus', label: 'Opus' }
@@ -39,6 +60,11 @@ const EXPORT_AUDIO_CODECS: ExportAudioCodecCandidate[] = [
 
 export class AudioProcessor {
   private cancelled = false;
+  // Decoded (and gain-scaled) once per export -- `exportCodec.sampleRate`
+  // and `clickSoundOptions.intensity` are both constant across every
+  // segment of a single `process()` call, so there's no reason to re-decode
+  // the bundled asset for each one.
+  private clickBurstPromise: Promise<Float32Array> | null = null;
 
   static async selectSupportedExportCodec(
     sampleRate: number,
@@ -112,7 +138,8 @@ export class AudioProcessor {
     sourceUrl: string,
     segments: ExportSegment[],
     exportCodec: ExportAudioCodec,
-    wasmUrl: string
+    wasmUrl: string,
+    clickSoundOptions: ClickSoundOptions | null = null
   ): Promise<void> {
     let outputTimestampUs = 0;
     let sourceDemuxer: WebDemuxer | null = null;
@@ -124,7 +151,8 @@ export class AudioProcessor {
             segment,
             muxer,
             exportCodec,
-            outputTimestampUs
+            outputTimestampUs,
+            clickSoundOptions
           );
         } else if (segment.speed === 1) {
           if (!sourceDemuxer) {
@@ -136,7 +164,8 @@ export class AudioProcessor {
             muxer,
             segment,
             exportCodec,
-            outputTimestampUs
+            outputTimestampUs,
+            clickSoundOptions
           );
         } else {
           if (sourceDemuxer) {
@@ -149,7 +178,8 @@ export class AudioProcessor {
             segment,
             exportCodec,
             outputTimestampUs,
-            wasmUrl
+            wasmUrl,
+            clickSoundOptions
           );
         }
       }
@@ -158,13 +188,47 @@ export class AudioProcessor {
     }
   }
 
+  /**
+   * The click-sound overlay for one segment's own local audio timeline
+   * (silence except for a burst at each click) -- `null` when click sound is
+   * off or no click falls within this segment. `segment.range`/`speed` and
+   * `clickSoundOptions.clickPath`'s `atMs` values must already be in the
+   * same timeline: the real source timeline for `processTrimOnlySegment`/
+   * `processMutedSegment`, or the recaptured 0-based local timeline
+   * `processSpeedChangedSegment` remaps onto before its recursive call.
+   */
+  private async buildClickOverlay(
+    clickSoundOptions: ClickSoundOptions | null,
+    segment: ExportSegment,
+    exportCodec: ExportAudioCodec
+  ): Promise<Float32Array | null> {
+    if (!clickSoundOptions) return null;
+    const clickTimesSec = clickElapsedSecondsInRange(
+      clickSoundOptions.clickPath,
+      segment.range.startMs,
+      segment.range.endMs,
+      segment.speed
+    );
+    if (clickTimesSec.length === 0) return null;
+
+    this.clickBurstPromise ??= decodeClickSoundBurst(exportCodec.sampleRate).then((burst) =>
+      scaleBurst(burst, intensityToGain(clickSoundOptions.intensity))
+    );
+    const burst = await this.clickBurstPromise;
+
+    const durationSec = (segment.range.endMs - segment.range.startMs) / 1000 / segment.speed;
+    const totalFrames = Math.max(1, Math.round(durationSec * exportCodec.sampleRate));
+    return renderClickOverlay(clickTimesSec, totalFrames, exportCodec.sampleRate, burst);
+  }
+
   /** Fast path: demux/decode/re-encode this segment's own time range directly, no real-time playback. */
   private async processTrimOnlySegment(
     demuxer: WebDemuxer,
     muxer: VideoMuxer,
     segment: ExportSegment,
     exportCodec: ExportAudioCodec,
-    startTimestampUs: number
+    startTimestampUs: number,
+    clickSoundOptions: ClickSoundOptions | null
   ): Promise<number> {
     let audioConfig: AudioDecoderConfig;
     try {
@@ -225,7 +289,8 @@ export class AudioProcessor {
       exportCodec,
       startSec,
       startTimestampUs,
-      segment.audioVolume
+      segment.audioVolume,
+      await this.buildClickOverlay(clickSoundOptions, segment, exportCodec)
     );
   }
 
@@ -241,13 +306,25 @@ export class AudioProcessor {
     segment: ExportSegment,
     muxer: VideoMuxer,
     exportCodec: ExportAudioCodec,
-    startTimestampUs: number
+    startTimestampUs: number,
+    clickSoundOptions: ClickSoundOptions | null
   ): Promise<number> {
     const durationSec = (segment.range.endMs - segment.range.startMs) / 1000 / segment.speed;
     if (durationSec <= 0) return startTimestampUs;
     const silence = this.synthesizeSilence(durationSec, exportCodec);
-    // Volume is irrelevant here -- silence scaled by anything is still silence.
-    return this.reencodeAndMux([silence], muxer, exportCodec, 0, startTimestampUs, 1);
+    // Volume is irrelevant here -- silence scaled by anything is still
+    // silence. The click overlay still mixes in even though the clip's own
+    // audio is muted -- clickBounce/clickRipple already ignore audioMuted
+    // the same way (see CursorSettings.clickSoundEnabled's doc).
+    return this.reencodeAndMux(
+      [silence],
+      muxer,
+      exportCodec,
+      0,
+      startTimestampUs,
+      1,
+      await this.buildClickOverlay(clickSoundOptions, segment, exportCodec)
+    );
   }
 
   private synthesizeSilence(durationSec: number, exportCodec: ExportAudioCodec): AudioData {
@@ -277,10 +354,25 @@ export class AudioProcessor {
     segment: ExportSegment,
     exportCodec: ExportAudioCodec,
     startTimestampUs: number,
-    wasmUrl: string
+    wasmUrl: string,
+    clickSoundOptions: ClickSoundOptions | null
   ): Promise<number> {
     const recordedBlob = await this.capturePitchPreservedSegment(sourceUrl, segment);
     if (this.cancelled || recordedBlob.size === 0) return startTimestampUs;
+    // The recursive `processTrimOnlySegment` call below re-decodes the
+    // *captured* recording as its own standalone 0-based/speed-1 clip, so
+    // `clickSoundOptions.clickPath`'s absolute source-timeline `atMs`
+    // values need remapping onto that same local timeline first --
+    // `buildClickOverlay` otherwise has no way to know it's looking at a
+    // recapture rather than the real source.
+    const remappedClickSoundOptions: ClickSoundOptions | null = clickSoundOptions
+      ? {
+          clickPath: clickSoundOptions.clickPath
+            .filter((c) => c.atMs >= segment.range.startMs && c.atMs < segment.range.endMs)
+            .map((c) => ({ ...c, atMs: (c.atMs - segment.range.startMs) / segment.speed })),
+          intensity: clickSoundOptions.intensity
+        }
+      : null;
     // Constructing a new `WebDemuxer` (spawns its own WASM Worker) right on
     // the heels of `capturePitchPreservedSegment`'s AudioContext/MediaRecorder
     // teardown races with that teardown's own async cleanup on rare occasions
@@ -310,7 +402,8 @@ export class AudioProcessor {
           audioVolume: segment.audioVolume
         },
         exportCodec,
-        startTimestampUs
+        startTimestampUs,
+        remappedClickSoundOptions
       );
       return result;
     } finally {
@@ -519,7 +612,8 @@ export class AudioProcessor {
     exportCodec: ExportAudioCodec,
     segmentStartSec: number,
     startTimestampUs: number,
-    volume: number
+    volume: number,
+    clickOverlay: Float32Array | null
   ): Promise<number> {
     const encodedChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[] = [];
     const encoder = new AudioEncoder({
@@ -548,11 +642,18 @@ export class AudioProcessor {
       }
       const relativeUs = audioData.timestamp - segmentStartSec * 1_000_000;
       const outputTimestampUs = Math.max(0, startTimestampUs + relativeUs);
+      const overlaySlice = this.sliceClickOverlay(
+        clickOverlay,
+        relativeUs,
+        audioData.numberOfFrames,
+        audioData.sampleRate
+      );
       const adjusted = this.cloneWithTimestamp(
         audioData,
         outputTimestampUs,
         exportCodec.numberOfChannels,
-        volume
+        volume,
+        overlaySlice
       );
       audioData.close();
       encoder.encode(adjusted);
@@ -586,19 +687,40 @@ export class AudioProcessor {
   }
 
   /**
-   * `volume === 1` and matching channel counts is the common case (no
-   * per-clip gain, no downmix) -- a raw byte copy, same as before volume
-   * existed. Anything else (gain applied, and/or a channel count change)
-   * needs real sample access, so it goes through `rescaleAndTimestamp`
-   * instead.
+   * Cuts the portion of a segment-long click overlay (see
+   * `buildClickOverlay`) that lines up with one decoded chunk, at
+   * `relativeUs`/`sampleRate`-derived precision -- `null` when there's no
+   * overlay at all, or this particular chunk's slice turns out to be silence
+   * (most chunks, for any real recording -- clicks are sparse), so the
+   * common case still takes `cloneWithTimestamp`'s fast raw-copy path.
+   */
+  private sliceClickOverlay(
+    overlay: Float32Array | null,
+    relativeUs: number,
+    numberOfFrames: number,
+    sampleRate: number
+  ): Float32Array | null {
+    if (!overlay) return null;
+    const offsetFrames = Math.max(0, Math.round((relativeUs / 1_000_000) * sampleRate));
+    const slice = overlay.subarray(offsetFrames, offsetFrames + numberOfFrames);
+    return slice.some((sample) => sample !== 0) ? slice : null;
+  }
+
+  /**
+   * `volume === 1`, matching channel counts, and no click overlay to mix in
+   * is the common case (no per-clip gain, no downmix, no click nearby) -- a
+   * raw byte copy, same as before volume existed. Anything else (gain
+   * applied, a channel count change, and/or click samples to add) needs real
+   * sample access, so it goes through `rescaleAndTimestamp` instead.
    */
   private cloneWithTimestamp(
     src: AudioData,
     newTimestamp: number,
     targetChannels: number,
-    volume: number
+    volume: number,
+    clickOverlay: Float32Array | null
   ): AudioData {
-    if (targetChannels === src.numberOfChannels && volume === 1) {
+    if (targetChannels === src.numberOfChannels && volume === 1 && !clickOverlay) {
       if (!src.format) throw new Error('AudioData format is required for cloning');
       const isPlanar = src.format.includes('planar');
       const numPlanes = isPlanar ? src.numberOfChannels : 1;
@@ -623,15 +745,16 @@ export class AudioProcessor {
         data: buffer
       });
     }
-    return this.rescaleAndTimestamp(src, newTimestamp, targetChannels, volume);
+    return this.rescaleAndTimestamp(src, newTimestamp, targetChannels, volume, clickOverlay);
   }
 
-  /** Applies `volume` gain and/or a channel-count downmix, whichever apply -- both need the same per-sample float access, so they're one pass instead of two. */
+  /** Applies `volume` gain, a click-overlay mix-in, and/or a channel-count downmix, whichever apply -- all three need the same per-sample float access, so they're one pass instead of several. */
   private rescaleAndTimestamp(
     src: AudioData,
     newTimestamp: number,
     targetChannels: number,
-    volume: number
+    volume: number,
+    clickOverlay: Float32Array | null
   ): AudioData {
     const sourceChannels = src.numberOfChannels;
     const frameCount = src.numberOfFrames;
@@ -646,6 +769,12 @@ export class AudioProcessor {
       for (const plane of sourcePlanes) {
         for (let i = 0; i < plane.length; i++) plane[i] *= volume;
       }
+    }
+    // Mixed in after volume, not before -- the click sound is a synthesized
+    // overlay independent of this clip's own gain, not part of the original
+    // recording it should scale with.
+    if (clickOverlay) {
+      for (const plane of sourcePlanes) mixBurstInto(plane, clickOverlay, 0);
     }
     const output =
       targetChannels === sourceChannels

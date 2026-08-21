@@ -215,5 +215,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(
     );
   }
 
-  return { useTabs, TabSwitcher, toolsByName };
+  // Exposed (not just `useTabs`) so callers outside React -- e.g. the e2e-only
+  // `window.devTools` bridge in ToolProvider.ts -- can open/select tabs imperatively.
+  return { useTabs, TabSwitcher, toolsByName, store: useTabsStore };
 }

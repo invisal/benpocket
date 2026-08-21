@@ -16,6 +16,10 @@ import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 const api = {
   platform: process.platform,
   usesOsCapturePicker: usesOsCapturePicker(),
+  // Gates the `window.devTools` bridge (see ToolProvider.ts) that lets e2e tests
+  // open tool tabs directly instead of driving them through the UI. Only set when
+  // Playwright launches the app with BENPOCKET_E2E=1 -- never in a normal launch.
+  isE2E: process.env.BENPOCKET_E2E === '1',
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),

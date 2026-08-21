@@ -1,9 +1,8 @@
 import type React from 'react';
 import { useCallback } from 'react';
 import { type PortForwardData } from '../../../types/PortForwardData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+import { useOpenNamespaceDetail, useOpenResourceDetail } from '../../../hooks/open-detail';
 import { cn } from 'cnfast';
 
 interface PortForwardingDetailProps {
@@ -30,32 +29,20 @@ export const PortForwardingDetail: React.FC<PortForwardingDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openResourceDetail } = useOpenResourceDetail();
 
   const handleResourceClick = useCallback(() => {
-    if (activeInstanceId && payload?.kind) {
-      // Navigate to the relevant resource list
-      const kindToResource: Record<string, string> = {
-        pod: 'pods',
-        pods: 'pods',
-        deployment: 'deployments',
-        deployments: 'deployments',
-        service: 'services',
-        services: 'services',
-        statefulset: 'statefulsets',
-        statefulsets: 'statefulsets',
-        daemonset: 'daemonsets',
-        daemonsets: 'daemonsets',
-        replicaset: 'replicasets',
-        replicasets: 'replicasets'
-      };
-      const resourceId = kindToResource[payload.kind.toLowerCase()];
-      if (resourceId) {
-        setResource(activeInstanceId, resourceId);
-      }
+    if (payload?.name && payload?.kind) {
+      openResourceDetail(payload.kind, payload.ns, payload.name);
     }
-  }, [payload, activeInstanceId, setResource]);
+  }, [payload, openResourceDetail]);
+
+  const handleNamespaceClick = useCallback(() => {
+    if (payload?.ns) {
+      openNamespaceDetail(payload.ns);
+    }
+  }, [payload, openNamespaceDetail]);
 
   const propertiesData: PropertyItem[] = [
     {
@@ -75,7 +62,16 @@ export const PortForwardingDetail: React.FC<PortForwardingDetailProps> = ({
     {
       id: 'namespace',
       name: 'Namespace',
-      value: payload?.ns || ''
+      value: payload ? (
+        <span
+          onClick={handleNamespaceClick}
+          className="font-mono text-accent hover:underline cursor-pointer"
+        >
+          {payload.ns}
+        </span>
+      ) : (
+        ''
+      )
     },
     {
       id: 'kind',

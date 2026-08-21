@@ -1,19 +1,18 @@
 import { useCallback } from 'react';
 import { useDetailTabOpener } from './core/useDetailTabOpener';
 import { useOpenNamespaceDetail } from './useOpenNamespaceDetail';
-import { useOpenServiceDetail } from './useOpenServiceDetail';
 import { useOpenPodDetail } from './useOpenPodDetail';
 import { useOpenNodeDetail } from './useOpenNodeDetail';
 import { useOpenWorkloadDetail } from './useOpenWorkloadDetail';
 import { useOpenConfigDetail } from './useOpenConfigDetail';
 import { useOpenStorageDetail } from './useOpenStorageDetail';
-import { useOpenIngressDetail } from './useOpenIngressDetail';
+import { useOpenNetworkDetail } from './useOpenNetworkDetail';
 import { type K8sResource } from '../../types/K8sResource';
+import { type PortForwardData } from '../../types/PortForwardData';
 
 export function useOpenResourceDetail() {
   const { openDetailTab } = useDetailTabOpener();
   const { openNamespaceDetail } = useOpenNamespaceDetail();
-  const { openServiceDetail } = useOpenServiceDetail();
   const { openPodDetail } = useOpenPodDetail();
   const { openNodeDetail } = useOpenNodeDetail();
   const {
@@ -39,7 +38,15 @@ export function useOpenResourceDetail() {
     openServiceAccountDetail
   } = useOpenConfigDetail();
   const { openPvcDetail } = useOpenStorageDetail();
-  const { openIngressDetail } = useOpenIngressDetail();
+  const {
+    openServiceDetail,
+    openEndpointSliceDetail,
+    openEndpointDetail,
+    openIngressDetail,
+    openIngressClassDetail,
+    openNetworkPolicyDetail,
+    openPortForwardingDetail
+  } = useOpenNetworkDetail();
 
   const openResourceDetail = useCallback(
     async (kind: string, namespace: string, name: string, rawResource?: K8sResource) => {
@@ -126,6 +133,33 @@ export function useOpenResourceDetail() {
         case 'ingress':
         case 'ingresses':
           return openIngressDetail(namespace, name, rawResource);
+        case 'ingressclass':
+        case 'ingressclasses':
+          return openIngressClassDetail(name, rawResource);
+        case 'endpointslice':
+        case 'endpointslices':
+          return openEndpointSliceDetail(namespace, name, rawResource);
+        case 'endpoint':
+        case 'endpoints':
+          return openEndpointDetail(namespace, name, rawResource);
+        case 'networkpolicy':
+        case 'networkpolicies':
+          return openNetworkPolicyDetail(namespace, name, rawResource);
+        case 'portforward':
+        case 'portforwarding':
+          return openPortForwardingDetail(
+            (rawResource as unknown as PortForwardData) || {
+              id: `${namespace}/${name}`,
+              name,
+              ns: namespace,
+              kind: 'Pod',
+              podPort: 80,
+              localPort: 80,
+              protocol: 'TCP',
+              status: 'Active',
+              url: ''
+            }
+          );
         case 'node':
         case 'nodes':
           return openNodeDetail(name, rawResource);
@@ -154,6 +188,12 @@ export function useOpenResourceDetail() {
     [
       openNamespaceDetail,
       openServiceDetail,
+      openEndpointSliceDetail,
+      openEndpointDetail,
+      openIngressDetail,
+      openIngressClassDetail,
+      openNetworkPolicyDetail,
+      openPortForwardingDetail,
       openPodDetail,
       openDeploymentDetail,
       openDaemonSetDetail,
@@ -173,7 +213,6 @@ export function useOpenResourceDetail() {
       openMutatingWebhookDetail,
       openValidatingWebhookDetail,
       openServiceAccountDetail,
-      openIngressDetail,
       openNodeDetail,
       openPvcDetail,
       openDetailTab

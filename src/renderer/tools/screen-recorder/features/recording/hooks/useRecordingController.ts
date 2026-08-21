@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useRecordingStore } from '../store/recording-store';
 import { startCapture, fileExtensionForBlob, type CaptureHandle } from '../engine/capture-engine';
 import { startCursorCapture, type CursorCaptureHandle } from '../../cursor/engine/cursor-capture';
@@ -43,9 +43,9 @@ export interface RecordingController {
  * two independent getUserMedia streams.
  */
 export function useRecordingController(): RecordingController {
-  const setIsRecording = useAppStore((state) => state.setIsRecording);
-  const setRoute = useAppStore((state) => state.setRoute);
-  const setLastRecording = useAppStore((state) => state.setLastRecording);
+  const setIsRecording = useScreenRecorderStore((state) => state.setIsRecording);
+  const setRoute = useScreenRecorderStore((state) => state.setRoute);
+  const setLastRecording = useScreenRecorderStore((state) => state.setLastRecording);
   const [error, setError] = useState<string | null>(null);
   const [liveCounts, setLiveCounts] = useState<LiveCounts | null>(null);
   const captureRef = useRef<CaptureHandle | null>(null);
@@ -95,6 +95,22 @@ export function useRecordingController(): RecordingController {
     setError(null);
     setLiveCounts({ cursorCount: 0, clickCount: 0 });
     try {
+      const isWindowSource = !nativePickerStream && selectedSource.type === 'window';
+      // Restores/foregrounds the target window before anything below reads
+      // its bounds or starts capturing it -- picking a source from the list
+      // doesn't itself refocus anything, so without this a minimized (or
+      // just-occluded-by-this-app's-own-picker) window would still be
+      // minimized/behind when recording starts. A minimized window reports
+      // its bounds at Windows' off-screen sentinel position, which would
+      // otherwise make every cursor sample below resolve as "out of bounds"
+      // (see cursor-tracker.ts) and can leave WGC capturing a blank frame.
+      // Windows-only (see win-window-focus.ts); resolves to a no-op
+      // elsewhere.
+      if (isWindowSource) {
+        await window.screenRecorder.recording
+          .focusCaptureWindow(selectedSource.id)
+          .catch(() => false);
+      }
       // `selectedSource.displayBounds` for a window source was whatever was
       // resolved (or not -- see CaptureSource.displayBounds) whenever the
       // source list was last loaded, possibly well before this click, during
@@ -106,16 +122,15 @@ export function useRecordingController(): RecordingController {
       // getWindowBoundsById's doc on the main process side). Not applicable
       // to a native-picker source -- it has no desktopCapturer id to resolve
       // a window handle from.
-      const source =
-        !nativePickerStream && selectedSource.type === 'window'
-          ? {
-              ...selectedSource,
-              displayBounds:
-                (await window.screenRecorder.recording
-                  .refreshWindowBounds(selectedSource.id)
-                  .catch(() => null)) ?? selectedSource.displayBounds
-            }
-          : selectedSource;
+      const source = isWindowSource
+        ? {
+            ...selectedSource,
+            displayBounds:
+              (await window.screenRecorder.recording
+                .refreshWindowBounds(selectedSource.id)
+                .catch(() => null)) ?? selectedSource.displayBounds
+          }
+        : selectedSource;
 
       captureRef.current = await startCapture({
         source,
@@ -364,7 +379,7 @@ export function useRecordingController(): RecordingController {
     // was open before "Return to Recorder" was clicked, same as
     // import-video.ts does for imports, so "Save" can't silently overwrite
     // it instead of creating a new one.
-    useAppStore.setState({ currentProjectId: null, projectName: 'Untitled Recording' });
+    useScreenRecorderStore.setState({ currentProjectId: null, projectName: 'Untitled Recording' });
     // Also clear whatever the previous project's background/cursor/captions/
     // annotations/blur-mask/crop stores held -- without this they'd silently
     // carry over into this new recording's editor session instead of

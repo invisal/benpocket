@@ -4,7 +4,7 @@ import { useRecordingStore } from '../store/recording-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useCursorStore } from '../../cursor/store/cursor-store';
 import { useRecordingControllerContext } from '../context/recording-controller-context';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { openRecorderToolbarFor } from '../lib/open-recorder-toolbar';
 
 /**
@@ -90,7 +90,7 @@ export function RecorderToolbarBridge(): JSX.Element | null {
   useEffect(
     () =>
       window.screenRecorder.recorderToolbar.onClosed(() => {
-        useAppStore.getState().setRecorderToolbarOpen(false);
+        useScreenRecorderStore.getState().setRecorderToolbarOpen(false);
       }),
     []
   );

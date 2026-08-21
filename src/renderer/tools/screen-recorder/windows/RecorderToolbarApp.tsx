@@ -20,6 +20,7 @@ import {
 import { cn } from 'cnfast';
 import { Popover } from '@renderer/components/ui/Popover';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
+import { useSyncDocumentTheme } from '@renderer/store/theme.store';
 import type {
   AudioInputOptions,
   CaptureSource,
@@ -33,7 +34,7 @@ import type {
 } from '@shared/recorder-toolbar';
 import { pickDefaultCaptureSource } from '../features/recording/lib/pick-default-capture-source';
 import { usePermission } from '../features/permissions/hooks/usePermission';
-import { isLikelyMac } from '../lib/platform';
+import { isLikelyLinux, isLikelyMac } from '../lib/platform';
 import { Button } from '@renderer/components/ui/Button';
 
 const TABS: { type: CaptureTargetType; label: string; icon: typeof Monitor }[] = [
@@ -126,6 +127,7 @@ function disablePointerEvents(): void {
  * with the main window.
  */
 export function RecorderToolbarApp(): JSX.Element | null {
+  useSyncDocumentTheme();
   const init = useMemo(() => parseInit(), []);
   const screenPermission = usePermission('screen');
   const micPermission = usePermission('microphone');
@@ -704,13 +706,15 @@ export function RecorderToolbarApp(): JSX.Element | null {
           onMouseEnter={enablePointerEvents}
           className={cn(
             DRAG,
-            'flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur'
+            'flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-full border border-border bg-surface/95 shadow-[0_0_28px_rgba(0,0,0,0.3)] backdrop-blur'
           )}
         >
-          <span className="font-mono text-4xl font-semibold text-white">{countdownRemaining}</span>
+          <span className="font-mono text-4xl font-semibold text-foreground">
+            {countdownRemaining}
+          </span>
           <button
             onClick={cancelCountdown}
-            className={cn(NO_DRAG, 'text-[10px] text-white/50 hover:text-white')}
+            className={cn(NO_DRAG, 'text-[10px] text-muted-foreground hover:text-foreground')}
           >
             Cancel
           </button>
@@ -736,30 +740,36 @@ export function RecorderToolbarApp(): JSX.Element | null {
           onMouseEnter={enablePointerEvents}
           className={cn(
             DRAG,
-            'flex items-center gap-4 rounded-full border border-white/10 bg-zinc-900/95 px-5 py-3 shadow-2xl backdrop-blur'
+            'flex items-center gap-4 rounded-full border border-border bg-surface/95 px-5 py-3 shadow-[0_0_28px_rgba(0,0,0,0.3)] backdrop-blur'
           )}
         >
           <div className="flex items-center gap-2">
             <span
               className={cn('h-2.5 w-2.5 rounded-full bg-red-500', !isPaused && 'animate-pulse')}
             />
-            <span className="font-mono text-sm text-white">{formatElapsed(elapsedSeconds)}</span>
+            <span className="font-mono text-sm text-foreground">
+              {formatElapsed(elapsedSeconds)}
+            </span>
           </div>
 
           <Tooltip.Provider delay={200} closeDelay={0}>
-            <div className="flex items-center gap-3 border-l border-white/10 pl-4">
+            <div className="flex items-center gap-3 border-l border-border pl-4">
               <Tooltip.Root>
                 <Tooltip.Trigger
                   onClick={handleStop}
                   disabled={busy}
                   className={cn(
                     NO_DRAG,
-                    'flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50'
+                    'flex h-8 w-8 items-center justify-center rounded-full bg-surface-3 text-muted-foreground hover:bg-surface-4 hover:text-foreground disabled:opacity-50'
                   )}
                 >
-                  <Square size={13} fill="currentColor" />
+                  {mode === 'stopping' ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Square size={13} fill="currentColor" />
+                  )}
                 </Tooltip.Trigger>
-                <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+                <Tooltip.Content side="top">
                   {mode === 'stopping' ? 'Finishing…' : 'Finish'}
                 </Tooltip.Content>
               </Tooltip.Root>
@@ -774,14 +784,12 @@ export function RecorderToolbarApp(): JSX.Element | null {
                     disabled={busy}
                     className={cn(
                       NO_DRAG,
-                      'flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50'
+                      'flex h-8 w-8 items-center justify-center rounded-full bg-surface-3 text-muted-foreground hover:bg-surface-4 hover:text-foreground disabled:opacity-50'
                     )}
                   >
                     {isPaused ? <Play size={13} /> : <Pause size={13} />}
                   </Tooltip.Trigger>
-                  <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
-                    {isPaused ? 'Resume' : 'Pause'}
-                  </Tooltip.Content>
+                  <Tooltip.Content side="top">{isPaused ? 'Resume' : 'Pause'}</Tooltip.Content>
                 </Tooltip.Root>
               )}
 
@@ -791,12 +799,12 @@ export function RecorderToolbarApp(): JSX.Element | null {
                   disabled={busy}
                   className={cn(
                     NO_DRAG,
-                    'flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50'
+                    'flex h-8 w-8 items-center justify-center rounded-full bg-surface-3 text-muted-foreground hover:bg-surface-4 hover:text-foreground disabled:opacity-50'
                   )}
                 >
                   <RotateCcw size={13} />
                 </Tooltip.Trigger>
-                <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
+                <Tooltip.Content side="top">
                   {mode === 'restarting' ? 'Restarting…' : 'Restart'}
                 </Tooltip.Content>
               </Tooltip.Root>
@@ -810,14 +818,12 @@ export function RecorderToolbarApp(): JSX.Element | null {
                     'flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-50',
                     deleteArmed
                       ? 'bg-red-500/20 text-red-400'
-                      : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
+                      : 'bg-surface-3 text-muted-foreground hover:bg-surface-4 hover:text-foreground'
                   )}
                 >
                   <Trash2 size={13} />
                 </Tooltip.Trigger>
-                <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
-                  {deleteArmed ? 'Confirm?' : 'Delete'}
-                </Tooltip.Content>
+                <Tooltip.Content side="top">{deleteArmed ? 'Confirm?' : 'Delete'}</Tooltip.Content>
               </Tooltip.Root>
             </div>
           </Tooltip.Provider>
@@ -840,11 +846,11 @@ export function RecorderToolbarApp(): JSX.Element | null {
             onMouseEnter={enablePointerEvents}
             className={cn(
               DRAG,
-              'flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2.5 shadow-2xl backdrop-blur'
+              'flex items-center gap-2 rounded-full border border-border bg-surface/95 px-4 py-2.5 shadow-[0_0_28px_rgba(0,0,0,0.3)] backdrop-blur'
             )}
           >
-            <Loader2 size={14} className="animate-spin text-white/70" />
-            <span className="text-[12px] text-white/70">Loading…</span>
+            <Loader2 size={14} className="animate-spin text-muted-foreground" />
+            <span className="text-[12px] text-muted-foreground">Loading…</span>
           </div>
         </div>
       );
@@ -872,28 +878,26 @@ export function RecorderToolbarApp(): JSX.Element | null {
           onMouseEnter={enablePointerEvents}
           className={cn(
             DRAG,
-            'flex items-center gap-1 rounded-full border border-white/10 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur'
+            'flex items-center gap-1 rounded-full border border-border bg-surface/95 p-1.5 shadow-[0_0_28px_rgba(0,0,0,0.3)] backdrop-blur'
           )}
         >
           {/* Purely decorative -- stays a drag handle, unlike everything else in the bar. */}
-          <GripVertical size={13} className="mx-1 shrink-0 text-white/25" />
+          <GripVertical size={13} className="mx-1 shrink-0 text-muted-foreground/50" />
 
           <Tooltip.Root>
             <Tooltip.Trigger
               onClick={() => window.screenRecorder.recorderToolbar.cancel()}
               className={cn(
                 NO_DRAG,
-                'flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white'
+                'flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-surface-3 hover:text-foreground'
               )}
             >
               <X size={14} />
             </Tooltip.Trigger>
-            <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
-              Cancel (Esc)
-            </Tooltip.Content>
+            <Tooltip.Content side="top">Cancel (Esc)</Tooltip.Content>
           </Tooltip.Root>
 
-          <div className="ml-1 flex items-center gap-1 border-r border-white/10 pr-1.5">
+          <div className="ml-1 flex items-center gap-1 border-r border-border pr-1.5">
             {TABS.map(({ type, label, icon: Icon }) => (
               <button
                 key={type}
@@ -906,8 +910,8 @@ export function RecorderToolbarApp(): JSX.Element | null {
                   NO_DRAG,
                   'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
                   activeTab === type
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                    ? 'bg-surface-3 text-strong'
+                    : 'text-muted-foreground hover:bg-surface-3 hover:text-foreground'
                 )}
               >
                 <Icon size={15} />
@@ -915,26 +919,31 @@ export function RecorderToolbarApp(): JSX.Element | null {
               </button>
             ))}
 
-            <Tooltip.Root>
-              <Tooltip.Trigger
-                onClick={pickArea}
-                className={cn(
-                  NO_DRAG,
-                  'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
-                  cropRegion
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
-                )}
-              >
-                <Crop size={15} />
-                {cropRegion
-                  ? `${Math.round(cropRegion.rect.width)}×${Math.round(cropRegion.rect.height)}`
-                  : 'Area'}
-              </Tooltip.Trigger>
-              <Tooltip.Content side="top" className="border-white/10 bg-zinc-900 text-white">
-                Drag-select a region of a display to record
-              </Tooltip.Content>
-            </Tooltip.Root>
+            {/* setContentProtection (recording-region-frame-window.ts's border
+                around the crop) is Windows/macOS-only -- on Linux it'd show up
+                in the recording itself, so there's no clean way to offer this. */}
+            {!isLikelyLinux && (
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  onClick={pickArea}
+                  className={cn(
+                    NO_DRAG,
+                    'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
+                    cropRegion
+                      ? 'bg-surface-3 text-strong'
+                      : 'text-muted-foreground hover:bg-surface-3 hover:text-foreground'
+                  )}
+                >
+                  <Crop size={15} />
+                  {cropRegion
+                    ? `${Math.round(cropRegion.rect.width)}×${Math.round(cropRegion.rect.height)}`
+                    : 'Area'}
+                </Tooltip.Trigger>
+                <Tooltip.Content side="top">
+                  Drag-select a region of a display to record
+                </Tooltip.Content>
+              </Tooltip.Root>
+            )}
 
             <Popover.Root
               open={openPopover === 'device'}
@@ -949,8 +958,8 @@ export function RecorderToolbarApp(): JSX.Element | null {
                   NO_DRAG,
                   'flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-[10px]',
                   selectedDevice
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                    ? 'bg-surface-3 text-strong'
+                    : 'text-muted-foreground hover:bg-surface-3 hover:text-foreground'
                 )}
               >
                 <Smartphone size={15} />
@@ -965,25 +974,25 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 side="top"
                 align="start"
                 onMouseEnter={enablePointerEvents}
-                className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-1.5 text-white')}
+                className={cn(NO_DRAG, 'w-48 p-1.5')}
               >
                 <button
                   onClick={() => pickDevice('simulator', simulatorSource)}
                   disabled={!simulatorSource}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 >
                   Simulator
-                  <span className="text-[10px] text-white/40">
+                  <span className="text-[10px] text-muted-foreground">
                     {simulatorSource ? bootedSimulatorName : 'None booted'}
                   </span>
                 </button>
                 <button
                   onClick={() => pickDevice('emulator', emulatorSource)}
                   disabled={!emulatorSource}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 >
                   Emulator
-                  <span className="text-[10px] text-white/40">
+                  <span className="text-[10px] text-muted-foreground">
                     {emulatorSource ? emulatorSource.name : 'None running'}
                   </span>
                 </button>
@@ -991,7 +1000,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
             </Popover.Root>
           </div>
 
-          <div className="flex items-center gap-1 border-r border-white/10 px-1.5">
+          <div className="flex items-center gap-1 border-r border-border px-1.5">
             <Popover.Root
               open={openPopover === 'camera'}
               onOpenChange={(open) => {
@@ -1004,8 +1013,8 @@ export function RecorderToolbarApp(): JSX.Element | null {
                   NO_DRAG,
                   'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
                   webcam.enabled
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                    ? 'bg-surface-3 text-strong'
+                    : 'text-muted-foreground hover:bg-surface-3 hover:text-foreground'
                 )}
               >
                 {webcam.enabled ? <Video size={14} /> : <VideoOff size={14} />}
@@ -1016,9 +1025,9 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 side="top"
                 align="start"
                 onMouseEnter={enablePointerEvents}
-                className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-3 text-white')}
+                className={cn(NO_DRAG, 'w-48 p-3')}
               >
-                <label className="mb-2 flex items-center gap-2 text-xs text-white/80">
+                <label className="mb-2 flex items-center gap-2 text-xs text-foreground">
                   <input
                     type="checkbox"
                     checked={webcam.enabled}
@@ -1045,13 +1054,13 @@ export function RecorderToolbarApp(): JSX.Element | null {
                         onChange={(e) =>
                           setWebcam((w) => ({ ...w, deviceId: e.target.value || undefined }))
                         }
-                        className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-1 text-[11px] text-white/80"
+                        className="w-full rounded-lg border border-border bg-transparent px-2 py-1 text-[11px] text-foreground"
                       >
                         {cameraDevices.map((device, index) => (
                           <option
                             key={device.deviceId}
                             value={device.deviceId}
-                            className="bg-zinc-900"
+                            className="bg-surface"
                           >
                             {device.label || `Camera ${index + 1}`}
                           </option>
@@ -1067,7 +1076,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                             'flex flex-col items-center gap-1 rounded-lg border px-2 py-1.5 text-[10px]',
                             webcam.shape === value
                               ? 'border-accent text-accent'
-                              : 'border-white/15 text-white/60'
+                              : 'border-border text-muted-foreground'
                           )}
                         >
                           <span
@@ -1077,7 +1086,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                         </button>
                       ))}
                     </div>
-                    <label className="flex items-center gap-2 text-xs text-white/80">
+                    <label className="flex items-center gap-2 text-xs text-foreground">
                       <input
                         type="checkbox"
                         checked={webcam.mirrored}
@@ -1092,7 +1101,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
             </Popover.Root>
           </div>
 
-          <div className="flex items-center gap-1 border-r border-white/10 px-1.5">
+          <div className="flex items-center gap-1 border-r border-border px-1.5">
             <Popover.Root
               open={openPopover === 'mic'}
               onOpenChange={(open) => {
@@ -1105,8 +1114,8 @@ export function RecorderToolbarApp(): JSX.Element | null {
                   NO_DRAG,
                   'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px]',
                   audio.microphoneEnabled
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                    ? 'bg-surface-3 text-strong'
+                    : 'text-muted-foreground hover:bg-surface-3 hover:text-foreground'
                 )}
               >
                 {audio.microphoneEnabled ? <Mic size={14} /> : <MicOff size={14} />}
@@ -1114,7 +1123,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                   {audio.microphoneEnabled ? (micDeviceLabel ?? 'Mic') : 'Mic'}
                 </span>
                 {audio.microphoneEnabled && (
-                  <span className="h-3 w-6 overflow-hidden rounded-full bg-white/10">
+                  <span className="h-3 w-6 overflow-hidden rounded-full bg-surface-3">
                     <span
                       ref={micLevelBarRef}
                       className="block h-full w-full origin-left scale-x-0 rounded-full bg-accent"
@@ -1127,9 +1136,9 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 side="top"
                 align="start"
                 onMouseEnter={enablePointerEvents}
-                className={cn(NO_DRAG, 'w-48 border-white/10 bg-zinc-900 p-3 text-white')}
+                className={cn(NO_DRAG, 'w-48 p-3')}
               >
-                <label className="mb-2 flex items-center gap-2 text-xs text-white/80">
+                <label className="mb-2 flex items-center gap-2 text-xs text-foreground">
                   <input
                     type="checkbox"
                     checked={audio.microphoneEnabled}
@@ -1150,10 +1159,10 @@ export function RecorderToolbarApp(): JSX.Element | null {
                         microphoneDeviceName: device?.label
                       }));
                     }}
-                    className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-1 text-[11px] text-white/80"
+                    className="w-full rounded-lg border border-border bg-transparent px-2 py-1 text-[11px] text-foreground"
                   >
                     {micDevices.map((device, index) => (
-                      <option key={device.deviceId} value={device.deviceId} className="bg-zinc-900">
+                      <option key={device.deviceId} value={device.deviceId} className="bg-surface">
                         {device.label || `Microphone ${index + 1}`}
                       </option>
                     ))}
@@ -1168,17 +1177,16 @@ export function RecorderToolbarApp(): JSX.Element | null {
               onClick={() => setAudio((a) => ({ ...a, systemAudioEnabled: !a.systemAudioEnabled }))}
               className={cn(
                 NO_DRAG,
-                'flex items-center rounded-full border-r border-white/10 px-2.5 py-1.5 pr-4 text-[11px]',
-                audio.systemAudioEnabled ? 'text-white' : 'text-white/50 hover:text-white/80'
+                'flex items-center rounded-full border-r border-border px-2.5 py-1.5 pr-4 text-[11px]',
+                audio.systemAudioEnabled
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {audio.systemAudioEnabled ? 'System audio' : 'No system audio'}
             </Tooltip.Trigger>
             {audio.systemAudioEnabled && isLikelyMac && (
-              <Tooltip.Content
-                side="top"
-                className="max-w-48 border-white/10 bg-zinc-900 text-white"
-              >
+              <Tooltip.Content side="top" className="max-w-48">
                 Unreliable on macOS without a virtual audio driver -- this may record silence.
               </Tooltip.Content>
             )}
@@ -1199,7 +1207,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
       </Tooltip.Provider>
 
       {error && (
-        <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-zinc-900/95 px-4 py-2.5 text-center shadow-2xl backdrop-blur">
+        <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-surface/95 px-4 py-2.5 text-center shadow-[0_0_28px_rgba(0,0,0,0.3)] backdrop-blur">
           <p className="text-xs text-red-400">{error.message}</p>
           {error.openSettings && (
             <button

@@ -27,7 +27,7 @@ export const ActivityBar: React.FC = () => {
 
   const handleTabClick = (tab: (typeof tabs)[number]) => {
     const isAlreadyActive = tab.id === activeTabId;
-    selectTab(tab.id);
+    if (!selectTab(tab.id)) return;
 
     if (tab.type === 'kuberneter') {
       const payload = tab.payload as { instanceId?: string } | undefined;

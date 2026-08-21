@@ -50,13 +50,15 @@ type TabType<TTool extends Tool<string, any>> = Tab<TTool>['type'];
 interface TabsState<TTool extends Tool<string, any>> {
   tabs: Tab<TTool>[];
   activeTabId: string | undefined;
+  /** Returns the new tab's id, or `null` if the currently active tab's own leave guard (see `registerLeaveGuard`) denied switching away from it -- nothing is created in that case. Callers with a follow-up action (closing a picker dialog, opening a companion floating toolbar) must check for `null` and skip it, or that action runs as if a tab had opened when none did. */
   openTab: <T extends TabType<TTool>>(
     type: T,
     payload: Extract<Tab<TTool>, { type: T }>['payload'],
     options?: { title?: string; subtitle?: string }
-  ) => string;
+  ) => string | null;
   closeTab: (id: string) => void;
-  selectTab: (id: string) => void;
+  /** Returns `false` if the leave guard denied switching away from the current tab -- same "check before running a follow-up action" caveat as `openTab`. */
+  selectTab: (id: string) => boolean;
   renameTab: (id: string, title: string) => void;
 }
 
@@ -94,6 +96,21 @@ export function createTabProvider<TTool extends Tool<string, any>>(
 
   const initialTabs = options.initialTabs?.() ?? [];
 
+  const leaveGuards = new Map<string, () => boolean>();
+
+  function registerLeaveGuard(tabId: string, guard: () => boolean): () => void {
+    leaveGuards.set(tabId, guard);
+    return () => {
+      if (leaveGuards.get(tabId) === guard) leaveGuards.delete(tabId);
+    };
+  }
+
+  function canLeave(tabId: string | undefined): boolean {
+    if (!tabId) return true;
+    const guard = leaveGuards.get(tabId);
+    return !guard || guard();
+  }
+
   const useTabsStore = create<TabsState<TTool>>()(
     persist(
       (set, get) => ({
@@ -108,6 +125,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(
           payload: unknown,
           opts?: { title?: string; subtitle?: string }
         ) => {
+          if (!canLeave(get().activeTabId)) return null;
           const id = crypto.randomUUID();
           const tool = toolsByName[type];
           const count = get().tabs.filter((t) => t.type === type).length + 1;
@@ -118,6 +136,8 @@ export function createTabProvider<TTool extends Tool<string, any>>(
         }) as TabsState<TTool>['openTab'],
 
         closeTab: (id) => {
+          if (!canLeave(id)) return;
+          leaveGuards.delete(id);
           set((prev) => {
             const idx = prev.tabs.findIndex((t) => t.id === id);
             if (idx === -1) return prev;
@@ -130,7 +150,12 @@ export function createTabProvider<TTool extends Tool<string, any>>(
           });
         },
 
-        selectTab: (id) => set({ activeTabId: id }),
+        selectTab: (id) => {
+          if (id === get().activeTabId) return true;
+          if (!canLeave(get().activeTabId)) return false;
+          set({ activeTabId: id });
+          return true;
+        },
 
         renameTab: (id, title) =>
           set((prev) => ({
@@ -217,5 +242,5 @@ export function createTabProvider<TTool extends Tool<string, any>>(
 
   // Exposed (not just `useTabs`) so callers outside React -- e.g. the e2e-only
   // `window.devTools` bridge in ToolProvider.ts -- can open/select tabs imperatively.
-  return { useTabs, TabSwitcher, toolsByName, store: useTabsStore };
+  return { useTabs, TabSwitcher, toolsByName, store: useTabsStore, registerLeaveGuard };
 }

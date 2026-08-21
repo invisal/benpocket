@@ -27,3 +27,4 @@ if (window.api.isE2E) {
     getTabs: () => tools.store.getState().tabs
   };
 }
+export const registerToolLeaveGuard = tools.registerLeaveGuard;

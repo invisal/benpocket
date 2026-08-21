@@ -34,6 +34,22 @@ export function hasMergeableCutBoundary(segments: TimelineSegment[], index: numb
 }
 
 /**
+ * The stretch of source footage trimmed off immediately *before* this
+ * segment -- the head trim if it's the first clip, otherwise whatever gap
+ * ripple-editing closed up between it and the previous kept clip. `0` if
+ * nothing was cut there (a plain split leaves no gap). Each pill checks its
+ * own left edge for this instead of a separate percent-positioned overlay
+ * layer, so its badge is always exactly above the clip it describes -- it
+ * can't drift out of alignment the way a standalone layer computed from
+ * running totals could.
+ */
+export function gapBeforeSegmentMs(segments: TimelineSegment[], index: number): number {
+  const segment = segments[index];
+  const previous = segments[index - 1];
+  return previous ? segment.range.startMs - previous.range.endMs : segment.range.startMs;
+}
+
+/**
  * Maps a source-ms position (e.g. the playing `<video>`'s `currentTime`)
  * to its position on the ripple/output timeline `CutTimeline` draws, or
  * `null` if it falls inside a cut-out gap (no kept segment covers it).

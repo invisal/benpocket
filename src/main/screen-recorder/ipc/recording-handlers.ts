@@ -23,6 +23,7 @@ import {
   resumeNativeRecording,
   stopNativeRecording,
   getWindowBoundsById,
+  focusCaptureWindowById,
   type WindowBoundsResult
 } from '../capture/native/recording-helper';
 
@@ -95,6 +96,17 @@ export function registerRecordingHandlers(): void {
       return getWindowBoundsById(windowId);
     }
   );
+
+  // Restores/foregrounds a 'window' source's target window right before
+  // recording starts, so it's not left minimized (Windows) or behind this
+  // app's own picker/toolbar windows (Windows and macOS) when capture and
+  // bounds-resolution begin -- see focusCaptureWindowById's doc for the
+  // per-platform mechanism (no-op on Linux).
+  ipcMain.handle(IpcChannels.FocusCaptureWindow, (_event, sourceId: string): Promise<boolean> => {
+    const windowId = parseWindowSourceId(sourceId);
+    if (windowId === null) return Promise.resolve(false);
+    return focusCaptureWindowById(windowId);
+  });
 
   ipcMain.handle(IpcChannels.StartRecording, (_event, request: RecordingRequest) =>
     recordingController.start(request)

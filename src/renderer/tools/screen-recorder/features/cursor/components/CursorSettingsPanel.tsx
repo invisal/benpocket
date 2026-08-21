@@ -17,6 +17,7 @@ export function CursorSettingsPanel(): JSX.Element {
     motionBlur,
     clickBounce,
     clickRippleEnabled,
+    clickSoundEnabled,
     handGestureEnabled,
     setVisible,
     setClipToCanvas,
@@ -26,6 +27,7 @@ export function CursorSettingsPanel(): JSX.Element {
     setMotionBlur,
     setClickBounce,
     setClickRippleEnabled,
+    setClickSoundEnabled,
     setHandGestureEnabled
   } = useCursorStore();
 
@@ -48,6 +50,15 @@ export function CursorSettingsPanel(): JSX.Element {
             checked={clickRippleEnabled}
             onChange={setClickRippleEnabled}
             label="Show expanding ripple on click"
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">Click Sound</span>
+          <Switch
+            checked={clickSoundEnabled}
+            onChange={setClickSoundEnabled}
+            label="Play a click sound on each recorded click"
           />
         </div>
 

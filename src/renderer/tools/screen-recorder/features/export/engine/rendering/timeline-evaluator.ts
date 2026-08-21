@@ -69,12 +69,13 @@ function resolveShadow(intensity: number, scale: number): ShadowSceneData | null
 function resolveCursor(
   project: Project,
   smoothedPath: CursorPathPoint[],
+  clickPath: CursorPathPoint[],
   innerRect: InnerRect,
   referenceScale: number,
   atMs: number,
   cursorHidden: boolean
 ): CursorSceneData | null {
-  const { cursor, clickPath } = project;
+  const { cursor } = project;
   // Imported footage has no recorded cursor/click samples -- `smoothedPath`
   // is already always empty for it, but check `source` explicitly too
   // rather than relying only on that being incidentally true.
@@ -284,6 +285,7 @@ export function evaluateSceneAtMs(
   outputHeight: number,
   sourceAspect: number,
   smoothedCursorPath: CursorPathPoint[],
+  croppedClickPath: CursorPathPoint[],
   autoZoomFocalPaths: Map<string, CursorPathPoint[]>,
   cursorHidden: boolean,
   webcamHidden: boolean
@@ -325,6 +327,7 @@ export function evaluateSceneAtMs(
     cursor: resolveCursor(
       project,
       smoothedCursorPath,
+      croppedClickPath,
       innerRect,
       referenceScale,
       atMs,

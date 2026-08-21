@@ -1,3 +1,5 @@
+import type { CropRect } from '@screen-recorder/types/timeline';
+
 /**
  * Cursor path smoothing/sampling, shared between the renderer (live editor
  * preview) and the main-process export compositor so both draw the exact
@@ -113,6 +115,32 @@ export function sampleCursorPath(
   return { x: prev.x + (next.x - prev.x) * t, y: prev.y + (next.y - prev.y) * t };
 }
 
+/**
+ * Remaps a whole cursor/click path from full-source-frame-normalized [0,1]
+ * space (how it's captured -- see `CursorPathPoint`'s own doc) into
+ * crop-relative [0,1] space -- i.e. what fraction of the *cropped* content
+ * box each point falls at. Every consumer that positions something as a
+ * percentage of the (possibly cropped) video box -- the cursor icon, click
+ * ripples, `computeAutoZoomFocalPath`'s camera simulation -- needs points in
+ * this space, not the raw captured one, or a crop shifts/scales the video
+ * without the cursor/zoom following: a point near the original frame's edge
+ * would still read as "near the edge" of the now-smaller cropped frame
+ * instead of the (likely off-screen, if the crop excludes it) position it
+ * actually belongs at. `crop === null` (no crop active) returns `path`
+ * unchanged.
+ */
+export function remapPathToCropSpace(
+  path: CursorPathPoint[],
+  crop: CropRect | null
+): CursorPathPoint[] {
+  if (!crop || crop.width <= 0 || crop.height <= 0) return path;
+  return path.map((p) => ({
+    atMs: p.atMs,
+    x: (p.x - crop.x) / crop.width,
+    y: (p.y - crop.y) / crop.height
+  }));
+}
+
 /** How long the click-bounce squash/pop icon animation lasts, in ms. */
 const CLICK_BOUNCE_DURATION_MS = 320;
 /** How long the expanding click ripple lasts, in ms -- longer than the icon
@@ -140,14 +168,24 @@ function mostRecentClick(clickPath: CursorPathPoint[], atMs: number): CursorPath
 
 /**
  * Cursor scale multiplier for the click-bounce effect at a given timeline
- * position -- a quick squash-and-pop (damped oscillation) starting at the
- * most recent real mousedown, so the cursor visibly "presses" on click, the
- * way Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.
- * clickBounce`); returns 1 (no effect) when there's no click within the
- * animation window or `intensity` is 0.
+ * position -- a single smooth scale-in/scale-out pulse starting at the most
+ * recent real mousedown, so the cursor visibly "presses" on click, the way
+ * Screen Studio's does. `intensity` is 0-5 (see `CursorSettings.clickBounce`);
+ * returns 1 (no effect) when there's no click within the animation window or
+ * `intensity` is 0.
  *
- * Amplitude scales up to +-0.5 at max intensity (previously +-0.18) --
- * the original range read as a barely-perceptible wobble, not something a
+ * Uses a raised-cosine (Hann) envelope rather than a damped oscillation --
+ * `hann(p)` is 0 at both ends of the window *and* has zero slope there, so
+ * the scale eases in from 1 with no snap at the click instant, smoothly
+ * bottoms out at the halfway point, then eases back out to exactly 1 with no
+ * snap at the window's end either. A previous version used a decaying
+ * `cos(p * Math.PI * 3)` oscillation (squash, overshoot past 1, a couple of
+ * quickly-decaying wobbles) -- punchier, but the extra wobbles read as
+ * jittery rather than a clean press; this trades that for one smooth in/out
+ * motion.
+ *
+ * Amplitude scales up to +-0.5 at max intensity (previously +-0.18) -- the
+ * original range read as a barely-perceptible wobble, not something a
  * viewer could reliably notice as "a click just happened" the way this is
  * meant to communicate. Pair with `resolveClickRipple` below for a second,
  * unambiguous signal independent of the icon's own size.
@@ -164,12 +202,10 @@ export function resolveClickBounceScale(
   const elapsed = atMs - click.atMs;
   if (elapsed < 0 || elapsed > CLICK_BOUNCE_DURATION_MS) return 1;
 
-  // A damped cosine: squashes hard immediately on click (p=0), pops back
-  // past 1 on release, then a couple of quickly-decaying overshoots
-  // settling back to 1 by the end of the window.
   const p = elapsed / CLICK_BOUNCE_DURATION_MS;
   const amplitude = (Math.min(intensity, 5) / 5) * 0.5;
-  return 1 - amplitude * Math.exp(-p * 5) * Math.cos(p * Math.PI * 3);
+  const hann = (1 - Math.cos(p * Math.PI * 2)) / 2;
+  return 1 - amplitude * hann;
 }
 
 export interface ClickRipple {

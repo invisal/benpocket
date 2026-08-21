@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { useAppStore } from '../../app/app-store';
+import { useScreenRecorderStore } from '../../store/screen-recorder-store';
 import {
   useTimelineStore,
   PRIMARY_VIDEO_TRACK_ID
@@ -13,6 +13,7 @@ import { PreviewStage } from './PreviewStage';
 import { EditorTransportBar } from './EditorTransportBar';
 import { EditorToolRail } from './EditorToolRail';
 import { EditorToolPanel } from './EditorToolPanel';
+import EditorEmpty from './EditorEmpty';
 import { CropDialog } from '../../features/crop/components/CropDialog';
 import { useCropStore } from '../../features/crop/store/crop-store';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
@@ -29,10 +30,10 @@ import { useEditorKeyboardShortcuts } from './hooks/use-editor-keyboard-shortcut
 import { isLikelyLinux } from '../../lib/platform';
 
 export function EditorPage(): JSX.Element {
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const isOpeningProject = useAppStore((state) => state.isOpeningProject);
-  const toolPanelWidth = useAppStore((state) => state.toolPanelWidth);
-  const setToolPanelWidth = useAppStore((state) => state.setToolPanelWidth);
+  const lastRecording = useScreenRecorderStore((state) => state.lastRecording);
+  const isOpeningProject = useScreenRecorderStore((state) => state.isOpeningProject);
+  const toolPanelWidth = useScreenRecorderStore((state) => state.toolPanelWidth);
+  const setToolPanelWidth = useScreenRecorderStore((state) => state.setToolPanelWidth);
 
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
@@ -64,6 +65,13 @@ export function EditorPage(): JSX.Element {
   const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<PreviewVideoController>(null);
 
+  const previewUrlRef = useRef(lastRecording?.previewUrl);
+  if (lastRecording?.previewUrl !== previewUrlRef.current) {
+    previewUrlRef.current = lastRecording?.previewUrl;
+    setDuration(0);
+    setSourceResolution(null);
+  }
+
   useSyncSelectedSegment({
     segments,
     selectedSegmentId,
@@ -83,6 +91,11 @@ export function EditorPage(): JSX.Element {
       if (state.pauseRequestToken === prevState.pauseRequestToken) return;
       videoRef.current?.pause();
     });
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => videoRef.current?.pause();
   }, []);
   useInitializeTimelineForRecording({
     previewUrl: lastRecording?.previewUrl,
@@ -105,13 +118,7 @@ export function EditorPage(): JSX.Element {
   }, [isImportedProject, activeTool, setActiveTool]);
 
   if (!lastRecording && !isOpeningProject) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-8">
-        <p className="text-sm text-muted-foreground">
-          Record something first, then come back here to export it.
-        </p>
-      </div>
-    );
+    return <EditorEmpty />;
   }
 
   function handleLoadedMetadata(event: React.SyntheticEvent<HTMLVideoElement>): void {
@@ -121,7 +128,7 @@ export function EditorPage(): JSX.Element {
     setSourceResolution(resolution);
     // Also mirrored into the app store -- see its `sourceResolution` doc for
     // why useExportAction.ts (outside this component entirely) needs it too.
-    useAppStore.getState().setSourceResolution(resolution);
+    useScreenRecorderStore.getState().setSourceResolution(resolution);
   }
 
   return (

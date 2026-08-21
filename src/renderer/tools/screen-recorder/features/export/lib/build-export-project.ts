@@ -1,5 +1,5 @@
 import type { Project } from '@screen-recorder/types/project';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useBackgroundStore } from '../../background/store/background-store';
 import { useCursorStore } from '../../cursor/store/cursor-store';
@@ -17,7 +17,7 @@ import { useCaptionsStore } from '../../captions/store/captions-store';
  * content this snapshot otherwise describes.
  */
 export function buildExportProject(sourceVideoPath: string, durationMs: number): Project {
-  const { projectName, lastRecording } = useAppStore.getState();
+  const { projectName, lastRecording } = useScreenRecorderStore.getState();
   const webcamState = useWebcamStore.getState();
   const backgroundState = useBackgroundStore.getState();
   const cursorState = useCursorStore.getState();
@@ -69,6 +69,7 @@ export function buildExportProject(sourceVideoPath: string, durationMs: number):
       motionBlur: cursorState.motionBlur,
       clickBounce: cursorState.clickBounce,
       clickRippleEnabled: cursorState.clickRippleEnabled,
+      clickSoundEnabled: cursorState.clickSoundEnabled,
       handGestureEnabled: cursorState.handGestureEnabled
     },
     cursorPath: lastRecording?.cursorPath ?? [],

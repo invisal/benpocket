@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ToolLayout } from '@renderer/components/layout/ToolLayout';
 import { FileExplorerPanelBody } from './components/FileExplorerPanelBody';
 import {
   FilePreview,
@@ -29,6 +30,7 @@ export function FileExplorerMain({}: ToolComponentProps<Props>) {
 
   return (
     <FileExplorerStoreContext.Provider value={store}>
+      <ToolLayout.Title>File Explorer</ToolLayout.Title>
       <FileExplorerLayout />
     </FileExplorerStoreContext.Provider>
   );

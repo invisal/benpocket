@@ -21,6 +21,8 @@ import { ProfileSwitcher } from './ProfileSwitcher';
 import { useKuberneterStore } from '../../../tools/kuberneter/store/kuberneter.store';
 import { useLayoutStore } from '../../store/layout.store';
 
+import logoImage from '@renderer/assets/icon.png';
+
 export const ActivityBar: React.FC = () => {
   const { tabs, activeTabId, selectTab, closeTab } = useToolTabs();
   const [isToolDialogOpen, setIsToolDialogOpen] = useState(false);
@@ -72,39 +74,43 @@ export const ActivityBar: React.FC = () => {
   };
 
   return (
-    <div className="w-11 divide-y divide-border bg-surface border-r border-border flex flex-col items-center">
-      {tabs.map((tab) => (
-        <ContextMenu.Root key={tab.id}>
-          <ContextMenu.Trigger
-            render={
-              <button
-                className={cn(
-                  'size-11 flex items-center justify-center cursor-pointer transition-colors relative',
-                  tab.id === activeTabId ? 'bg-blue-300 text-blue-900' : 'hover:bg-surface-2'
-                )}
-                onClick={() => handleTabClick(tab)}
-              >
-                {renderIcon(tab)}
-              </button>
-            }
-          />
-          <ContextMenu.Content>
-            {tab.type === 'kuberneter' && (
-              <KuberneterActivityContextMenu tabId={tab.id} payload={tab.payload} />
-            )}
-            <ContextMenu.Item onClick={() => closeTab(tab.id)}>Close</ContextMenu.Item>
-          </ContextMenu.Content>
-        </ContextMenu.Root>
-      ))}
+    <div className="w-10 divide-y divide-border-light bg-surface border-r border-border-light flex flex-col items-center">
+      <div className="titlebar-drag size-10 flex items-center justify-center">
+        <img src={logoImage} className="size-5" />
+      </div>
 
-      <button
-        className="size-11 flex justify-center items-center cursor-pointer transition-colors hover:bg-surface-2 text-zinc-400"
-        onClick={() => setIsToolDialogOpen(true)}
-      >
-        <PlusIcon size={16} />
-      </button>
+      <div className="flex-1 flex flex-col bg-surface-3/25">
+        {tabs.map((tab) => (
+          <ContextMenu.Root key={tab.id}>
+            <ContextMenu.Trigger
+              render={
+                <button
+                  className={cn(
+                    'size-10 flex items-center justify-center cursor-pointer transition-colors relative',
+                    tab.id === activeTabId ? 'bg-blue-300 text-blue-900' : 'hover:bg-surface-2'
+                  )}
+                  onClick={() => handleTabClick(tab)}
+                >
+                  {renderIcon(tab)}
+                </button>
+              }
+            />
+            <ContextMenu.Content>
+              {tab.type === 'kuberneter' && (
+                <KuberneterActivityContextMenu tabId={tab.id} payload={tab.payload} />
+              )}
+              <ContextMenu.Item onClick={() => closeTab(tab.id)}>Close</ContextMenu.Item>
+            </ContextMenu.Content>
+          </ContextMenu.Root>
+        ))}
 
-      <div className="flex-1 w-full bg-surface-2 bg-diagonal-stripes" />
+        <button
+          className="size-10 flex justify-center items-center cursor-pointer transition-colors hover:bg-surface-2 text-zinc-400"
+          onClick={() => setIsToolDialogOpen(true)}
+        >
+          <PlusIcon size={16} />
+        </button>
+      </div>
 
       <ProfileSwitcher />
 

@@ -1,4 +1,5 @@
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ToolLayout } from '@renderer/components/layout/ToolLayout';
 import { KuberneterSidebar } from './components/sidebar/KuberneterSidebar';
 import { Workspace } from '@renderer/components/layout/Workspace';
 import { BottomPanel } from '@renderer/components/layout/BottomPanel';
@@ -46,8 +47,15 @@ function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: str
     }
   }, [instanceId, setActiveInstanceId]);
 
+  const title = currentCluster ? `Kubernetes — ${currentCluster}` : 'Kubernetes';
+
   if (!currentCluster) {
-    return <KuberneterHomeView />;
+    return (
+      <>
+        <ToolLayout.Title>{title}</ToolLayout.Title>
+        <KuberneterHomeView />
+      </>
+    );
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -76,6 +84,7 @@ function KuberneterMainContent({ payload }: ToolComponentProps<{ instanceId: str
 
   return (
     <div className="flex-1 flex min-h-0 min-w-0 bg-surface relative">
+      <ToolLayout.Title>{title}</ToolLayout.Title>
       {/* Tool-specific Collapsible Left Panel */}
       {isSidebarOpen && (
         <div

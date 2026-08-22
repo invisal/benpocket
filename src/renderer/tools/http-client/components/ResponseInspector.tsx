@@ -47,7 +47,7 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
   );
 
   return (
-    <div className="h-full border-t border-border-dark flex flex-col min-h-0">
+    <div className="h-full border-t border-border-light flex flex-col min-h-0">
       <div className="bg-surface-2 border-b border-border px-3 py-2 flex items-center justify-between text-xs shrink-0 select-none">
         <span className="font-medium uppercase tracking-wider text-[10px]">Response</span>
         {response && (

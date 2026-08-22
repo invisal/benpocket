@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { useToolTabs } from './providers/ToolProvider';
 import { openRecorderToolbarFor } from '../../tools/screen-recorder/features/recording/lib/open-recorder-toolbar';
+import { focusRecorderTab } from '../../tools/screen-recorder/lib/actions';
 import { openCaptureToolbarFor } from '../../tools/screen-capture/lib/open-capture-toolbar';
+import { focusOrOpenScreenCapture } from '../../tools/screen-capture/lib/actions';
 import { useScreenCaptureSettings } from '../../tools/screen-capture/lib/use-screen-capture-settings';
 
 /**
@@ -11,7 +12,6 @@ import { useScreenCaptureSettings } from '../../tools/screen-capture/lib/use-scr
  * opens/focuses the tool tab so the user can set a timer before Capture.
  */
 export function TrayBridge(): null {
-  const { tabs, openTab, selectTab } = useToolTabs();
   const { fields } = useScreenCaptureSettings();
   const delayRef = useRef(fields.delaySeconds);
   useEffect(() => {
@@ -19,24 +19,6 @@ export function TrayBridge(): null {
   });
 
   useEffect(() => {
-    // Returns whether the tab actually ended up focused/open -- both
-    // `selectTab` and `openTab` can be blocked by the tab's own leave guard
-    // (e.g. unsaved editor changes on whatever tab was active before this),
-    // in which case callers with a follow-up action (opening the floating
-    // recorder toolbar below) must skip it rather than running as if the
-    // tab had switched when it didn't.
-    function focusRecorderTab(): boolean {
-      const existing = tabs.find((t) => t.type === 'screen-recorder');
-      if (existing) return selectTab(existing.id);
-      return openTab('screen-recorder', {}, { title: 'Screen Recording' }) !== null;
-    }
-
-    function focusOrOpenScreenCapture(): boolean {
-      const existing = tabs.find((t) => t.type === 'screen-capture');
-      if (existing) return selectTab(existing.id);
-      return openTab('screen-capture', {}) !== null;
-    }
-
     const unsubscribeOpen = window.screenRecorder.tray.onOpenRecordPicker(() => {
       if (!focusRecorderTab()) return;
       // No source passed -- opens immediately instead of waiting on a full
@@ -63,7 +45,7 @@ export function TrayBridge(): null {
       unsubscribeSelect();
       unsubscribeTool();
     };
-  }, [tabs, openTab, selectTab]);
+  }, []);
 
   return null;
 }

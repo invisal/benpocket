@@ -17,6 +17,7 @@ import { ConnectCloudflareDialog } from '@renderer/components/dialog/ConnectClou
 import { Button } from '@renderer/components/ui/Button';
 import { Toolbar } from '@renderer/components/ui/Toolbar';
 import { useCloudflareSettings } from '@renderer/hooks/useCloudflareSettings';
+import { KeybindingsPanel } from './components/KeybindingsPanel';
 
 interface Props {}
 
@@ -130,20 +131,23 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         <div className="h-full flex-1 bg-diagonal-stripes" />
       </Toolbar.Root>
 
-      <div className="p-6 flex-1 bg-surface-2 bg-dotted">
-        <div>
-          {filtered.length === 0 ? (
-            <div className="text-sm text-text-dim border border-dashed border-border rounded-lg py-10 text-center">
-              No tools match &quot;{query}&quot;
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              {filtered.map((tool) => (
-                <ToolCard key={tool.id} tool={tool} />
-              ))}
-            </div>
-          )}
+      <div className="flex-1 flex divide-x divide-border-light">
+        <div className="p-6 flex-1 bg-surface-2 bg-dotted">
+          <div>
+            {filtered.length === 0 ? (
+              <div className="text-sm text-text-dim border border-dashed border-border rounded-lg py-10 text-center">
+                No tools match &quot;{query}&quot;
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {filtered.map((tool) => (
+                  <ToolCard key={tool.id} tool={tool} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+        <KeybindingsPanel />
       </div>
 
       <CloudflareBanner

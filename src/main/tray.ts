@@ -20,7 +20,7 @@ import { showAppLauncherIcon } from './screen-recorder/windows/window-visibility
 let trayInstance: Tray | null = null;
 let mainWindowRef: BrowserWindow | null = null;
 
-function getMainWindow(): BrowserWindow | null {
+export function getMainWindow(): BrowserWindow | null {
   if (mainWindowRef && !mainWindowRef.isDestroyed()) return mainWindowRef;
   return null;
 }
@@ -38,7 +38,7 @@ function showMainWindow(): void {
   win.focus();
 }
 
-function sendToMainWindow(channel: string, ...args: unknown[]): void {
+export function sendToMainWindow(channel: string, ...args: unknown[]): void {
   const win = getMainWindow();
   if (!win) return;
   win.webContents.send(channel, ...args);

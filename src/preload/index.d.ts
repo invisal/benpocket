@@ -9,6 +9,7 @@ import type { AuthApi } from './auth/api';
 import type { UpdaterApi } from './updater/api';
 import type { TelemetryApi } from './telemetry/api';
 import type { SystemApi } from './system/api';
+import type { KeybindingsApi } from './keybindings/api';
 
 interface FileTreeNode {
   name: string;
@@ -29,6 +30,7 @@ declare global {
     updater: UpdaterApi;
     telemetry: TelemetryApi;
     system: SystemApi;
+    keybindings: KeybindingsApi;
     api: {
       platform: string;
       /** Linux Wayland — PipeWire portal picker instead of in-app source grid. */

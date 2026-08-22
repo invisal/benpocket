@@ -14,6 +14,11 @@ const tools = createTabProvider(allTools, {
 export const useToolTabs = tools.useTabs;
 export const ToolTabContents = tools.TabSwitcher;
 
+// Exposed so callers outside React -- e.g. the keybinding action registry in
+// src/renderer/src/lib/keybindings.ts, which runs from a global
+// shortcut fire rather than a component -- can open/select tabs imperatively.
+export const toolTabsStore = tools.store;
+
 // `openTab`'s generic signature only accepts a registered tool's literal name --
 // loosened here since this bridge is meant to accept whatever string a test passes.
 type ImperativeOpenTab = NonNullable<Window['devTools']>['openTab'];

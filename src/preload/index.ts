@@ -10,6 +10,7 @@ import { authApi } from './auth/api';
 import { updaterApi } from './updater/api';
 import { telemetryApi } from './telemetry/api';
 import { systemApi } from './system/api';
+import { keybindingsApi } from './keybindings/api';
 import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 
 // Custom APIs for renderer
@@ -43,6 +44,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('updater', updaterApi);
     contextBridge.exposeInMainWorld('telemetry', telemetryApi);
     contextBridge.exposeInMainWorld('system', systemApi);
+    contextBridge.exposeInMainWorld('keybindings', keybindingsApi);
   } catch (error) {
     console.error(error);
   }
@@ -69,4 +71,6 @@ if (process.contextIsolated) {
   window.telemetry = telemetryApi;
   // @ts-ignore (define in dts)
   window.system = systemApi;
+  // @ts-ignore (define in dts)
+  window.keybindings = keybindingsApi;
 }

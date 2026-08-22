@@ -18,9 +18,13 @@ const WIN_LABEL: Record<Modifier, string> = {
   mod: 'Ctrl'
 };
 
+// Keyed by Electron's actual accelerator key names (lowercased) -- "return",
+// not "enter" -- so real accelerator strings (e.g. from the keybindings
+// registry) and hand-authored menu hints (e.g. `shortcut="delete"`) format
+// the same way.
 const MAC_KEY_LABEL: Record<string, string> = {
   delete: '⌫',
-  enter: '⏎',
+  return: '⏎',
   esc: 'Esc',
   up: '↑',
   down: '↓',
@@ -30,7 +34,7 @@ const MAC_KEY_LABEL: Record<string, string> = {
 
 const WIN_KEY_LABEL: Record<string, string> = {
   delete: 'Del',
-  enter: 'Enter',
+  return: 'Enter',
   esc: 'Esc',
   up: '↑',
   down: '↓',
@@ -41,10 +45,33 @@ const WIN_KEY_LABEL: Record<string, string> = {
 // "mod" means "the primary modifier" (⌘ on Mac, Ctrl elsewhere) — the one nearly
 // every shortcut needs. `ctrl` stays literal since it's a distinct physical key
 // on Mac (⌃) from `mod` (⌘), unlike on Windows/Linux where they're the same key.
+//
+// Two vocabularies feed this: hand-authored menu hints use the shorthand
+// tokens themselves ("mod+c", "ctrl+shift+r" -- see ContextMenu.tsx), while
+// keybindings store real Electron accelerator strings ("CommandOrControl+Shift+R" --
+// see src/renderer/src/lib/keybindings.ts). Map every spelling either
+// vocabulary uses onto the same four buckets.
+const MODIFIER_TOKEN: Record<string, Modifier> = {
+  mod: 'mod',
+  commandorcontrol: 'mod',
+  cmdorctrl: 'mod',
+  command: 'mod',
+  cmd: 'mod',
+  super: 'mod',
+  meta: 'mod',
+  ctrl: 'ctrl',
+  control: 'ctrl',
+  alt: 'alt',
+  option: 'alt',
+  altgr: 'alt',
+  shift: 'shift'
+};
+
 export function parseShortcut(shortcut: string): ParsedShortcut {
   const tokens = shortcut.toLowerCase().split('+');
   const key = tokens.pop()!;
-  const modifiers = MODIFIER_ORDER.filter((m) => tokens.includes(m));
+  const found = new Set(tokens.map((t) => MODIFIER_TOKEN[t]).filter(Boolean));
+  const modifiers = MODIFIER_ORDER.filter((m) => found.has(m));
   return { modifiers, key };
 }
 

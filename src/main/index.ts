@@ -23,10 +23,9 @@ import {
   registerRecordingMediaHandler
 } from './screen-recorder/security/media-protocol';
 import { createAppTray, destroyTray, setTrayMainWindow } from './tray';
-import {
-  registerGlobalShortcuts,
-  unregisterGlobalShortcuts
-} from './screen-recorder/shortcuts/global-shortcuts';
+import { registerAllShortcuts, unregisterAllShortcuts } from './keybindings/global-shortcuts';
+import { registerKeybindingsHandlers } from './keybindings/ipc';
+import { keybindingsStore } from './keybindings/store';
 import { destroyRecorderToolbar } from './screen-recorder/windows/recorder-toolbar-window';
 import { destroySourcePickerOverlay } from './screen-recorder/windows/source-picker-overlay-window';
 import {
@@ -350,6 +349,10 @@ if (gotSingleInstanceLock) {
     // app.getAppMetrics() covers main, renderer, GPU, and utility processes.
     registerSystemHandlers();
 
+    // User-configurable keybindings registry (get/set bindings, re-registers
+    // OS-level global shortcuts on change). See src/main/keybindings.
+    registerKeybindingsHandlers();
+
     if (is.dev) {
       if (process.platform === 'darwin') {
         // In production the dock icon comes from the .app bundle; in dev there
@@ -380,9 +383,9 @@ if (gotSingleInstanceLock) {
     const mainWindow = createWindow();
     createAppTray(icon, mainWindow);
 
-    // "Launch Recorder" OS-level shortcut -- works even while benpocket is
-    // unfocused, unlike the in-app bindings under features/shortcuts.
-    registerGlobalShortcuts(mainWindow);
+    // User-configured keybindings -- OS-level, work even while benpocket is
+    // unfocused. See src/main/keybindings and src/renderer/src/lib/keybindings.ts.
+    registerAllShortcuts(keybindingsStore.get('bindings'));
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
@@ -404,7 +407,7 @@ if (gotSingleInstanceLock) {
   app.on('before-quit', () => {
     isQuitting = true;
     closeAllProfileSessions();
-    unregisterGlobalShortcuts();
+    unregisterAllShortcuts();
     destroyTray();
     destroyRecorderToolbar();
     destroySourcePickerOverlay();

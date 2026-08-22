@@ -18,6 +18,7 @@ import { buildProjectSnapshot } from './features/project/lib/build-project-snaps
 import { resetHistory } from './features/history/store/history-store';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { Button } from '@renderer/components/ui/Button';
+import { ToolLayout } from '@renderer/components/layout/ToolLayout';
 import { ToastViewport } from './components/ui/toast';
 
 const SIDEBAR_MIN_WIDTH = 220;
@@ -90,11 +91,17 @@ export function ScreenRecorderApp(): JSX.Element {
   return (
     <RecordingControllerProvider>
       <RecorderToolbarBridge />
-      <div className="screen-recorder-app flex flex-1 flex-col min-h-0 bg-surface-sunken text-foreground">
-        <nav className="flex shrink-0 items-center gap-3 bg-surface px-4 py-2">
-          <div className="flex shrink-0 items-center gap-2">
+      <ToolLayout.Title>
+        {/* Not `titlebar-nodrag` itself -- only the two button-group islands
+            below are, so the gap between them stays part of the ambient
+            `titlebar-drag` row (AppShell.tsx) and the window can still be
+            dragged from empty space in the title bar, same as before this
+            replaced the plain-text title. */}
+        <div className="flex w-full items-center gap-3">
+          <div className="titlebar-nodrag flex shrink-0 items-center gap-2">
             <LaunchRecorderButton />
             <Button
+              size="sm"
               onClick={() => void handleSaveClick()}
               disabled={route !== 'editor' || !lastRecording || isQuickSaving}
             >
@@ -109,21 +116,22 @@ export function ScreenRecorderApp(): JSX.Element {
             </Button>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            <button
+          <div className="titlebar-nodrag ml-auto flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => window.open('https://github.com/invisal/benpocket/issues', '_blank')}
               title="Report an issue"
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface-2 hover:text-foreground"
             >
-              <span className="flex items-center gap-1.5">
-                <Flag size={13} />
-                Report an issue
-              </span>
-            </button>
+              <Flag size={13} />
+              <span>Report an issue</span>
+            </Button>
             <ExportDialogButton disabled={route !== 'editor' || !lastRecording} />
           </div>
-        </nav>
+        </div>
+      </ToolLayout.Title>
 
+      <div className="screen-recorder-app flex flex-1 flex-col min-h-0 bg-surface-sunken text-foreground">
         <div className="flex min-h-0 flex-1 flex-col gap-1 dark:gap-1.5 p-1 dark:p-1.5">
           <div className="flex min-h-0 flex-1 gap-1 dark:gap-1.5">
             <ResizablePanel

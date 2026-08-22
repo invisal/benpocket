@@ -28,7 +28,7 @@ export function LaunchRecorderButton() {
   }
 
   return (
-    <Button onClick={handleNewRecord} variant="outline">
+    <Button onClick={handleNewRecord} variant="outline" size="sm">
       {isRecording ? (
         <Square size={12} className="text-muted-foreground" fill="currentColor" />
       ) : (

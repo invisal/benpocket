@@ -12,6 +12,7 @@ interface CursorStoreState extends CursorSettings {
   setMotionBlur: (motionBlur: number) => void;
   setClickBounce: (clickBounce: number) => void;
   setClickRippleEnabled: (clickRippleEnabled: boolean) => void;
+  setClickSoundEnabled: (clickSoundEnabled: boolean) => void;
   setHandGestureEnabled: (handGestureEnabled: boolean) => void;
 }
 
@@ -27,6 +28,7 @@ export const useCursorStore = create<CursorStoreState>(
       motionBlur: s.motionBlur,
       clickBounce: s.clickBounce,
       clickRippleEnabled: s.clickRippleEnabled,
+      clickSoundEnabled: s.clickSoundEnabled,
       handGestureEnabled: s.handGestureEnabled
     }),
     (set) => ({
@@ -38,6 +40,7 @@ export const useCursorStore = create<CursorStoreState>(
       motionBlur: 0,
       clickBounce: 2.5,
       clickRippleEnabled: false,
+      clickSoundEnabled: false,
       handGestureEnabled: true,
       setVisible: (visible) => set({ visible }),
       setClipToCanvas: (clipToCanvas) => set({ clipToCanvas }),
@@ -47,6 +50,7 @@ export const useCursorStore = create<CursorStoreState>(
       setMotionBlur: (motionBlur) => set({ motionBlur }),
       setClickBounce: (clickBounce) => set({ clickBounce }),
       setClickRippleEnabled: (clickRippleEnabled) => set({ clickRippleEnabled }),
+      setClickSoundEnabled: (clickSoundEnabled) => set({ clickSoundEnabled }),
       setHandGestureEnabled: (handGestureEnabled) => set({ handGestureEnabled })
     })
   )

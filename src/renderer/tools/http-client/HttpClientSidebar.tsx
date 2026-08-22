@@ -1,13 +1,11 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from 'cnfast';
-import { FolderPlus, Plus, Upload, Waves, X } from 'lucide-react';
-import { Button } from '@renderer/components/ui/Button';
+import { FolderPlus, Upload, Waves, X } from 'lucide-react';
 import { useRequestTabsStore, type RequestTab } from './store/tabs.store';
 import { useCollectionsStore } from './store/collections.store';
 import { useEnvironmentsStore } from './store/environments.store';
 import { disposeApiClientTab } from './hooks/useApiClient';
-import { WorkspaceSelector } from './components/WorkspaceSelector';
 import { EnvironmentSelector } from './components/EnvironmentSelector';
 import { CollectionsTree } from './components/CollectionsTree';
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog';
@@ -267,10 +265,6 @@ export const HttpClientSidebar: React.FC = () => {
     const timer = setTimeout(() => setStatusMessage(null), 5000);
     return () => clearTimeout(timer);
   }, [statusMessage]);
-
-  const handleNewRequestTab = (): void => {
-    openNewRequestTab({ method: 'GET', url: '' });
-  };
 
   const openNewRequestInFolder = (collectionId: string, folderId: string | null): void => {
     openNewRequestTab({
@@ -591,13 +585,6 @@ export const HttpClientSidebar: React.FC = () => {
       )}
     >
       <div className="flex flex-col flex-1">
-        <div className="flex items-center justify-between border-b border-border px-2 py-1">
-          <WorkspaceSelector />
-          <Button variant="ghost" size="sm" onClick={handleNewRequestTab} title="Create Request">
-            <Plus size={16} />
-          </Button>
-        </div>
-
         {tabs.length > 0 && (
           <div className="flex flex-col gap-1.5 px-2">
             <div className="flex items-center justify-between mt-2">

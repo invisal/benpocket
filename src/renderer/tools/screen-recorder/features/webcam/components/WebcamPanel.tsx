@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { Blend, Circle, Maximize2, Square, SquareUser } from 'lucide-react';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useWebcamStore } from '../store/webcam-store';
 import { SliderRow } from '../../../components/ui/slider-row';
 import { Switch } from '../../../components/ui/switch';
@@ -38,7 +38,9 @@ export function WebcamPanel(): JSX.Element {
   // Nothing to overlay if the camera wasn't on when this recording started
   // -- see useRecordingController.ts's `stop()`, which only sets this when
   // `startCapture`'s `webcam` option actually produced a parallel recording.
-  const hasWebcamFootage = useAppStore((s) => Boolean(s.lastRecording?.webcamPreviewUrl));
+  const hasWebcamFootage = useScreenRecorderStore((s) =>
+    Boolean(s.lastRecording?.webcamPreviewUrl)
+  );
   const isEnabled = enabled && hasWebcamFootage;
 
   return (

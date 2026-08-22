@@ -33,6 +33,8 @@ declare global {
       platform: string;
       /** Linux Wayland — PipeWire portal picker instead of in-app source grid. */
       usesOsCapturePicker: boolean;
+      /** True only when launched with BENPOCKET_E2E=1 (see e2e/). Gates `window.devTools`. */
+      isE2E: boolean;
       minimize: () => void;
       maximize: () => void;
       close: () => void;

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { AspectRatio, ExportCodec, ExportFormat } from '@screen-recorder/types/export';
 import { EXPORT_PRESETS } from '../presets';
 import { isLikelyLinux } from '../../../lib/platform';
+import { blendSizeCalibrationRatio } from '../lib/estimate-export';
 
 const defaultPreset = EXPORT_PRESETS[0];
 
@@ -50,6 +51,20 @@ interface ExportStoreState {
    * to block navigating away mid-export) can read it without prop-drilling.
    */
   isExporting: boolean;
+  /**
+   * Learned correction for the export-summary size estimate
+   * (estimate-export.ts) -- the real video encoder uses VBR
+   * (video-encoder.ts's `bitrateMode: 'variable'`), so the configured
+   * bitrate is only a target/ceiling: low-motion screen-recording content
+   * (mostly static UI, not much per-frame change) typically lands well
+   * under it, and by how much varies with content. Rather than guess a
+   * fixed fudge factor, this starts at `1` (trust the raw formula) and
+   * drifts toward whatever ratio this user's own real exports actually
+   * show, via `recordActualExportSize`.
+   */
+  sizeCalibrationRatio: number;
+  /** Whether `recordActualExportSize` has ever actually run -- lets it fully replace `sizeCalibrationRatio` on the first real sample instead of blending against the meaningless `1` placeholder (see `blendSizeCalibrationRatio`'s own doc). */
+  hasSizeCalibrationSample: boolean;
   setPreset: (presetId: string) => void;
   setFormat: (format: ExportFormat) => void;
   setCodec: (codec: ExportCodec) => void;
@@ -58,6 +73,17 @@ interface ExportStoreState {
   setFrameRate: (frameRate: number) => void;
   setQuality: (quality: number) => void;
   setIsExporting: (isExporting: boolean) => void;
+  /**
+   * Folds one real export's actual-vs-predicted size into
+   * `sizeCalibrationRatio` -- call once a real encode finishes with its true
+   * output byte count, comparing against what the *uncalibrated* formula
+   * (`estimateRawExportBytes`) would have predicted for those same
+   * settings. Skip calling this for the "source copy" fast path
+   * (export-coordinator.ts) -- that never touches the encoder, so its size
+   * says nothing about actual VBR behavior and would corrupt the ratio with
+   * an unrelated data point.
+   */
+  recordActualExportSize: (rawEstimatedBytes: number, actualBytes: number) => void;
 }
 
 export const useExportStore = create<ExportStoreState>()(
@@ -74,6 +100,8 @@ export const useExportStore = create<ExportStoreState>()(
       frameRate: defaultPreset.frameRate,
       quality: defaultPreset.quality,
       isExporting: false,
+      sizeCalibrationRatio: 1,
+      hasSizeCalibrationSample: false,
       setPreset: (presetId) => {
         const preset = EXPORT_PRESETS.find((p) => p.id === presetId);
         if (!preset) return;
@@ -109,7 +137,17 @@ export const useExportStore = create<ExportStoreState>()(
         })),
       setFrameRate: (frameRate) => set({ frameRate, presetId: 'custom' }),
       setQuality: (quality) => set({ quality, presetId: 'custom' }),
-      setIsExporting: (isExporting) => set({ isExporting })
+      setIsExporting: (isExporting) => set({ isExporting }),
+      recordActualExportSize: (rawEstimatedBytes, actualBytes) =>
+        set((state) => ({
+          sizeCalibrationRatio: blendSizeCalibrationRatio(
+            state.sizeCalibrationRatio,
+            state.hasSizeCalibrationSample,
+            rawEstimatedBytes,
+            actualBytes
+          ),
+          hasSizeCalibrationSample: true
+        }))
     }),
     {
       name: 'craftbox-screen-recorder-export-settings',
@@ -141,7 +179,9 @@ export const useExportStore = create<ExportStoreState>()(
         aspectRatio: state.aspectRatio,
         resolution: state.resolution,
         frameRate: state.frameRate,
-        quality: state.quality
+        quality: state.quality,
+        sizeCalibrationRatio: state.sizeCalibrationRatio,
+        hasSizeCalibrationSample: state.hasSizeCalibrationSample
       })
     }
   )

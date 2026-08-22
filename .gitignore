@@ -8,3 +8,5 @@ out
 .agents
 stats-*.html
 stats-*.json
+test-results
+playwright-report

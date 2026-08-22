@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/timeline-store';
 import { getSegmentOutputDurationMs } from '../../timeline/lib/segment-duration';
 import { useCropStore } from '../../crop/store/crop-store';
@@ -8,6 +8,7 @@ import { useExportStore, toEven } from '../store/export-store';
 import { buildExportProject } from '../lib/build-export-project';
 import { runExport } from '../engine/export-coordinator';
 import { isExportCancelled } from '../engine/cancel';
+import { estimateRawExportBytes } from '../lib/estimate-export';
 import { WALLPAPER_IMAGE_PRESETS } from '../../background/lib/wallpaper-images';
 
 export type ExportStatus = 'idle' | 'exporting' | 'error';
@@ -45,8 +46,8 @@ interface UseExportActionResult {
  * Both report progress and errors the same way, and both can be cancelled.
  */
 export function useExportAction(): UseExportActionResult {
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const sourceResolution = useAppStore((state) => state.sourceResolution);
+  const lastRecording = useScreenRecorderStore((state) => state.lastRecording);
+  const sourceResolution = useScreenRecorderStore((state) => state.sourceResolution);
   const segments = useTimelineStore(
     (s) => s.tracks.find((t) => t.id === PRIMARY_VIDEO_TRACK_ID)?.segments ?? []
   );
@@ -108,7 +109,21 @@ export function useExportAction(): UseExportActionResult {
     try {
       const durationMs = segments.reduce((sum, s) => sum + getSegmentOutputDurationMs(s), 0);
       const project = buildExportProject(sourceVideoPath, durationMs);
-      await runExport(
+      // No separate global toggle -- skip audio entirely when every kept
+      // clip is muted, rather than encoding a track that would be silent
+      // from end to end anyway. Except when the click-sound overlay (see
+      // audio-encoder.ts's `processMutedSegment`) has something to mix into
+      // that silence -- that overlay only ever gets a chance to run at all
+      // when an audio track is included in the first place, so all-muted
+      // clips would otherwise silently drop click sounds too, contradicting
+      // clickSoundEnabled's own doc (it's meant to ignore audioMuted, same
+      // as clickBounce/clickRipple already do).
+      const includeAudio =
+        segments.some((s) => !s.audioMuted) ||
+        (project.cursor.clickSoundEnabled &&
+          project.clickPath.length > 0 &&
+          store.format !== 'gif');
+      const { actualBytes, wasEncoded, includedAudio } = await runExport(
         {
           format: store.format,
           codec: store.codec,
@@ -116,10 +131,7 @@ export function useExportAction(): UseExportActionResult {
           resolution: effectiveResolution,
           frameRate: store.frameRate,
           quality: store.quality,
-          // No separate global toggle -- skip audio entirely when every kept
-          // clip is muted, rather than encoding a track that would be
-          // silent from end to end anyway.
-          includeAudio: segments.some((s) => !s.audioMuted),
+          includeAudio,
           outputPath,
           sourceVideoPath,
           crop,
@@ -139,6 +151,28 @@ export function useExportAction(): UseExportActionResult {
         },
         controller.signal
       );
+      // Fold this real export's actual size into the size-estimate's
+      // learned calibration -- skipped for the "source copy" fast path
+      // (see RunExportResult's own doc), which never touches the encoder.
+      // Uses `includedAudio` (what the export actually ended up with), not
+      // the `includeAudio` request above -- the source can lack an audio
+      // track entirely even when every clip is unmuted, in which case the
+      // real output has no audio bytes at all; estimating as if it did would
+      // inflate `rawEstimatedBytes` with a phantom audio bitrate and bias
+      // `sizeCalibrationRatio` down for every recording after this one.
+      if (wasEncoded) {
+        const rawEstimatedBytes = estimateRawExportBytes({
+          durationMs,
+          width: effectiveResolution.width,
+          height: effectiveResolution.height,
+          frameRate: store.frameRate,
+          quality: store.quality,
+          includeAudio: includedAudio,
+          format: store.format,
+          hasWebcam: project.webcam.enabled
+        });
+        store.recordActualExportSize(rawEstimatedBytes, actualBytes);
+      }
       if (afterSuccess) await afterSuccess();
       setStatus('idle');
       setProgress(null);

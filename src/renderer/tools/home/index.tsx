@@ -1,4 +1,5 @@
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ToolLayout } from '@renderer/components/layout/ToolLayout';
 import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { useLayoutStore } from '@renderer/store/layout.store';
 import {
@@ -58,8 +59,8 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         onClick: () =>
           openOrSelect('kuberneter', () => {
             const instanceId = `kuberneter-${Date.now()}`;
+            if (openTab('kuberneter', { instanceId }) === null) return;
             useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
-            openTab('kuberneter', { instanceId });
           })
       },
       {
@@ -107,6 +108,7 @@ export function HomeMain({}: ToolComponentProps<Props>) {
 
   return (
     <div className="bg-surface w-full h-screen flex flex-col">
+      <ToolLayout.Title>Benpocket</ToolLayout.Title>
       <div className="flex flex-col text-sm border-b border-border text-muted-foreground p-4">
         <strong>benpocket</strong>
         <p>Developer tools, all in one place.</p>

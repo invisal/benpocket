@@ -5,7 +5,7 @@ import { useTimelineStore, PRIMARY_VIDEO_TRACK_ID } from '../../timeline/store/t
 import { CLIP_ROW_HEIGHT_PX } from '../../timeline/lib/assign-lanes';
 import { PillTrack } from '../../timeline/components/PillTrack';
 import { useAnnotationsStore } from '../store/annotations-store';
-import { selectAnnotation } from '../../../app/selection-coordinator';
+import { selectAnnotation } from '../../../store/selection-coordinator';
 
 const MIN_ANNOTATION_DURATION_MS = 300;
 

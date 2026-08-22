@@ -14,7 +14,16 @@ import type { ToolPanelProps } from '../types';
  * painted region changes at all. Only one tool is mounted at a time (see index.tsx), so mask state
  * is plain local state, reset directly after a successful Apply.
  */
-export function ContextRemovalTool({ imageData, onCommit, mimeType }: ToolPanelProps) {
+export function ContextRemovalTool({
+  imageData,
+  onCommit,
+  mimeType,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: ToolPanelProps) {
   const maskRef = useRef<Uint8Array<ArrayBuffer>>(
     new Uint8Array(imageData.width * imageData.height)
   );
@@ -72,7 +81,14 @@ export function ContextRemovalTool({ imageData, onCommit, mimeType }: ToolPanelP
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData}>
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+      >
         <MaskOverlay
           width={imageData.width}
           height={imageData.height}

@@ -1,5 +1,5 @@
 import { toRecordingMediaUrl } from '@shared/media-protocol';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useZoomStore } from '../../zoom/store/zoom-store';
 import { resetContentStoresForNewRecording } from './reset-content-stores-for-new-recording';
 
@@ -31,7 +31,7 @@ export async function importVideoFile(): Promise<boolean> {
   // project's background/cursor/captions/annotations/blur-mask/crop stores
   // held must not carry over into this one.
   resetContentStoresForNewRecording();
-  useAppStore.setState({
+  useScreenRecorderStore.setState({
     currentProjectId: null,
     projectName: baseNameWithoutExtension(filePath),
     lastRecording: {
@@ -47,6 +47,6 @@ export async function importVideoFile(): Promise<boolean> {
       source: 'imported'
     }
   });
-  useAppStore.getState().setRoute('editor');
+  useScreenRecorderStore.getState().setRoute('editor');
   return true;
 }

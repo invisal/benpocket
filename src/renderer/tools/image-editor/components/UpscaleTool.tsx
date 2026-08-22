@@ -34,7 +34,17 @@ function formatMB(bytes: number): string {
  * that just asks the main process to downsample its native-ratio output, so any value from 1x up
  * to the model's native scale is available, not only the network's own ratio.
  */
-export function UpscaleTool({ imageData, binary, mimeType, onCommit }: ToolPanelProps) {
+export function UpscaleTool({
+  imageData,
+  binary,
+  mimeType,
+  onCommit,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: ToolPanelProps) {
   const [models, setModels] = useState<UpscaleModelStatus[] | null>(null);
   const [selectedId, setSelectedId] = useState<'x4v3' | 'x4plus'>('x4v3');
   // Defaults to the network's native ratio (4x) -- lower values just downsample that native
@@ -119,7 +129,14 @@ export function UpscaleTool({ imageData, binary, mimeType, onCommit }: ToolPanel
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData} />
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+      />
 
       <FloatingToolbar className="w-full max-w-md flex-col items-stretch">
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5">

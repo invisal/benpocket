@@ -19,33 +19,33 @@ export function TrayBridge(): null {
   });
 
   useEffect(() => {
-    function focusRecorderTab(): void {
+    // Returns whether the tab actually ended up focused/open -- both
+    // `selectTab` and `openTab` can be blocked by the tab's own leave guard
+    // (e.g. unsaved editor changes on whatever tab was active before this),
+    // in which case callers with a follow-up action (opening the floating
+    // recorder toolbar below) must skip it rather than running as if the
+    // tab had switched when it didn't.
+    function focusRecorderTab(): boolean {
       const existing = tabs.find((t) => t.type === 'screen-recorder');
-      if (existing) {
-        selectTab(existing.id);
-      } else {
-        openTab('screen-recorder', {}, { title: 'Screen Recording' });
-      }
+      if (existing) return selectTab(existing.id);
+      return openTab('screen-recorder', {}, { title: 'Screen Recording' }) !== null;
     }
 
-    function focusOrOpenScreenCapture(): void {
+    function focusOrOpenScreenCapture(): boolean {
       const existing = tabs.find((t) => t.type === 'screen-capture');
-      if (existing) {
-        selectTab(existing.id);
-        return;
-      }
-      openTab('screen-capture', {});
+      if (existing) return selectTab(existing.id);
+      return openTab('screen-capture', {}) !== null;
     }
 
     const unsubscribeOpen = window.screenRecorder.tray.onOpenRecordPicker(() => {
-      focusRecorderTab();
+      if (!focusRecorderTab()) return;
       // No source passed -- opens immediately instead of waiting on a full
       // capture-sources fetch; the toolbar picks its own default once its
       // own fetch resolves. See openRecorderToolbarFor's doc.
       void openRecorderToolbarFor();
     });
     const unsubscribeSelect = window.screenRecorder.tray.onSourceSelected((source) => {
-      focusRecorderTab();
+      if (!focusRecorderTab()) return;
       void openRecorderToolbarFor(source);
     });
 

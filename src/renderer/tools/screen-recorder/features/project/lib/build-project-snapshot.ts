@@ -1,5 +1,5 @@
 import type { Project } from '@screen-recorder/types/project';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { useTimelineStore } from '../../timeline/store/timeline-store';
 import { useWebcamStore } from '../../webcam/store/webcam-store';
 import { useBackgroundStore } from '../../background/store/background-store';
@@ -17,7 +17,7 @@ import { useCropStore } from '../../crop/store/crop-store';
  * actual cuts, so `tracks` comes from timeline-store here.
  */
 export function buildProjectSnapshot(name: string): Project | null {
-  const { lastRecording, currentProjectId } = useAppStore.getState();
+  const { lastRecording, currentProjectId } = useScreenRecorderStore.getState();
   if (!lastRecording?.filePath) return null;
 
   const { tracks, sourceDurationMs } = useTimelineStore.getState();
@@ -39,6 +39,7 @@ export function buildProjectSnapshot(name: string): Project | null {
     updatedAt: now,
     source: lastRecording.source,
     sourceVideoPath: lastRecording.filePath,
+    exportSourceVideoPath: lastRecording.exportSourceFilePath ?? null,
     durationMs: sourceDurationMs,
     tracks,
     zoomKeyframes,
@@ -51,6 +52,7 @@ export function buildProjectSnapshot(name: string): Project | null {
       shadow: webcamState.shadow
     },
     webcamVideoPath: lastRecording.webcamFilePath,
+    webcamExportSourceVideoPath: lastRecording.webcamExportSourceFilePath ?? null,
     webcamOffsetMs: lastRecording.webcamOffsetMs,
     background: {
       enabled: backgroundState.enabled,
@@ -70,6 +72,7 @@ export function buildProjectSnapshot(name: string): Project | null {
       motionBlur: cursorState.motionBlur,
       clickBounce: cursorState.clickBounce,
       clickRippleEnabled: cursorState.clickRippleEnabled,
+      clickSoundEnabled: cursorState.clickSoundEnabled,
       handGestureEnabled: cursorState.handGestureEnabled
     },
     cursorPath: lastRecording.cursorPath,

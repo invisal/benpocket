@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import type { PreviewVideoController } from '@screen-recorder/types/editor';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import {
   useTimelineStore,
   MIN_TIMELINE_ZOOM,
@@ -10,7 +10,7 @@ import {
 import { useZoomStore } from '../../../features/zoom/store/zoom-store';
 import { useAnnotationsStore } from '../../../features/annotations/store/annotations-store';
 import { useBlurMaskStore } from '../../../features/blur-mask/store/blur-mask-store';
-import { clearSelection } from '../../../app/selection-coordinator';
+import { clearSelection } from '../../../store/selection-coordinator';
 
 // ~1 frame at 30fps -- there's no source framerate available here, so this is
 // a reasonable fixed approximation rather than a true frame-accurate step.
@@ -101,9 +101,9 @@ export function useEditorKeyboardShortcuts({
         } else if (key === 's') {
           event.preventDefault();
           // Delegates to ScreenRecorderApp's own `handleSaveClick` -- see
-          // app-store.ts's `requestSave` doc for why this can't just call a
+          // screen-recorder-store.ts's `requestSave` doc for why this can't just call a
           // save function directly from here.
-          useAppStore.getState().requestSave();
+          useScreenRecorderStore.getState().requestSave();
         } else if (key === 'x') {
           // Cmd/Ctrl+X as an alternate delete binding, alongside the bare
           // Delete/Backspace case below -- same priority order, same guard.

@@ -2,11 +2,12 @@ import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import type { ProjectSummary } from '@screen-recorder/types/project';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
-import { useAppStore } from '../../app/app-store';
+import { useScreenRecorderStore } from '../../store/screen-recorder-store';
 import { useOpenProject } from '../../features/project/hooks/useOpenProject';
 import { DiscardChangesDialog } from '../../features/project/components/DiscardChangesDialog';
 import { ProjectVideoThumbnail } from '../../features/project/components/ProjectVideoThumbnail';
 import { groupProjectsBySource } from '../../features/project/lib/group-projects-by-source';
+import { closeCurrentProject } from '../../features/project/lib/close-current-project';
 import { formatTimeAgo } from '../../lib/format';
 
 function formatDuration(ms: number): string {
@@ -17,7 +18,8 @@ function formatDuration(ms: number): string {
 }
 
 export function LibraryPage(): JSX.Element {
-  const projectsVersion = useAppStore((state) => state.projectsVersion);
+  const projectsVersion = useScreenRecorderStore((state) => state.projectsVersion);
+  const currentProjectId = useScreenRecorderStore((state) => state.currentProjectId);
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const {
@@ -42,7 +44,13 @@ export function LibraryPage(): JSX.Element {
   async function handleDeleteProject(summary: ProjectSummary): Promise<void> {
     if (!window.confirm(`Delete "${summary.name}"? This can't be undone.`)) return;
     const ok = await window.screenRecorder.project.remove(summary.id);
-    if (ok) setProjects((prev) => prev.filter((p) => p.id !== summary.id));
+    if (!ok) return;
+    setProjects((prev) => prev.filter((p) => p.id !== summary.id));
+    // The deleted project's video file is gone from disk -- if it's the one
+    // currently open in the editor, close it out rather than leaving the
+    // editor pointed at (and still showing all the edited state for) a file
+    // that no longer exists.
+    if (summary.id === currentProjectId) closeCurrentProject();
   }
 
   function renderProjectCard(project: ProjectSummary): JSX.Element {

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { ProjectSummary } from '@screen-recorder/types/project';
-import { useAppStore } from '../../../app/app-store';
+import { useScreenRecorderStore } from '../../../store/screen-recorder-store';
 import { hasUnsavedChanges } from '../../history/store/history-store';
 import { applyProjectSnapshot } from '../lib/apply-project-snapshot';
 
@@ -33,7 +33,7 @@ export function useOpenProject(): UseOpenProjectResult {
     // launch-time auto-resume, which used to switch to the editor route
     // only once loading had *already* finished, with nothing visible
     // happening anywhere beforehand.
-    useAppStore.getState().setIsOpeningProject(true);
+    useScreenRecorderStore.getState().setIsOpeningProject(true);
     try {
       const project = await window.screenRecorder.project.open(summary.id);
       if (!project) {
@@ -46,7 +46,7 @@ export function useOpenProject(): UseOpenProjectResult {
       setError('Failed to load the project.');
     } finally {
       setLoadingProjectId(null);
-      useAppStore.getState().setIsOpeningProject(false);
+      useScreenRecorderStore.getState().setIsOpeningProject(false);
     }
   }, []);
 
@@ -60,8 +60,8 @@ export function useOpenProject(): UseOpenProjectResult {
       // make sure the editor is what's showing rather than re-fetching and
       // re-applying identical data from disk, which would silently discard
       // whatever's actually in progress if it happens to be dirty.
-      if (summary.id === useAppStore.getState().currentProjectId) {
-        useAppStore.getState().setRoute('editor');
+      if (summary.id === useScreenRecorderStore.getState().currentProjectId) {
+        useScreenRecorderStore.getState().setRoute('editor');
         return;
       }
       // Nothing at risk of being lost yet (nothing's ever been edited since

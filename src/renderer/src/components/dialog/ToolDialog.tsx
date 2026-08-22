@@ -18,34 +18,29 @@ export function ToolDialog({ open, onOpenChange }: ToolDialogProps) {
 
   const handleOpenKuberneter = () => {
     const instanceId = `kuberneter-${Date.now()}`;
+    if (openTab('kuberneter', { instanceId }) === null) return;
     useLayoutStore.getState().addActivityInstance('kuberneter', instanceId);
-    openTab('kuberneter', { instanceId });
     close();
   };
 
   const handleOpenHttpClient = () => {
-    openTab('http-client', {});
-    close();
+    if (openTab('http-client', {}) !== null) close();
   };
 
   const handleOpenScreenRecorder = () => {
-    openTab('screen-recorder', {});
-    close();
+    if (openTab('screen-recorder', {}) !== null) close();
   };
 
   const handleOpenScreenCapture = () => {
-    openTab('screen-capture', {});
-    close();
+    if (openTab('screen-capture', {}) !== null) close();
   };
 
   const handleOpenFileExplorer = () => {
-    openTab('file-explorer', {});
-    close();
+    if (openTab('file-explorer', {}) !== null) close();
   };
 
   const handleOpenStorybook = () => {
-    openTab('storybook', {});
-    close();
+    if (openTab('storybook', {}) !== null) close();
   };
 
   return (

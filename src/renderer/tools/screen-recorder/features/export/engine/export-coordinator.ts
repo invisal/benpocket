@@ -8,10 +8,16 @@ import type {
 import type { ExportOptions, ExportProgress } from '@screen-recorder/types/export';
 import { StreamingVideoDecoder } from './streaming-decoder';
 import { VideoMuxer } from './muxer';
-import { AudioProcessor } from './audio-encoder';
+import { AudioProcessor, type ClickSoundOptions } from './audio-encoder';
 import { isSourceCopyEligible } from './export-orchestrator';
 import { resolveWebDemuxerWasmPath } from './wasm-path';
-import { EXPORT_CANCELLED_MESSAGE } from './cancel';
+import { EXPORT_CANCELLED_MESSAGE, isExportCancelled } from './cancel';
+
+export interface RunExportResult {
+  actualBytes: number;
+  wasEncoded: boolean;
+  includedAudio: boolean;
+}
 
 /**
  * Runs on the renderer's main thread (called directly from
@@ -26,7 +32,7 @@ export async function runExport(
   options: ExportOptions,
   onProgress: (progress: ExportProgress) => void,
   signal?: AbortSignal
-): Promise<void> {
+): Promise<RunExportResult> {
   if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
 
   const wasmUrl = resolveWebDemuxerWasmPath();
@@ -47,7 +53,16 @@ export async function runExport(
         onProgress({ percent: 100, stage: 'encoding' });
         await window.screenRecorder.export.writeFileBytes(options.outputPath, sourceBytes);
         onProgress({ percent: 100, stage: 'done' });
-        return;
+        // Moot -- `wasEncoded: false` already makes calibration-recording
+        // callers skip this result entirely -- but a verbatim copy only
+        // actually carries audio when the source itself has an audio stream;
+        // `isSourceCopyEligible` only checked the *request*
+        // (`options.includeAudio`), not whether the source really has one.
+        return {
+          actualBytes: sourceBytes.byteLength,
+          wasEncoded: false,
+          includedAudio: sourceInfo.hasAudio && options.includeAudio
+        };
       }
     } finally {
       probeDecoder.destroy();
@@ -68,7 +83,7 @@ export async function runExport(
 
   const worker = new ExportWorker();
   try {
-    const outputBytes = await runWorker(
+    const { bytes: outputBytes, includedAudio } = await runWorker(
       worker,
       options,
       sourceFile,
@@ -82,9 +97,16 @@ export async function runExport(
     onProgress({ percent: 100, stage: 'encoding' });
     await window.screenRecorder.export.writeFileBytes(options.outputPath, outputBytes);
     onProgress({ percent: 100, stage: 'done' });
+    return { actualBytes: outputBytes.byteLength, wasEncoded: true, includedAudio };
   } finally {
     worker.terminate();
   }
+}
+
+interface WorkerRunResult {
+  bytes: ArrayBuffer;
+  /** `false` for a GIF export -- that format never carries audio at all. */
+  includedAudio: boolean;
 }
 
 function runWorker(
@@ -97,7 +119,7 @@ function runWorker(
   onProgress: (progress: ExportProgress) => void,
   wasmUrl: string,
   signal?: AbortSignal
-): Promise<ArrayBuffer> {
+): Promise<WorkerRunResult> {
   return new Promise((resolve, reject) => {
     const onAbort = () => worker.postMessage({ type: 'cancel' } satisfies ExportWorkerInMessage);
     signal?.addEventListener('abort', onAbort);
@@ -116,7 +138,9 @@ function runWorker(
       }
       if (msg.type === 'gif-result') {
         cleanup();
-        void msg.blob.arrayBuffer().then(resolve, reject);
+        void msg.blob
+          .arrayBuffer()
+          .then((bytes) => resolve({ bytes, includedAudio: false }), reject);
         return;
       }
       // video-result: needs audio processing (main-thread only, see module
@@ -155,9 +179,11 @@ async function finishVideoExport(
   result: Extract<ExportWorkerOutMessage, { type: 'video-result' }>,
   wasmUrl: string,
   signal?: AbortSignal
-): Promise<ArrayBuffer> {
+): Promise<WorkerRunResult> {
   if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
   const includeAudio = result.sourceHasAudio && options.includeAudio;
+
+  let audioActuallyProcessed = false;
   const audioMuxerCodec = options.format === 'webm' ? 'opus' : 'aac';
   const muxer = new VideoMuxer(
     {
@@ -178,16 +204,23 @@ async function finishVideoExport(
     // Short-lived, used only to pick a codec -- destroyed before real audio
     // processing starts so AudioProcessor.process() (which may itself open
     // demuxers) never has two WebDemuxer-spawned WASM Workers alive at once.
-    const probeDemuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
-    let exportCodec: Awaited<ReturnType<typeof AudioProcessor.selectSupportedExportCodecForSource>>;
+    let exportCodec: Awaited<
+      ReturnType<typeof AudioProcessor.selectSupportedExportCodecForSource>
+    > = null;
     try {
-      await probeDemuxer.load(sourceFile);
-      exportCodec = await AudioProcessor.selectSupportedExportCodecForSource(
-        probeDemuxer,
-        audioMuxerCodec
-      );
-    } finally {
-      probeDemuxer.destroy();
+      const probeDemuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
+      try {
+        await probeDemuxer.load(sourceFile);
+        exportCodec = await AudioProcessor.selectSupportedExportCodecForSource(
+          probeDemuxer,
+          audioMuxerCodec
+        );
+      } finally {
+        probeDemuxer.destroy();
+      }
+    } catch (err) {
+      if (signal?.aborted || isExportCancelled(err)) throw err;
+      console.warn('[export] failed to probe source audio, exporting without audio:', err);
     }
 
     if (exportCodec) {
@@ -195,6 +228,14 @@ async function finishVideoExport(
       const audioProcessor = new AudioProcessor();
       const onAbort = () => audioProcessor.cancel();
       signal?.addEventListener('abort', onAbort);
+      // Only bothers building this when there's actually a click to mix --
+      // `AudioProcessor` treats an all-zero-clicks options object the same
+      // as `null` anyway, but skipping construction keeps the common
+      // no-clicks-recorded case a no-op here too.
+      const clickSoundOptions: ClickSoundOptions | null =
+        options.project.cursor.clickSoundEnabled && options.project.clickPath.length > 0
+          ? { clickPath: options.project.clickPath, intensity: options.project.cursor.clickBounce }
+          : null;
       try {
         await audioProcessor.process(
           sourceFile,
@@ -202,8 +243,13 @@ async function finishVideoExport(
           sourceObjectUrl,
           options.segments,
           exportCodec,
-          wasmUrl
+          wasmUrl,
+          clickSoundOptions
         );
+        audioActuallyProcessed = true;
+      } catch (err) {
+        if (signal?.aborted || isExportCancelled(err)) throw err;
+        console.warn('[export] failed to process source audio, exporting without audio:', err);
       } finally {
         signal?.removeEventListener('abort', onAbort);
         URL.revokeObjectURL(sourceObjectUrl);
@@ -214,5 +260,5 @@ async function finishVideoExport(
   if (signal?.aborted) throw new Error(EXPORT_CANCELLED_MESSAGE);
 
   const blob = await muxer.finalize();
-  return blob.arrayBuffer();
+  return { bytes: await blob.arrayBuffer(), includedAudio: audioActuallyProcessed };
 }

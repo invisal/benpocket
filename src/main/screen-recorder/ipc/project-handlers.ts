@@ -93,9 +93,21 @@ export function registerProjectHandlers(): void {
       await fs.unlink(filePath);
 
       if (project?.source === 'recorded') {
-        const clipPaths = [project.sourceVideoPath, project.webcamVideoPath].filter(
-          (path): path is string => !!path
-        );
+        // `exportSourceVideoPath`/`webcamExportSourceVideoPath` are a
+        // separate on-disk file only when recording needed duration
+        // patching (see Project's own doc) -- a Set dedupes the common case
+        // where they're the same path as `sourceVideoPath`/`webcamVideoPath`,
+        // so that file isn't attempted twice.
+        const clipPaths = [
+          ...new Set(
+            [
+              project.sourceVideoPath,
+              project.exportSourceVideoPath,
+              project.webcamVideoPath,
+              project.webcamExportSourceVideoPath
+            ].filter((path): path is string => !!path)
+          )
+        ];
         await Promise.all(
           clipPaths.map(async (clipPath) => {
             try {

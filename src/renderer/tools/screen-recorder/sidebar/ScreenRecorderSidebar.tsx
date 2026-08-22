@@ -9,13 +9,14 @@ import {
   Upload
 } from 'lucide-react';
 import type { ProjectSummary } from '@screen-recorder/types/project';
-import { useAppStore, type ScreenRecorderRoute } from '../app/app-store';
-import { useToastStore } from '../app/toast-store';
+import { useScreenRecorderStore, type ScreenRecorderRoute } from '../store/screen-recorder-store';
+import { useToastStore } from '../store/toast-store';
 import { useExportStore } from '../features/export/store/export-store';
 import { useOpenProject } from '../features/project/hooks/useOpenProject';
 import { DiscardChangesDialog } from '../features/project/components/DiscardChangesDialog';
 import { importVideoFile } from '../features/project/lib/import-video';
 import { groupProjectsBySource } from '../features/project/lib/group-projects-by-source';
+import { closeCurrentProject } from '../features/project/lib/close-current-project';
 import { formatTimeAgo } from '../lib/format';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
@@ -27,20 +28,17 @@ const NAV_ITEMS: {
   route: ScreenRecorderRoute;
   label: string;
   icon: typeof FolderOpen;
-  /** Only 'editor' needs this -- there's nothing to edit until a recording exists. */
-  requiresRecording?: boolean;
 }[] = [
-  { route: 'editor', label: 'Editor', icon: Clapperboard, requiresRecording: true },
+  { route: 'editor', label: 'Editor', icon: Clapperboard },
   { route: 'library', label: 'Library', icon: FolderOpen },
   { route: 'settings', label: 'Settings', icon: Settings }
 ];
 
 export const ScreenRecorderSidebar: React.FC = () => {
-  const route = useAppStore((state) => state.route);
-  const setRoute = useAppStore((state) => state.setRoute);
-  const lastRecording = useAppStore((state) => state.lastRecording);
-  const currentProjectId = useAppStore((state) => state.currentProjectId);
-  const projectsVersion = useAppStore((state) => state.projectsVersion);
+  const route = useScreenRecorderStore((state) => state.route);
+  const setRoute = useScreenRecorderStore((state) => state.setRoute);
+  const currentProjectId = useScreenRecorderStore((state) => state.currentProjectId);
+  const projectsVersion = useScreenRecorderStore((state) => state.projectsVersion);
   const isExporting = useExportStore((state) => state.isExporting);
   const showToast = useToastStore((state) => state.showToast);
 
@@ -50,37 +48,15 @@ export const ScreenRecorderSidebar: React.FC = () => {
     useOpenProject();
   const hasAutoSelectedRef = useRef(false);
 
-  // Recent-projects list is separate from `lastRecording`'s persisted
-  // metadata index -- it re-fetches on `projectsVersion` since, unlike
-  // LibraryPage, this sidebar stays mounted across route changes and would
-  // otherwise never notice a project saved during the current session.
-  //
-  // On the very first fetch (app launch), also resume the most recently
-  // edited project automatically -- guarded by the ref so a save later in
-  // the session (which bumps `projectsVersion` and re-runs this effect)
-  // never does it again, and by `currentProjectId` so it doesn't clobber a
-  // project the user already has open by the time this resolves.
   useEffect(() => {
     let cancelled = false;
     void window.screenRecorder.project.list().then((list) => {
       if (cancelled) return;
-      // Kept unsliced (unlike each rendered section below, which caps
-      // independently at MAX_RECENT_PROJECTS) so `list[0]` here is always
-      // the single most-recently-updated project across both sources, for
-      // auto-resume.
       setRecentProjects(list);
-
       if (!hasAutoSelectedRef.current) {
         hasAutoSelectedRef.current = true;
         const [mostRecent] = list;
         if (mostRecent && !currentProjectId) {
-          // Switches to the editor route immediately, before `openProject`
-          // has even started its IPC round trip -- EditorPage shows
-          // `EditorLoading` for `isOpeningProject` (set inside
-          // `useOpenProject`) rather than this leaving the user on whatever
-          // screen they launched into with nothing visibly happening until
-          // the whole load -- project JSON read, video file stat, store
-          // hydration -- finishes and the route flips out from under them.
           setRoute('editor');
           void openProject(mostRecent);
         }
@@ -94,7 +70,11 @@ export const ScreenRecorderSidebar: React.FC = () => {
   async function handleDeleteProject(project: ProjectSummary): Promise<void> {
     if (!window.confirm(`Delete "${project.name}"? This can't be undone.`)) return;
     const ok = await window.screenRecorder.project.remove(project.id);
-    if (ok) setRecentProjects((prev) => prev.filter((p) => p.id !== project.id));
+    if (!ok) return;
+    setRecentProjects((prev) => prev.filter((p) => p.id !== project.id));
+    // Same reasoning as LibraryPage.tsx's own delete handler -- don't leave
+    // the editor pointed at a file that was just deleted.
+    if (project.id === currentProjectId) closeCurrentProject();
   }
 
   async function handleImport(): Promise<void> {
@@ -158,9 +138,8 @@ export const ScreenRecorderSidebar: React.FC = () => {
       />
       <Tooltip.Provider delay={200} closeDelay={0}>
         <nav className="flex w-11 shrink-0 flex-col items-center gap-0.5 border-r border-line py-3">
-          {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon, requiresRecording }) => {
-            const needsRecording = requiresRecording && !lastRecording;
-            const itemDisabled = isExporting || needsRecording;
+          {NAV_ITEMS.map(({ route: itemRoute, label, icon: Icon }) => {
+            const itemDisabled = isExporting;
             return (
               <Tooltip.Root key={itemRoute}>
                 <Tooltip.Trigger
@@ -181,11 +160,7 @@ export const ScreenRecorderSidebar: React.FC = () => {
                   }
                 />
                 <Tooltip.Content side="right">
-                  {isExporting
-                    ? 'Export in progress'
-                    : needsRecording
-                      ? 'Record something first'
-                      : label}
+                  {isExporting ? 'Export in progress' : label}
                 </Tooltip.Content>
               </Tooltip.Root>
             );

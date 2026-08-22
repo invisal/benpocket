@@ -32,7 +32,17 @@ function formatMB(bytes: number): string {
  * cached so repeat runs skip straight to inference. Unlike Upscale there's no per-tile progress --
  * the network sees the whole image in one pass -- so only the download has a percent bar.
  */
-export function BgRemoveTool({ imageData, binary, mimeType, onCommit }: ToolPanelProps) {
+export function BgRemoveTool({
+  imageData,
+  binary,
+  mimeType,
+  onCommit,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: ToolPanelProps) {
   const [models, setModels] = useState<BgRemoveModelStatus[] | null>(null);
   const [selectedId, setSelectedId] = useState<'u2netp' | 'isnet-general-use'>('u2netp');
   const [phase, setPhase] = useState<'idle' | 'downloading' | 'removing'>('idle');
@@ -100,7 +110,14 @@ export function BgRemoveTool({ imageData, binary, mimeType, onCommit }: ToolPane
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData} />
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+      />
 
       <FloatingToolbar className="w-full max-w-md flex-col items-stretch">
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5">

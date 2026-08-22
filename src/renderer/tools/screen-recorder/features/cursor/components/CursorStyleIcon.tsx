@@ -138,6 +138,19 @@ export function CursorStyleIcon({
             strokeLinejoin="round"
           />
         </g>
+      ) : gesture === 'crosshair' ? (
+        // Simple "+" -- shown while the OS is itself showing a crosshair
+        // cursor (see resolveCursorGesture): a spreadsheet's fill-handle, or
+        // a column/row range-select drag. Fixed white/black artwork, same
+        // convention as hover/resize -- a white halo under a thin black
+        // line keeps it readable against light or dark backgrounds alike,
+        // the way a real crosshair cursor reads regardless of what's under
+        // it. Centered on its own hotspot (CURSOR_GESTURE_HOTSPOTS.crosshair,
+        // the box's dead center), unlike the arrow/hand's corner/fingertip.
+        <g>
+          <path d="M12 1 V23 M1 12 H23" stroke="#ffffff" strokeWidth={3} strokeLinecap="round" />
+          <path d="M12 1 V23 M1 12 H23" stroke="#000000" strokeWidth={1.4} strokeLinecap="round" />
+        </g>
       ) : (
         <path
           d="M5 3 L5 20.5 L9.5 16.2 L12.3 21.8 L15 20.4 L12.1 14.8 L18.5 14.5 Z"

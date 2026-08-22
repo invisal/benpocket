@@ -252,8 +252,8 @@ export function resolveClickRipple(
   return { pos: { x: click.x, y: click.y }, progress, alpha };
 }
 
-/** Which icon shape the cursor should draw -- the default arrow, a "hand" while hovering something clickable, or a "resize" icon (at some `ResizeRotationDeg`) while the recorded window is actually being resized (see `resolveCursorGesture`). */
-export type CursorGesture = 'idle' | 'hover' | 'resize';
+/** Which icon shape the cursor should draw -- the default arrow, a "hand" while hovering something clickable, a "resize" icon (at some `ResizeRotationDeg`) while the recorded window is actually being resized, or a "crosshair" ("+") icon while the OS is showing one -- e.g. a spreadsheet's fill-handle or column/row range-select drag (see `resolveCursorGesture`). */
+export type CursorGesture = 'idle' | 'hover' | 'resize' | 'crosshair';
 
 /**
  * The resize glyph is authored as a single horizontal double-headed arrow --
@@ -346,6 +346,31 @@ function activeResizeSampleAt(
   if (!mostRecent) return null;
   const elapsed = atMs - mostRecent.atMs;
   return elapsed >= 0 && elapsed <= RESIZE_ACTIVE_WINDOW_MS ? mostRecent : null;
+}
+
+/**
+ * A timestamp (ms since recording start) at which the OS was observed
+ * showing a crosshair/"plus" cursor -- e.g. the shape Excel/Google Sheets
+ * show over a cell's fill-handle, or while dragging to range-select whole
+ * columns/rows. Reported by the same producer as `WindowResizeSample`'s
+ * cursor-shape half (`CursorShapeTracker`, main/screen-recorder/capture/
+ * cursor-shape-tracker.ts) -- just a different recognized shape, macOS's
+ * public `NSCursor.crosshair` / Windows' `IDC_CROSS`. Like resize, this is a
+ * fact (the OS really is showing this cursor), not an inferred proxy.
+ */
+export interface CursorCrosshairSample {
+  atMs: number;
+}
+
+/** Same reasoning/margin as `RESIZE_ACTIVE_WINDOW_MS` -- both are driven by the same ~50ms-cadence `CursorShapeTracker` stream. */
+const CROSSHAIR_ACTIVE_WINDOW_MS = 700;
+
+/** Whether the OS was observed showing a crosshair cursor recently enough to still count as active at `atMs` (see `CursorCrosshairSample`). */
+function isCrosshairActiveAt(crosshairPath: CursorCrosshairSample[], atMs: number): boolean {
+  const mostRecent = mostRecentPointAtOrBefore(crosshairPath, atMs);
+  if (!mostRecent) return false;
+  const elapsed = atMs - mostRecent.atMs;
+  return elapsed >= 0 && elapsed <= CROSSHAIR_ACTIVE_WINDOW_MS;
 }
 
 /**
@@ -503,8 +528,13 @@ export function resolveActiveResizeRotationDeg(
  *   with live bounds tracking, so this never fires for a screen/full-screen
  *   recording. Always on (no setting disables it, unlike hover below) --
  *   it's a real, factual signal rather than an inferred proxy, so there's
- *   nothing to opt out of. Takes precedence over hover -- a real resize is
- *   happening regardless of what's rendered beneath.
+ *   nothing to opt out of. Takes precedence over everything else -- a real
+ *   resize is happening regardless of what's rendered beneath.
+ * - "crosshair": an active `CursorCrosshairSample` exists
+ *   (`isCrosshairActiveAt`) -- the OS was just observed showing a
+ *   crosshair/"plus" cursor (a spreadsheet fill-handle, a column/row
+ *   range-select drag). Same "real fact, always on" reasoning as resize;
+ *   takes precedence over hover for the same reason.
  * - "hover": `handGestureEnabled` on, stationary, and resting near some click
  *   anywhere in the recording (`isHoverAt`/`HOVER_NEAR_CLICK_RADIUS`). Also
  *   holds for a full grace window (`HOVER_LINGER_MS`) after any click, even
@@ -520,6 +550,7 @@ export function resolveCursorGesture(
   path: CursorPathPoint[],
   clickPath: CursorPathPoint[],
   resizePath: WindowResizeSample[],
+  crosshairPath: CursorCrosshairSample[],
   atMs: number,
   handGestureEnabled = true
 ): CursorGesture {
@@ -527,6 +558,7 @@ export function resolveCursorGesture(
   if (!now) return 'idle';
 
   if (activeResizeSampleAt(resizePath, atMs) !== null) return 'resize';
+  if (isCrosshairActiveAt(crosshairPath, atMs)) return 'crosshair';
   if (handGestureEnabled && isHoverAt(path, clickPath, atMs)) return 'hover';
   return 'idle';
 }

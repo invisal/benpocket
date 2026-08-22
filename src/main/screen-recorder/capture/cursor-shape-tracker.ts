@@ -9,33 +9,34 @@ type ShapeStreamChild = ChildProcessByStdio<null, Readable, null>;
 
 /**
  * Streams the OS's own real cursor shape during a recording -- specifically,
- * whenever it's showing a horizontal or vertical resize cursor -- and
- * forwards each sighting to the renderer for `resolveCursorGesture`
- * (@shared/cursor-path). This is the only reliable signal for "the user is
- * dragging an internal resize handle" (a split-view divider, a panel
- * splitter) inside whatever's being recorded: unlike `WindowBoundsPoller`,
- * which only sees a recorded window's own *outer* OS rect, an internal
- * splitter drag never changes that rect at all, so there's nothing for the
- * bounds poller to observe there -- only the OS's own cursor shape reflects
- * it, since the OS itself decided to show a resize cursor because the
- * pointer is over a resize handle.
+ * whenever it's showing a horizontal/vertical resize cursor or a crosshair
+ * cursor -- and forwards each sighting to the renderer for
+ * `resolveCursorGesture` (@shared/cursor-path). This is the only reliable
+ * signal for "the user is dragging an internal resize handle" (a split-view
+ * divider, a panel splitter) or a spreadsheet fill-handle/range-select
+ * drag: unlike `WindowBoundsPoller`, which only sees a recorded window's own
+ * *outer* OS rect, none of these change that rect at all, so there's
+ * nothing for the bounds poller to observe there -- only the OS's own
+ * cursor shape reflects it, since the OS itself decided which cursor to
+ * show based on what's under the pointer.
  *
  * A single persistent process is spawned once per recording (not re-spawned
  * per poll, unlike the 500ms window-bounds queries) -- see
  * native/macos-recorder/main.swift's `cursor-shape-stream` mode and
  * win-cursor-shape.ts's PowerShell loop for why: a poll fast enough to catch
- * a brief resize drag is far too fast to tolerate a fresh process spawn per
- * tick. Each only emits a line while the cursor is actually showing a resize
- * shape -- "resize has stopped" is inferred on the receiving end from the
- * *absence* of further samples (see `RESIZE_ACTIVE_WINDOW_MS`,
+ * a brief resize/crosshair moment is far too fast to tolerate a fresh
+ * process spawn per tick. Each only emits a line while the cursor is
+ * actually showing a recognized shape -- "that shape has stopped showing"
+ * is inferred on the receiving end from the *absence* of further samples
+ * (see `RESIZE_ACTIVE_WINDOW_MS`/`CROSSHAIR_ACTIVE_WINDOW_MS`,
  * @shared/cursor-path.ts), so there's nothing useful to emit the rest of the
  * time.
  *
- * No diagonal detection either way -- macOS has no public diagonal system
- * cursor, and Windows' `IDC_SIZENWSE`/`IDC_SIZENESW` aren't checked here for
- * the same reason `WindowBoundsPoller` already covers that case (an actual
- * whole-window corner drag changes the window's own bounds, which that
- * poller does see).
+ * No diagonal resize detection either way -- macOS has no public diagonal
+ * system cursor, and Windows' `IDC_SIZENWSE`/`IDC_SIZENESW` aren't checked
+ * here for the same reason `WindowBoundsPoller` already covers that case
+ * (an actual whole-window corner drag changes the window's own bounds,
+ * which that poller does see).
  */
 export class CursorShapeTracker {
   private child: ShapeStreamChild | null = null;

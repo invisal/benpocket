@@ -42,6 +42,7 @@ export async function importVideoFile(): Promise<boolean> {
       cursorPath: [],
       clickPath: [],
       resizePath: [],
+      crosshairPath: [],
       webcamPreviewUrl: null,
       webcamFilePath: null,
       webcamOffsetMs: 0,

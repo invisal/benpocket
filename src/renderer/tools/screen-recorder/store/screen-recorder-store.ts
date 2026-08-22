@@ -1,5 +1,9 @@
 import { create } from 'zustand';
-import type { CursorPathPoint, WindowResizeSample } from '@screen-recorder/types/project';
+import type {
+  CursorPathPoint,
+  WindowResizeSample,
+  CursorCrosshairSample
+} from '@screen-recorder/types/project';
 import type { SourceResolution } from '@screen-recorder/types/editor';
 
 export type ScreenRecorderRoute = 'editor' | 'library' | 'settings';
@@ -19,6 +23,8 @@ export type ScreenRecorderRoute = 'editor' | 'library' | 'settings';
 export const EMPTY_CURSOR_PATH: CursorPathPoint[] = [];
 /** Same reasoning as `EMPTY_CURSOR_PATH`, for `lastRecording?.resizePath ?? []`-style selectors. */
 export const EMPTY_RESIZE_PATH: WindowResizeSample[] = [];
+/** Same reasoning as `EMPTY_CURSOR_PATH`, for `lastRecording?.crosshairPath ?? []`-style selectors. */
+export const EMPTY_CROSSHAIR_PATH: CursorCrosshairSample[] = [];
 
 interface LastRecording {
   previewUrl: string;
@@ -40,6 +46,8 @@ interface LastRecording {
   clickPath: CursorPathPoint[];
   /** Real observed window-bounds changes (see window-bounds-poller.ts) -- lets `resolveCursorGesture` (@shared/cursor-path) know for a fact when the tracked window is actually being resized. Only ever populated for a window-source recording with live bounds tracking. */
   resizePath: WindowResizeSample[];
+  /** Real observed OS crosshair-cursor sightings (see cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know for a fact when a spreadsheet fill-handle/range-select drag is actually happening. */
+  crosshairPath: CursorCrosshairSample[];
   /** Blob URL for the parallel webcam recording, if the webcam was enabled. Null otherwise, or if saving it failed. */
   webcamPreviewUrl: string | null;
   /** Absolute path to the saved webcam file, for export -- see capture-engine.ts's `CaptureRequest.webcam`. */

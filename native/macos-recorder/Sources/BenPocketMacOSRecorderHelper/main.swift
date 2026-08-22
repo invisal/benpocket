@@ -756,11 +756,12 @@ private func queryWindowBoundsQuartz(windowId: CGWindowID) -> CGRect? {
 	return bounds
 }
  
-// Reference bitmaps for the two public system resize cursors -- computed
-// once (not per-tick) since `runCursorShapeStream()` compares against these
-// on every poll.
+// Reference bitmaps for the public system cursors this helper recognizes --
+// computed once (not per-tick) since `runCursorShapeStream()` compares
+// against these on every poll.
 private let resizeLeftRightImageData = NSCursor.resizeLeftRight.image.tiffRepresentation
 private let resizeUpDownImageData = NSCursor.resizeUpDown.image.tiffRepresentation
+private let crosshairImageData = NSCursor.crosshair.image.tiffRepresentation
 
 // `+[NSCursor currentSystemCursor]` is not part of the public API surface --
 // there is no public class method/property for "what cursor is the OS
@@ -791,7 +792,8 @@ private func currentSystemCursor() -> NSCursor? {
 // diagonal resize cursor (`NSCursor` exposes no nwse/nesw equivalent), so a
 // real diagonal drag (a whole window's corner) reads as "other" here and
 // relies instead on WindowBoundsPoller's own bounds-diff signal on the
-// Electron side, which does see that case.
+// Electron side, which does see that case. Also recognizes the crosshair
+// cursor (spreadsheet fill-handle / column-row range-select).
 private func cursorShapeKind(for cursor: NSCursor) -> String {
 	let data = cursor.image.tiffRepresentation
 	if data == resizeLeftRightImageData {
@@ -799,6 +801,9 @@ private func cursorShapeKind(for cursor: NSCursor) -> String {
 	}
 	if data == resizeUpDownImageData {
 		return "vertical"
+	}
+	if data == crosshairImageData {
+		return "crosshair"
 	}
 	return "other"
 }
@@ -809,8 +814,9 @@ private func cursorShapeKind(for cursor: NSCursor) -> String {
 // process every poll, a useful poll rate here (fast enough to catch a brief
 // resize drag) would mean tens of process forks per second, so this instead
 // stays alive and polls internally. Only emits while the cursor is actually
-// showing a resize shape -- the receiving side infers "resize has stopped"
-// from the *absence* of further samples (see RESIZE_ACTIVE_WINDOW_MS,
+// showing a recognized shape (resize or crosshair) -- the receiving side
+// infers "that shape has stopped showing" from the *absence* of further
+// samples (see RESIZE_ACTIVE_WINDOW_MS/CROSSHAIR_ACTIVE_WINDOW_MS,
 // @shared/cursor-path.ts), so there's nothing useful to emit the rest of the
 // time.
 private func runCursorShapeStream() {

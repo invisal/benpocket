@@ -694,6 +694,25 @@ const CURSOR_RESIZE_GLYPH: SubPath[] = [
 const CURSOR_HOVER_STROKE_WIDTH = 0.75 * (24 / 32) * 1.75;
 
 /**
+ * The crosshair ("+") glyph -- two straight lines, so (unlike every other
+ * gesture glyph in this file) there's nothing to flatten off a bezier path;
+ * these are hand-authored directly in the shared 24x24 box, matching
+ * CursorStyleIcon.tsx's `<path d="M12 1 V23 M1 12 H23">` exactly. Drawn
+ * stroked (not filled) -- a real crosshair cursor is just lines, not a
+ * silhouette.
+ */
+const CURSOR_CROSSHAIR_LINES: [SubPath[number], SubPath[number]][] = [
+  [
+    [12, 1],
+    [12, 23]
+  ],
+  [
+    [1, 12],
+    [23, 12]
+  ]
+];
+
+/**
  * Per-`customIcon` glyph outlines for the 5 fully custom, fixed-color
  * illustrations (features/cursor/svg/*.svg) -- unlike `CURSOR_IDLE_GLYPH`,
  * each entry here is a *list of independently-colored subpaths* (one path
@@ -3340,6 +3359,29 @@ function drawCursorIconInto(
     }
     g.fill({ color: '#ffffff', alpha });
     g.stroke({ color: '#000000', width: s, alpha });
+    return;
+  }
+
+  if (gesture === 'crosshair') {
+    // Fixed white/black artwork, same convention as hover/resize above --
+    // a white halo stroke under the black line keeps it readable against
+    // any background, matching CursorStyleIcon.tsx's crosshair branch
+    // exactly. Stroked only (no fill) -- these are lines, not a silhouette.
+    const hotspot = CURSOR_GESTURE_HOTSPOTS.crosshair;
+    for (const [start, end] of CURSOR_CROSSHAIR_LINES) {
+      const [sx, sy] = toScreenPoint(start, hotspot, x, y, s, clickScale);
+      const [ex, ey] = toScreenPoint(end, hotspot, x, y, s, clickScale);
+      g.moveTo(sx, sy);
+      g.lineTo(ex, ey);
+      g.stroke({ color: '#ffffff', width: 3 * s, alpha, cap: 'round' });
+    }
+    for (const [start, end] of CURSOR_CROSSHAIR_LINES) {
+      const [sx, sy] = toScreenPoint(start, hotspot, x, y, s, clickScale);
+      const [ex, ey] = toScreenPoint(end, hotspot, x, y, s, clickScale);
+      g.moveTo(sx, sy);
+      g.lineTo(ex, ey);
+      g.stroke({ color: '#000000', width: 1.4 * s, alpha, cap: 'round' });
+    }
     return;
   }
 

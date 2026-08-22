@@ -96,6 +96,7 @@ export async function applyProjectSnapshot(project: Project): Promise<void> {
       clickPath: project.clickPath,
       // `?? []` -- projects saved before this field existed have no such key.
       resizePath: project.resizePath ?? [],
+      crosshairPath: project.crosshairPath ?? [],
       webcamPreviewUrl: webcam?.url ?? null,
       webcamFilePath: project.webcamVideoPath,
       webcamExportSourceFilePath: project.webcamExportSourceVideoPath ?? project.webcamVideoPath,

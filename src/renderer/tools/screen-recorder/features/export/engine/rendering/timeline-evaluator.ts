@@ -111,12 +111,13 @@ function resolveCursor(
     : null;
 
   // resolveCursorGesture can itself return 'hover' (stationary near a click,
-  // gated by handGestureEnabled) or 'resize' (a real resize in progress --
-  // see its own doc; always on, since it's a fact rather than a proxy).
+  // gated by handGestureEnabled), 'resize', or 'crosshair' (both real facts
+  // -- see its own doc -- always on, since there's nothing to opt out of).
   const gesture = resolveCursorGesture(
     smoothedPath,
     clickPath,
     project.resizePath,
+    project.crosshairPath,
     atMs,
     cursor.handGestureEnabled
   );

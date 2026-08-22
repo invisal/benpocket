@@ -16,5 +16,6 @@ export type {
   ClickRipple,
   CursorGesture,
   ResizeRotationDeg,
-  WindowResizeSample
+  WindowResizeSample,
+  CursorCrosshairSample
 } from '@shared/cursor-path';

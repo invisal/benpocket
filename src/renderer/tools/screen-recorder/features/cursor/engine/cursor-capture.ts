@@ -1,6 +1,6 @@
 import type { CaptureSource } from '@screen-recorder/types/recording';
 import type { CursorPathPoint } from '@screen-recorder/types/project';
-import type { WindowResizeSample } from '@shared/cursor-path';
+import type { WindowResizeSample, CursorCrosshairSample } from '@shared/cursor-path';
 
 export interface CursorCaptureResult {
   cursorPath: CursorPathPoint[];
@@ -8,6 +8,8 @@ export interface CursorCaptureResult {
   clickPath: CursorPathPoint[];
   /** Real observed window-bounds changes (window-bounds-poller.ts) and/or real OS resize-cursor sightings (cursor-shape-tracker.ts), merged and sorted by `atMs` -- lets `resolveCursorGesture` (@shared/cursor-path) know for a fact when a resize is actually happening, from whichever signal caught it. */
   resizePath: WindowResizeSample[];
+  /** Real observed OS crosshair-cursor sightings (cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know when a spreadsheet fill-handle/range-select drag is actually happening. */
+  crosshairPath: CursorCrosshairSample[];
 }
 
 export interface CursorCaptureHandle {
@@ -53,6 +55,7 @@ export async function startCursorCapture(
   const cursorPath: CursorPathPoint[] = [];
   const clickPath: CursorPathPoint[] = [];
   const resizePath: WindowResizeSample[] = [];
+  const crosshairPath: CursorCrosshairSample[] = [];
   const unsubscribeSample = window.screenRecorder.cursor.onSample((sample) => {
     cursorPath.push(sample);
     onUpdate?.({ cursorCount: cursorPath.length, clickCount: clickPath.length });
@@ -67,13 +70,17 @@ export async function startCursorCapture(
   const unsubscribeResize = window.screenRecorder.cursor.onWindowResizeSample((sample) => {
     resizePath.push(sample);
   });
-  // A second, independent producer feeding the same `resizePath` stream --
-  // see `WindowResizeSample`'s own doc (@shared/cursor-path) for why an
-  // internal panel/split-view resize needs this real-cursor-shape signal
-  // instead of (or alongside) a window-bounds diff.
+  // A second, independent producer feeding `resizePath` -- see
+  // `WindowResizeSample`'s own doc (@shared/cursor-path) for why an internal
+  // panel/split-view resize needs this real-cursor-shape signal instead of
+  // (or alongside) a window-bounds diff. Also the sole producer for
+  // `crosshairPath` (spreadsheet fill-handle/range-select).
   const unsubscribeShape = window.screenRecorder.cursor.onCursorShapeSample((sample) => {
-    if (sample.kind !== 'horizontal' && sample.kind !== 'vertical') return;
-    resizePath.push({ atMs: sample.atMs, rotationDeg: sample.kind === 'horizontal' ? 0 : 90 });
+    if (sample.kind === 'horizontal' || sample.kind === 'vertical') {
+      resizePath.push({ atMs: sample.atMs, rotationDeg: sample.kind === 'horizontal' ? 0 : 90 });
+    } else if (sample.kind === 'crosshair') {
+      crosshairPath.push({ atMs: sample.atMs });
+    }
   });
 
   await window.screenRecorder.cursor.startTracking(
@@ -96,9 +103,9 @@ export async function startCursorCapture(
       // @shared/cursor-path) requires.
       resizePath.sort((a, b) => a.atMs - b.atMs);
       console.log(
-        `[cursor-capture] recorded ${cursorPath.length} cursor sample(s), ${clickPath.length} click(s), ${resizePath.length} resize sample(s).`
+        `[cursor-capture] recorded ${cursorPath.length} cursor sample(s), ${clickPath.length} click(s), ${resizePath.length} resize sample(s), ${crosshairPath.length} crosshair sample(s).`
       );
-      return { cursorPath, clickPath, resizePath };
+      return { cursorPath, clickPath, resizePath, crosshairPath };
     }
   };
 }

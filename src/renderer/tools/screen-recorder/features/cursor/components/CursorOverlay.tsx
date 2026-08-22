@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import type {
   CursorSettings,
   CursorPathPoint,
-  WindowResizeSample
+  WindowResizeSample,
+  CursorCrosshairSample
 } from '@screen-recorder/types/project';
 import {
   resolveCursorStyle,
@@ -29,6 +30,8 @@ interface CursorOverlayProps {
   clickPath: CursorPathPoint[];
   /** Real observed window-bounds changes (see window-bounds-poller.ts) -- lets resolveCursorGesture know for a fact when the tracked window is actually being resized. Only ever populated for a window-source recording with live bounds tracking. */
   resizePath: WindowResizeSample[];
+  /** Real observed OS crosshair-cursor sightings (see cursor-shape-tracker.ts) -- lets resolveCursorGesture know for a fact when a spreadsheet fill-handle/range-select drag is actually happening. */
+  crosshairPath: CursorCrosshairSample[];
   currentTimeMs: number;
   /** Rendered on-screen width of the whole stage (background + padding + content), i.e. `stageRef`'s rect -- the same reference frame webcam/annotations already scale against, see REFERENCE_CANVAS_WIDTH. */
   stageWidthPx: number;
@@ -58,6 +61,7 @@ export function CursorOverlay({
   rawPath,
   clickPath,
   resizePath,
+  crosshairPath,
   currentTimeMs,
   stageWidthPx,
   cursorHidden = false
@@ -76,14 +80,15 @@ export function CursorOverlay({
   const sizePx = cursor.size * CURSOR_SIZE_UNIT_PX * scale;
   const clickScale = resolveClickBounceScale(clickPath, currentTimeMs, cursor.clickBounce);
   // resolveCursorGesture can itself return 'hover' (stationary near a click,
-  // gated by handGestureEnabled) or 'resize' (a real resize in progress --
-  // see its own doc; always on, since it's a fact rather than a proxy).
+  // gated by handGestureEnabled), 'resize', or 'crosshair' (both real facts
+  // -- see its own doc -- always on, since there's nothing to opt out of).
   const gesture =
     rawPath.length > 0
       ? resolveCursorGesture(
           smoothed,
           clickPath,
           resizePath,
+          crosshairPath,
           currentTimeMs,
           cursor.handGestureEnabled
         )

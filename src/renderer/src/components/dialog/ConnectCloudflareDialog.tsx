@@ -13,7 +13,7 @@ interface ConnectCloudflareDialogProps {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs text-text-dim">{label}</span>
+      <span className="text-sm text-text-dim">{label}</span>
       {children}
     </label>
   );
@@ -23,7 +23,7 @@ function StatusBadge({ connected }: { connected: boolean }) {
   return (
     <span
       className={cn(
-        'text-xs px-2 py-0.5 rounded-full',
+        'text-sm px-2 py-0.5 rounded-full',
         connected ? 'bg-emerald-500/15 text-emerald-400' : 'bg-surface-3 text-text-dim'
       )}
     >
@@ -216,7 +216,7 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
                   }
                 />
               </Field>
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && <p className="text-sm text-red-400">{error}</p>}
               <div className="flex gap-2">
                 <Button variant="primary" size="sm" onClick={handleSave}>
                   Save
@@ -234,17 +234,17 @@ export function ConnectCloudflareDialog({ open, onOpenChange }: ConnectCloudflar
         {configured && (
           <div className="mt-5 border-t border-border pt-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-text-base">AI Gateway</span>
+              <span className="font-medium text-text-base">AI Gateway</span>
               <StatusBadge connected={gatewayConfigured} />
             </div>
-            <p className="mt-1 text-xs text-text-dim">
+            <p className="mt-1 text-sm text-text-dim">
               Lets the file explorer&apos;s AI agent chat through your Cloudflare AI Gateway.
             </p>
             <div className="mt-3 flex flex-col gap-3">
               <Field label="Gateway ID">
                 <Input size="sm" value={gatewayId} onChange={(e) => setGatewayId(e.target.value)} />
               </Field>
-              {gatewayError && <p className="text-xs text-red-400">{gatewayError}</p>}
+              {gatewayError && <p className="text-sm text-red-400">{gatewayError}</p>}
               <div className="flex gap-2">
                 <Button variant="primary" size="sm" onClick={handleGatewaySave}>
                   Save

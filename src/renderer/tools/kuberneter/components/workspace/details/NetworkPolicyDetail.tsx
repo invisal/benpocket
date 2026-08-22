@@ -140,7 +140,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
   );
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Network Policy details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Network Policy details available.</div>;
   }
 
   const annotations = currentData.annotations ? Object.entries(currentData.annotations) : [];
@@ -249,7 +249,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
           </span>
 
           {ingressRules.length === 0 ? (
-            <div className="text-xs text-zinc-400 pl-1 py-1 italic border-b border-border/10">
+            <div className="text-sm text-zinc-400 pl-1 py-1 italic border-b border-border/10">
               Isolating Ingress traffic: No ingress allowed (block all incoming traffic)
             </div>
           ) : (
@@ -257,7 +257,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
               {ingressRules.map((rule, idx) => (
                 <div
                   key={idx}
-                  className={`flex flex-col text-xs text-zinc-300 p-2.5 ${
+                  className={`flex flex-col text-sm text-zinc-300 p-2.5 ${
                     idx > 0 ? 'border-t border-border-dark/50' : ''
                   }`}
                 >
@@ -332,7 +332,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
           </span>
 
           {egressRules.length === 0 ? (
-            <div className="text-xs text-zinc-400 pl-1 py-1 italic border-b border-border/10">
+            <div className="text-sm text-zinc-400 pl-1 py-1 italic border-b border-border/10">
               Isolating Egress traffic: No egress allowed (block all outgoing traffic)
             </div>
           ) : (
@@ -340,7 +340,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
               {egressRules.map((rule, idx) => (
                 <div
                   key={idx}
-                  className={`flex flex-col text-xs text-zinc-300 p-2.5 ${
+                  className={`flex flex-col text-sm text-zinc-300 p-2.5 ${
                     idx > 0 ? 'border-t border-border-dark/50' : ''
                   }`}
                 >
@@ -415,7 +415,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
           </span>
         </div>
         {pods.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">
+          <div className="text-sm text-zinc-500 italic pl-1">
             No matching pods found in namespace
           </div>
         ) : (
@@ -482,7 +482,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
                 {
                   key: 'cpu',
                   header: 'CPU',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -498,7 +498,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
                 {
                   key: 'memory',
                   header: 'Memory',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -514,7 +514,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
                 {
                   key: 'status',
                   header: 'Status',
-                  className: 'py-2 px-3 font-semibold text-xs',
+                  className: 'py-2 px-3 font-semibold text-sm',
                   render: (row) => (
                     <span
                       className={
@@ -539,7 +539,7 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5 font-sans">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5 font-sans">No events found</div>
       </div>
     </div>
   );

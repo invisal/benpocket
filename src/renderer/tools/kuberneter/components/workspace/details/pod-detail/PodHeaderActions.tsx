@@ -77,7 +77,7 @@ const ContainerActionMenu: React.FC<ContainerActionMenuProps> = ({
                 onSelect(undefined);
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
+              className="flex items-center gap-2 px-2 py-1.5 text-sm text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
             >
               <Box className="size-3 text-accent shrink-0" />
               <span className="truncate">All containers</span>
@@ -90,7 +90,7 @@ const ContainerActionMenu: React.FC<ContainerActionMenuProps> = ({
                 onSelect(c.name);
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
+              className="flex items-center gap-2 px-2 py-1.5 text-sm text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
             >
               <Box className="size-3 text-zinc-400 shrink-0" />
               <span className="truncate">{c.name}</span>

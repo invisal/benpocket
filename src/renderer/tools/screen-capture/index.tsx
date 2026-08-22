@@ -366,12 +366,12 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           {phase === 'idle' && !isCapturing ? (
             <div>
               <h1 className="text-base font-medium">Screen Capture</h1>
-              <p className="mt-0.5 text-xs text-text-dim">Take a screenshot or edit an image.</p>
+              <p className="mt-0.5 text-sm text-text-dim">Take a screenshot or edit an image.</p>
             </div>
           ) : (
             <div>
               <h1 className="text-base font-medium">Preview</h1>
-              <p className="mt-0.5 text-xs text-text-dim">
+              <p className="mt-0.5 text-sm text-text-dim">
                 Annotate your screenshot, then copy or save it — or capture again.
               </p>
             </div>
@@ -398,7 +398,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
                   <span className="font-mono text-5xl font-semibold text-foreground">
                     {countdownRemaining}
                   </span>
-                  <p className="mt-3 text-xs text-muted-foreground">Capturing in a moment…</p>
+                  <p className="mt-3 text-sm text-muted-foreground">Capturing in a moment…</p>
                   <Button
                     variant="secondary"
                     size="md"
@@ -413,8 +413,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
                   <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-border bg-surface-2 text-accent">
                     <Camera size={26} />
                   </div>
-                  <h2 className="text-sm font-semibold text-foreground">Ready to capture</h2>
-                  <p className="mt-1 mb-6 max-w-xs text-center text-xs leading-5 text-muted-foreground">
+                  <h2 className="font-semibold text-foreground">Ready to capture</h2>
+                  <p className="mt-1 mb-6 max-w-xs text-center text-sm leading-5 text-muted-foreground">
                     Screen, window, or area — or paste an image to edit.
                   </p>
                   <input
@@ -490,7 +490,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
                     </kbd>
                   </p>
                   {usesOsPicker && (
-                    <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                    <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                       <input
                         type="checkbox"
                         checked={hideApp}
@@ -506,7 +506,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           )}
           {isCapturing && (
             <div className="flex min-h-[12rem] flex-1 items-center justify-center">
-              <p className="text-sm text-text-dim">{capturingMessage}</p>
+              <p className="text-text-dim">{capturingMessage}</p>
             </div>
           )}
 

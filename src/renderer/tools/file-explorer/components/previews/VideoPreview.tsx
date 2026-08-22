@@ -20,7 +20,7 @@ export const VideoPreview = forwardRef<PreviewEditorHandle, { filePath: string }
 
     if (state.status === 'error') {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-sm px-4 text-center">
           <AlertCircle size={20} className="text-red-500" />
           <span>{state.message}</span>
         </div>

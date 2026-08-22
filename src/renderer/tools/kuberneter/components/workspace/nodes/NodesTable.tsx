@@ -141,7 +141,7 @@ export const NodesTable: React.FC<NodesTableProps> = ({
         key: 'roles',
         header: 'Roles',
         render: (row) => <span className="text-zinc-400 text-[11px]">{row.roles || ''}</span>,
-        className: 'text-xs',
+        className: 'text-sm',
         initialWidth: 100
       },
       {
@@ -181,7 +181,7 @@ export const NodesTable: React.FC<NodesTableProps> = ({
             </span>
           );
         },
-        className: 'text-xs truncate',
+        className: 'text-sm truncate',
         initialWidth: 150
       },
       {

@@ -78,7 +78,7 @@ export function ChatMessageContainer({ className, ...props }: ComponentProps<'di
 export function ChatUserMessage({ className, children, ...props }: ComponentProps<'div'>) {
   return (
     <div className={cn('flex justify-end', className)} {...props}>
-      <div className="max-w-[85%] rounded-lg bg-accent px-3 py-2 text-xs whitespace-pre-wrap text-emphasis-text">
+      <div className="max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm whitespace-pre-wrap text-emphasis-text">
         {children}
       </div>
     </div>
@@ -94,15 +94,15 @@ export function ChatAssistantMessage({ className, children, ...props }: ChatAssi
     <div className={cn('flex justify-start', className)} {...props}>
       <div
         className={cn(
-          'px-3 py-2 text-sm text-foreground',
+          'px-3 py-2 text-foreground',
           '[&>*+*]:mt-2',
           '[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5',
           '[&_blockquote]:border-l-2 [&_blockquote]:border-border-dark [&_blockquote]:pl-2 [&_blockquote]:text-muted-foreground',
           '[&_a]:text-accent [&_a]:underline',
-          '[&_code]:rounded [&_code]:bg-surface-3 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs',
-          '[&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-surface-3 [&_pre]:p-2 [&_pre]:text-xs',
+          '[&_code]:rounded [&_code]:bg-surface-3 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm',
+          '[&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-surface-3 [&_pre]:p-2 [&_pre]:text-sm',
           '[&_pre_code]:bg-transparent [&_pre_code]:p-0',
-          '[&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold',
+          '[&_h1]:text-base [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold',
           '[&_table]:block [&_table]:w-max [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse',
           '[&_th]:border [&_th]:border-border-dark [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-medium',
           '[&_td]:border [&_td]:border-border-dark [&_td]:px-2 [&_td]:py-1'
@@ -153,7 +153,7 @@ export function ChatPermissionRequest({
   return (
     <div
       className={cn(
-        'flex flex-col gap-2 rounded-lg border border-border-dark bg-surface-2 px-3 py-2 text-xs',
+        'flex flex-col gap-2 rounded-lg border border-border-dark bg-surface-2 px-3 py-2 text-sm',
         className
       )}
     >
@@ -178,7 +178,7 @@ export function ChatPermissionRequest({
 export function ChatToolCall({ className, children, ...props }: ComponentProps<'div'>) {
   return (
     <div className={cn('flex justify-start', className)} {...props}>
-      <div className="flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
+      <div className="flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted-foreground">
         <Wrench className="size-3.5 shrink-0" />
         <span>{children}</span>
       </div>
@@ -261,7 +261,7 @@ export function ChatInput({
           value={value}
           onKeyDown={handleKeyDown}
           className={cn(
-            'max-h-40 resize-none overflow-y-auto p-3 text-sm bg-surface',
+            'max-h-40 resize-none overflow-y-auto p-3 bg-surface',
             'text-foreground focus-visible:outline-none disabled:opacity-50',
             className
           )}
@@ -277,7 +277,7 @@ export function ChatInput({
                 <Select.Trigger
                   variant="ghost"
                   size="sm"
-                  className="h-full rounded-none px-3 text-xs"
+                  className="h-full rounded-none px-3 text-sm"
                 >
                   <Select.Value placeholder="Select model" />
                 </Select.Trigger>
@@ -294,7 +294,7 @@ export function ChatInput({
           {contextPct != null && (
             <span
               className={cn(
-                'h-full flex items-center px-3 text-xs tabular-nums',
+                'h-full flex items-center px-3 text-sm tabular-nums',
                 contextPct >= 0.9
                   ? 'text-red-400'
                   : contextPct >= 0.7
@@ -307,12 +307,12 @@ export function ChatInput({
             </span>
           )}
           {tokens != null && (
-            <span className="h-full flex items-center px-3 text-xs text-muted-foreground tabular-nums">
+            <span className="h-full flex items-center px-3 text-sm text-muted-foreground tabular-nums">
               {tokens.toLocaleString()} tokens
             </span>
           )}
           {cost != null && (
-            <span className="h-full flex items-center px-3 text-xs text-muted-foreground tabular-nums">
+            <span className="h-full flex items-center px-3 text-sm text-muted-foreground tabular-nums">
               ${cost.toFixed(4)}
             </span>
           )}

@@ -54,16 +54,16 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
         <form onSubmit={handleStart}>
           {/* Dialog Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-dark">
-            <Dialog.Title className="text-xs font-semibold text-foreground truncate max-w-[340px]">
+            <Dialog.Title className="text-sm font-semibold text-foreground truncate max-w-[340px]">
               Port Forwarding for {resourceName || podName}
             </Dialog.Title>
           </div>
 
           {/* Dialog Body */}
-          <div className="flex flex-col gap-4 p-5 text-xs text-foreground">
+          <div className="flex flex-col gap-4 p-5 text-sm text-foreground">
             {/* Target Selection */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-foreground">Exposure Target</label>
+              <label className="text-sm font-medium text-foreground">Exposure Target</label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
@@ -134,7 +134,7 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
             <div className="flex items-center gap-2 pt-1">
               <label
                 htmlFor="local-port-input"
-                className="text-xs text-foreground whitespace-nowrap"
+                className="text-sm text-foreground whitespace-nowrap"
               >
                 Local port to forward from:
               </label>
@@ -144,14 +144,14 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
                 value={localPortInput}
                 onChange={(e) => setLocalPortInput(e.target.value)}
                 placeholder="Random"
-                className="flex-1 bg-transparent border-b border-accent focus:border-accent outline-none text-xs font-mono px-1 py-0.5 text-foreground placeholder:text-muted-foreground/60"
+                className="flex-1 bg-transparent border-b border-accent focus:border-accent outline-none text-sm font-mono px-1 py-0.5 text-foreground placeholder:text-muted-foreground/60"
                 autoFocus
               />
             </div>
 
             {/* Checkboxes */}
             <div className="flex flex-col gap-2 pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-foreground">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={openBrowser}
@@ -170,7 +170,7 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
               variant="secondary"
               size="sm"
               onClick={onClose}
-              className="px-4 text-xs font-medium"
+              className="px-4 text-sm font-medium"
             >
               Cancel
             </Button>
@@ -178,7 +178,7 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
               type="submit"
               variant="primary"
               size="sm"
-              className="px-5 text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white"
+              className="px-5 text-sm font-medium bg-sky-600 hover:bg-sky-500 text-white"
             >
               Start Forwarding
             </Button>

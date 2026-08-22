@@ -509,7 +509,7 @@ export function ListView<TData>({
             key={headerGroup.id}
             role="row"
             style={{ display: 'grid', gridTemplateColumns }}
-            className="bg-surface-2 border-b border-border-dark text-zinc-450 text-[10px] text-xs font-medium  tracking-wider"
+            className="bg-surface-2 border-b border-border-dark text-zinc-450 text-[10px] text-sm font-medium  tracking-wider"
           >
             {headerGroup.headers.map((header) => (
               <div
@@ -595,7 +595,7 @@ export function ListView<TData>({
                 )}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <div key={cell.id} role="cell" className="p-1.5 px-3 text-xs min-w-0 truncate">
+                  <div key={cell.id} role="cell" className="p-1.5 px-3 text-sm min-w-0 truncate">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </div>
                 ))}

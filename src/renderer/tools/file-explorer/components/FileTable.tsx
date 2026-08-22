@@ -505,13 +505,13 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
           );
         }}
         emptyState={
-          <div className="flex-1 flex items-center justify-center text-text-dim text-xs">
+          <div className="flex-1 flex items-center justify-center text-text-dim text-sm">
             This folder is empty
           </div>
         }
       />
       {transferProgress && (
-        <div className="absolute bottom-2 left-2 right-2 z-10 rounded border border-border bg-surface-2/95 px-3 py-2 text-xs text-text-dim shadow-sm">
+        <div className="absolute bottom-2 left-2 right-2 z-10 rounded border border-border bg-surface-2/95 px-3 py-2 text-sm text-text-dim shadow-sm">
           Transferring {transferProgress.currentFile.split('/').pop()} ·{' '}
           {transferProgress.filesCompleted}/{transferProgress.totalFiles} files
           {transferProgress.totalBytes > 0 &&
@@ -562,7 +562,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
               }
             }}
           />
-          {newFileError && <p className="mt-1.5 text-xs text-red-400">{newFileError}</p>}
+          {newFileError && <p className="mt-1.5 text-sm text-red-400">{newFileError}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => setNewFileDialogOpen(false)}>
               Cancel
@@ -599,7 +599,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
               }
             }}
           />
-          {newFolderError && <p className="mt-1.5 text-xs text-red-400">{newFolderError}</p>}
+          {newFolderError && <p className="mt-1.5 text-sm text-red-400">{newFolderError}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => setNewFolderDialogOpen(false)}>
               Cancel

@@ -99,7 +99,7 @@ export const WebSocketLog: React.FC<WebSocketLogProps> = ({ log, status, onClear
 
   return (
     <div className="h-full border-t border-border-light flex flex-col min-h-0">
-      <div className="bg-surface-2 border-b border-border px-3 py-2 flex items-center justify-between text-xs shrink-0 select-none">
+      <div className="bg-surface-2 border-b border-border px-3 py-2 flex items-center justify-between text-sm shrink-0 select-none">
         <span className="font-medium uppercase tracking-wider text-[10px]">Response</span>
         <span
           className={`px-2 py-0.5 rounded text-[10px] font-bold border ${STATUS_CLASS[status]}`}
@@ -116,7 +116,7 @@ export const WebSocketLog: React.FC<WebSocketLogProps> = ({ log, status, onClear
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="pl-8 bg-surface border-border-dark text-xs placeholder:text-zinc-600"
+            className="pl-8 bg-surface border-border-dark text-sm placeholder:text-zinc-600"
           />
         </div>
 
@@ -147,12 +147,12 @@ export const WebSocketLog: React.FC<WebSocketLogProps> = ({ log, status, onClear
 
       <div className="flex-1 overflow-auto select-text">
         {log.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-xs">
+          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-sm">
             <Info size={20} />
             <span>No activity yet. Connect to start streaming messages.</span>
           </div>
         ) : visibleLog.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-xs">
+          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-sm">
             <Search size={20} />
             <span>No messages match your search.</span>
           </div>
@@ -165,7 +165,7 @@ export const WebSocketLog: React.FC<WebSocketLogProps> = ({ log, status, onClear
                 <div key={entry.id} className="border-b border-border-light">
                   <button
                     onClick={() => toggleExpanded(entry.id)}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-surface-2 cursor-pointer transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-2 cursor-pointer transition-colors text-left"
                   >
                     {directionIcon(entry)}
                     <span className="flex-1 min-w-0 truncate font-mono text-zinc-200">
@@ -180,7 +180,7 @@ export const WebSocketLog: React.FC<WebSocketLogProps> = ({ log, status, onClear
                     />
                   </button>
                   {expanded && (
-                    <pre className="px-3 pb-2 pl-8 font-mono text-xs whitespace-pre-wrap break-all text-zinc-300">
+                    <pre className="px-3 pb-2 pl-8 font-mono text-sm whitespace-pre-wrap break-all text-zinc-300">
                       {pretty}
                     </pre>
                   )}

@@ -106,7 +106,7 @@ function DemoRow({ node, meta, isSelected, onSelect, onDelete }: DemoRowProps) {
       isDropTarget={meta.isDropTarget && isValidDropTarget}
       isActive={isSelected}
       className={cn(
-        'gap-1.5 px-1.5 text-xs cursor-pointer select-none',
+        'gap-1.5 px-1.5 text-sm cursor-pointer select-none',
         isSelected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
       )}
       actions={
@@ -182,7 +182,7 @@ export function TreeListGallery() {
             if (node.kind === 'folder') return;
             setSelectedId(node.id);
           }}
-          emptyState={<div className="px-1.5 py-1 text-xs italic text-muted-foreground">Empty</div>}
+          emptyState={<div className="px-1.5 py-1 text-sm italic text-muted-foreground">Empty</div>}
           renderItem={(node, meta) => (
             <DemoRow
               node={node}

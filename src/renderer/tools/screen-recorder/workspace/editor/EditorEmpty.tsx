@@ -32,8 +32,8 @@ export default function EditorEmpty() {
         <Upload size={18} />
       </span>
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-foreground">Nothing to edit yet</p>
-        <p className="max-w-xs text-xs text-muted-foreground">
+        <p className="font-medium text-foreground">Nothing to edit yet</p>
+        <p className="max-w-xs text-sm text-muted-foreground">
           Record something, or browse for an existing video to bring it into the editor.
         </p>
       </div>

@@ -95,7 +95,7 @@ export const KeyValueCodeEditor: FC<KeyValueCodeEditorProps> = memo(function Key
         placeholder={placeholder}
         height="100%"
         editable={!disabled}
-        className="w-full h-full text-xs font-mono !bg-transparent [&_.cm-editor]:h-full [&_.cm-editor]:!bg-transparent [&_.cm-scroller]:h-full [&_.cm-scroller]:!bg-transparent [&_.cm-gutters]:!bg-transparent [&_.cm-content]:!bg-transparent [&_.cm-line]:!bg-transparent"
+        className="w-full h-full text-sm font-mono !bg-transparent [&_.cm-editor]:h-full [&_.cm-editor]:!bg-transparent [&_.cm-scroller]:h-full [&_.cm-scroller]:!bg-transparent [&_.cm-gutters]:!bg-transparent [&_.cm-content]:!bg-transparent [&_.cm-line]:!bg-transparent"
         theme={theme === 'dark' ? vscodeDark : vscodeLight}
         extensions={extensions}
         basicSetup={basicSetupConfig}

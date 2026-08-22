@@ -136,7 +136,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
           onChange={onChange}
           placeholder={placeholder}
           height="100%"
-          className="flex-1 min-h-0 text-sm [&_.cm-editor]:h-full"
+          className="flex-1 min-h-0 [&_.cm-editor]:h-full"
           theme={theme === 'dark' ? vscodeDark : vscodeLight}
           extensions={extensions}
           basicSetup={{

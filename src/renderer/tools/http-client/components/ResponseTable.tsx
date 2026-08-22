@@ -34,7 +34,7 @@ export const ResponseTable: React.FC<ResponseTableProps> = ({ format, text }) =>
 
   if (!data || error) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-xs">
+      <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-sm">
         <AlertTriangle size={20} />
         <span>{error}</span>
       </div>
@@ -43,7 +43,7 @@ export const ResponseTable: React.FC<ResponseTableProps> = ({ format, text }) =>
 
   if (data.rows.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-xs">
+      <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-sm">
         <span>Empty {data.kind === 'rows' ? 'array' : 'collection'}.</span>
       </div>
     );
@@ -60,7 +60,7 @@ export const ResponseTable: React.FC<ResponseTableProps> = ({ format, text }) =>
 const TableGrid: React.FC<{ data: TableData }> = ({ data }) => {
   if (data.kind === 'rows') {
     return (
-      <table className="w-full text-xs border-collapse">
+      <table className="w-full text-sm border-collapse">
         <thead className="sticky top-0 bg-surface-3 z-10">
           <tr>
             <th className={TH_CLASS}>#</th>
@@ -89,7 +89,7 @@ const TableGrid: React.FC<{ data: TableData }> = ({ data }) => {
 
   if (data.kind === 'keyValue') {
     return (
-      <table className="w-full text-xs border-collapse table-fixed">
+      <table className="w-full text-sm border-collapse table-fixed">
         <thead className="sticky top-0 bg-surface-3 z-10">
           <tr>
             <th className={`${TH_CLASS} w-1/3`}>Key</th>
@@ -111,7 +111,7 @@ const TableGrid: React.FC<{ data: TableData }> = ({ data }) => {
   }
 
   return (
-    <table className="w-full text-xs border-collapse">
+    <table className="w-full text-sm border-collapse">
       <thead className="sticky top-0 bg-surface-3 z-10">
         <tr>
           <th className={TH_CLASS}>#</th>

@@ -17,7 +17,7 @@ export const TelemetryStatus: React.FC = () => {
     <Popover.Root>
       <Popover.Trigger
         className={cn(
-          'flex h-full items-center gap-1.5 px-4 text-xs text-muted-foreground outline-none',
+          'flex h-full items-center gap-1.5 px-4 text-sm text-muted-foreground outline-none',
           'hover:bg-surface-2 hover:text-foreground'
         )}
       >
@@ -25,7 +25,7 @@ export const TelemetryStatus: React.FC = () => {
         <span>{optIn ? 'Usage data' : 'Usage data off'}</span>
       </Popover.Trigger>
 
-      <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-xs">
+      <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-sm">
         <h2 className="font-medium">Usage tracking</h2>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           We only send which tools get used -- never file paths, request content, or anything you

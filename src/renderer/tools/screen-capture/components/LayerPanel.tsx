@@ -128,7 +128,7 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
                 focusLayer();
                 patchAnnotation(annotation.id, { text: preset });
               }}
-              className={cn(tierButtonClass(annotation.text === preset), 'w-auto px-2 text-xs')}
+              className={cn(tierButtonClass(annotation.text === preset), 'w-auto px-2 text-sm')}
             >
               {preset}
             </button>
@@ -140,7 +140,7 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
               focusLayer();
               patchAnnotation(annotation.id, { text: 'Custom' });
             }}
-            className={cn(tierButtonClass(isCustomChip), 'w-auto px-2 text-xs')}
+            className={cn(tierButtonClass(isCustomChip), 'w-auto px-2 text-sm')}
           >
             Custom
           </button>
@@ -227,7 +227,7 @@ function LayerProperties({ annotation }: { annotation: CaptureAnnotation }): JSX
       )}
 
       {annotation.kind === 'highlight' && (
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-text-dim select-none">
           <input
             type="checkbox"
             checked={annotation.lineCap === 'square'}
@@ -324,7 +324,7 @@ export function LayerPanel(): JSX.Element {
   return (
     <aside className="flex min-h-0 w-56 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-surface-2">
       <header className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-2">
-        <span className="min-w-0 flex-1 text-xs font-medium text-text-dim">Layers</span>
+        <span className="min-w-0 flex-1 text-sm font-medium text-text-dim">Layers</span>
         <button
           type="button"
           aria-label="Undo"
@@ -349,7 +349,7 @@ export function LayerPanel(): JSX.Element {
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
         <div className="flex flex-col gap-1">
           {topFirst.length === 0 && (
-            <p className="px-2 py-3 text-xs text-text-dim">No edits yet.</p>
+            <p className="px-2 py-3 text-sm text-text-dim">No edits yet.</p>
           )}
           {topFirst.map((annotation) => {
             const Icon = KIND_ICONS[annotation.kind];
@@ -383,7 +383,7 @@ export function LayerPanel(): JSX.Element {
                   onClick={() => setSelectedId(annotation.id)}
                   onDoubleClick={() => setRenamingId(annotation.id)}
                   className={cn(
-                    'group flex cursor-grab items-center gap-2 px-2 py-1.5 text-xs select-none',
+                    'group flex cursor-grab items-center gap-2 px-2 py-1.5 text-sm select-none',
                     selectedId === annotation.id
                       ? 'bg-surface-4 text-text-base'
                       : 'text-text-dim hover:bg-surface-3 hover:text-text-base',
@@ -414,7 +414,7 @@ export function LayerPanel(): JSX.Element {
                         if (e.key === 'Escape') setRenamingId(null);
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full min-w-0 rounded-sm border border-border bg-surface px-1 py-0.5 text-xs text-text-base outline-none focus-visible:border-accent"
+                      className="w-full min-w-0 rounded-sm border border-border bg-surface px-1 py-0.5 text-sm text-text-base outline-none focus-visible:border-accent"
                     />
                   ) : (
                     <span

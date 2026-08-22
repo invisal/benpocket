@@ -154,7 +154,7 @@ export const WarningsFeed: React.FC<WarningsFeedProps> = ({ events, namespace })
 
   return (
     <div className="flex flex-col gap-2 select-none min-w-0 w-full">
-      <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
+      <span className="text-sm font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
         Warning Events Log
       </span>
 

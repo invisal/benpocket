@@ -79,7 +79,7 @@ export function WorkspaceTree({ previewFile, onSelectFile }: WorkspaceTreeProps)
             <TreeList.ExpandToggle hasChildren={meta.hasChildren} isExpanded={meta.isExpanded} />
           )}
           {node.isPlaceholder ? (
-            <span className="pl-[14px] text-xs italic text-text-dim">Loading…</span>
+            <span className="pl-[14px] text-sm italic text-text-dim">Loading…</span>
           ) : (
             <>
               {node.isDirectory ? (
@@ -94,7 +94,7 @@ export function WorkspaceTree({ previewFile, onSelectFile }: WorkspaceTreeProps)
                   className="size-3.5 shrink-0 text-zinc-500"
                 />
               )}
-              <span className="truncate text-xs">{node.name}</span>
+              <span className="truncate text-sm">{node.name}</span>
             </>
           )}
         </TreeList.Item>

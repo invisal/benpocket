@@ -213,7 +213,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
 
   return (
     <div className={cn('p-2 flex flex-col gap-2 h-[280px] select-none min-w-0 w-full relative')}>
-      <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0">
+      <span className="text-sm font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0">
         Live Utilization Timeline
       </span>
 

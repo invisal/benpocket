@@ -11,7 +11,7 @@ interface RecentListProps {
 export const RecentList: React.FC<RecentListProps> = ({ recents, activeContext, onConnect }) => {
   return (
     <div className="flex flex-col gap-3 min-h-0 flex-1">
-      <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider font-sans">Recent</h3>
+      <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider font-sans">Recent</h3>
 
       {recents.length === 0 ? (
         <p className="text-[11px] text-zinc-600 pl-1.5 italic">No recent connections.</p>
@@ -34,7 +34,7 @@ export const RecentList: React.FC<RecentListProps> = ({ recents, activeContext, 
                     className={`size-3.5 shrink-0 ${isConnected ? 'text-accent' : 'text-zinc-500'}`}
                   />
                   <div className="truncate pr-2">
-                    <p className="text-xs font-medium truncate">{item.contextName}</p>
+                    <p className="text-sm font-medium truncate">{item.contextName}</p>
                     <p className="text-[9px] text-zinc-500 truncate font-mono">
                       {item.server || 'default-endpoint'}
                     </p>

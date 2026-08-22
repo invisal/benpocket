@@ -65,7 +65,7 @@ export const BottomPanel: React.FC = () => {
 
       {/* Fallback for other tools */}
       {activeActivity !== 'kuberneter' && (
-        <div className="flex-1 flex items-center justify-center text-xs text-zinc-500 font-mono">
+        <div className="flex-1 flex items-center justify-center text-sm text-zinc-500 font-mono">
           Terminal & Bottom Panel (Active tool: {activeActivity || 'None'})
         </div>
       )}

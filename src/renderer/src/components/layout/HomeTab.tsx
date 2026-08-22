@@ -46,7 +46,7 @@ export const HomeTab: React.FC = () => {
       <p>various of random tools for developers</p>
 
       <input
-        className="border w-md h-9 text-sm px-2 rounded mt-4 mb-12 bg-surface-2 border-border outline-none"
+        className="border w-md h-9 px-2 rounded mt-4 mb-12 bg-surface-2 border-border outline-none"
         placeholder="Search tool..."
       />
 
@@ -70,7 +70,7 @@ export const HomeTab: React.FC = () => {
                   <tool.icon size={18} />
                 )}
               </span>
-              <p className="flex flex-col text-sm justify-center">
+              <p className="flex flex-col justify-center">
                 <span className="font-medium">{tool.name}</span>
                 <span className="text-gray-500">{tool.description}</span>
               </p>

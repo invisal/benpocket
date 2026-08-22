@@ -235,7 +235,7 @@ export function AgentPanel({ workingDirectory }: AgentPanelProps) {
   if (connected === false) {
     return (
       <>
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground text-xs px-4 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground text-sm px-4 text-center">
           <span>Connect an AI Gateway to chat with the agent.</span>
           <Button variant="secondary" size="sm" onClick={() => setConnectOpen(true)}>
             <Settings2 size={14} />

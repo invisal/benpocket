@@ -28,7 +28,7 @@ export const AppShell: React.FC = () => {
     <div className="h-screen w-screen flex overflow-hidden bg-zinc-900 text-zinc-300 font-sans antialiased">
       <ActivityBar />
       <div className="w-full flex flex-col">
-        <div className="h-10 titlebar-drag bg-surface border-b border-border-light items-center flex">
+        <div className="h-11 titlebar-drag bg-surface border-b border-border-light items-center flex">
           <TitleBarText />
           <TitleBarControl />
         </div>
@@ -45,7 +45,7 @@ function TitleBarText() {
   const content = useTitleBarStore((s) => s.content);
 
   return (
-    <div id="title-bar" className="text-foreground px-3 flex-1 text-xs font-medium text-strong">
+    <div id="title-bar" className="text-foreground px-3 flex-1 text-sm font-medium text-strong">
       {content ?? 'Benpocket'}
     </div>
   );

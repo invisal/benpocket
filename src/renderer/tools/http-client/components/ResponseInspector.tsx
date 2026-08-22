@@ -48,7 +48,7 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
 
   return (
     <div className="h-full border-t border-border-light flex flex-col min-h-0">
-      <div className="bg-surface-2 border-b border-border px-3 py-2 flex items-center justify-between text-xs shrink-0 select-none">
+      <div className="bg-surface-2 border-b border-border px-3 py-2 flex items-center justify-between text-sm shrink-0 select-none">
         <span className="font-medium uppercase tracking-wider text-[10px]">Response</span>
         {response && (
           <div className="flex gap-3 text-[10px] items-center">
@@ -69,7 +69,7 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
           </div>
         ) : response ? (
           response.error ? (
-            <div className="flex-1 p-4 font-mono text-xs text-red-400 overflow-auto select-text">
+            <div className="flex-1 p-4 font-mono text-sm text-red-400 overflow-auto select-text">
               {response.error}
             </div>
           ) : (
@@ -78,7 +78,7 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
               onValueChange={(value) => setActiveTab(value as ResponseTabValue)}
               className="flex flex-col min-h-0 flex-1"
             >
-              <Tabs.List className="flex gap-4 border-b border-border px-3 text-xs select-none shrink-0">
+              <Tabs.List className="flex gap-4 border-b border-border px-3 text-sm select-none shrink-0">
                 <Tabs.Tab value="body" className={tabClassName(activeTab === 'body')}>
                   Body
                 </Tabs.Tab>
@@ -106,7 +106,7 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
             </Tabs.Root>
           )
         ) : (
-          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-xs">
+          <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-sm">
             <AlertCircle size={20} />
             <span>Enter request parameters and click Send to inspect results.</span>
           </div>

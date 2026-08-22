@@ -117,7 +117,7 @@ function ToolRow({
       </span>
       <span className="flex min-w-0 flex-col">
         <span className="truncate text-[13px] font-medium text-text-base">{name}</span>
-        {description && <span className="truncate text-xs text-text-dim">{description}</span>}
+        {description && <span className="truncate text-sm text-text-dim">{description}</span>}
       </span>
     </button>
   );

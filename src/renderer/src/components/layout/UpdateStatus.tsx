@@ -42,7 +42,7 @@ export const UpdateStatus: React.FC = () => {
         onClick={handleTriggerClick}
         title={status.state === 'error' ? status.message : undefined}
         className={cn(
-          'flex h-full items-center gap-1.5 px-4 text-xs text-muted-foreground outline-none',
+          'flex h-full items-center gap-1.5 px-4 text-sm text-muted-foreground outline-none',
           'hover:bg-surface-2 hover:text-foreground'
         )}
       >
@@ -65,7 +65,7 @@ export const UpdateStatus: React.FC = () => {
         </span>
       </Popover.Trigger>
 
-      <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-xs">
+      <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-sm">
         {status.state === 'available' && (
           <>
             <h2 className="font-medium">Version {status.version} is available</h2>

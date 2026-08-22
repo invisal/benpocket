@@ -139,7 +139,7 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
             <AlertTriangle className="size-4 text-amber-500 shrink-0" />
             <span>{isUnschedulable ? 'Uncordon Node' : 'Cordon Node'}</span>
           </Dialog.Title>
-          <Dialog.Description className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          <Dialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {isUnschedulable ? (
               <>
                 Are you sure you want to uncordon node <b className="text-foreground">{name}</b>?
@@ -163,14 +163,14 @@ export const NodeHeaderActions: React.FC<NodeHeaderActionsProps> = ({ payload })
             <button
               onClick={() => setConfirmOpen(false)}
               disabled={loading}
-              className="px-3 py-1.5 rounded text-xs text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded text-sm text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={() => void handleToggleCordon()}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-white bg-amber-600 hover:bg-amber-500 transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white bg-amber-600 hover:bg-amber-500 transition-colors cursor-pointer disabled:opacity-50"
             >
               {loading && <RefreshCw className="size-3 animate-spin" />}
               <span>{isUnschedulable ? 'Uncordon' : 'Cordon'}</span>

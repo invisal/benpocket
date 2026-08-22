@@ -280,7 +280,7 @@ function FileExplorerLayout() {
           <Dialog.Description>
             {pendingFileName} has unsaved changes. Save them before leaving?
           </Dialog.Description>
-          {dialogError && <p className="mt-2 text-xs text-red-500">{dialogError}</p>}
+          {dialogError && <p className="mt-2 text-sm text-red-500">{dialogError}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={handleCancelLeave}>
               Cancel

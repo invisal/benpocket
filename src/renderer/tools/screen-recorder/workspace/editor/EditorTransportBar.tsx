@@ -121,7 +121,7 @@ export function EditorTransportBar({
         </button>
       </div>
 
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+      <span className="font-mono text-sm tabular-nums text-muted-foreground">
         {formatTime(currentTimeMs)} / {formatTime(durationMs)}
       </span>
     </div>

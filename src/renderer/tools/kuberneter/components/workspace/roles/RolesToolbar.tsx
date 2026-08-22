@@ -39,7 +39,7 @@ export const RolesToolbar: React.FC<RolesToolbarProps> = ({
           <Select.Trigger
             variant="outline"
             size="sm"
-            className="w-40 flex items-center justify-between text-xs font-sans h-7 px-2 bg-surface-3 border border-border-dark/60 hover:bg-surface-4"
+            className="w-40 flex items-center justify-between text-sm font-sans h-7 px-2 bg-surface-3 border border-border-dark/60 hover:bg-surface-4"
           >
             <Select.Value />
           </Select.Trigger>

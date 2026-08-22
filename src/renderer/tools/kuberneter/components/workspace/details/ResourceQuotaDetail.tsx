@@ -93,7 +93,7 @@ export const ResourceQuotaDetail: React.FC<ResourceQuotaDetailProps> = ({
   });
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No resource quota details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No resource quota details available.</div>;
   }
 
   const rawItem = (queryData || payload.rawItem) as unknown as ResourceQuotaRawResource | undefined;
@@ -272,7 +272,7 @@ export const ResourceQuotaDetail: React.FC<ResourceQuotaDetailProps> = ({
                 return (
                   <div
                     key={q.resourceName}
-                    className="flex flex-col gap-1 px-3 py-2.5 text-xs hover:bg-surface-3/20 transition-colors"
+                    className="flex flex-col gap-1 px-3 py-2.5 text-sm hover:bg-surface-3/20 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <span
@@ -281,7 +281,7 @@ export const ResourceQuotaDetail: React.FC<ResourceQuotaDetailProps> = ({
                       >
                         {q.resourceName}
                       </span>
-                      <span className="font-mono text-zinc-300 shrink-0 text-xs">
+                      <span className="font-mono text-zinc-300 shrink-0 text-sm">
                         <span className="text-foreground font-medium">{q.used}</span>{' '}
                         <span className="text-zinc-550 font-normal">/</span> {q.hard}{' '}
                         {hardNum > 0 && (
@@ -303,14 +303,14 @@ export const ResourceQuotaDetail: React.FC<ResourceQuotaDetailProps> = ({
             </div>
           </div>
         ) : (
-          <span className="text-xs text-zinc-500 italic px-1">No quota rules defined.</span>
+          <span className="text-sm text-zinc-500 italic px-1">No quota rules defined.</span>
         )}
       </div>
 
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

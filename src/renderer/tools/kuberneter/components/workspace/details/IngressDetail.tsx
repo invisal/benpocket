@@ -427,7 +427,7 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
   );
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Ingress details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Ingress details available.</div>;
   }
 
   return (
@@ -504,7 +504,7 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
             />
           </div>
         ) : (
-          <span className="text-xs text-zinc-500 italic px-1">No rules configured.</span>
+          <span className="text-sm text-zinc-500 italic px-1">No rules configured.</span>
         )}
       </div>
 
@@ -528,7 +528,7 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

@@ -79,7 +79,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
   });
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Endpoint Slice details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Endpoint Slice details available.</div>;
   }
 
   const currentData = queryData || payload;
@@ -258,7 +258,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
           Endpoints ({endpoints.length})
         </span>
         {endpoints.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No endpoints found</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No endpoints found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col max-h-[180px] h-auto w-full overflow-y-auto">
             <KubeTable<EndpointSliceEndpoint>
@@ -354,7 +354,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
           Ports ({ports.length})
         </span>
         {ports.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No ports found</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No ports found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col max-h-[140px] h-auto w-full overflow-y-auto">
             <KubeTable<EndpointSlicePort>
@@ -395,7 +395,7 @@ export const EndpointSliceDetail: React.FC<EndpointSliceDetailProps> = ({
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

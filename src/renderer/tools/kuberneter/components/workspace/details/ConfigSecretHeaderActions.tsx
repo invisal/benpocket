@@ -159,7 +159,7 @@ export const ConfigSecretHeaderActions: FC<ConfigSecretHeaderActionsProps> = ({
             <AlertTriangle className="size-4 text-rose-500 shrink-0" />
             <span>Delete {kind}</span>
           </Dialog.Title>
-          <Dialog.Description className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          <Dialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Are you sure you want to delete {kind} <b className="text-foreground">{name}</b>
             {namespace ? (
               <>
@@ -181,7 +181,7 @@ export const ConfigSecretHeaderActions: FC<ConfigSecretHeaderActionsProps> = ({
               type="button"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isDeleting}
-              className="px-3 py-1.5 rounded text-xs text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded text-sm text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
@@ -189,7 +189,7 @@ export const ConfigSecretHeaderActions: FC<ConfigSecretHeaderActionsProps> = ({
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
             >
               {isDeleting && <Loader2 className="size-3 animate-spin" />}
               <span>Delete</span>

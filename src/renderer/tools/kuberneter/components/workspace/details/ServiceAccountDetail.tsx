@@ -17,7 +17,7 @@ export const ServiceAccountDetail: React.FC<ServiceAccountDetailProps> = ({
   const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Service Account details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Service Account details available.</div>;
   }
 
   const handleNamespaceClick = () => {
@@ -143,7 +143,7 @@ export const ServiceAccountDetail: React.FC<ServiceAccountDetailProps> = ({
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

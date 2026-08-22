@@ -379,7 +379,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
   }, [currentNs, openNamespaceDetail]);
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Service details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Service details available.</div>;
   }
 
   const annotations = currentData.annotations ? Object.entries(currentData.annotations) : [];
@@ -665,7 +665,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
           Endpoint Slices ({endpointSlices.length})
         </span>
         {endpointSlices.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No endpoint slices found</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No endpoint slices found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-[160px]">
             <KubeTable<ServiceEndpointSlice>
@@ -729,7 +729,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
           Endpoints ({endpoints.length})
         </span>
         {endpoints.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No endpoints found</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No endpoints found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-[160px]">
             <KubeTable<ServiceEndpoint>
@@ -774,7 +774,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
             </span>
           </div>
           {pods.length === 0 ? (
-            <div className="text-xs text-zinc-500 italic pl-1">
+            <div className="text-sm text-zinc-500 italic pl-1">
               No matching pods found in namespace
             </div>
           ) : (
@@ -839,7 +839,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                   {
                     key: 'cpu',
                     header: 'CPU',
-                    className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                    className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                     render: (row) => {
                       const podMetric = metricItems.find(
                         (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -855,7 +855,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                   {
                     key: 'memory',
                     header: 'Memory',
-                    className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                    className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                     render: (row) => {
                       const podMetric = metricItems.find(
                         (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -871,7 +871,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                   {
                     key: 'status',
                     header: 'Status',
-                    className: 'py-2 px-3 font-semibold text-xs',
+                    className: 'py-2 px-3 font-semibold text-sm',
                     render: (row) => (
                       <span
                         className={
@@ -949,7 +949,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
 
       <PortForwardDialog

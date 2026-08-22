@@ -86,7 +86,7 @@ const SecretEntryRow: FC<SecretEntryRowProps> = memo(function SecretEntryRow({
                 placeholder="KEY_NAME"
                 value={entryKey}
                 onChange={(e) => onKeyChange(id, e.target.value)}
-                className="w-full h-8 px-2.5 text-xs font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors truncate"
+                className="w-full h-8 px-2.5 text-sm font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors truncate"
               />
             </div>
 
@@ -94,7 +94,7 @@ const SecretEntryRow: FC<SecretEntryRowProps> = memo(function SecretEntryRow({
             <div className="flex flex-col min-w-0">
               {!isRevealed ? (
                 <div className="flex items-center w-full h-8 px-3 bg-surface-2 border border-border/60 rounded text-zinc-400 select-none">
-                  <span className="text-xs font-mono text-zinc-400 flex items-center gap-1.5 italic">
+                  <span className="text-sm font-mono text-zinc-400 flex items-center gap-1.5 italic">
                     <Lock className="size-3 text-zinc-500" />
                     Value encrypted
                   </span>
@@ -502,7 +502,7 @@ export const SecretDetail: FC<SecretDetailProps> = ({ payload, isTab = false }) 
     : currentData?.createdTime || payload?.createdTime || 'N/A';
 
   if (!payload && !currentData) {
-    return <div className="p-4 text-xs text-zinc-500">No secret details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No secret details available.</div>;
   }
 
   const allRevealed = entries.length > 0 && entries.every((e) => e.isRevealed);
@@ -702,7 +702,7 @@ export const SecretDetail: FC<SecretDetailProps> = ({ payload, isTab = false }) 
           </div>
 
           {filteredEntries.length === 0 ? (
-            <div className="p-4 text-xs text-zinc-500 italic text-center">
+            <div className="p-4 text-sm text-zinc-500 italic text-center">
               {entries.length === 0
                 ? 'No data entries. Click "Add Entry" to create one.'
                 : 'No matching data entries found.'}
@@ -735,7 +735,7 @@ export const SecretDetail: FC<SecretDetailProps> = ({ payload, isTab = false }) 
               size="sm"
               onClick={handleReset}
               disabled={isApplying}
-              className="h-7 text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5"
+              className="h-7 text-sm text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5"
             >
               <RotateCcw className="size-3.5" />
               <span>Reset</span>
@@ -745,7 +745,7 @@ export const SecretDetail: FC<SecretDetailProps> = ({ payload, isTab = false }) 
               size="sm"
               onClick={handleApply}
               disabled={isApplying}
-              className="h-7 text-xs font-medium flex items-center gap-1.5 bg-accent hover:bg-accent/90 text-white"
+              className="h-7 text-sm font-medium flex items-center gap-1.5 bg-accent hover:bg-accent/90 text-white"
             >
               {isApplying ? (
                 <>
@@ -766,7 +766,7 @@ export const SecretDetail: FC<SecretDetailProps> = ({ payload, isTab = false }) 
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

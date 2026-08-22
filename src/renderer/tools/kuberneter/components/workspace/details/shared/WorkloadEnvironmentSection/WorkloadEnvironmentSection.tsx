@@ -557,7 +557,7 @@ export const WorkloadEnvironmentSection: FC<WorkloadEnvironmentSectionProps> = (
                     key={c.name}
                     type="button"
                     onClick={() => setActiveContainerIndex(idx)}
-                    className={`px-2.5 py-1 text-xs font-mono rounded cursor-pointer transition-colors border-none ${
+                    className={`px-2.5 py-1 text-sm font-mono rounded cursor-pointer transition-colors border-none ${
                       isSelected
                         ? 'bg-accent/20 text-accent font-semibold'
                         : 'bg-surface-3 text-zinc-400 hover:text-zinc-200 hover:bg-surface-4'
@@ -591,7 +591,7 @@ export const WorkloadEnvironmentSection: FC<WorkloadEnvironmentSectionProps> = (
             <div className="flex items-center justify-between p-2.5 bg-surface-2/90 border border-amber-500/30 rounded-lg mt-1">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-xs text-amber-300 font-medium">
+                <span className="text-sm text-amber-300 font-medium">
                   You have unsaved environment changes
                 </span>
               </div>
@@ -602,7 +602,7 @@ export const WorkloadEnvironmentSection: FC<WorkloadEnvironmentSectionProps> = (
                   size="sm"
                   onClick={handleReset}
                   disabled={isApplying}
-                  className="h-7 px-2.5 text-xs text-zinc-400 hover:text-zinc-200"
+                  className="h-7 px-2.5 text-sm text-zinc-400 hover:text-zinc-200"
                 >
                   <RotateCcw className="size-3 mr-1" />
                   Discard
@@ -612,7 +612,7 @@ export const WorkloadEnvironmentSection: FC<WorkloadEnvironmentSectionProps> = (
                   size="sm"
                   onClick={handleApply}
                   disabled={isApplying}
-                  className="h-7 px-3 text-xs flex items-center gap-1.5"
+                  className="h-7 px-3 text-sm flex items-center gap-1.5"
                 >
                   {isApplying ? (
                     <Loader2 className="size-3 animate-spin" />

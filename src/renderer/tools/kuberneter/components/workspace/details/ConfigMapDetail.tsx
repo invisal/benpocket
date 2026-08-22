@@ -68,7 +68,7 @@ const ConfigMapEntryRow: FC<ConfigMapEntryRowProps> = memo(function ConfigMapEnt
                 placeholder="KEY_NAME"
                 value={entryKey}
                 onChange={(e) => onKeyChange(id, e.target.value)}
-                className="w-full h-8 px-2.5 text-xs font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors truncate"
+                className="w-full h-8 px-2.5 text-sm font-mono bg-surface-2 border border-border/60 focus:border-accent rounded text-zinc-200 outline-none transition-colors truncate"
               />
             </div>
             <div className="flex flex-col min-w-0">
@@ -406,7 +406,7 @@ export const ConfigMapDetail: FC<ConfigMapDetailProps> = ({ payload, isTab = fal
     : currentData?.createdTime || payload?.createdTime || 'N/A';
 
   if (!payload && !currentData) {
-    return <div className="p-4 text-xs text-zinc-500">No config map details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No config map details available.</div>;
   }
 
   const propertiesData: PropertyItem[] = [
@@ -588,7 +588,7 @@ export const ConfigMapDetail: FC<ConfigMapDetailProps> = ({ payload, isTab = fal
           </div>
 
           {filteredEntries.length === 0 ? (
-            <div className="p-4 text-xs text-zinc-500 italic text-center">
+            <div className="p-4 text-sm text-zinc-500 italic text-center">
               {entries.length === 0
                 ? 'No data entries. Click "Add Entry" to create one.'
                 : 'No matching data entries found.'}
@@ -619,7 +619,7 @@ export const ConfigMapDetail: FC<ConfigMapDetailProps> = ({ payload, isTab = fal
               size="sm"
               onClick={handleReset}
               disabled={isApplying}
-              className="h-7 text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5"
+              className="h-7 text-sm text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5"
             >
               <RotateCcw className="size-3.5" />
               <span>Reset</span>
@@ -629,7 +629,7 @@ export const ConfigMapDetail: FC<ConfigMapDetailProps> = ({ payload, isTab = fal
               size="sm"
               onClick={handleApply}
               disabled={isApplying}
-              className="h-7 text-xs font-medium flex items-center gap-1.5 bg-accent hover:bg-accent/90 text-white"
+              className="h-7 text-sm font-medium flex items-center gap-1.5 bg-accent hover:bg-accent/90 text-white"
             >
               {isApplying ? (
                 <>
@@ -659,7 +659,7 @@ export const ConfigMapDetail: FC<ConfigMapDetailProps> = ({ payload, isTab = fal
                 key={key}
                 className="flex items-center justify-between p-2.5 border border-border rounded-lg bg-surface-2"
               >
-                <span className="font-mono text-xs text-zinc-200">{key}</span>
+                <span className="font-mono text-sm text-zinc-200">{key}</span>
                 <span className="text-[10px] text-zinc-500 font-mono">
                   {val ? `${val.length} bytes` : '0 bytes'}
                 </span>
@@ -672,7 +672,7 @@ export const ConfigMapDetail: FC<ConfigMapDetailProps> = ({ payload, isTab = fal
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

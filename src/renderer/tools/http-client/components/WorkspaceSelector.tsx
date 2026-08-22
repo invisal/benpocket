@@ -102,7 +102,7 @@ export const WorkspaceSelector: React.FC = () => {
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} align="start" className="z-50">
-          <Popover.Popup className="bg-surface border border-border-dark rounded-lg shadow-xl p-3 w-72 flex flex-col gap-3 text-xs outline-none">
+          <Popover.Popup className="bg-surface border border-border-dark rounded-lg shadow-xl p-3 w-72 flex flex-col gap-3 text-sm outline-none">
             <div className="flex items-center justify-between">
               <span className="font-bold text-zinc-300 uppercase tracking-wider text-[10px]">
                 Workspace

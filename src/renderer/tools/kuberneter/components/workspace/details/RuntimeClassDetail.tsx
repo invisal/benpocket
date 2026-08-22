@@ -125,7 +125,7 @@ export const RuntimeClassDetail: React.FC<RuntimeClassDetailProps> = ({
   });
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No RuntimeClass details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No RuntimeClass details available.</div>;
   }
 
   const rawItem = (queryData?.rcItem || payload.rawItem) as unknown as
@@ -186,7 +186,7 @@ export const RuntimeClassDetail: React.FC<RuntimeClassDetailProps> = ({
       id: 'overhead',
       name: 'Overhead',
       value: (
-        <div className="flex gap-2 font-mono text-xs">
+        <div className="flex gap-2 font-mono text-sm">
           {overhead.cpu && <span>CPU: {overhead.cpu}</span>}
           {overhead.memory && <span>Memory: {overhead.memory}</span>}
         </div>
@@ -301,7 +301,7 @@ export const RuntimeClassDetail: React.FC<RuntimeClassDetailProps> = ({
           </span>
         </div>
         {pods.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">
+          <div className="text-sm text-zinc-500 italic pl-1">
             No pods currently using this RuntimeClass
           </div>
         ) : (
@@ -375,7 +375,7 @@ export const RuntimeClassDetail: React.FC<RuntimeClassDetailProps> = ({
                 {
                   key: 'cpu',
                   header: 'CPU',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -391,7 +391,7 @@ export const RuntimeClassDetail: React.FC<RuntimeClassDetailProps> = ({
                 {
                   key: 'memory',
                   header: 'Memory',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -440,7 +440,7 @@ export const RuntimeClassDetail: React.FC<RuntimeClassDetailProps> = ({
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

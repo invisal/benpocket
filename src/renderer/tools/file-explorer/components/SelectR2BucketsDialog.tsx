@@ -67,19 +67,19 @@ export function SelectR2BucketsDialog({ open, onOpenChange, onSaved }: SelectR2B
         </Dialog.Description>
 
         <div className="mt-4">
-          {state === 'loading' && <p className="text-xs text-text-dim">Loading buckets…</p>}
-          {state === 'error' && <p className="text-xs text-red-400">{errorMessage}</p>}
+          {state === 'loading' && <p className="text-sm text-text-dim">Loading buckets…</p>}
+          {state === 'error' && <p className="text-sm text-red-400">{errorMessage}</p>}
           {state === 'ready' && (
             <div className="flex flex-col gap-3">
               {buckets.length === 0 ? (
-                <p className="text-xs text-text-dim">No buckets found on this account.</p>
+                <p className="text-sm text-text-dim">No buckets found on this account.</p>
               ) : (
                 <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
                   {buckets.map((name) => (
                     <label
                       key={name}
                       className={cn(
-                        'flex items-center gap-2 rounded px-2 py-1 text-xs cursor-pointer',
+                        'flex items-center gap-2 rounded px-2 py-1 text-sm cursor-pointer',
                         'hover:bg-surface-3'
                       )}
                     >

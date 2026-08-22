@@ -23,7 +23,7 @@ export function SettingsMockup() {
       <div className="flex-1 overflow-y-auto bg-surface-2 p-6">
         <div className="mx-auto flex max-w-md flex-col gap-6">
           <section className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
-            <h3 className="text-xs font-medium text-muted-foreground">Profile</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Profile</h3>
             <label className="flex flex-col gap-1.5">
               <span className="text-[11px] text-muted-foreground">Name</span>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -35,7 +35,7 @@ export function SettingsMockup() {
           </section>
 
           <section className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
-            <h3 className="text-xs font-medium text-muted-foreground">Appearance</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Appearance</h3>
             <label className="flex flex-col gap-1.5">
               <span className="text-[11px] text-muted-foreground">Theme</span>
               <Select.Root value={theme} onValueChange={(value) => setTheme(value as string)}>

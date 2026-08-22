@@ -19,7 +19,7 @@ export function PillTabItem({ className, ...props }: ComponentProps<typeof TabsP
   return (
     <TabsPrimitive.Tab
       className={cn(
-        'relative z-10 flex items-center gap-1.5 px-2 h-7 text-xs cursor-pointer outline-none transition-colors',
+        'relative z-10 flex items-center gap-1.5 px-2 h-7 text-sm cursor-pointer outline-none transition-colors',
         'text-muted-foreground hover:text-foreground',
         'data-[active]:text-strong',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
@@ -74,7 +74,7 @@ export function UnderlineTabItem({
   return (
     <TabsPrimitive.Tab
       className={cn(
-        'cursor-pointer px-3 py-1.5 text-xs font-medium text-muted-foreground outline-none transition-colors',
+        'cursor-pointer px-3 py-1.5 text-sm font-medium text-muted-foreground outline-none transition-colors',
         'hover:text-foreground',
         'data-[active]:text-accent',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',

@@ -19,7 +19,7 @@ function StatusBadge({ status }: { status: PortForwardData['status'] }) {
   return (
     <span
       className={cn(
-        'font-mono text-xs font-semibold',
+        'font-mono text-sm font-semibold',
         status === 'Active' && 'text-green-400',
         status === 'Stopped' && 'text-zinc-500',
         status === 'Error' && 'text-red-400'

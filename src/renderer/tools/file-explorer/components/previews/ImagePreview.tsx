@@ -120,7 +120,7 @@ export const ImagePreview = forwardRef<
 
   if (state.status === 'error') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-sm px-4 text-center">
         <AlertCircle size={20} className="text-red-500" />
         <span>{state.message}</span>
       </div>
@@ -148,7 +148,7 @@ export const ImagePreview = forwardRef<
         )}
         <div className="flex-1" />
         <div className="flex items-center gap-2 justify-center pr-2">
-          {saveError && <span className="text-xs text-red-500">{saveError}</span>}
+          {saveError && <span className="text-sm text-red-500">{saveError}</span>}
           <Button
             variant={isDirty && !isSaving ? 'primary' : undefined}
             size="sm"
@@ -164,7 +164,7 @@ export const ImagePreview = forwardRef<
       </Toolbar.Root>
 
       {saveError && (
-        <div className="bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs px-3 py-1.5 flex items-center gap-2">
+        <div className="bg-red-500/10 border-b border-red-500/20 text-red-400 text-sm px-3 py-1.5 flex items-center gap-2">
           <AlertCircle size={14} className="shrink-0" />
           <span>{saveError}</span>
         </div>

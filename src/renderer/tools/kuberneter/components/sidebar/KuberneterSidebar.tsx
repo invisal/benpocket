@@ -379,7 +379,7 @@ export const KuberneterSidebar: React.FC = () => {
             variant="ghost"
             size="sm"
             icon={<Tag className="size-3.5 text-zinc-500" />}
-            className="w-full flex items-center justify-between text-xs font-sans h-7 px-1.5 hover:bg-border-dark/30"
+            className="w-full flex items-center justify-between text-sm font-sans h-7 px-1.5 hover:bg-border-dark/30"
           >
             <Select.Value />
           </Select.Trigger>
@@ -407,7 +407,7 @@ export const KuberneterSidebar: React.FC = () => {
       <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 pt-2 pr-0.5 kuberneter-sidebar-scroll">
         <div className="flex items-center justify-between px-1 mb-1.5 min-w-0">
           <span
-            className="text-xs font-bold text-zinc-200 uppercase tracking-wider font-sans flex items-center gap-2 min-w-0 truncate"
+            className="text-sm font-bold text-zinc-200 uppercase tracking-wider font-sans flex items-center gap-2 min-w-0 truncate"
             title={cluster}
           >
             <Server className="size-4 shrink-0 text-zinc-400" />
@@ -460,7 +460,7 @@ export const KuberneterSidebar: React.FC = () => {
                   onClick={() => handleSelectResource(cat.id, cat.label)}
                   onDoubleClick={() => handleDoubleClickResource(cat.id)}
                   title={cat.label}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-sm text-left cursor-pointer transition-all min-w-0 ${
                     isActive
                       ? 'bg-border-dark text-strong font-semibold'
                       : 'text-zinc-400 hover:bg-border-dark/30 hover:text-zinc-200'
@@ -480,7 +480,7 @@ export const KuberneterSidebar: React.FC = () => {
                 <button
                   onClick={() => toggleGroup(cat.id)}
                   title={cat.label}
-                  className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-xs text-left cursor-pointer transition-all min-w-0 ${
+                  className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-sm text-left cursor-pointer transition-all min-w-0 ${
                     isSubActive ? 'text-strong font-medium' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >

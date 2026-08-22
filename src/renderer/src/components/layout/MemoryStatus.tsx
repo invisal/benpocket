@@ -55,7 +55,7 @@ export const MemoryStatus: React.FC = () => {
         <span> v{__APP_VERSION__}</span>
       </Popover.Trigger>
 
-      <Popover.Content side="top" align="start" className="w-72 flex flex-col gap-2 text-xs">
+      <Popover.Content side="top" align="start" className="w-72 flex flex-col gap-2 text-sm">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-medium">Process memory</h2>
           {sorted.length > 0 && (

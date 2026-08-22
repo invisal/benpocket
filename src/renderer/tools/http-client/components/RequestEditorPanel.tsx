@@ -224,10 +224,10 @@ export const RequestEditorPanel: React.FC<RequestEditorPanelProps> = ({ http, bi
                       disabled
                       className="accent-accent opacity-40 justify-self-center"
                     />
-                    <span className="bg-surface-2 border border-border text-xs rounded px-2 py-1 text-zinc-600 truncate">
+                    <span className="bg-surface-2 border border-border text-sm rounded px-2 py-1 text-zinc-600 truncate">
                       {h.key}
                     </span>
-                    <span className="bg-surface-2 border border-border text-xs rounded px-2 py-1 text-zinc-600 truncate">
+                    <span className="bg-surface-2 border border-border text-sm rounded px-2 py-1 text-zinc-600 truncate">
                       {h.value}
                     </span>
                     <span />

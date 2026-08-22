@@ -111,7 +111,7 @@ function SidebarSection({
             onClick={() => onNavigate(item.path)}
             title={item.path}
             className={cn(
-              'flex items-center gap-2 px-4 py-1 text-xs text-left cursor-pointer transition-colors',
+              'flex items-center gap-2 px-4 py-1 text-sm text-left cursor-pointer transition-colors',
               isActive
                 ? 'bg-surface-4 text-text-base'
                 : 'text-text-dim hover:bg-surface-3 hover:text-text-base'

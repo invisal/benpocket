@@ -78,7 +78,7 @@ export const KuberneterSettings: FC<KuberneterSettingsProps> = ({ section }) => 
                 <PillTab.Item
                   key={s.id}
                   value={s.id}
-                  className="px-3.5 py-1.5 text-xs font-semibold"
+                  className="px-3.5 py-1.5 text-sm font-semibold"
                 >
                   <Icon className="size-3.5 shrink-0" />
                   {s.label}

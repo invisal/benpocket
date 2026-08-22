@@ -138,7 +138,7 @@ export const KuberneterToast: FC<KuberneterToastProps> = ({ toast, onClose }) =>
           {isError && <AlertCircle className={cn('size-4 shrink-0', theme.iconColor)} />}
           {isWarning && <AlertTriangle className={cn('size-4 shrink-0', theme.iconColor)} />}
           {isInfo && <Info className={cn('size-4 shrink-0', theme.iconColor)} />}
-          <span className={cn('text-xs truncate', theme.titleText)}>{toast.title}</span>
+          <span className={cn('text-sm truncate', theme.titleText)}>{toast.title}</span>
         </div>
         <button
           onClick={() => onClose(toast.id)}
@@ -153,7 +153,7 @@ export const KuberneterToast: FC<KuberneterToastProps> = ({ toast, onClose }) =>
       </div>
 
       {/* Body */}
-      <div className={cn('px-3.5 py-3 text-xs leading-relaxed select-text', theme.bodyText)}>
+      <div className={cn('px-3.5 py-3 text-sm leading-relaxed select-text', theme.bodyText)}>
         {toast.message}
       </div>
 
@@ -170,7 +170,7 @@ export const KuberneterToast: FC<KuberneterToastProps> = ({ toast, onClose }) =>
                   onClose(toast.id);
                 }}
                 className={cn(
-                  'text-xs h-7 px-3 rounded-md font-medium select-none cursor-pointer transition-all duration-150',
+                  'text-sm h-7 px-3 rounded-md font-medium select-none cursor-pointer transition-all duration-150',
                   isPrimary ? theme.actionPrimary : theme.actionSecondary
                 )}
               >

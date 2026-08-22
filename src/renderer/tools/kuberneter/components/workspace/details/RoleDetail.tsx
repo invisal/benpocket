@@ -14,7 +14,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ payload, isTab = false }
   const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Role details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Role details available.</div>;
   }
 
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
@@ -50,7 +50,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ payload, isTab = false }
       value: (
         <span
           onClick={handleNamespaceClick}
-          className="text-accent hover:underline cursor-pointer font-mono text-xs"
+          className="text-accent hover:underline cursor-pointer font-mono text-sm"
         >
           {payload.ns}
         </span>
@@ -118,7 +118,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ payload, isTab = false }
           Rules
         </span>
         {!payload.rules || payload.rules.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No rules defined</div>
+          <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No rules defined</div>
         ) : (
           <div className="flex flex-col gap-2.5">
             {payload.rules.map((rule, idx) => {
@@ -199,7 +199,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ payload, isTab = false }
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

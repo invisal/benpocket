@@ -44,7 +44,7 @@ function SelectActionStep({
         />
         <div className="max-h-72 overflow-y-auto border-border-light flex flex-col">
           {filteredActions.length === 0 && (
-            <p className="p-3 text-xs text-muted-foreground">No matching actions.</p>
+            <p className="p-3 text-sm text-muted-foreground">No matching actions.</p>
           )}
           {filteredActions.map((a) => (
             <button
@@ -53,9 +53,9 @@ function SelectActionStep({
               onClick={() => onChoose(a.id)}
               className="flex px-2 py-1.5 items-center hover:bg-list-hover cursor-pointer rounded gap-1"
             >
-              <span className="text-sm leading-none">{a.group}</span>
+              <span className="leading-none">{a.group}</span>
               <ChevronsRight size={10} className="shrink-0" />
-              <span className="text-sm leading-none">{a.actionName}</span>
+              <span className="leading-none">{a.actionName}</span>
             </button>
           ))}
         </div>
@@ -91,9 +91,9 @@ function BindStep({
       <div className="mt-4 flex flex-col gap-3">
         {selectedAction && (
           <div>
-            <p className="text-xs text-muted-foreground">{selectedAction.group}</p>
-            <p className="text-sm font-medium">{selectedAction.actionName}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{selectedAction.description}</p>
+            <p className="text-sm text-muted-foreground">{selectedAction.group}</p>
+            <p className="font-medium">{selectedAction.actionName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{selectedAction.description}</p>
           </div>
         )}
 

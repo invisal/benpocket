@@ -99,7 +99,7 @@ export const PodVolumesSection: React.FC<PodVolumesSectionProps> = ({ volumes, n
         <Filter className="size-3 text-zinc-500" />
       </div>
       {volumes.length === 0 ? (
-        <div className="text-xs text-zinc-500 italic pl-1">No volumes found</div>
+        <div className="text-sm text-zinc-500 italic pl-1">No volumes found</div>
       ) : (
         <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
           <KubeTable<PodVolume>

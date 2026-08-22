@@ -323,14 +323,14 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'cpu',
         header: 'CPU',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.cpu}</span>,
+        render: (row) => <span className="text-zinc-300 font-sans text-sm">{row.cpu}</span>,
         className: 'text-zinc-300 font-sans',
         initialWidth: 80
       },
       {
         key: 'memory',
         header: 'Memory',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.memory}</span>,
+        render: (row) => <span className="text-zinc-300 font-sans text-sm">{row.memory}</span>,
         className: 'text-zinc-300 font-sans',
         initialWidth: 100
       },
@@ -338,7 +338,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
         key: 'ephemeralStorage',
         header: 'Ephemeral Storage',
         render: (row) => (
-          <span className="text-zinc-300 font-sans text-xs">{row.ephemeralStorage}</span>
+          <span className="text-zinc-300 font-sans text-sm">{row.ephemeralStorage}</span>
         ),
         className: 'text-zinc-300 font-sans truncate',
         initialWidth: 140
@@ -346,21 +346,21 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'hugepages1G',
         header: 'Hugepages-1Gi',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.hugepages1G}</span>,
+        render: (row) => <span className="text-zinc-300 font-sans text-sm">{row.hugepages1G}</span>,
         className: 'text-zinc-300 font-sans',
         initialWidth: 120
       },
       {
         key: 'hugepages2M',
         header: 'Hugepages-2Mi',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.hugepages2M}</span>,
+        render: (row) => <span className="text-zinc-300 font-sans text-sm">{row.hugepages2M}</span>,
         className: 'text-zinc-300 font-sans',
         initialWidth: 120
       },
       {
         key: 'pods',
         header: 'Pods',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.pods}</span>,
+        render: (row) => <span className="text-zinc-300 font-sans text-sm">{row.pods}</span>,
         className: 'text-zinc-300 font-sans',
         initialWidth: 80
       }
@@ -424,7 +424,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
               e.stopPropagation();
               openPodDetail(row.namespace, row.name, row.rawItem as unknown as K8sResource);
             }}
-            className="text-accent hover:underline cursor-pointer font-sans text-xs truncate block"
+            className="text-accent hover:underline cursor-pointer font-sans text-sm truncate block"
             title={row.name}
           >
             {row.name}
@@ -453,7 +453,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'node',
         header: 'Node',
-        render: (row) => <span className="text-zinc-400 font-sans text-xs">{row.node}</span>,
+        render: (row) => <span className="text-zinc-400 font-sans text-sm">{row.node}</span>,
         className: 'text-zinc-400 font-sans max-w-[120px] truncate',
         initialWidth: 120
       },
@@ -466,7 +466,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
               e.stopPropagation();
               handleNamespaceClick(row.namespace);
             }}
-            className="text-accent hover:underline cursor-pointer font-sans text-xs"
+            className="text-accent hover:underline cursor-pointer font-sans text-sm"
           >
             {row.namespace}
           </span>
@@ -477,7 +477,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {
         key: 'ready',
         header: 'Ready',
-        render: (row) => <span className="text-zinc-400 font-mono text-xs">{row.ready}</span>,
+        render: (row) => <span className="text-zinc-400 font-mono text-sm">{row.ready}</span>,
         className: 'text-zinc-400 font-mono',
         initialWidth: 60
       },
@@ -539,7 +539,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
             {row.status}
           </span>
         ),
-        className: 'text-xs',
+        className: 'text-sm',
         initialWidth: 80
       },
       {
@@ -569,7 +569,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
   );
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No node details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No node details available.</div>;
   }
 
   return (
@@ -596,9 +596,9 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
           Capacity
         </span>
         {loading ? (
-          <div className="text-xs text-zinc-500 italic pl-1">Loading capacity...</div>
+          <div className="text-sm text-zinc-500 italic pl-1">Loading capacity...</div>
         ) : capacityData.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No capacity data</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No capacity data</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto">
             <KubeTable<ResourceStatsRow>
@@ -617,9 +617,9 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
           Allocatable
         </span>
         {loading ? (
-          <div className="text-xs text-zinc-500 italic pl-1">Loading allocatable...</div>
+          <div className="text-sm text-zinc-500 italic pl-1">Loading allocatable...</div>
         ) : allocatableData.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No allocatable data</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No allocatable data</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto">
             <KubeTable<ResourceStatsRow>
@@ -638,9 +638,9 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
           Pods
         </span>
         {loading ? (
-          <div className="text-xs text-zinc-500 italic pl-1">Loading pods on node...</div>
+          <div className="text-sm text-zinc-500 italic pl-1">Loading pods on node...</div>
         ) : podsData.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No pods running on this node</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No pods running on this node</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-75">
             <KubeTable<PodTableRow>
@@ -659,7 +659,7 @@ export const NodeDetail: React.FC<NodeDetailProps> = ({ payload, isTab = false }
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

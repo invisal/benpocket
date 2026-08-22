@@ -172,7 +172,7 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
       {
         key: 'kind',
         header: 'Type',
-        render: (row) => <span className="text-zinc-300 font-sans text-xs">{row.kind}</span>,
+        render: (row) => <span className="text-zinc-300 font-sans text-sm">{row.kind}</span>,
         className: 'text-zinc-300 font-sans',
         initialWidth: 100
       },
@@ -180,7 +180,7 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
         key: 'name',
         header: 'Name',
         render: (row) => (
-          <span className="text-zinc-300 font-sans text-xs truncate block" title={row.name}>
+          <span className="text-zinc-300 font-sans text-sm truncate block" title={row.name}>
             {row.name}
           </span>
         ),
@@ -191,14 +191,14 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
         key: 'namespace',
         header: 'Namespace',
         render: (row) => {
-          if (!row.namespace) return <span className="text-zinc-500 font-sans text-xs">—</span>;
+          if (!row.namespace) return <span className="text-zinc-500 font-sans text-sm">—</span>;
           return (
             <span
               onClick={(e) => {
                 e.stopPropagation();
                 handleNamespaceClick(row.namespace!);
               }}
-              className="text-accent hover:underline cursor-pointer font-sans text-xs"
+              className="text-accent hover:underline cursor-pointer font-sans text-sm"
             >
               {row.namespace}
             </span>
@@ -219,7 +219,7 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
 
   if (!payload) {
     return (
-      <div className="p-4 text-xs text-zinc-500">No Cluster Role Binding details available.</div>
+      <div className="p-4 text-sm text-zinc-500">No Cluster Role Binding details available.</div>
     );
   }
 
@@ -247,7 +247,7 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
           Bindings
         </span>
         {subjectsData.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No bindings defined</div>
+          <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No bindings defined</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-55">
             <KubeTable<SubjectTableRow>
@@ -263,7 +263,7 @@ export const ClusterRoleBindingDetail: React.FC<ClusterRoleBindingDetailProps> =
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

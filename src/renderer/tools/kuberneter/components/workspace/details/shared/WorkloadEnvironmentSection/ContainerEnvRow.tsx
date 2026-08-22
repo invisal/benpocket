@@ -45,7 +45,7 @@ export const ContainerEnvRow: FC<ContainerEnvRowProps> = memo(function Container
                 value={name}
                 onChange={(e) => onKeyChange(id, e.target.value)}
                 placeholder="VARIABLE_NAME"
-                className="w-full h-8 px-2.5 bg-surface-2 border border-border/60 rounded text-xs font-mono text-foreground placeholder:text-zinc-600 focus:border-accent focus:bg-surface-1 outline-none transition-colors"
+                className="w-full h-8 px-2.5 bg-surface-2 border border-border/60 rounded text-sm font-mono text-foreground placeholder:text-zinc-600 focus:border-accent focus:bg-surface-1 outline-none transition-colors"
               />
             </div>
 
@@ -75,7 +75,7 @@ export const ContainerEnvRow: FC<ContainerEnvRowProps> = memo(function Container
                 <Menu.Content align="end" className="min-w-36">
                   <Menu.Item
                     onClick={() => onCopy(name, value)}
-                    className="flex items-center gap-2 cursor-pointer text-xs"
+                    className="flex items-center gap-2 cursor-pointer text-sm"
                   >
                     <Copy className="size-3.5 text-zinc-400" />
                     <span>Copy Value</span>
@@ -83,7 +83,7 @@ export const ContainerEnvRow: FC<ContainerEnvRowProps> = memo(function Container
                   <Menu.Separator />
                   <Menu.Item
                     onClick={() => onDelete(id)}
-                    className="flex items-center gap-2 cursor-pointer text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
+                    className="flex items-center gap-2 cursor-pointer text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
                   >
                     <Trash2 className="size-3.5 text-rose-400" />
                     <span>Delete</span>
@@ -99,7 +99,7 @@ export const ContainerEnvRow: FC<ContainerEnvRowProps> = memo(function Container
       <ContextMenu.Content className="min-w-40">
         <ContextMenu.Item
           onClick={() => onCopy(name, value)}
-          className="flex items-center gap-2 cursor-pointer text-xs"
+          className="flex items-center gap-2 cursor-pointer text-sm"
         >
           <Copy className="size-3.5 text-zinc-400" />
           <span>Copy Value</span>
@@ -107,7 +107,7 @@ export const ContainerEnvRow: FC<ContainerEnvRowProps> = memo(function Container
         <ContextMenu.Separator />
         <ContextMenu.Item
           onClick={() => onDelete(id)}
-          className="flex items-center gap-2 cursor-pointer text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
+          className="flex items-center gap-2 cursor-pointer text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
         >
           <Trash2 className="size-3.5 text-rose-400" />
           <span>Delete Variable</span>

@@ -195,7 +195,7 @@ export const PodContainersSection: React.FC<PodContainersSectionProps> = ({
             {/* Container Header */}
             <div className="flex items-center gap-2">
               <span className="size-2 bg-emerald-500 rounded-xs shrink-0" />
-              <span className="font-mono text-sm font-semibold text-zinc-200">{c.name}</span>
+              <span className="font-mono font-semibold text-zinc-200">{c.name}</span>
             </div>
 
             {/* Container Prometheus Metrics Chart */}

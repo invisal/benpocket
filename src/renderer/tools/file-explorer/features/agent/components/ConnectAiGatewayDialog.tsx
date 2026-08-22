@@ -14,7 +14,7 @@ interface ConnectAiGatewayDialogProps {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -65,7 +65,7 @@ export function ConnectAiGatewayDialog({ open, onOpenChange }: ConnectAiGatewayD
           {!isLoading && configured && (
             <span
               className={cn(
-                'text-xs px-2 py-0.5 rounded-full mr-6',
+                'text-sm px-2 py-0.5 rounded-full mr-6',
                 gatewayConfigured
                   ? 'bg-emerald-500/15 text-emerald-400'
                   : 'bg-surface-3 text-muted-foreground'
@@ -83,7 +83,7 @@ export function ConnectAiGatewayDialog({ open, onOpenChange }: ConnectAiGatewayD
 
         <div className="mt-4">
           {!isLoading && !configured && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Connect Cloudflare (Account ID + API Token) from the Home tab first, then come back
               here to link a gateway.
             </p>
@@ -93,7 +93,7 @@ export function ConnectAiGatewayDialog({ open, onOpenChange }: ConnectAiGatewayD
               <Field label="Gateway ID">
                 <Input size="sm" value={gatewayId} onChange={(e) => setGatewayId(e.target.value)} />
               </Field>
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && <p className="text-sm text-red-400">{error}</p>}
               <div className="flex gap-2">
                 <Button variant="primary" size="sm" onClick={handleSave}>
                   Save

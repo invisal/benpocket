@@ -78,7 +78,7 @@ export const GenericKubeDetail: React.FC<GenericKubeDetailProps> = ({ payload })
   const annotations = metadata.annotations ? Object.entries(metadata.annotations) : [];
 
   return (
-    <div className="flex flex-col gap-4 p-4 text-xs font-sans text-zinc-300">
+    <div className="flex flex-col gap-4 p-4 text-sm font-sans text-zinc-300">
       {/* Properties Table */}
       <div className="flex flex-col gap-1">
         <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">

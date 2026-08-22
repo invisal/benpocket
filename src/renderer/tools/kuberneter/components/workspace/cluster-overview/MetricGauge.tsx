@@ -196,7 +196,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
       )}
     >
       {/* 1. Big prominent title at the top left of the card */}
-      <h3 className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0">
+      <h3 className="text-sm font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0">
         {title}
       </h3>
 

@@ -214,7 +214,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
               e.stopPropagation();
               openResourceDetail(row.kind, payload?.namespace || '', row.name, row.rawResource);
             }}
-            className="text-accent hover:underline cursor-pointer font-sans text-xs truncate block"
+            className="text-accent hover:underline cursor-pointer font-sans text-sm truncate block"
             title={row.name}
           >
             {row.name}
@@ -226,7 +226,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
       {
         key: 'kind',
         header: 'Kind',
-        render: (row) => <span className="text-zinc-400 font-sans text-xs">{row.kind}</span>,
+        render: (row) => <span className="text-zinc-400 font-sans text-sm">{row.kind}</span>,
         className: 'text-zinc-400 font-sans max-w-[150px] truncate',
         initialWidth: 150
       },
@@ -234,7 +234,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
         key: 'component',
         header: 'Component',
         render: (row) => (
-          <span className="text-zinc-400 font-sans text-xs">
+          <span className="text-zinc-400 font-sans text-sm">
             {row.component || <span className="text-zinc-650">—</span>}
           </span>
         ),
@@ -246,7 +246,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
   );
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No application details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No application details available.</div>;
   }
 
   const propertiesData: PropertyItem[] = [
@@ -342,7 +342,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
       value: (
         <span
           onClick={() => handleNamespaceClick(payload.namespace)}
-          className="text-accent hover:underline cursor-pointer font-mono text-xs"
+          className="text-accent hover:underline cursor-pointer font-mono text-sm"
         >
           {payload.namespace}
         </span>
@@ -378,9 +378,9 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
           Workload Resources
         </span>
         {loading ? (
-          <div className="text-xs text-zinc-500 italic pl-1">Loading workload resources...</div>
+          <div className="text-sm text-zinc-500 italic pl-1">Loading workload resources...</div>
         ) : workloadResources.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No workload resources found</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No workload resources found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-55">
             <KubeTable<ResourceItem>
@@ -402,9 +402,9 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
           Other Resources
         </span>
         {loading ? (
-          <div className="text-xs text-zinc-500 italic pl-1">Loading other resources...</div>
+          <div className="text-sm text-zinc-500 italic pl-1">Loading other resources...</div>
         ) : otherResources.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No other resources found</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No other resources found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col h-auto max-h-65">
             <KubeTable<ResourceItem>
@@ -423,7 +423,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({ payload, i
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

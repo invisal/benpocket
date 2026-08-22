@@ -65,7 +65,7 @@ export const columns: ColumnDef<FileRow>[] = [
           ) : (
             <ExtensionIcon extension={entry.extension} className="size-4 text-zinc-600 shrink-0" />
           )}
-          <span className="truncate text-xs text-zinc-200">{entry.name}</span>
+          <span className="truncate text-sm text-zinc-200">{entry.name}</span>
         </div>
       );
     }

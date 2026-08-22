@@ -46,7 +46,7 @@ export function WebcamPanel(): JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between">
-        <span className="text-xs font-medium">Show Webcam</span>
+        <span className="text-sm font-medium">Show Webcam</span>
         <Switch
           checked={isEnabled}
           onChange={toggleEnabled}
@@ -56,7 +56,7 @@ export function WebcamPanel(): JSX.Element {
       </label>
       <div className={cn('flex flex-col gap-3', !isEnabled && 'pointer-events-none opacity-40')}>
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Shape</span>
+          <span className="text-sm font-medium text-muted-foreground">Shape</span>
           <div className="grid grid-cols-3 gap-2">
             {SHAPES.map((option) => {
               const Icon = option.icon;
@@ -65,7 +65,7 @@ export function WebcamPanel(): JSX.Element {
                   key={option.id}
                   onClick={() => setShape(option.id)}
                   className={cn(
-                    'flex flex-col items-center gap-1 rounded-lg border py-1.5 text-xs font-medium transition-colors',
+                    'flex flex-col items-center gap-1 rounded-lg border py-1.5 text-sm font-medium transition-colors',
                     shape === option.id
                       ? 'border-accent bg-accent/10 text-accent'
                       : 'border-line text-muted-foreground hover:border-accent/40'
@@ -79,7 +79,7 @@ export function WebcamPanel(): JSX.Element {
           </div>
         </div>
 
-        <label className="flex items-center justify-between text-xs">
+        <label className="flex items-center justify-between text-sm">
           <span className="font-medium text-muted-foreground">Mirror</span>
           <Switch
             checked={mirrored}

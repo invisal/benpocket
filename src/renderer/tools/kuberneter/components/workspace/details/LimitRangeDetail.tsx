@@ -75,7 +75,7 @@ export const LimitRangeDetail: React.FC<LimitRangeDetailProps> = ({ payload, isT
   });
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No limit range details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No limit range details available.</div>;
   }
 
   const rawItem = (queryData || payload.rawItem) as unknown as LimitRangeRawResource | undefined;
@@ -277,7 +277,7 @@ export const LimitRangeDetail: React.FC<LimitRangeDetailProps> = ({ payload, isT
                 return (
                   <div
                     key={resKey}
-                    className="flex items-center justify-between px-3 py-2.5 text-xs hover:bg-surface-3/20 transition-colors"
+                    className="flex items-center justify-between px-3 py-2.5 text-sm hover:bg-surface-3/20 transition-colors"
                   >
                     <span className="font-mono text-zinc-200 font-semibold">{displayName}</span>
                     {badges.length > 0 ? (
@@ -305,7 +305,7 @@ export const LimitRangeDetail: React.FC<LimitRangeDetailProps> = ({ payload, isT
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

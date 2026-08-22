@@ -8,7 +8,7 @@ export function ContextMenuGallery() {
         <ContextMenu.Root>
           <ContextMenu.Trigger
             render={
-              <div className="flex h-24 w-56 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+              <div className="flex h-24 w-56 items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground">
                 Right-click here
               </div>
             }

@@ -36,7 +36,7 @@ export const KuberneterTerminalView: React.FC<KuberneterTerminalViewProps> = ({
   return (
     <Suspense
       fallback={
-        <div className="flex h-full w-full items-center justify-center bg-surface-1 text-xs text-muted-foreground font-mono gap-2">
+        <div className="flex h-full w-full items-center justify-center bg-surface-1 text-sm text-muted-foreground font-mono gap-2">
           <Loader2 className="h-4 w-4 animate-spin text-accent" />
           <span>Initializing terminal...</span>
         </div>

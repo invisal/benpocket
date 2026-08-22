@@ -52,7 +52,7 @@ export function FileExplorerPanelBody({
       )}
 
       {status === 'error' && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-dim text-xs px-4 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-dim text-sm px-4 text-center">
           <AlertCircle size={20} className="text-red-500" />
           <span>Cannot access this folder: {errorMessage}</span>
           {parentPath && (

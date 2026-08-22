@@ -217,7 +217,7 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
                 </Button>
               ))}
             </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               {store.resolution.width}px × {store.resolution.height}px
             </p>
           </Field>
@@ -239,16 +239,16 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
                 <UnderlineTab.Indicator />
               </UnderlineTab.List>
             </UnderlineTab.Root>
-            <p className="mt-1.5 text-xs text-muted-foreground">{selectedQuality.description}</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">{selectedQuality.description}</p>
           </Field>
         </div>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-line pt-4">
-          {status === 'error' && error && <p className="text-xs text-danger">{error}</p>}
+          {status === 'error' && error && <p className="text-sm text-danger">{error}</p>}
 
           {isExporting && progress ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span className="capitalize">{progress.stage}</span>
                 <span>{progress.percent}%</span>
               </div>
@@ -261,7 +261,7 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
               <Button
                 variant="secondary"
                 onClick={handleCancel}
-                className="w-full justify-center py-1.5 text-xs"
+                className="w-full justify-center py-1.5 text-sm"
               >
                 <X size={13} />
                 Cancel export
@@ -290,7 +290,7 @@ export function ExportDialogButton({ disabled }: { disabled?: boolean }): JSX.El
           )}
 
           {!isExporting && (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-sm text-muted-foreground">
               <p>Estimated export time — {formatSeconds(estimate.timeSeconds)}</p>
               <p>Estimated max output size — {formatBytes(estimate.fileSizeBytes)}</p>
             </div>
@@ -312,7 +312,7 @@ function Field({
 }): JSX.Element {
   return (
     <div className="flex flex-col gap-2">
-      <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+      <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
         {icon}
         {label}
       </span>

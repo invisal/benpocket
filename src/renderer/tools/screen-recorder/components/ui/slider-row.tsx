@@ -30,9 +30,9 @@ export function SliderRow({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           {Icon && <Icon size={13} className="text-muted-foreground" />}
-          <span className="text-xs font-medium text-muted-foreground">{label}</span>
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
         </div>
-        <span className="text-xs text-muted-foreground">{displayValue}</span>
+        <span className="text-sm text-muted-foreground">{displayValue}</span>
       </div>
       <Slider value={value} min={min} max={max} step={step} onChange={onChange} />
     </div>

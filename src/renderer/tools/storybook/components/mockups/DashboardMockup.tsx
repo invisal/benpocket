@@ -89,7 +89,7 @@ function StatCard({ stat }: { stat: Stat }) {
       </div>
       <div>
         <div className="text-xl font-medium text-foreground">{stat.value}</div>
-        <div className="text-xs text-muted-foreground">{stat.label}</div>
+        <div className="text-sm text-muted-foreground">{stat.label}</div>
       </div>
       <span className="text-[11px] text-accent">{stat.delta} this week</span>
     </div>

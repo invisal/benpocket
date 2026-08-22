@@ -47,7 +47,7 @@ function CheckboxRow({
       ) : (
         <Square className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
       )}
-      <span className="text-xs text-foreground leading-snug">{children}</span>
+      <span className="text-sm text-foreground leading-snug">{children}</span>
     </button>
   );
 }
@@ -156,7 +156,7 @@ export function MetricsSettings() {
           options={METRICS_SOURCE_OPTIONS}
           onChange={(v) => patch({ source: v })}
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Currently used metrics source:{' '}
           <span className="text-foreground font-medium">
             {METRICS_SOURCE_OPTIONS.find((o) => o.value === metricsConfig.source)?.label}
@@ -179,7 +179,7 @@ export function MetricsSettings() {
           ]}
           onChange={(v) => patch({ refreshInterval: parseInt(v, 10) })}
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           How frequently live metric charts (Pod & Node metrics) poll for updates.
         </p>
       </div>
@@ -198,7 +198,7 @@ export function MetricsSettings() {
                 setTestState({ status: 'idle' });
               }}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               What query format is used to fetch metrics from Prometheus
             </p>
             <CheckboxRow
@@ -232,7 +232,7 @@ export function MetricsSettings() {
             </div>
 
             {testState.status === 'ok' && (
-              <div className="flex items-start gap-1.5 text-xs text-emerald-500">
+              <div className="flex items-start gap-1.5 text-sm text-emerald-500">
                 <CheckCircle2 className="size-3.5 mt-0.5 shrink-0" />
                 <span>
                   Connected in {testState.latencyMs}ms — {testState.source}
@@ -240,7 +240,7 @@ export function MetricsSettings() {
               </div>
             )}
             {testState.status === 'error' && (
-              <div className="flex items-start gap-1.5 text-xs text-red-400">
+              <div className="flex items-start gap-1.5 text-sm text-red-400">
                 <XCircle className="size-3.5 mt-0.5 shrink-0" />
                 <span>{testState.message}</span>
               </div>
@@ -253,7 +253,7 @@ export function MetricsSettings() {
             <CheckboxRow checked={metricsConfig.useHttps} onChange={(v) => patch({ useHttps: v })}>
               Use HTTPS for Prometheus requests
             </CheckboxRow>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Externally hosted Prometheus might listen using HTTPS. Usually this is not needed.
             </p>
           </div>
@@ -267,7 +267,7 @@ export function MetricsSettings() {
               onChange={(e) => patch({ pathPrefix: e.target.value })}
               placeholder="/prometheus"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               An optional path prefix added to all Prometheus requests. Useful if Prometheus expects
               e.g. /prometheus to be added to all requests.
             </p>
@@ -288,7 +288,7 @@ export function MetricsSettings() {
               );
               patch({ hiddenMetrics: selected });
             }}
-            className="flex-1 bg-surface-2 border border-border text-foreground rounded px-2 py-1.5 text-xs outline-none"
+            className="flex-1 bg-surface-2 border border-border text-foreground rounded px-2 py-1.5 text-sm outline-none"
             size={4}
           >
             {ALL_METRIC_CATEGORIES.map((cat) => (
@@ -316,7 +316,7 @@ export function MetricsSettings() {
             </Button>
           </div>
         </div>
-        <div className="bg-surface-2 border border-border rounded px-3 py-2 text-xs text-muted-foreground text-center">
+        <div className="bg-surface-2 border border-border rounded px-3 py-2 text-sm text-muted-foreground text-center">
           {hiddenLabel}
         </div>
       </div>

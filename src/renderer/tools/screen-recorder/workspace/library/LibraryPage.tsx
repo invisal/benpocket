@@ -64,12 +64,12 @@ export function LibraryPage(): JSX.Element {
               className="w-64 rounded-xl border border-line bg-surface p-2 text-left transition-colors hover:bg-surface-2 hover:border-accent/60 disabled:opacity-50"
             >
               <ProjectVideoThumbnail sourceVideoPath={project.sourceVideoPath} />
-              <p className="mt-2 truncate text-sm">{project.name}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-2 truncate">{project.name}</p>
+              <p className="text-sm text-muted-foreground">
                 {formatDuration(project.durationMs)} · {formatTimeAgo(project.updatedAt)}
               </p>
               {loadingProjectId === project.id && (
-                <p className="mt-1 text-xs text-accent">Loading…</p>
+                <p className="mt-1 text-sm text-accent">Loading…</p>
               )}
             </button>
           }
@@ -97,17 +97,17 @@ export function LibraryPage(): JSX.Element {
       />
       <h1 className="text-xl font-semibold">Library</h1>
 
-      {loadError && <p className="text-xs text-danger">{loadError}</p>}
+      {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
       {projects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground">
           No saved projects yet. Record something and save it to see it here.
         </p>
       ) : (
         <div className="flex flex-col gap-6">
           {recordedProjects.length > 0 && (
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Recorded
               </h2>
               <div className="flex flex-wrap gap-3">{recordedProjects.map(renderProjectCard)}</div>
@@ -115,7 +115,7 @@ export function LibraryPage(): JSX.Element {
           )}
           {importedProjects.length > 0 && (
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Imported
               </h2>
               <div className="flex flex-wrap gap-3">{importedProjects.map(renderProjectCard)}</div>

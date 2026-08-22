@@ -95,7 +95,7 @@ const ContainerActionMenu: FC<ContainerActionMenuProps> = ({
                 onSelect(undefined);
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
+              className="flex items-center gap-2 px-2 py-1.5 text-sm text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
             >
               <Box className="size-3 text-accent shrink-0" />
               <span className="truncate">All containers</span>
@@ -109,7 +109,7 @@ const ContainerActionMenu: FC<ContainerActionMenuProps> = ({
                 onSelect(c.name);
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
+              className="flex items-center gap-2 px-2 py-1.5 text-sm text-zinc-300 hover:text-strong hover:bg-accent/20 rounded transition-colors text-left border-none bg-transparent cursor-pointer font-mono"
             >
               <Box className="size-3 text-zinc-400 shrink-0" />
               <span className="truncate">{c.name}</span>
@@ -365,7 +365,7 @@ export const DeploymentHeaderActions: FC<DeploymentHeaderActionsProps> = ({ payl
             <RotateCcw className="size-4 text-accent shrink-0" />
             <span>Restart Deployment</span>
           </Dialog.Title>
-          <Dialog.Description className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          <Dialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Are you sure you want to trigger a zero-downtime rolling restart for deployment{' '}
             <b className="text-foreground font-mono">{name}</b>
             {namespace ? (
@@ -388,7 +388,7 @@ export const DeploymentHeaderActions: FC<DeploymentHeaderActionsProps> = ({ payl
               type="button"
               onClick={() => setRestartDialogOpen(false)}
               disabled={isRestarting}
-              className="px-3 py-1.5 rounded text-xs text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded text-sm text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
@@ -396,7 +396,7 @@ export const DeploymentHeaderActions: FC<DeploymentHeaderActionsProps> = ({ payl
               type="button"
               onClick={handleRestart}
               disabled={isRestarting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-white bg-accent hover:bg-accent/90 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white bg-accent hover:bg-accent/90 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
             >
               {isRestarting && <Loader2 className="size-3 animate-spin" />}
               <span>Restart</span>
@@ -412,7 +412,7 @@ export const DeploymentHeaderActions: FC<DeploymentHeaderActionsProps> = ({ payl
             <AlertTriangle className="size-4 text-rose-500 shrink-0" />
             <span>Delete Deployment</span>
           </Dialog.Title>
-          <Dialog.Description className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          <Dialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Are you sure you want to delete deployment{' '}
             <b className="text-foreground font-mono">{name}</b>
             {namespace ? (
@@ -435,7 +435,7 @@ export const DeploymentHeaderActions: FC<DeploymentHeaderActionsProps> = ({ payl
               type="button"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isDeleting}
-              className="px-3 py-1.5 rounded text-xs text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded text-sm text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
@@ -443,7 +443,7 @@ export const DeploymentHeaderActions: FC<DeploymentHeaderActionsProps> = ({ payl
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
             >
               {isDeleting && <Loader2 className="size-3 animate-spin" />}
               <span>Delete</span>

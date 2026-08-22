@@ -22,7 +22,7 @@ export function WebcamShapePicker(): JSX.Element {
               key={option.id}
               onClick={() => setShape(option.id)}
               className={cn(
-                'px-2.5 py-1 text-xs transition-colors',
+                'px-2.5 py-1 text-sm transition-colors',
                 shape === option.id
                   ? 'bg-accent text-white'
                   : 'text-muted-foreground hover:bg-surface-2'

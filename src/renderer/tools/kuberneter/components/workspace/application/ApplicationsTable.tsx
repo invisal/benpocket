@@ -84,7 +84,7 @@ export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
           ) : (
             <span className="text-zinc-600">—</span>
           ),
-        className: 'text-xs',
+        className: 'text-sm',
         initialWidth: 100
       },
       {
@@ -127,7 +127,7 @@ export const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
             </span>
           );
         },
-        className: 'text-xs',
+        className: 'text-sm',
         initialWidth: 80
       },
       {

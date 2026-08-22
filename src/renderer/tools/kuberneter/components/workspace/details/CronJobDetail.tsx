@@ -10,7 +10,7 @@ interface CronJobDetailProps {
 
 export const CronJobDetail: React.FC<CronJobDetailProps> = ({ payload, isTab = false }) => {
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No cron job details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No cron job details available.</div>;
   }
 
   const propertiesData: PropertyItem[] = [

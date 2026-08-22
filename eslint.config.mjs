@@ -43,6 +43,14 @@ export default defineConfig(
     }
   },
   {
+    // build tooling scripts, not app source -- @electron-toolkit/eslint-config-ts's
+    // own '*.js'/'*.mjs' exemption for this rule only matches root-level files
+    files: ['scripts/**/*.{js,mjs}'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off'
+    }
+  },
+  {
     plugins: {
       prettier: eslintPluginPrettier
     },

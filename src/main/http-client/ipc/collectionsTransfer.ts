@@ -1,7 +1,9 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
+import * as jsYaml from 'js-yaml';
 import type {
+  Collection,
   Environment,
   ExportCollectionPayload,
   ExportCollectionResult,
@@ -13,13 +15,20 @@ import { readEnvironments, writeEnvironments } from './environments';
 import {
   exportCollectionFile,
   importCollectionFile,
+  importInsomniaV4File,
+  importInsomniaV5File,
+  importOpenApiFile,
+  isInsomniaV4File,
+  isInsomniaV5File,
   isLegacyCollectionV1File,
-  isCollectionFile
+  isCollectionFile,
+  isOpenApiFile,
+  isSwaggerV2File
 } from '../httpClientFormat';
 import { sameEnvironmentName, sanitizeFilename } from '../transferUtils';
 
 const SUPPORTED_SCHEMAS_MESSAGE =
-  'benpocket supports Postman Collection Format v2.0 and v2.1 (.json exports from Postman).';
+  'benpocket supports Postman Collection Format v2.0/v2.1, OpenAPI Description v3.x, and Insomnia export format v4/v5 (.json, .yaml, .yml).';
 
 /** Adds/updates `incoming` variables into `existing` by key, preserving any variables `existing` already has that aren't in `incoming`. */
 function mergeVariables(existing: KeyValuePair[], incoming: KeyValuePair[]): KeyValuePair[] {
@@ -32,15 +41,15 @@ function mergeVariables(existing: KeyValuePair[], incoming: KeyValuePair[]): Key
   return merged;
 }
 
-/** Writes an imported Postman collection's variables into the environment matching its name in the same workspace, creating one if none exists yet. Returns the environment id. */
+/** Writes an imported collection's variables into the environment matching `environmentName` in the same workspace, creating one if none exists yet. Returns the environment id. */
 async function upsertImportedVariables(
   workspaceId: string,
-  collectionName: string,
+  environmentName: string,
   variables: KeyValuePair[]
 ): Promise<string> {
   const environments = await readEnvironments();
   const existing = environments.find(
-    (e) => e.workspaceId === workspaceId && sameEnvironmentName(e.name, collectionName)
+    (e) => e.workspaceId === workspaceId && sameEnvironmentName(e.name, environmentName)
   );
   if (existing) {
     existing.variables = mergeVariables(existing.variables, variables);
@@ -49,7 +58,7 @@ async function upsertImportedVariables(
   }
   const environment: Environment = {
     id: randomUUID(),
-    name: collectionName,
+    name: environmentName,
     createdAt: Date.now(),
     workspaceId,
     variables
@@ -57,6 +66,144 @@ async function upsertImportedVariables(
   environments.push(environment);
   await writeEnvironments(environments);
   return environment.id;
+}
+
+/** Persists a freshly-imported collection and, if it brought variables along, writes them into a matching environment named after the collection. Shared by the Postman and OpenAPI import paths, which only ever produce one flat variable set. */
+async function finishImport(
+  collection: Collection,
+  sourceFormat: 'postman' | 'openapi',
+  schemaVersion: string,
+  variables: KeyValuePair[]
+): Promise<ImportCollectionResult> {
+  const collections = await readCollections();
+  collections.push(collection);
+  await writeCollections(collections);
+
+  if (variables.length === 0) {
+    return { ok: true, collection, sourceFormat, schemaVersion };
+  }
+  const environmentId = await upsertImportedVariables(
+    collection.workspaceId,
+    collection.name,
+    variables
+  );
+  return {
+    ok: true,
+    collection,
+    sourceFormat,
+    schemaVersion,
+    importedVariableCount: variables.length,
+    environmentId
+  };
+}
+
+/**
+ * Persists a freshly-imported Insomnia collection and writes each of its (possibly several -
+ * one per switchable sub-environment) environments in, each named individually rather than
+ * after the collection. The first one becomes the newly-active environment.
+ */
+async function finishInsomniaImport(
+  collection: Collection,
+  schemaVersion: string,
+  environments: { name: string; variables: KeyValuePair[] }[]
+): Promise<ImportCollectionResult> {
+  const collections = await readCollections();
+  collections.push(collection);
+  await writeCollections(collections);
+
+  if (environments.length === 0) {
+    return { ok: true, collection, sourceFormat: 'insomnia', schemaVersion };
+  }
+
+  let firstEnvironmentId: string | undefined;
+  let totalVariableCount = 0;
+  for (const env of environments) {
+    const environmentId = await upsertImportedVariables(
+      collection.workspaceId,
+      env.name,
+      env.variables
+    );
+    firstEnvironmentId ??= environmentId;
+    totalVariableCount += env.variables.length;
+  }
+
+  return {
+    ok: true,
+    collection,
+    sourceFormat: 'insomnia',
+    schemaVersion,
+    importedVariableCount: totalVariableCount,
+    environmentId: firstEnvironmentId
+  };
+}
+
+/** Parses a collection/OpenAPI file already on disk and imports it - shared by the open-dialog and drag-and-drop import paths. */
+async function importCollectionFromPath(
+  filePath: string,
+  workspaceId: string
+): Promise<ImportCollectionResult> {
+  let raw: string;
+  try {
+    raw = await fs.promises.readFile(filePath, 'utf-8');
+  } catch (err) {
+    return {
+      ok: false,
+      error: `Could not read file: ${err instanceof Error ? err.message : String(err)}`
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    try {
+      parsed = jsYaml.load(raw);
+    } catch {
+      return {
+        ok: false,
+        error: `File is not valid JSON or YAML. ${SUPPORTED_SCHEMAS_MESSAGE}`
+      };
+    }
+  }
+
+  if (isLegacyCollectionV1File(parsed)) {
+    return {
+      ok: false,
+      error: `This file looks like a Collection Format v1 export, which isn't supported. Please re-export the collection as v2.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
+    };
+  }
+
+  if (isSwaggerV2File(parsed)) {
+    return {
+      ok: false,
+      error: `This file looks like a Swagger / OpenAPI v2.0 document, which isn't supported yet. Please convert it to OpenAPI v3.x and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
+    };
+  }
+
+  if (isCollectionFile(parsed)) {
+    const { collection, schemaVersion, variables } = importCollectionFile(parsed, workspaceId);
+    return finishImport(collection, 'postman', schemaVersion, variables);
+  }
+
+  if (isOpenApiFile(parsed)) {
+    const { collection, openApiVersion, variables } = importOpenApiFile(parsed, workspaceId);
+    return finishImport(collection, 'openapi', openApiVersion, variables);
+  }
+
+  if (isInsomniaV4File(parsed)) {
+    const { collection, environments } = importInsomniaV4File(parsed, workspaceId);
+    return finishInsomniaImport(collection, String(parsed.__export_format ?? 4), environments);
+  }
+
+  if (isInsomniaV5File(parsed)) {
+    const { collection, environments } = importInsomniaV5File(parsed, workspaceId);
+    return finishInsomniaImport(collection, parsed.schema_version ?? '5', environments);
+  }
+
+  return {
+    ok: false,
+    error: `File is not a recognized Collection or OpenAPI export. ${SUPPORTED_SCHEMAS_MESSAGE}`
+  };
 }
 
 export function registerCollectionTransferHandlers(): void {
@@ -98,53 +245,25 @@ export function registerCollectionTransferHandlers(): void {
     async (event, workspaceId: string): Promise<ImportCollectionResult> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const openOptions = {
-        title: 'Import Collection (v2.0 / v2.1)',
+        title: 'Import Collection, OpenAPI, or Insomnia Document',
         properties: ['openFile' as const],
-        filters: [{ name: 'HTTP Client Collection (v2.0 / v2.1)', extensions: ['json'] }]
+        filters: [
+          { name: 'Collection / OpenAPI / Insomnia', extensions: ['json', 'yaml', 'yml'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
       };
       const result = win
         ? await dialog.showOpenDialog(win, openOptions)
         : await dialog.showOpenDialog(openOptions);
       if (result.canceled || result.filePaths.length === 0) return { ok: true, canceled: true };
 
-      let parsed: unknown;
-      try {
-        const raw = await fs.promises.readFile(result.filePaths[0], 'utf-8');
-        parsed = JSON.parse(raw);
-      } catch {
-        return { ok: false, error: `File is not valid JSON. ${SUPPORTED_SCHEMAS_MESSAGE}` };
-      }
-
-      if (isLegacyCollectionV1File(parsed)) {
-        return {
-          ok: false,
-          error: `This file looks like a Collection Format v1 export, which isn't supported. Please re-export the collection as v2.1 and try again. ${SUPPORTED_SCHEMAS_MESSAGE}`
-        };
-      }
-
-      if (!isCollectionFile(parsed)) {
-        return {
-          ok: false,
-          error: `File is not a recognized Collection export. ${SUPPORTED_SCHEMAS_MESSAGE}`
-        };
-      }
-
-      const { collection, schemaVersion, variables } = importCollectionFile(parsed, workspaceId);
-      const collections = await readCollections();
-      collections.push(collection);
-      await writeCollections(collections);
-
-      if (variables.length === 0) {
-        return { ok: true, collection, schemaVersion };
-      }
-      const environmentId = await upsertImportedVariables(workspaceId, collection.name, variables);
-      return {
-        ok: true,
-        collection,
-        schemaVersion,
-        importedVariableCount: variables.length,
-        environmentId
-      };
+      return importCollectionFromPath(result.filePaths[0], workspaceId);
     }
+  );
+
+  ipcMain.handle(
+    'collections:importFromPath',
+    (_event, filePath: string, workspaceId: string): Promise<ImportCollectionResult> =>
+      importCollectionFromPath(filePath, workspaceId)
   );
 }

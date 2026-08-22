@@ -114,7 +114,16 @@ export const useLayoutStore = create<LayoutState>()(
 
           if (tabExists) {
             return {
-              openTabs: state.openTabs.map((t) => (t.id === tab.id ? { ...t, ...tab } : t)),
+              openTabs: state.openTabs.map((t) =>
+                t.id === tab.id
+                  ? {
+                      ...t,
+                      ...tab,
+                      // Once a tab is pinned (isPreview: false), visiting it again must NEVER revert it to preview
+                      isPreview: t.isPreview === false ? false : (tab.isPreview ?? t.isPreview)
+                    }
+                  : t
+              ),
               activeTabId: tab.id
             };
           }

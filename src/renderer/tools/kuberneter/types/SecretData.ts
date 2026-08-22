@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface SecretData {
   id: string;
   name: string;
@@ -9,4 +11,6 @@ export interface SecretData {
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
   age: string;
+  createdTime?: string;
+  rawItem?: K8sResource;
 }

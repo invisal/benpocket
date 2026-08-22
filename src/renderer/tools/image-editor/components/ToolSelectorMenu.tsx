@@ -4,8 +4,10 @@ import {
   Eraser,
   Eye,
   Maximize2,
+  Scissors,
   Sparkles,
   Wand2,
+  ZoomIn,
   type LucideIcon
 } from 'lucide-react';
 import { Menu } from '@renderer/components/ui/Menu';
@@ -17,6 +19,8 @@ const TOOLS: { id: ImageToolId; label: string; icon: LucideIcon }[] = [
   { id: 'generative', label: 'Generative', icon: Sparkles },
   { id: 'resize', label: 'Resize', icon: Maximize2 },
   { id: 'crop', label: 'Crop', icon: Crop },
+  { id: 'upscale', label: 'Upscale', icon: ZoomIn },
+  { id: 'bg-remove', label: 'Remove Background', icon: Scissors },
   { id: 'context-resize', label: 'Content-Aware Expand', icon: Wand2 },
   { id: 'context-removal', label: 'Content-Aware Fill', icon: Eraser }
 ];

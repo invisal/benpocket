@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface PodDisruptionBudgetData {
   id: string;
   name: string;
@@ -11,4 +13,7 @@ export interface PodDisruptionBudgetData {
   maxUnavailable: string;
   currentHealthy: number;
   desiredHealthy: number;
+  disruptionsAllowed?: number;
+  expectedPods?: number;
+  rawItem?: K8sResource;
 }

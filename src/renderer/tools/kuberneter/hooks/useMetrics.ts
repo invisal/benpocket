@@ -225,7 +225,7 @@ async function fetchPodMetricsRange(
           }
 
           return {
-            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            source: 'kube-system / metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
             timeLabels: [...buffer.timeLabels],
             cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
             memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
@@ -310,7 +310,7 @@ async function fetchPodMetricsRange(
           }
 
           return {
-            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            source: 'kube-system / metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
             timeLabels: [...buffer.timeLabels],
             cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
             memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
@@ -417,7 +417,7 @@ export async function fetchMultiPodMetricsRange(
           }
 
           return {
-            source: `metrics-server (aggregated across ${matchedItems.length} pods)`,
+            source: `kube-system / metrics-server (aggregated across ${matchedItems.length} pods)`,
             timeLabels: [...buffer.timeLabels],
             cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
             memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
@@ -513,7 +513,7 @@ export async function fetchMultiPodMetricsRange(
           }
 
           return {
-            source: `metrics-server (aggregated across ${matchedItems.length} pods)`,
+            source: `kube-system / metrics-server (aggregated across ${matchedItems.length} pods)`,
             timeLabels: [...buffer.timeLabels],
             cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
             memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
@@ -637,7 +637,7 @@ async function fetchNodeMetricsRange(
           }
 
           return {
-            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            source: 'kube-system / metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
             timeLabels: [...buffer.timeLabels],
             cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
             memory: { usage: [...buffer.memUsage], requests: [], limits: [] },
@@ -716,7 +716,7 @@ async function fetchNodeMetricsRange(
           }
 
           return {
-            source: 'metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
+            source: 'kube-system / metrics-server (apis/metrics.k8s.io/v1beta1 — live 3s stream)',
             timeLabels: [...buffer.timeLabels],
             cpu: { usage: [...buffer.cpuUsage], requests: [], limits: [] },
             memory: { usage: [...buffer.memUsage], requests: [], limits: [] },

@@ -1,4 +1,4 @@
-import { createTabProvider } from './createTabProvider';
+import { createTabProvider, useToolContext } from './createTabProvider';
 import { allTools } from './AllTools';
 
 function createInitialTabs() {

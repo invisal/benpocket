@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface ConfigMapData {
   id: string;
   name: string;
@@ -9,4 +11,6 @@ export interface ConfigMapData {
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
   age: string;
+  createdTime?: string;
+  rawItem?: K8sResource;
 }

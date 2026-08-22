@@ -9,6 +9,7 @@ jobs:
   checks:
     name: Check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +49,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    # Heavy: compiles native recording helpers per-OS and packages with
+    # electron-builder -- allowed the extended 30min budget.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -142,6 +146,7 @@ jobs:
     # still have succeeded and uploaded their report.
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       pull-requests: write
     steps:

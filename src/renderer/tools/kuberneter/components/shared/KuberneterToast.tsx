@@ -1,4 +1,4 @@
-import type React from 'react';
+import { useState, useEffect, type FC } from 'react';
 import { AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { cn } from 'cnfast';
 
@@ -16,6 +16,7 @@ export interface KuberneterToastItem {
   title: string;
   message: string;
   actions?: ToastAction[];
+  duration?: number;
 }
 
 interface KuberneterToastProps {
@@ -102,15 +103,30 @@ const toastThemeMap: Record<ToastType, ToastThemeConfig> = {
   }
 };
 
-export const KuberneterToast: React.FC<KuberneterToastProps> = ({ toast, onClose }) => {
+export const KuberneterToast: FC<KuberneterToastProps> = ({ toast, onClose }) => {
   const isError = toast.type === 'error';
   const isWarning = toast.type === 'warning';
   const isInfo = toast.type === 'info' || toast.type === 'information';
+
+  const defaultDuration = isError ? 8000 : isWarning ? 6000 : 4500;
+  const duration = toast.duration !== undefined ? toast.duration : defaultDuration;
+
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (duration <= 0 || isPaused) return;
+    const timer = setTimeout(() => {
+      onClose(toast.id);
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [toast.id, duration, isPaused, onClose]);
 
   const theme = toastThemeMap[toast.type] || toastThemeMap.info;
 
   return (
     <div
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
       className={cn(
         'w-80 sm:w-96 rounded-lg border shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-8',
         theme.container

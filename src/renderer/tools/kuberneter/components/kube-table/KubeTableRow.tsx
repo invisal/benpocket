@@ -11,6 +11,7 @@ interface KubeTableRowProps<T> {
   colWidths: Record<string, number>;
   resizable?: boolean;
   isExpanded?: boolean;
+  renderRowWrapper?: (row: T, children: React.ReactNode) => React.ReactNode;
 }
 
 export function KubeTableRow<T>({
@@ -21,12 +22,13 @@ export function KubeTableRow<T>({
   selectedRowKey,
   colWidths,
   resizable,
-  isExpanded
+  isExpanded,
+  renderRowWrapper
 }: KubeTableRowProps<T>) {
   const key = getRowKey(row);
   const isSelected = selectedRowKey !== undefined && selectedRowKey === key;
 
-  return (
+  const trElement = (
     <tr
       onClick={() => onRowClick?.(row)}
       className={cn(
@@ -47,4 +49,6 @@ export function KubeTableRow<T>({
       ))}
     </tr>
   );
+
+  return renderRowWrapper ? <>{renderRowWrapper(row, trElement)}</> : trElement;
 }

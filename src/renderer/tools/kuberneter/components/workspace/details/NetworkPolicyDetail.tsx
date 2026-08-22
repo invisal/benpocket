@@ -1,10 +1,10 @@
 import type React from 'react';
 import { useCallback } from 'react';
 import { type NetworkPolicyData } from '../../../types/NetworkPolicyData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { Age } from '../../Age';
+
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface NetworkPolicyDetailProps {
   payload: NetworkPolicyData;
@@ -15,20 +15,21 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   const handleNamespaceClick = useCallback(() => {
-    if (payload?.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload?.ns) {
+      openNamespaceDetail(payload.ns);
     }
-  }, [payload, activeInstanceId, setNamespace]);
+  }, [payload, openNamespaceDetail]);
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Network Policy details available.</div>;
   }
 
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
+  const ingressRules = payload.ingressRules || [];
+  const egressRules = payload.egressRules || [];
   const podSelectors = payload.podSelectorStr
     ? payload.podSelectorStr.split(', ').filter((s) => s && s !== '{}' && s !== '—')
     : [];
@@ -120,13 +121,13 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
             Ingress
           </span>
 
-          {payload.ingressRules.length === 0 ? (
+          {ingressRules.length === 0 ? (
             <div className="text-xs text-zinc-400 pl-1 py-1 italic border-b border-border/10">
               Isolating Ingress traffic: No ingress allowed (block all incoming traffic)
             </div>
           ) : (
             <div className="flex flex-col border border-border/45 rounded overflow-hidden bg-surface-2/15 select-text">
-              {payload.ingressRules.map((rule, idx) => (
+              {ingressRules.map((rule, idx) => (
                 <div
                   key={idx}
                   className={`flex flex-col text-xs text-zinc-300 p-2.5 ${
@@ -203,13 +204,13 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
             Egress
           </span>
 
-          {payload.egressRules.length === 0 ? (
+          {egressRules.length === 0 ? (
             <div className="text-xs text-zinc-400 pl-1 py-1 italic border-b border-border/10">
               Isolating Egress traffic: No egress allowed (block all outgoing traffic)
             </div>
           ) : (
             <div className="flex flex-col border border-border/45 rounded overflow-hidden bg-surface-2/15 select-text">
-              {payload.egressRules.map((rule, idx) => (
+              {egressRules.map((rule, idx) => (
                 <div
                   key={idx}
                   className={`flex flex-col text-xs text-zinc-300 p-2.5 ${

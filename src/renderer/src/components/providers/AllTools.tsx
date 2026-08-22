@@ -49,6 +49,19 @@ const storybookTool = registerTool({
   label: ''
 });
 
+// Not listed on the Home page or in the "+ Add Tool" dialog -- only reachable
+// via File Explorer's "Open Workspace" context menu item on a folder.
+const workspaceTool = registerTool({
+  name: 'workspace' as const,
+  loadComponent: () => import('./../../../tools/workspace'),
+  generateName: (payload: { path: string }) =>
+    payload.path
+      .replace(/[\\/]+$/, '')
+      .split(/[\\/]/)
+      .pop() || 'Workspace',
+  label: ''
+});
+
 export const allTools = [
   homeTool,
   fileExplorerTool,
@@ -56,5 +69,6 @@ export const allTools = [
   httpClientTool,
   screenRecordTool,
   screenCaptureTool,
+  workspaceTool,
   ...(import.meta.env.DEV ? [storybookTool] : [])
 ];

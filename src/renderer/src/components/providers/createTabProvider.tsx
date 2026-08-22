@@ -2,10 +2,11 @@
 import {
   Activity,
   type ComponentType,
+  createContext,
   lazy,
   type ReactNode,
   Suspense,
-  useEffect,
+  useContext,
   useState
 } from 'react';
 import { create } from 'zustand';
@@ -15,6 +16,23 @@ export interface ToolComponentProps<Payload> {
   id: string;
   payload: Payload;
   isTabActive: boolean;
+}
+
+interface ToolContextValue {
+  id: string;
+  isTabActive: boolean;
+}
+
+// Mirrors the same `id`/`isTabActive` a tool's root component already gets via
+// `ToolComponentProps`, just reachable from anywhere in that tool's tree without
+// threading them down as props -- e.g. `ToolLayout.Title` reads `isTabActive` from
+// here instead of every call site having to pass it through.
+const ToolContext = createContext<ToolContextValue | null>(null);
+
+export function useToolContext(): ToolContextValue {
+  const context = useContext(ToolContext);
+  if (!context) throw new Error('useToolContext must be used within a tool component');
+  return context;
 }
 
 interface Tool<Name extends string = string, Payload = unknown> {
@@ -194,10 +212,13 @@ export function createTabProvider<TTool extends Tool<string, any>>(
   function ToolOutlet({ tab }: { tab: Tab<TTool> }) {
     const activeTabId = useTabsStore((s) => s.activeTabId);
     const Component = lazyComponentByName[tab.type];
+    const isTabActive = tab.id === activeTabId;
     return (
-      <Suspense fallback={null}>
-        <Component id={tab.id} payload={tab.payload} isTabActive={tab.id === activeTabId} />
-      </Suspense>
+      <ToolContext.Provider value={{ id: tab.id, isTabActive }}>
+        <Suspense fallback={null}>
+          <Component id={tab.id} payload={tab.payload} isTabActive={isTabActive} />
+        </Suspense>
+      </ToolContext.Provider>
     );
   }
 
@@ -213,11 +234,9 @@ export function createTabProvider<TTool extends Tool<string, any>>(
       () => new Set(activeTabId ? [activeTabId] : [])
     );
 
-    useEffect(() => {
-      if (activeTabId && !mountedTabIds.has(activeTabId)) {
-        setMountedTabIds((prev) => new Set(prev).add(activeTabId));
-      }
-    }, [activeTabId, mountedTabIds]);
+    if (activeTabId && !mountedTabIds.has(activeTabId)) {
+      setMountedTabIds((prev) => new Set(prev).add(activeTabId));
+    }
 
     if (tabs.length === 0) {
       return emptyState ?? null;
@@ -240,5 +259,7 @@ export function createTabProvider<TTool extends Tool<string, any>>(
     );
   }
 
-  return { useTabs, TabSwitcher, toolsByName, registerLeaveGuard };
+  // Exposed (not just `useTabs`) so callers outside React -- e.g. the e2e-only
+  // `window.devTools` bridge in ToolProvider.ts -- can open/select tabs imperatively.
+  return { useTabs, TabSwitcher, toolsByName, store: useTabsStore, registerLeaveGuard };
 }

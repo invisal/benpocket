@@ -6,12 +6,13 @@ import {
   type SortingState,
   type ColumnSizingState
 } from '@tanstack/react-table';
-import { FileText, FolderPlus } from 'lucide-react';
+import { FileText, FolderPlus, FolderTree } from 'lucide-react';
 import { ListView } from '@renderer/components/ui/ListView';
 import { ContextMenu } from '@renderer/components/ui/ContextMenu';
 import { Dialog } from '@renderer/components/ui/Dialog';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
+import { useToolTabs } from '@renderer/components/providers/ToolProvider';
 import { columns, compareEntries, extensionKey, type FileEntry, type FileRow } from './columns';
 import { useFileExplorerStore } from '../store/fileExplorer.store';
 import { dispatchMutation } from '../lib/syncDispatcher';
@@ -61,6 +62,7 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   const [pendingDeletePaths, setPendingDeletePaths] = useState<string[] | null>(null);
   const [transferProgress, setTransferProgress] = useState<TransferProgress | null>(null);
   const capabilities = getCapabilitiesForLocation(currentPath);
+  const { openTab } = useToolTabs();
   const clipboard = useFileExplorerStore((s) => s.clipboard);
   const setClipboard = useFileExplorerStore((s) => s.setClipboard);
   const bumpRefresh = useFileExplorerStore((s) => s.bumpRefresh);
@@ -81,13 +83,24 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
         entries.some((entry) => entry.path === pending) ? new Set([pending]) : new Set()
       );
     } else {
-      setSelectedPaths(new Set());
+      // Entries can change reference without the selection becoming stale --
+      // e.g. a watch-triggered refresh after an unrelated external change.
+      // Keep whichever selected paths still exist instead of wiping the
+      // selection every time; navigating to a new path clears it naturally
+      // since none of the old paths belong to the new directory.
+      setSelectedPaths((prev) => {
+        if (prev.size === 0) return prev;
+        const next = new Set([...prev].filter((p) => entries.some((entry) => entry.path === p)));
+        if (next.size === prev.size) return prev;
+        return next;
+      });
     }
-    setIconByKey({});
-
     // No native icon lookup for this location (e.g. R2) -- columns.tsx already
     // falls back to an extension-based generic icon when iconByKey has nothing.
-    if (!capabilities.nativeIcons) return;
+    if (!capabilities.nativeIcons) {
+      setIconByKey({});
+      return;
+    }
 
     const uniqueFiles = new Map<string, FileEntry>();
     for (const entry of entries) {
@@ -95,6 +108,19 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
       const key = extensionKey(entry);
       if (!uniqueFiles.has(key)) uniqueFiles.set(key, entry);
     }
+
+    // Drop icons for extensions no longer present, but keep the rest cached
+    // -- an entries change doesn't always mean real content changed (e.g. a
+    // watch-triggered refresh after merely previewing a file), so wiping the
+    // whole cache every time flashes every row back to its generic fallback
+    // icon before the native ones stream back in.
+    setIconByKey((prev) => {
+      const next: Record<string, string> = {};
+      for (const key of uniqueFiles.keys()) {
+        if (prev[key]) next[key] = prev[key];
+      }
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
 
     let cancelled = false;
     uniqueFiles.forEach((entry, key) => {
@@ -173,6 +199,15 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
   const confirmOpen = () => {
     if (pendingEntry) window.fileExplorer.openPath(pendingEntry.path);
     setPendingEntry(null);
+  };
+
+  // Opening a workspace switches the active top-level tab, which flips this
+  // File Explorer tab's <Activity> subtree to hidden -- deferred a tick so the
+  // context menu's own close/exit-transition finishes first, otherwise it can
+  // get orphaned mid-close and hang open (that subtree going hidden stalls the
+  // transition it's waiting on to actually unmount).
+  const handleOpenWorkspace = (path: string) => {
+    setTimeout(() => openTab('workspace', { path }), 0);
   };
 
   const selectedEntries = useMemo(
@@ -434,6 +469,14 @@ export function FileTable({ entries, currentPath, onNavigate, onSelectionChange 
               {selectedRows.length <= 1 && (
                 <ContextMenu.Item onClick={() => activateEntry(row)}>
                   {row.isDirectory ? 'Open Folder' : 'Open'}
+                </ContextMenu.Item>
+              )}
+              {selectedRows.length <= 1 && row.isDirectory && (
+                <ContextMenu.Item onClick={() => handleOpenWorkspace(row.path)}>
+                  <span className="flex items-center gap-2">
+                    <FolderTree size={14} className="text-text-dim" />
+                    Open Workspace
+                  </span>
                 </ContextMenu.Item>
               )}
               <ContextMenu.Item onClick={() => handleCopy(paths)} shortcut="mod+c">

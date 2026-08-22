@@ -1,6 +1,8 @@
 import { ipcMain } from 'electron';
 import sharp, { type Sharp } from 'sharp';
 import { getCloudflareSettings } from '../store/cloudflareSettings';
+import { registerUpscaleHandlers } from './upscale/ipc';
+import { registerBgRemoveHandlers } from './bg-remove/ipc';
 
 // sharp caches decoded/processed image data at the libvips level by default -- fine for a
 // short-lived CLI script, but this handler lives inside Electron's main process for the entire
@@ -16,7 +18,7 @@ export type EncodeResult = { data: Uint8Array } | { error: string };
  * the browser canvas's `convertToBlob`, which has no compression-level or palette control and
  * produces noticeably larger files for the same pixels.
  */
-function encodePipeline(image: Sharp, mimeType: string): Promise<Buffer> {
+export function encodePipeline(image: Sharp, mimeType: string): Promise<Buffer> {
   switch (mimeType) {
     case 'image/jpeg':
       // JPEG has no alpha channel -- flatten onto white first so transparent pixels don't
@@ -33,7 +35,7 @@ function encodePipeline(image: Sharp, mimeType: string): Promise<Buffer> {
   }
 }
 
-function toUint8Array(buffer: Buffer): Uint8Array {
+export function toUint8Array(buffer: Buffer): Uint8Array {
   return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }
 
@@ -278,4 +280,7 @@ export function registerImageEditorHandlers(): void {
       }
     }
   );
+
+  registerUpscaleHandlers();
+  registerBgRemoveHandlers();
 }

@@ -6,6 +6,7 @@ import { looksLikeCurlCommand, parseCurlCommand, type ParsedCurlRequest } from '
 import { VariableSuggestInput } from './VariableSuggestInput';
 import { Menu } from '@renderer/components/ui/Menu';
 import { Button } from '@renderer/components/ui/Button';
+import { methodBadgeClass } from '../lib/methodBadge';
 
 /** The address bar's method selector doubles as the HTTP/WebSocket protocol switch. */
 export type ComposerMethod = HttpMethod | 'WEBSOCKET';
@@ -40,6 +41,8 @@ interface RequestComposerProps {
    * dropping the raw command text in as the URL - HTTP mode only (undefined in WebSocket
    * mode disables the interception, since there's nothing to import into). */
   onImportCurl?: (parsed: ParsedCurlRequest) => void;
+  /** Extra icon buttons rendered between the address bar and the primary action, e.g. Save/Code. */
+  extraActions?: React.ReactNode;
 }
 
 export const RequestComposer: React.FC<RequestComposerProps> = ({
@@ -49,63 +52,66 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
   onUrlChange,
   urlDisabled,
   action,
-  onImportCurl
+  onImportCurl,
+  extraActions
 }) => {
   const variables = useActiveEnvironmentVariables();
   const selectedLabel = METHODS.find((m) => m.value === method)?.label ?? method;
 
   return (
-    <div className="flex gap-2 shrink-0 px-3 py-0">
-      <div className="flex border border-border h-9 rounded flex-1 bg-surface-2">
-        <Menu.Root>
-          <Menu.Trigger className="text-xs min-w-24 justify-between font-medium px-3 h-full flex items-center gap-1 border-r border-border cursor-pointer">
-            <span>{selectedLabel}</span>
-            <ChevronDownIcon size={14} />
-          </Menu.Trigger>
-          <Menu.Content align="start">
-            {METHODS.map((m) => (
-              <Menu.Item key={m.value} onClick={() => onMethodChange(m.value)}>
-                {m.label}
-              </Menu.Item>
-            ))}
-          </Menu.Content>
-        </Menu.Root>
+    <div className="flex items-center gap-2 border-b border-border px-3 py-1 shrink-0">
+      <Menu.Root>
+        <Menu.Trigger className="flex items-center gap-1 h-7 px-2 rounded text-xs font-medium hover:bg-surface-2 cursor-pointer shrink-0">
+          <span className={methodBadgeClass(method)}>{selectedLabel}</span>
+          <ChevronDownIcon size={14} />
+        </Menu.Trigger>
+        <Menu.Content align="start">
+          {METHODS.map((m) => (
+            <Menu.Item key={m.value} onClick={() => onMethodChange(m.value)}>
+              <span className={methodBadgeClass(m.value)}>{m.label}</span>
+            </Menu.Item>
+          ))}
+        </Menu.Content>
+      </Menu.Root>
 
-        <div className="flex-1 h-full">
-          <VariableSuggestInput
-            value={url}
-            onChange={onUrlChange}
-            variables={variables}
-            disabled={urlDisabled}
-            onEnter={() => {
-              if (!action.disabled) action.onClick();
-            }}
-            onPaste={
-              onImportCurl &&
-              ((e) => {
-                const text = e.clipboardData.getData('text');
-                if (!looksLikeCurlCommand(text)) return;
-                const parsed = parseCurlCommand(text);
-                if (!parsed) return;
-                e.preventDefault();
-                onImportCurl(parsed);
-              })
-            }
-            className="w-full outline-none text-xs px-2 h-full py-0 disabled:opacity-60"
-            placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
-          />
-        </div>
+      {/* URL input, extra actions (Code/Save) and Send all live in one flat, borderless
+          group - matching the sidebar header's flat style and reading as a single control
+          rather than separate boxed elements. */}
+      <div className="flex items-center flex-1 min-w-0 gap-1 h-7 rounded bg-surface-2 border border-border pl-2 pr-1">
+        <VariableSuggestInput
+          value={url}
+          onChange={onUrlChange}
+          variables={variables}
+          disabled={urlDisabled}
+          onEnter={() => {
+            if (!action.disabled) action.onClick();
+          }}
+          onPaste={
+            onImportCurl &&
+            ((e) => {
+              const text = e.clipboardData.getData('text');
+              if (!looksLikeCurlCommand(text)) return;
+              const parsed = parseCurlCommand(text);
+              if (!parsed) return;
+              e.preventDefault();
+              onImportCurl(parsed);
+            })
+          }
+          className="flex-1 min-w-0 outline-none text-xs bg-transparent disabled:opacity-60 w-full"
+          placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={action.onClick}
+          disabled={action.disabled}
+          title={action.label}
+          className={action.className}
+        >
+          {action.icon}
+        </Button>
       </div>
-      <Button
-        variant="primary"
-        onClick={action.onClick}
-        disabled={action.disabled}
-        title={action.label}
-        className="h-full"
-      >
-        {action.icon}
-        <span>{action.label}</span>
-      </Button>
+      {extraActions}
     </div>
   );
 };

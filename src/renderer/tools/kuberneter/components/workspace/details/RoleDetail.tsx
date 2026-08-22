@@ -2,8 +2,8 @@ import { Age } from '../../Age';
 import type React from 'react';
 import { type RoleData } from '../../../types/RoleData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
+
+import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
 
 interface RoleDetailProps {
   payload: RoleData;
@@ -11,8 +11,7 @@ interface RoleDetailProps {
 }
 
 export const RoleDetail: React.FC<RoleDetailProps> = ({ payload, isTab = false }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setNamespace = useKuberneterStore((s) => s.setKuberneterInstanceNamespace);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Role details available.</div>;
@@ -22,8 +21,8 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ payload, isTab = false }
   const labels = payload.labels ? Object.entries(payload.labels) : [];
 
   const handleNamespaceClick = () => {
-    if (payload.ns && activeInstanceId) {
-      setNamespace(activeInstanceId, payload.ns);
+    if (payload.ns) {
+      openNamespaceDetail(payload.ns);
     }
   };
 

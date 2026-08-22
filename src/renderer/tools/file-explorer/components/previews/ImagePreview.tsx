@@ -5,7 +5,8 @@ import {
   ImageTool,
   EDITABLE_MIME_TYPES,
   ToolSelectorMenu,
-  type ImageToolId
+  type ImageToolId,
+  type ImageViewInfo
 } from '../../../image-editor';
 import { formatBytes } from '../columns';
 import { type PreviewEditorHandle } from './types';
@@ -53,6 +54,7 @@ export const ImagePreview = forwardRef<
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [tool, setTool] = useState<ImageToolId>('preview');
+  const [view, setView] = useState<ImageViewInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,6 +141,11 @@ export const ImagePreview = forwardRef<
     >
       <Toolbar.Root>
         {isEditable && <ToolSelectorMenu active={tool} onSelect={setTool} />}
+        {view && (
+          <span className="pl-2 text-[11px] tabular-nums text-muted-foreground">
+            {view.width}×{view.height} · {Math.round(view.zoom * 100)}%
+          </span>
+        )}
         <div className="flex-1" />
         <div className="flex items-center gap-2 justify-center pr-2">
           {saveError && <span className="text-xs text-red-500">{saveError}</span>}
@@ -172,6 +179,7 @@ export const ImagePreview = forwardRef<
           }
           tool={tool}
           onToolChange={setTool}
+          onViewChange={setView}
           className="flex-1 min-h-0"
         />
       ) : (

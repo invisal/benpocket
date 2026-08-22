@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
+import { BookmarkPlus } from 'lucide-react';
 import { Popover } from '@base-ui/react/popover';
 import { Button } from '@renderer/components/ui/Button';
 import { useCollectionsStore } from '../store/collections.store';
@@ -7,6 +8,7 @@ import type { HttpResponsePayload } from '../../../../preload/http-client/types'
 import type { HttpState } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { makeId } from '../lib/makeId';
+import { RESPONSE_ACTION_BUTTON_CLASS } from '../lib/responseActionButtonClass';
 
 interface SaveExamplePopoverProps {
   /** Which saved request to attach the example to - the trigger is disabled without one. */
@@ -74,9 +76,9 @@ export const SaveExamplePopover: React.FC<SaveExamplePopoverProps> = ({
             ? 'Save the request to a collection and send it first.'
             : 'Save this response as an example on the saved request'
         }
-        render={<Button variant="secondary" size="md" />}
+        render={<button type="button" className={RESPONSE_ACTION_BUTTON_CLASS} />}
       >
-        Save Example
+        <BookmarkPlus size={12} />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} align="end" className="z-50">

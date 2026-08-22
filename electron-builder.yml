@@ -40,6 +40,14 @@ asarUnpack:
   # either, so it fails at runtime. Unpack both packages explicitly.
   - node_modules/sharp/**
   - node_modules/@img/**
+  # onnxruntime-node's native addon (onnxruntime_binding.node) plus the onnxruntime/DirectML
+  # shared libraries it dlopen's at runtime -- same "can't load from inside app.asar" issue as
+  # sharp/libvips above.
+  - node_modules/onnxruntime-node/**
+# onnxruntime-node bundles native binaries for every OS x arch in one package (see
+# scripts/prune-onnxruntime.mjs), so afterPack strips the ones not being packaged --
+# otherwise every build would ship all platforms' binaries (~260MB of dead weight).
+afterPack: scripts/prune-onnxruntime.mjs
 extraResources:
   # The macOS/Windows native recording helper binaries -- see
   # recording-helper.ts's helperCandidates(), which resolves a packaged

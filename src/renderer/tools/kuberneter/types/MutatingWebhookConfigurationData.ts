@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface WebhookRule {
   apiGroups: string[];
   apiVersions: string[];
@@ -36,4 +38,5 @@ export interface MutatingWebhookConfigurationData {
   apiVersion: string;
   webhooksCount: number;
   webhooks: WebhookItem[];
+  rawItem?: K8sResource;
 }

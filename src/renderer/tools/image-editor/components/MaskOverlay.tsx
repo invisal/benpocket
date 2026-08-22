@@ -87,6 +87,8 @@ export function MaskOverlay({
       ref={canvasRef}
       className="absolute inset-0 h-full w-full cursor-crosshair touch-none"
       onPointerDown={(e) => {
+        // Left button only -- middle/right are reserved for panning (see ImageCanvas).
+        if (e.button !== 0) return;
         isPainting.current = true;
         e.currentTarget.setPointerCapture(e.pointerId);
         paintAt(e.clientX, e.clientY);

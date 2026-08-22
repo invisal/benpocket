@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { produce, type Draft } from 'immer';
 import type {
   Collection,
   CollectionFolder,
@@ -54,37 +55,33 @@ interface CollectionsState {
   setFolderAuth: (collectionId: string, folderId: string, auth: HttpAuth) => Promise<void>;
   /** Prompts a save dialog and writes the collection as a Postman v2.1 file. */
   exportCollection: (collectionId: string) => Promise<ExportCollectionResult>;
-  /** Prompts an open dialog, parses a Postman v2.0 or v2.1 collection file, and adds it as a new collection. */
+  /** Prompts an open dialog, parses a Postman v2.0/v2.1 or OpenAPI v3.x file, and adds it as a new collection. */
   importCollection: () => Promise<ImportCollectionResult>;
+  /** Same as `importCollection`, but for a file path already known on disk (e.g. dropped onto the sidebar) - skips the open dialog. */
+  importCollectionFromPath: (filePath: string) => Promise<ImportCollectionResult>;
 }
 
 /**
- * Appends `example` to the given request wherever it lives in the tree, returning a new
- * container only along the path that changed (siblings keep their old reference). Used to patch
- * `saveExample` into state locally instead of round-tripping a fresh `collections:list` -- that
- * read/parses/refilters every collection's full example history (response bodies included) just
- * to pick up the one example that was added.
+ * Appends `example` to the given request wherever it lives in the tree, mutating the immer
+ * draft in place - `produce` takes care of only touching the branch that actually changed, so
+ * siblings keep their old reference for free. Used to patch `saveExample` into state locally
+ * instead of round-tripping a fresh `collections:list` -- that read/parses/refilters every
+ * collection's full example history (response bodies included) just to pick up the one example
+ * that was added. Returns whether the request was found, so a caller walking siblings/folders
+ * can stop early.
  */
-function addExampleRecursive<T extends { requests: SavedRequest[]; folders: CollectionFolder[] }>(
-  container: T,
+function addExampleToRequest<T extends { requests: SavedRequest[]; folders: CollectionFolder[] }>(
+  container: Draft<T>,
   requestId: string,
   example: SavedExample
-): T {
-  if (container.requests.some((r) => r.id === requestId)) {
-    return {
-      ...container,
-      requests: container.requests.map((r) =>
-        r.id === requestId ? { ...r, examples: [...(r.examples ?? []), example] } : r
-      )
-    };
+): boolean {
+  const request = container.requests.find((r) => r.id === requestId);
+  if (request) {
+    if (!request.examples) request.examples = [];
+    request.examples.push(example);
+    return true;
   }
-  let changed = false;
-  const folders = container.folders.map((f) => {
-    const updated = addExampleRecursive(f, requestId, example);
-    if (updated !== f) changed = true;
-    return updated;
-  });
-  return changed ? { ...container, folders } : container;
+  return container.folders.some((folder) => addExampleToRequest(folder, requestId, example));
 }
 
 // Renderer-side cache of the main-process collections store (which is the
@@ -139,9 +136,10 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   saveExample: async (collectionId, requestId, example) => {
     assertOk(await window.api.collections.saveExample({ collectionId, requestId, example }));
     set((state) => ({
-      collections: state.collections.map((c) =>
-        c.id === collectionId ? addExampleRecursive(c, requestId, example) : c
-      )
+      collections: produce(state.collections, (draft) => {
+        const collection = draft.find((c) => c.id === collectionId);
+        if (collection) addExampleToRequest(collection, requestId, example);
+      })
     }));
   },
 
@@ -200,6 +198,14 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     const workspaceId = useWorkspacesStore.getState().activeWorkspaceId;
     if (!workspaceId) return { ok: false, error: 'No active workspace.' };
     const result = await window.api.collections.importFromFile(workspaceId);
+    if (result.ok && !result.canceled) await get().load();
+    return result;
+  },
+
+  importCollectionFromPath: async (filePath) => {
+    const workspaceId = useWorkspacesStore.getState().activeWorkspaceId;
+    if (!workspaceId) return { ok: false, error: 'No active workspace.' };
+    const result = await window.api.collections.importFromPath(filePath, workspaceId);
     if (result.ok && !result.canceled) await get().load();
     return result;
   }

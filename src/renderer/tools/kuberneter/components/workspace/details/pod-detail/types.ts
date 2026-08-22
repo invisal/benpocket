@@ -29,6 +29,7 @@ export interface PodCondition {
 }
 
 export interface ContainerPort {
+  name?: string;
   containerPort: number;
   protocol: string;
 }

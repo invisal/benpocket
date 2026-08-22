@@ -1,3 +1,5 @@
+import { type K8sResource } from './K8sResource';
+
 export interface LimitRangeItem {
   type: string;
   resource: string;
@@ -17,4 +19,5 @@ export interface LimitRangeData {
   age: string;
   createdTime?: string;
   limits: LimitRangeItem[];
+  rawItem?: K8sResource;
 }

@@ -13,7 +13,8 @@ import {
   sampleCursorPath,
   resolveClickBounceScale,
   resolveClickRipple,
-  resolveCursorGesture
+  resolveCursorGesture,
+  resolveActiveResizeRotationDeg
 } from '@shared/cursor-path';
 import type { CursorPathPoint } from '@shared/cursor-path';
 import { resolveCursorStyle, CURSOR_SIZE_UNIT_PX } from '@shared/cursor-styles';
@@ -109,6 +110,26 @@ function resolveCursor(
     ? resolveClickRipple(clickPath, atMs, cursor.clickBounce)
     : null;
 
+  // resolveCursorGesture can itself return 'hover' (stationary near a click,
+  // gated by handGestureEnabled), 'resize', 'crosshair', or 'textSelect' (all
+  // three real facts -- see its own doc -- always on, since there's
+  // nothing to opt out of).
+  const gesture = resolveCursorGesture(
+    smoothedPath,
+    clickPath,
+    project.resizePath,
+    project.crosshairPath,
+    project.textSelectPath,
+    atMs,
+    cursor.handGestureEnabled
+  );
+  // Points along the cursor's actual recent direction of travel -- never a
+  // fixed default -- only meaningful while `gesture === 'resize'`.
+  const resizeRotationDeg =
+    gesture !== 'resize'
+      ? 0
+      : resolveActiveResizeRotationDeg(smoothedPath, project.resizePath, atMs);
+
   return {
     posPx: toPx(point),
     sizePx,
@@ -116,10 +137,9 @@ function resolveCursor(
     stroke: preset.stroke,
     clickScale: resolveClickBounceScale(clickPath, atMs, cursor.clickBounce),
     clipToCanvas: cursor.clipToCanvas,
-    gesture: cursor.handGestureEnabled
-      ? resolveCursorGesture(smoothedPath, clickPath, atMs)
-      : 'idle',
+    gesture,
     customIcon: preset.customIcon,
+    resizeRotationDeg,
     ghosts,
     // Grows from ~1x to ~4x the icon's own size -- same formula as
     // CursorOverlay.tsx's live-preview ripple, so the export matches.

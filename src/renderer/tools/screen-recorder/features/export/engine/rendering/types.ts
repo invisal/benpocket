@@ -5,7 +5,7 @@
  * types here -- is what lets new effects be added without either module
  * needing to know about the other's internals.
  */
-import type { CursorGesture } from '@shared/cursor-path';
+import type { CursorGesture, ResizeRotationDeg } from '@shared/cursor-path';
 import type { CursorCustomIconId } from '@shared/cursor-styles';
 
 export interface InnerRect {
@@ -68,6 +68,8 @@ export interface CursorSceneData {
   gesture: CursorGesture;
   /** When set and `gesture` is `idle`, draws this fully custom illustration instead of the plain arrow -- see `CursorStylePreset.customIcon`. Ignored for `hover`, which always shows the shared hand icon. */
   customIcon?: CursorCustomIconId;
+  /** Orientation for the resize glyph -- meaningless when `gesture` isn't `resize`. */
+  resizeRotationDeg: ResizeRotationDeg;
 }
 
 export interface WebcamSceneData {

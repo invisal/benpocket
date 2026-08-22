@@ -243,10 +243,14 @@ export function useRecordingController(): RecordingController {
       });
     }
 
-    const { cursorPath, clickPath } = (await cursorCaptureRef.current?.stop()) ?? {
-      cursorPath: [],
-      clickPath: []
-    };
+    const { cursorPath, clickPath, resizePath, crosshairPath, textSelectPath } =
+      (await cursorCaptureRef.current?.stop()) ?? {
+        cursorPath: [],
+        clickPath: [],
+        resizePath: [],
+        crosshairPath: [],
+        textSelectPath: []
+      };
     cursorCaptureRef.current = null;
 
     // Fresh recording -> whatever zoom keyframes existed belonged to the
@@ -339,6 +343,9 @@ export function useRecordingController(): RecordingController {
       sizeBytes: blob.size,
       cursorPath,
       clickPath,
+      resizePath,
+      crosshairPath,
+      textSelectPath,
       webcamPreviewUrl,
       webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0
     };
@@ -356,6 +363,9 @@ export function useRecordingController(): RecordingController {
       sizeBytes,
       cursorPath,
       clickPath,
+      resizePath,
+      crosshairPath,
+      textSelectPath,
       previewUrl,
       webcamPreviewUrl,
       webcamOffsetMs
@@ -369,6 +379,9 @@ export function useRecordingController(): RecordingController {
       createdAt: Date.now(),
       cursorPath,
       clickPath,
+      resizePath,
+      crosshairPath,
+      textSelectPath,
       webcamPreviewUrl,
       webcamFilePath,
       webcamExportSourceFilePath,

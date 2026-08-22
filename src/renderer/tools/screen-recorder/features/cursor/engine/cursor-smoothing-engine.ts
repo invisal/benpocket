@@ -7,6 +7,16 @@ export {
   sampleCursorPath,
   resolveClickBounceScale,
   resolveClickRipple,
-  resolveCursorGesture
+  resolveCursorGesture,
+  resolveResizeRotationDeg,
+  resolveActiveResizeRotationDeg
 } from '@shared/cursor-path';
-export type { CursorPathPoint, ClickRipple, CursorGesture } from '@shared/cursor-path';
+export type {
+  CursorPathPoint,
+  ClickRipple,
+  CursorGesture,
+  ResizeRotationDeg,
+  WindowResizeSample,
+  CursorCrosshairSample,
+  CursorTextSelectSample
+} from '@shared/cursor-path';

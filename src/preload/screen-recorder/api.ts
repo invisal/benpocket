@@ -6,6 +6,7 @@ import type {
   RecordingSession
 } from '@screen-recorder/types/recording';
 import type { Project, ProjectSummary, CursorPathPoint } from '@screen-recorder/types/project';
+import type { ResizeRotationDeg } from '@shared/cursor-path';
 import type { ExportFormat } from '@screen-recorder/types/export';
 import type {
   AccessibilityStatus,
@@ -103,6 +104,26 @@ export const screenRecorderApi = {
       const listener = (_event: unknown, sample: CursorPathPoint): void => callback(sample);
       ipcRenderer.on(IpcChannels.CursorClickSample, listener);
       return () => ipcRenderer.removeListener(IpcChannels.CursorClickSample, listener);
+    },
+    /** Real observed window-bounds changes (see window-bounds-poller.ts) -- the factual signal `resolveCursorGesture` uses to know the tracked window is actually being resized right now, instead of guessing from cursor movement. `rotationDeg` is derived from the bounds delta itself (`resolveWindowResizeRotationDeg`), not the cursor's own recorded position -- see that function's doc for why. Only ever fires for a window-source recording with live bounds tracking. */
+    onWindowResizeSample: (
+      callback: (sample: { atMs: number; rotationDeg?: ResizeRotationDeg }) => void
+    ): (() => void) => {
+      const listener = (
+        _event: unknown,
+        sample: { atMs: number; rotationDeg?: ResizeRotationDeg }
+      ): void => callback(sample);
+      ipcRenderer.on(IpcChannels.WindowResizeSample, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.WindowResizeSample, listener);
+    },
+    /** Real observed OS resize-cursor sightings (see cursor-shape-tracker.ts) -- fires whenever the OS is actually showing a horizontal/vertical resize cursor, e.g. over an internal panel/split-view divider that a bounds-poller has no visibility into. Fires for any recording, not just a window source. */
+    onCursorShapeSample: (
+      callback: (sample: { atMs: number; kind: string }) => void
+    ): (() => void) => {
+      const listener = (_event: unknown, sample: { atMs: number; kind: string }): void =>
+        callback(sample);
+      ipcRenderer.on(IpcChannels.CursorShapeSample, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CursorShapeSample, listener);
     }
   },
   project: {

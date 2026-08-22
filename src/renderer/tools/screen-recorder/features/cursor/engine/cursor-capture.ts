@@ -1,10 +1,21 @@
 import type { CaptureSource } from '@screen-recorder/types/recording';
 import type { CursorPathPoint } from '@screen-recorder/types/project';
+import type {
+  WindowResizeSample,
+  CursorCrosshairSample,
+  CursorTextSelectSample
+} from '@shared/cursor-path';
 
 export interface CursorCaptureResult {
   cursorPath: CursorPathPoint[];
   /** Real mousedown events (via uiohook-napi), same normalization as cursorPath. */
   clickPath: CursorPathPoint[];
+  /** Real observed window-bounds changes (window-bounds-poller.ts) and/or real OS resize-cursor sightings (cursor-shape-tracker.ts), merged and sorted by `atMs` -- lets `resolveCursorGesture` (@shared/cursor-path) know for a fact when a resize is actually happening, from whichever signal caught it. */
+  resizePath: WindowResizeSample[];
+  /** Real observed OS crosshair-cursor sightings (cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know when a spreadsheet fill-handle/range-select drag is actually happening. */
+  crosshairPath: CursorCrosshairSample[];
+  /** Real observed OS text-select ("I-beam") cursor sightings (cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know when the cursor is over selectable text. */
+  textSelectPath: CursorTextSelectSample[];
 }
 
 export interface CursorCaptureHandle {
@@ -49,6 +60,9 @@ export async function startCursorCapture(
 
   const cursorPath: CursorPathPoint[] = [];
   const clickPath: CursorPathPoint[] = [];
+  const resizePath: WindowResizeSample[] = [];
+  const crosshairPath: CursorCrosshairSample[] = [];
+  const textSelectPath: CursorTextSelectSample[] = [];
   const unsubscribeSample = window.screenRecorder.cursor.onSample((sample) => {
     cursorPath.push(sample);
     onUpdate?.({ cursorCount: cursorPath.length, clickCount: clickPath.length });
@@ -56,6 +70,27 @@ export async function startCursorCapture(
   const unsubscribeClick = window.screenRecorder.cursor.onClickSample((sample) => {
     clickPath.push(sample);
     onUpdate?.({ cursorCount: cursorPath.length, clickCount: clickPath.length });
+  });
+  // Not folded into `onUpdate`'s counts -- not a user-facing "N points
+  // captured" figure, just an internal signal for gesture resolution, so
+  // there's nothing useful to surface live for this one.
+  const unsubscribeResize = window.screenRecorder.cursor.onWindowResizeSample((sample) => {
+    resizePath.push(sample);
+  });
+  // A second, independent producer feeding `resizePath` -- see
+  // `WindowResizeSample`'s own doc (@shared/cursor-path) for why an internal
+  // panel/split-view resize needs this real-cursor-shape signal instead of
+  // (or alongside) a window-bounds diff. Also the sole producer for
+  // `crosshairPath` (spreadsheet fill-handle/range-select) and
+  // `textSelectPath` (hovering/selecting text anywhere).
+  const unsubscribeShape = window.screenRecorder.cursor.onCursorShapeSample((sample) => {
+    if (sample.kind === 'horizontal' || sample.kind === 'vertical') {
+      resizePath.push({ atMs: sample.atMs, rotationDeg: sample.kind === 'horizontal' ? 0 : 90 });
+    } else if (sample.kind === 'crosshair') {
+      crosshairPath.push({ atMs: sample.atMs });
+    } else if (sample.kind === 'text') {
+      textSelectPath.push({ atMs: sample.atMs });
+    }
   });
 
   await window.screenRecorder.cursor.startTracking(
@@ -69,10 +104,18 @@ export async function startCursorCapture(
       await window.screenRecorder.cursor.stopTracking();
       unsubscribeSample();
       unsubscribeClick();
+      unsubscribeResize();
+      unsubscribeShape();
+      // Two independent producers feed `resizePath` (see its own doc) --
+      // each arrives in order on its own IPC channel, but interleaved across
+      // both there's no guarantee the merged array stays sorted by `atMs`,
+      // which every consumer's binary search (mostRecentPointAtOrBefore,
+      // @shared/cursor-path) requires.
+      resizePath.sort((a, b) => a.atMs - b.atMs);
       console.log(
-        `[cursor-capture] recorded ${cursorPath.length} cursor sample(s), ${clickPath.length} click(s).`
+        `[cursor-capture] recorded ${cursorPath.length} cursor sample(s), ${clickPath.length} click(s), ${resizePath.length} resize sample(s), ${crosshairPath.length} crosshair sample(s), ${textSelectPath.length} text-select sample(s).`
       );
-      return { cursorPath, clickPath };
+      return { cursorPath, clickPath, resizePath, crosshairPath, textSelectPath };
     }
   };
 }

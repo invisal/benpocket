@@ -14,6 +14,7 @@ import { recordingController } from '../capture/recording-controller';
 import { cursorTracker, type CursorTrackerBounds } from '../capture/cursor-tracker';
 import { clickTracker } from '../capture/click-tracker';
 import { windowBoundsPoller } from '../capture/window-bounds-poller';
+import { cursorShapeTracker } from '../capture/cursor-shape-tracker';
 import { supportsNativeSystemPicker } from '../security/display-media-handler';
 import { parseWindowSourceId } from '@shared/window-source-id';
 import {
@@ -71,13 +72,19 @@ export function registerRecordingHandlers(): void {
     (event, bounds: CursorTrackerBounds, startedAt: number, followWindowId: number | null) => {
       cursorTracker.start(event.sender, bounds, startedAt);
       clickTracker.start(event.sender, bounds, startedAt);
-      if (followWindowId !== null) windowBoundsPoller.start(followWindowId);
+      // Independent of `followWindowId` -- a real resize-cursor sighting is
+      // meaningful for any recording, not just one following a tracked
+      // window (see cursor-shape-tracker.ts).
+      cursorShapeTracker.start(event.sender, bounds, startedAt);
+      if (followWindowId !== null)
+        windowBoundsPoller.start(followWindowId, event.sender, startedAt);
     }
   );
 
   ipcMain.handle(IpcChannels.StopCursorTracking, () => {
     cursorTracker.stop();
     clickTracker.stop();
+    cursorShapeTracker.stop();
     windowBoundsPoller.stop();
   });
 

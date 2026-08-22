@@ -18,6 +18,8 @@ export const IpcChannels = {
   StopCursorTracking: 'cursor:stop-tracking',
   CursorPositionSample: 'cursor:position-sample',
   CursorClickSample: 'cursor:click-sample',
+  WindowResizeSample: 'window:resize-sample',
+  CursorShapeSample: 'cursor:shape-sample',
   OpenProject: 'project:open',
   SaveProject: 'project:save',
   ListProjects: 'project:list',

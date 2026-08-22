@@ -10,5 +10,6 @@ export interface IngressClassData {
   age: string;
   createdTime: string;
   annotations?: Record<string, string>;
+  creationTimestamp?: string;
   rawItem?: unknown;
 }

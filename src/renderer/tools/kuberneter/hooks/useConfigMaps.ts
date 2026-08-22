@@ -20,7 +20,12 @@ export function useConfigMaps(enabled: boolean) {
           binaryData: item.binaryData,
           labels: item.metadata?.labels,
           annotations: item.metadata?.annotations,
-          age: formatAge(item.metadata?.creationTimestamp || '')
+          age: formatAge(item.metadata?.creationTimestamp || ''),
+          createdTime: item.metadata?.creationTimestamp
+            ? new Date(item.metadata.creationTimestamp).toLocaleString()
+            : '',
+          creationTimestamp: item.metadata?.creationTimestamp || '',
+          rawItem: item
         };
       });
     },

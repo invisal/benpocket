@@ -82,6 +82,7 @@ export function useEndpoints(enabled: boolean) {
           createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
           labels: epItem.metadata?.labels,
           annotations: epItem.metadata?.annotations,
+          creationTimestamp,
           rawItem: epItem
         };
       });

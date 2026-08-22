@@ -18,6 +18,7 @@ const prefixMap: Record<string, string> = {
   runtimeclass: 'Runtime Class',
   lease: 'Lease',
   service: 'Service',
+  services: 'Service',
   persistentvolumeclaim: 'Persistent Volume Claim',
   pvc: 'Persistent Volume Claim',
   persistentvolume: 'Persistent Volume',
@@ -34,6 +35,7 @@ const prefixMap: Record<string, string> = {
   node: 'Node',
   event: 'Event',
   endpointslice: 'Endpoint Slice',
+  endpointslices: 'Endpoint Slice',
   endpoints: 'Endpoints',
   endpoint: 'Endpoints',
   ingresses: 'Ingress',
@@ -47,6 +49,7 @@ const prefixMap: Record<string, string> = {
   serviceaccount: 'Service Account',
   'helm-chart': 'Helm Chart',
   'helm-release': 'Helm Release',
+  portforward: 'Port Forward',
   portforwarding: 'Port Forward'
 };
 

@@ -47,6 +47,7 @@ export function useIngressClasses(enabled: boolean) {
           age: formatAge(creationTimestamp),
           createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
           annotations,
+          creationTimestamp,
           rawItem: icItem
         } satisfies IngressClassData;
       });

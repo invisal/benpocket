@@ -12,5 +12,6 @@ export interface ConfigMapData {
   annotations?: Record<string, string>;
   age: string;
   createdTime?: string;
+  creationTimestamp?: string;
   rawItem?: K8sResource;
 }

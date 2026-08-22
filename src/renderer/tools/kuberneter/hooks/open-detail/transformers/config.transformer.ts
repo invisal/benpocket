@@ -39,6 +39,7 @@ export function buildConfigMapDetailPayload(
     annotations: rawResource?.metadata?.annotations,
     age: formatAge(creationTimestamp),
     createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+    creationTimestamp,
     rawItem: rawResource
   };
 }
@@ -63,6 +64,7 @@ export function buildSecretDetailPayload(
     annotations: rawResource?.metadata?.annotations,
     age: formatAge(creationTimestamp),
     createdTime: creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '',
+    creationTimestamp,
     rawItem: rawResource
   };
 }

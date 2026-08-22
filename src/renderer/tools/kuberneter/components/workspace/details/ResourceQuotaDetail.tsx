@@ -282,7 +282,7 @@ export const ResourceQuotaDetail: React.FC<ResourceQuotaDetailProps> = ({
                         {q.resourceName}
                       </span>
                       <span className="font-mono text-zinc-300 shrink-0 text-xs">
-                        <span className="text-zinc-100 font-medium">{q.used}</span>{' '}
+                        <span className="text-foreground font-medium">{q.used}</span>{' '}
                         <span className="text-zinc-550 font-normal">/</span> {q.hard}{' '}
                         {hardNum > 0 && (
                           <span className="text-[10px] text-zinc-400 font-sans ml-1">({pct}%)</span>

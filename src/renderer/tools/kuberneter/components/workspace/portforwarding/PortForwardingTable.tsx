@@ -1,7 +1,7 @@
 import type React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { KubeTable, type Column } from '../../kubeTable';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, ExternalLink, Copy, Check } from 'lucide-react';
 import { type PortForwardData } from '../../../types/PortForwardData';
 import { usePortForwardingStore } from '../../../store/portForwarding.store';
 import { cn } from 'cnfast';
@@ -27,6 +27,63 @@ function StatusBadge({ status }: { status: PortForwardData['status'] }) {
     >
       {status}
     </span>
+  );
+}
+
+function TunnelTypeBadge({ type }: { type?: PortForwardData['tunnelType'] }) {
+  if (type === 'cloudflare') {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+        Cloudflare
+      </span>
+    );
+  }
+  if (type === 'ngrok') {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
+        ngrok
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-3 text-muted-foreground border border-border/40">
+      Local
+    </span>
+  );
+}
+
+function UrlCell({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 max-w-[240px] group">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="font-mono text-accent text-[11px] truncate hover:underline flex items-center gap-1"
+        title={url}
+      >
+        <span className="truncate">{url}</span>
+        <ExternalLink className="size-3 shrink-0 opacity-60 group-hover:opacity-100" />
+      </a>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity bg-transparent border-none cursor-pointer shrink-0"
+        title="Copy URL"
+      >
+        {copied ? <Check className="size-3 text-green-400" /> : <Copy className="size-3" />}
+      </button>
+    </div>
   );
 }
 
@@ -76,29 +133,29 @@ export const PortForwardingTable: React.FC<PortForwardingTableProps> = ({
             {row.name}
           </span>
         ),
-        className: 'font-mono text-zinc-300 max-w-[220px] truncate',
-        initialWidth: 220
+        className: 'font-mono text-zinc-300 max-w-[180px] truncate',
+        initialWidth: 180
       },
       {
         key: 'namespace',
         header: 'Namespace',
         render: (row) => <span className="font-mono text-accent">{row.ns}</span>,
         className: 'font-mono text-accent',
-        initialWidth: 110
+        initialWidth: 100
       },
       {
         key: 'kind',
         header: 'Kind',
         render: (row) => <span className="font-mono text-zinc-400 text-[11px]">{row.kind}</span>,
         className: 'font-mono text-zinc-400 text-[11px]',
-        initialWidth: 80
+        initialWidth: 70
       },
       {
         key: 'podPort',
         header: 'Pod Port',
         render: (row) => <span className="font-mono text-zinc-400 text-[11px]">{row.podPort}</span>,
         className: 'font-mono text-zinc-400 text-[11px]',
-        initialWidth: 80
+        initialWidth: 75
       },
       {
         key: 'localPort',
@@ -107,22 +164,25 @@ export const PortForwardingTable: React.FC<PortForwardingTableProps> = ({
           <span className="font-mono text-zinc-400 text-[11px]">{row.localPort}</span>
         ),
         className: 'font-mono text-zinc-400 text-[11px]',
-        initialWidth: 85
+        initialWidth: 80
       },
       {
-        key: 'protocol',
-        header: 'Protocol',
-        render: (row) => (
-          <span className="font-mono text-zinc-400 text-[11px]">{row.protocol}</span>
-        ),
-        className: 'font-mono text-zinc-400 text-[11px]',
-        initialWidth: 80
+        key: 'tunnelType',
+        header: 'Type',
+        render: (row) => <TunnelTypeBadge type={row.tunnelType} />,
+        initialWidth: 95
+      },
+      {
+        key: 'url',
+        header: 'URL',
+        render: (row) => <UrlCell url={row.url} />,
+        initialWidth: 220
       },
       {
         key: 'status',
         header: 'Status',
         render: (row) => <StatusBadge status={row.status} />,
-        initialWidth: 80
+        initialWidth: 75
       },
       {
         key: 'actions',

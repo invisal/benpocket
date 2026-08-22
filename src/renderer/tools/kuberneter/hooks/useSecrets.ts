@@ -20,7 +20,12 @@ export function useSecrets(enabled: boolean) {
           data: item.data as Record<string, string> | undefined,
           labels: item.metadata?.labels,
           annotations: item.metadata?.annotations,
-          age: formatAge(item.metadata?.creationTimestamp || '')
+          age: formatAge(item.metadata?.creationTimestamp || ''),
+          createdTime: item.metadata?.creationTimestamp
+            ? new Date(item.metadata.creationTimestamp).toLocaleString()
+            : '',
+          creationTimestamp: item.metadata?.creationTimestamp || '',
+          rawItem: item
         };
       });
     },

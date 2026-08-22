@@ -6,6 +6,7 @@ import type {
   RecordingSession
 } from '@screen-recorder/types/recording';
 import type { Project, ProjectSummary, CursorPathPoint } from '@screen-recorder/types/project';
+import type { ResizeRotationDeg } from '@shared/cursor-path';
 import type { ExportFormat } from '@screen-recorder/types/export';
 import type {
   AccessibilityStatus,
@@ -104,9 +105,14 @@ export const screenRecorderApi = {
       ipcRenderer.on(IpcChannels.CursorClickSample, listener);
       return () => ipcRenderer.removeListener(IpcChannels.CursorClickSample, listener);
     },
-    /** Real observed window-bounds changes (see window-bounds-poller.ts) -- the factual signal `resolveCursorGesture` uses to know the tracked window is actually being resized right now, instead of guessing from cursor movement. Only ever fires for a window-source recording with live bounds tracking. */
-    onWindowResizeSample: (callback: (sample: { atMs: number }) => void): (() => void) => {
-      const listener = (_event: unknown, sample: { atMs: number }): void => callback(sample);
+    /** Real observed window-bounds changes (see window-bounds-poller.ts) -- the factual signal `resolveCursorGesture` uses to know the tracked window is actually being resized right now, instead of guessing from cursor movement. `rotationDeg` is derived from the bounds delta itself (`resolveWindowResizeRotationDeg`), not the cursor's own recorded position -- see that function's doc for why. Only ever fires for a window-source recording with live bounds tracking. */
+    onWindowResizeSample: (
+      callback: (sample: { atMs: number; rotationDeg?: ResizeRotationDeg }) => void
+    ): (() => void) => {
+      const listener = (
+        _event: unknown,
+        sample: { atMs: number; rotationDeg?: ResizeRotationDeg }
+      ): void => callback(sample);
       ipcRenderer.on(IpcChannels.WindowResizeSample, listener);
       return () => ipcRenderer.removeListener(IpcChannels.WindowResizeSample, listener);
     },

@@ -75,7 +75,7 @@ export function registerRecordingHandlers(): void {
       // Independent of `followWindowId` -- a real resize-cursor sighting is
       // meaningful for any recording, not just one following a tracked
       // window (see cursor-shape-tracker.ts).
-      cursorShapeTracker.start(event.sender, startedAt);
+      cursorShapeTracker.start(event.sender, bounds, startedAt);
       if (followWindowId !== null)
         windowBoundsPoller.start(followWindowId, event.sender, startedAt);
     }

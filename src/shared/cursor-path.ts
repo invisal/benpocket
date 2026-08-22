@@ -319,12 +319,21 @@ function isStillAt(path: CursorPathPoint[], atMs: number): boolean {
  * whatever's being recorded, since dragging one never changes the recorded
  * window's outer bounds at all, so `WindowBoundsPoller` alone can't see it.
  * That producer also knows the exact orientation (`rotationDeg`), since it
- * comes from the real cursor shape rather than a guess.
+ * comes from the real cursor shape rather than a guess -- as does
+ * `WindowBoundsPoller` itself now (`resolveWindowResizeRotationDeg`,
+ * window-bounds-poller.ts), derived from the bounds delta between polls
+ * rather than a guess either: for a followed live window, the recorded
+ * cursor path is normalized against that same continuously-rebased rect,
+ * so during a corner drag the cursor's *recorded* position can sit at a
+ * near-constant fractional spot near a corner throughout the whole drag
+ * even as the window visibly resizes -- reading direction from that path
+ * (`resolveResizeRotationDeg`'s movement-heuristic, below) doesn't hold up
+ * there, unlike the bounds themselves.
  */
 export interface WindowResizeSample {
   atMs: number;
-  /** Exact orientation from a real observed OS resize-cursor sighting (0 = horizontal, 90 = vertical) -- undefined for a sample that instead came from an observed whole-window bounds change (`WindowBoundsPoller`), which has no such direct signal and falls back to `resolveResizeRotationDeg`'s movement-direction heuristic instead. */
-  rotationDeg?: 0 | 90;
+  /** Exact orientation -- from a real observed OS resize-cursor sighting, or from the bounds delta between two live-window polls (see above) -- undefined only if some future producer ever has neither, in which case gesture resolution falls back to `resolveResizeRotationDeg`'s movement-direction heuristic. */
+  rotationDeg?: ResizeRotationDeg;
 }
 
 /**
@@ -520,13 +529,13 @@ export function resolveResizeRotationDeg(path: CursorPathPoint[], atMs: number):
 
 /**
  * Which way the resize icon should point at `atMs`: prefers the exact
- * orientation from a real observed OS resize-cursor sighting
- * (`WindowResizeSample.rotationDeg`, see `CursorShapeTracker`) when the
- * currently-active resize sample carries one, since that's a fact rather
- * than a guess; falls back to the cursor's own recent movement direction
- * (`resolveResizeRotationDeg`) when it doesn't -- the case for a whole-
- * window corner drag (`WindowBoundsPoller`), which has no such direct
- * signal.
+ * orientation carried on the currently-active resize sample
+ * (`WindowResizeSample.rotationDeg`) when it has one -- true for both real
+ * producers now, `CursorShapeTracker`'s OS cursor-shape sighting and
+ * `WindowBoundsPoller`'s bounds-delta derivation -- since either is a fact
+ * rather than a guess; falls back to the cursor's own recent movement
+ * direction (`resolveResizeRotationDeg`) only if some future producer ever
+ * leaves it unset.
  */
 export function resolveActiveResizeRotationDeg(
   path: CursorPathPoint[],

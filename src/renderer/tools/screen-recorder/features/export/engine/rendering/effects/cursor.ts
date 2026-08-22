@@ -3379,7 +3379,7 @@ function drawCursorIconInto(
       g.closePath();
     }
     g.fill({ color: '#ffffff', alpha });
-    g.stroke({ color: '#000000', width: s, alpha });
+    g.stroke({ color: '#000000', width: (24 / 256) * s, alpha });
     return;
   }
 

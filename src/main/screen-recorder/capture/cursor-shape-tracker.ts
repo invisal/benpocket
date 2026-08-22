@@ -1,9 +1,10 @@
-import type { WebContents } from 'electron';
+import { screen, type WebContents } from 'electron';
 import { spawn, type ChildProcessByStdio } from 'child_process';
 import type { Readable } from 'stream';
 import { IpcChannels } from '@shared/ipc-channels';
 import { findMacRecorderHelperPath } from './native/recording-helper';
 import { spawnWin32CursorShapeStream } from './native/win-cursor-shape';
+import type { CursorTrackerBounds } from './cursor-tracker';
 
 type ShapeStreamChild = ChildProcessByStdio<null, Readable, null>;
 
@@ -38,12 +39,23 @@ type ShapeStreamChild = ChildProcessByStdio<null, Readable, null>;
  * here for the same reason `WindowBoundsPoller` already covers that case
  * (an actual whole-window corner drag changes the window's own bounds,
  * which that poller does see).
+ *
+ * The native helpers report only a *shape*, system-wide -- not a position --
+ * so every sighting is checked against `bounds`/`updateBounds` (queried via
+ * Electron's own `screen.getCursorScreenPoint()` at receive time) before
+ * being forwarded, same out-of-bounds convention as cursor-tracker.ts/
+ * click-tracker.ts. Without this, a resize/crosshair/text-select cursor
+ * glimpsed on another monitor or an unrelated window while the recorded
+ * area sits untouched would otherwise get attributed to whatever position
+ * this recording's own cursorPath was last interpolated at.
  */
 export class CursorShapeTracker {
   private child: ShapeStreamChild | null = null;
+  private bounds: CursorTrackerBounds = { x: 0, y: 0, width: 1, height: 1 };
 
-  start(webContents: WebContents, startedAt: number): void {
+  start(webContents: WebContents, bounds: CursorTrackerBounds, startedAt: number): void {
     this.stop();
+    this.bounds = bounds;
 
     const child = process.platform === 'darwin' ? this.spawnMac() : spawnWin32CursorShapeStream();
     if (!child) return;
@@ -75,6 +87,18 @@ export class CursorShapeTracker {
           this.stop();
           return;
         }
+        // The native stream reports the system-wide cursor shape with no
+        // position of its own -- querying the *current* global position here
+        // (Electron already exposes this, so there's no need for the native
+        // helpers to report it) and checking it against `this.bounds` is what
+        // stops a resize/crosshair/text-select cursor glimpsed on another
+        // monitor or an unrelated window from getting attributed to this
+        // recording's captured area. Same out-of-bounds reasoning as
+        // cursor-tracker.ts/click-tracker.ts.
+        const point = screen.getCursorScreenPoint();
+        const x = (point.x - this.bounds.x) / this.bounds.width;
+        const y = (point.y - this.bounds.y) / this.bounds.height;
+        if (x < 0 || x > 1 || y < 0 || y > 1) continue;
         webContents.send(IpcChannels.CursorShapeSample, {
           atMs: Date.now() - startedAt,
           kind: payload.kind
@@ -101,6 +125,11 @@ export class CursorShapeTracker {
   stop(): void {
     if (this.child && !this.child.killed) this.child.kill();
     this.child = null;
+  }
+
+  /** Re-bases the bounds check onto a freshly-queried rect -- see window-bounds-poller.ts. */
+  updateBounds(bounds: CursorTrackerBounds): void {
+    this.bounds = bounds;
   }
 }
 

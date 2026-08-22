@@ -1,5 +1,12 @@
 import type React from 'react';
-import { KuberneterTerminal } from '../terminal';
+import { lazy, Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+
+const KuberneterTerminal = lazy(() =>
+  import('../terminal/KuberneterTerminal').then((m) => ({
+    default: m.KuberneterTerminal
+  }))
+);
 
 interface KuberneterTerminalViewProps {
   /** Stable per-tab id used as the PTY session id. */
@@ -27,12 +34,21 @@ export const KuberneterTerminalView: React.FC<KuberneterTerminalViewProps> = ({
   initialCommand
 }) => {
   return (
-    <KuberneterTerminal
-      sessionId={sessionId}
-      contextName={contextName}
-      kubeconfigPath={kubeconfigPath}
-      isActive={isActive}
-      initialCommand={initialCommand}
-    />
+    <Suspense
+      fallback={
+        <div className="flex h-full w-full items-center justify-center bg-surface-1 text-xs text-muted-foreground font-mono gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-accent" />
+          <span>Initializing terminal...</span>
+        </div>
+      }
+    >
+      <KuberneterTerminal
+        sessionId={sessionId}
+        contextName={contextName}
+        kubeconfigPath={kubeconfigPath}
+        isActive={isActive}
+        initialCommand={initialCommand}
+      />
+    </Suspense>
   );
 };

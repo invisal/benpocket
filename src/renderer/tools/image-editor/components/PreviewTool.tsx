@@ -3,10 +3,28 @@ import type { ToolPanelProps } from '../types';
 
 /** View-only mode: just the decoded image, no editing controls. Default tool so opening an image
  * doesn't drop the user straight into an editing surface. */
-export function PreviewTool({ imageData }: Pick<ToolPanelProps, 'imageData'>) {
+export function PreviewTool({
+  imageData,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: Pick<
+  ToolPanelProps,
+  'imageData' | 'zoom' | 'onZoomChange' | 'onEffectiveZoomChange' | 'pan' | 'onPanChange'
+>) {
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData} />
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+        leftClickPans
+      />
     </div>
   );
 }

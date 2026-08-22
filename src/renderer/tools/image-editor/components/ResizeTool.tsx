@@ -15,7 +15,17 @@ import type { ToolPanelProps } from '../types';
  * nothing to resync. Apply just hands the sharp result to `onCommit`; `ImageTool` decodes it for
  * display, so there's nothing to decode here.
  */
-export function ResizeTool({ imageData, onCommit, binary, mimeType }: ToolPanelProps) {
+export function ResizeTool({
+  imageData,
+  onCommit,
+  binary,
+  mimeType,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: ToolPanelProps) {
   const [width, setWidth] = useState(imageData.width);
   const [height, setHeight] = useState(imageData.height);
   const [lockAspect, setLockAspect] = useState(true);
@@ -55,7 +65,14 @@ export function ResizeTool({ imageData, onCommit, binary, mimeType }: ToolPanelP
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData} />
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+      />
       <FloatingToolbar>
         <NumberField label="W" value={width} onCommit={commitWidth} />
         <NumberField label="H" value={height} onCommit={commitHeight} />

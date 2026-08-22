@@ -149,21 +149,26 @@ const CLICK_BOUNCE_DURATION_MS = 320;
 const CLICK_RIPPLE_DURATION_MS = 500;
 
 /**
- * `clickPath` is sorted and typically sparse (occasional clicks, not a
- * continuous sample stream like `cursorPath`), so this binary-searches for
- * the most recent click at/before `atMs` rather than walking the whole
- * array. Shared by `resolveClickBounceScale` and `resolveClickRipple` --
- * both animations key off the exact same "most recent click" moment.
+ * A click/resize-sample path is sorted and typically sparse (occasional
+ * events, not a continuous sample stream like `cursorPath`), so this
+ * binary-searches for the most recent one at/before `atMs` rather than
+ * walking the whole array. Generic over anything timestamped (`clickPath`,
+ * `WindowResizeSample[]`) -- same shape, same "most recent at/before"
+ * question. Shared by `resolveClickBounceScale`, `resolveClickRipple`, and
+ * `activeResizeSampleAt`.
  */
-function mostRecentClick(clickPath: CursorPathPoint[], atMs: number): CursorPathPoint | null {
+function mostRecentPointAtOrBefore<T extends { atMs: number }>(
+  points: T[],
+  atMs: number
+): T | null {
   let lo = 0;
-  let hi = clickPath.length;
+  let hi = points.length;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (clickPath[mid].atMs <= atMs) lo = mid + 1;
+    if (points[mid].atMs <= atMs) lo = mid + 1;
     else hi = mid;
   }
-  return clickPath[lo - 1] ?? null;
+  return points[lo - 1] ?? null;
 }
 
 /**
@@ -196,7 +201,7 @@ export function resolveClickBounceScale(
   intensity: number
 ): number {
   if (intensity <= 0 || clickPath.length === 0) return 1;
-  const click = mostRecentClick(clickPath, atMs);
+  const click = mostRecentPointAtOrBefore(clickPath, atMs);
   if (!click) return 1;
 
   const elapsed = atMs - click.atMs;
@@ -232,7 +237,7 @@ export function resolveClickRipple(
   intensity: number
 ): ClickRipple | null {
   if (intensity <= 0 || clickPath.length === 0) return null;
-  const click = mostRecentClick(clickPath, atMs);
+  const click = mostRecentPointAtOrBefore(clickPath, atMs);
   if (!click) return null;
 
   const elapsed = atMs - click.atMs;
@@ -247,45 +252,22 @@ export function resolveClickRipple(
   return { pos: { x: click.x, y: click.y }, progress, alpha };
 }
 
-/** Which icon shape the cursor should draw -- the default arrow, or a "hand" while hovering still or dragging (both read the same visually -- there's no separate grab glyph). */
-export type CursorGesture = 'idle' | 'hover';
+/** Which icon shape the cursor should draw -- the default arrow, a "hand" while hovering something clickable, or a "resize" icon (at some `ResizeRotationDeg`) while the recorded window is actually being resized (see `resolveCursorGesture`). */
+export type CursorGesture = 'idle' | 'hover' | 'resize';
 
-/** Upper bound on how long after a click its own movement can still count as
- * "that click's drag" -- past this, the click is treated as long since
- * resolved (pressed and released) even if the cursor keeps moving, so one
- * old click can't keep claiming unrelated movement minutes later as "still
- * dragging that". Drag-like movement doesn't get its own icon (see
- * `CursorGesture`) -- it's just another reason `resolveCursorGesture` keeps
- * showing "hover" instead of falling back to idle. */
-const DRAG_MAX_WINDOW_MS = 4000;
-/** Minimum drift from the click's own position (normalized 0-1 units) before movement counts as an actual drag rather than a stationary click's natural jitter. */
-const DRAG_DISTANCE_THRESHOLD = 0.015;
+/**
+ * The resize glyph is authored as a single horizontal double-headed arrow --
+ * every orientation besides horizontal is this same artwork rotated in
+ * place around its own hotspot, not separate art. 0/90/45/135 cover the 4
+ * distinct orientations a symmetric double-headed arrow actually needs
+ * (180 would look identical to 0, 225 identical to 45, etc).
+ */
+export type ResizeRotationDeg = 0 | 45 | 90 | 135;
+
 /** Look-back window (ms) for "is the cursor still actively moving right now" -- also what distinguishes a plain hover (stationary) from movement. */
 const STILLNESS_WINDOW_MS = 180;
 /** Movement (normalized 0-1 units) across that window below which the cursor is considered stationary. */
 const STILLNESS_EPS = 0.004;
-/**
- * How long movement must hold *continuously* before the icon actually
- * leaves "hover" for idle/drag -- checking only the single instant at `atMs`
- * meant a one-frame jitter right at the stillness boundary flipped the icon
- * back and forth on every tiny wobble, reading as a flicker rather than a
- * clean switch. Entering "hover" has no equivalent delay -- the hand should
- * still appear the instant the cursor actually settles, only leaving it
- * is debounced.
- */
-const HOVER_EXIT_CONFIRM_MS = 60;
-/** Sampling step across `HOVER_EXIT_CONFIRM_MS` -- checks several points spanning the window, not just its two ends, so a brief pause in the middle can't cancel out against a big enough displacement at the edges. */
-const HOVER_EXIT_CONFIRM_STEP_MS = 20;
-/**
- * How long after a click the icon keeps holding "hover" through subsequent
- * movement that isn't a drag -- e.g. clicking through a row of tightly
- * packed buttons (A, then sweeping the cursor over to B, C, D) shouldn't
- * flicker the icon back to idle for the moment spent traveling between
- * each one. Much longer than `HOVER_EXIT_CONFIRM_MS`, which only smooths a
- * single frame of jitter, not several seconds of "still clicking around in
- * the same cluster of controls."
- */
-const HOVER_CLICK_GRACE_MS = 3500;
 /**
  * Radius (normalized 0-1 units) within which a resting position counts as
  * "near" some click -- roughly a small UI control and its immediate
@@ -293,8 +275,8 @@ const HOVER_CLICK_GRACE_MS = 3500;
  * which meant the hand appeared over *any* pause anywhere on screen (an
  * empty desktop while narrating, a random spot mid-explanation) -- nothing
  * a real cursor does, since it only changes shape over an actual clickable
- * element. This is the other proxy (alongside `HOVER_CLICK_GRACE_MS`) for
- * "probably clickable" without any real hit-testing.
+ * element. This is the proxy for "probably clickable" without any real
+ * hit-testing.
  */
 const HOVER_NEAR_CLICK_RADIUS = 0.035;
 
@@ -308,6 +290,62 @@ function isStillAt(path: CursorPathPoint[], atMs: number): boolean {
   const past = sampleCursorPath(path, atMs - STILLNESS_WINDOW_MS);
   if (!now || !past) return true;
   return distance(now, past) <= STILLNESS_EPS;
+}
+
+/**
+ * A timestamp (ms since recording start) at which the tracked window's real
+ * OS bounds were observed to have changed since the previous poll -- see
+ * `WindowBoundsPoller` (main/screen-recorder/capture/window-bounds-poller.ts).
+ * This is a *fact*, not an inference: the window's actual rect genuinely
+ * moved/resized between two polls. Only ever populated for a window-source
+ * recording with live bounds tracking -- always empty for a screen/
+ * full-screen recording (there's no tracked window rect to diff), which is
+ * exactly why `resolveCursorGesture` never shows 'resize' for one of those.
+ *
+ * This replaced an earlier heuristic that tried to infer "is this a resize
+ * drag" from cursor movement + real mousedown/mouseup timestamps (`atMs` +
+ * "moved far enough while the button was held"). That approach could never
+ * reliably tell an actual window-edge drag apart from any other held-and-
+ * moving gesture (a file drag, a text selection, a slider) -- every one of
+ * those read as the same 'resize' icon, and tuning the movement threshold
+ * either misfired on ordinary clicks/drags or missed real resizes. Diffing
+ * the window's own polled bounds removes the guesswork entirely: it only
+ * reflects an actual window-panel resize, nothing else drag-shaped.
+ *
+ * A second, independent producer feeds this same stream: `CursorShapeTracker`
+ * (main/screen-recorder/capture/cursor-shape-tracker.ts) reports a real
+ * sighting of the OS's own resize cursor -- the only signal that catches an
+ * *internal* resize handle (a split-view divider, a panel splitter) inside
+ * whatever's being recorded, since dragging one never changes the recorded
+ * window's outer bounds at all, so `WindowBoundsPoller` alone can't see it.
+ * That producer also knows the exact orientation (`rotationDeg`), since it
+ * comes from the real cursor shape rather than a guess.
+ */
+export interface WindowResizeSample {
+  atMs: number;
+  /** Exact orientation from a real observed OS resize-cursor sighting (0 = horizontal, 90 = vertical) -- undefined for a sample that instead came from an observed whole-window bounds change (`WindowBoundsPoller`), which has no such direct signal and falls back to `resolveResizeRotationDeg`'s movement-direction heuristic instead. */
+  rotationDeg?: 0 | 90;
+}
+
+/**
+ * How long a real bounds-change stays "active" for gesture purposes after
+ * the most recent one -- must exceed the poller's own poll interval (500ms)
+ * so a continuous resize drag (whose bounds differ on essentially every
+ * poll tick) never has a gap between samples, while a resize that has
+ * genuinely stopped clears again shortly after polling confirms the bounds
+ * are stable.
+ */
+const RESIZE_ACTIVE_WINDOW_MS = 700;
+
+/** The most recent `WindowResizeSample` still within `RESIZE_ACTIVE_WINDOW_MS` of `atMs` -- resize is currently active exactly when this is non-null -- or null if resize isn't currently active. */
+function activeResizeSampleAt(
+  resizePath: WindowResizeSample[],
+  atMs: number
+): WindowResizeSample | null {
+  const mostRecent = mostRecentPointAtOrBefore(resizePath, atMs);
+  if (!mostRecent) return null;
+  const elapsed = atMs - mostRecent.atMs;
+  return elapsed >= 0 && elapsed <= RESIZE_ACTIVE_WINDOW_MS ? mostRecent : null;
 }
 
 /**
@@ -325,53 +363,153 @@ function isNearAnyClick(clickPath: CursorPathPoint[], pos: { x: number; y: numbe
   return false;
 }
 
-/** Whether a click landed within `HOVER_CLICK_GRACE_MS` at/before `atMs`. */
-function isWithinClickGrace(clickPath: CursorPathPoint[], atMs: number): boolean {
-  const click = mostRecentClick(clickPath, atMs);
-  if (!click) return false;
-  const elapsed = atMs - click.atMs;
-  return elapsed >= 0 && elapsed <= HOVER_CLICK_GRACE_MS;
-}
-
-/** Whether `atMs` should show "hover": stationary, *and* either resting near some click in the recording or within a recent click's grace window -- see `resolveCursorGesture`'s own doc for why bare stillness alone isn't enough. */
-function isHoverAt(path: CursorPathPoint[], clickPath: CursorPathPoint[], atMs: number): boolean {
+/**
+ * The exact, instantaneous "hover" condition at one single instant:
+ * stationary, and resting near some click in the recording. See
+ * `isHoverInstantAt` (below) for the debounced version actually used, and
+ * `isHoverAt` for the version on top of *that* which adds a longer exit
+ * linger.
+ */
+function isHoverStillAndNear(
+  path: CursorPathPoint[],
+  clickPath: CursorPathPoint[],
+  atMs: number
+): boolean {
   const pos = sampleCursorPath(path, atMs);
   if (!pos || !isStillAt(path, atMs)) return false;
-  return isNearAnyClick(clickPath, pos) || isWithinClickGrace(clickPath, atMs);
-}
-
-/** Whether `atMs` is mid-drag: moving, displaced from the most recent click's own position beyond `DRAG_DISTANCE_THRESHOLD`, within `DRAG_MAX_WINDOW_MS` of it. */
-function isDragAt(path: CursorPathPoint[], clickPath: CursorPathPoint[], atMs: number): boolean {
-  const now = sampleCursorPath(path, atMs);
-  if (!now) return false;
-  const click = mostRecentClick(clickPath, atMs);
-  if (!click) return false;
-  const elapsed = atMs - click.atMs;
-  if (elapsed < 0 || elapsed > DRAG_MAX_WINDOW_MS) return false;
-  return distance(now, click) > DRAG_DISTANCE_THRESHOLD;
+  return isNearAnyClick(clickPath, pos);
 }
 
 /**
- * Infers which icon shape to draw at `atMs` from the recording's own data --
- * continuous cursor position plus real mousedown timestamps. There's no
- * accessibility/DOM introspection of whatever was recorded and no mouseup
- * capture (see `ClickTracker` in main/screen-recorder/capture/click-tracker.
- * ts), so there's no real signal for "is this pixel actually something
- * clickable" -- every non-idle state here is a proxy, not an observation:
+ * How long stillness must actually stop holding before hover's instantaneous
+ * condition (`isHoverStillAndNear`) is allowed to flip off -- checking only
+ * the single instant at `atMs` meant a one-frame jitter right at
+ * `STILLNESS_EPS`'s boundary (natural hand tremor, especially with
+ * `cursor.smoothing` at or near 0%) flipped the icon back and forth on every
+ * tiny wobble, reading as a flicker rather than a clean switch. Entering
+ * hover has no equivalent delay -- the hand should still appear the instant
+ * the cursor actually settles, only leaving it is debounced.
+ */
+const HOVER_EXIT_CONFIRM_MS = 60;
+/** Sampling step across `HOVER_EXIT_CONFIRM_MS` -- checks several points spanning the window, not just its two ends, so a brief pause in the middle can't cancel out against a big enough displacement at the edges. */
+const HOVER_EXIT_CONFIRM_STEP_MS = 20;
+
+/**
+ * Debounced version of `isHoverStillAndNear`: true right now, or true at any
+ * recently-sampled instant across `HOVER_EXIT_CONFIRM_MS` -- so a single
+ * frame of jitter across the stillness boundary can't flip hover off by
+ * itself, only genuinely-continuous movement can.
+ */
+function isHoverInstantAt(
+  path: CursorPathPoint[],
+  clickPath: CursorPathPoint[],
+  atMs: number
+): boolean {
+  if (isHoverStillAndNear(path, clickPath, atMs)) return true;
+  for (let t = atMs - HOVER_EXIT_CONFIRM_MS; t < atMs; t += HOVER_EXIT_CONFIRM_STEP_MS) {
+    if (isHoverStillAndNear(path, clickPath, t)) return true;
+  }
+  return false;
+}
+
+/**
+ * How long after any click hover can still show, even once the cursor is no
+ * longer stationary at (or near) it -- so moving away from a clicked spot
+ * doesn't snap straight back to the plain arrow. Restores this project's
+ * original grace-period duration (a flat ~3.5s window after any click, from
+ * before drag/resize detection existed) -- long enough to read as a
+ * deliberate hold rather than an instant cut. Entering hover has no
+ * equivalent delay -- the hand still appears the instant the cursor
+ * actually settles, only leaving it is held.
+ */
+const HOVER_LINGER_MS = 3500;
+
+/** Whether a click landed within `HOVER_LINGER_MS` at/before `atMs`. */
+function isWithinHoverLinger(clickPath: CursorPathPoint[], atMs: number): boolean {
+  const click = mostRecentPointAtOrBefore(clickPath, atMs);
+  if (!click) return false;
+  const elapsed = atMs - click.atMs;
+  return elapsed >= 0 && elapsed <= HOVER_LINGER_MS;
+}
+
+/**
+ * Whether `atMs` should show "hover" -- either right now (`isHoverInstantAt`),
+ * or within `HOVER_LINGER_MS` of any click (`isWithinHoverLinger`), see that
+ * constant's own doc for why leaving hover is deliberately softer than
+ * entering it. A single binary-search lookup either way, not a scan -- cheap
+ * regardless of how long the grace window is, unlike re-checking
+ * `isHoverInstantAt` at many past instants would be over several seconds.
+ */
+function isHoverAt(path: CursorPathPoint[], clickPath: CursorPathPoint[], atMs: number): boolean {
+  return isHoverInstantAt(path, clickPath, atMs) || isWithinHoverLinger(clickPath, atMs);
+}
+
+/**
+ * Which way the resize icon should point during a drag, derived from the
+ * cursor's own actual recent direction of travel rather than a fixed
+ * default: `atan2` of the movement vector over the same
+ * `STILLNESS_WINDOW_MS` lookback `isStillAt` already uses, folded into
+ * 0-180° (a double-headed arrow looks identical rotated 180°) and snapped to
+ * the nearest of the 4 orientations the artwork actually has (see
+ * `ResizeRotationDeg`). Callers only call this once the resize gesture is
+ * already active, so there's always real recent movement to read a
+ * direction from.
+ */
+export function resolveResizeRotationDeg(path: CursorPathPoint[], atMs: number): ResizeRotationDeg {
+  const now = sampleCursorPath(path, atMs);
+  const past = sampleCursorPath(path, atMs - STILLNESS_WINDOW_MS);
+  if (!now || !past) return 0;
+  const dx = now.x - past.x;
+  const dy = now.y - past.y;
+  if (dx === 0 && dy === 0) return 0;
+  const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const folded = ((angleDeg % 180) + 180) % 180;
+  const snapped = (Math.round(folded / 45) * 45) % 180;
+  return snapped as ResizeRotationDeg;
+}
+
+/**
+ * Which way the resize icon should point at `atMs`: prefers the exact
+ * orientation from a real observed OS resize-cursor sighting
+ * (`WindowResizeSample.rotationDeg`, see `CursorShapeTracker`) when the
+ * currently-active resize sample carries one, since that's a fact rather
+ * than a guess; falls back to the cursor's own recent movement direction
+ * (`resolveResizeRotationDeg`) when it doesn't -- the case for a whole-
+ * window corner drag (`WindowBoundsPoller`), which has no such direct
+ * signal.
+ */
+export function resolveActiveResizeRotationDeg(
+  path: CursorPathPoint[],
+  resizePath: WindowResizeSample[],
+  atMs: number
+): ResizeRotationDeg {
+  const active = activeResizeSampleAt(resizePath, atMs);
+  if (active?.rotationDeg !== undefined) return active.rotationDeg;
+  return resolveResizeRotationDeg(path, atMs);
+}
+
+/**
+ * Infers which icon shape to draw at `atMs` from the recording's own data:
+ * continuous cursor position, real mousedown timestamps, and (for a
+ * window-source recording only) real observed window-bounds/cursor-shape
+ * changes. There's still no accessibility/DOM introspection of whatever was
+ * recorded, so there's no signal for "is this pixel actually something
+ * clickable" -- but "is the tracked window's rect actually changing right
+ * now, or is the OS itself showing a resize cursor" is a real fact
+ * (`activeResizeSampleAt`), not a proxy:
  *
- * - "hover": stationary, and either resting near some click anywhere in the
- *   recording (`HOVER_NEAR_CLICK_RADIUS`) or within a recent click's grace
- *   window (`HOVER_CLICK_GRACE_MS`) -- see `isHoverAt`. Bare stillness used
- *   to be enough on its own, which made the hand appear over any pause
- *   anywhere, not just plausibly-clickable spots. Appears the instant the
- *   cursor settles, but (`HOVER_EXIT_CONFIRM_MS`) lingers a little after
- *   movement resumes rather than dropping on the very first frame of
- *   motion -- OR moving in a drag-like way (`isDragAt`: displaced from the
- *   most recent click's own position beyond `DRAG_DISTANCE_THRESHOLD`,
- *   within `DRAG_MAX_WINDOW_MS` of it), which reads as the same "hover"
- *   rather than a separate icon -- there's only the one hand glyph. A brief
- *   pause mid-drag (natural hand tremor while dragging carefully) is
- *   likewise checked before falling back to idle, so it doesn't flicker.
+ * - "resize": an active `WindowResizeSample` exists (`activeResizeSampleAt`)
+ *   -- `resizePath` only ever has entries for a window-source recording
+ *   with live bounds tracking, so this never fires for a screen/full-screen
+ *   recording. Always on (no setting disables it, unlike hover below) --
+ *   it's a real, factual signal rather than an inferred proxy, so there's
+ *   nothing to opt out of. Takes precedence over hover -- a real resize is
+ *   happening regardless of what's rendered beneath.
+ * - "hover": `handGestureEnabled` on, stationary, and resting near some click
+ *   anywhere in the recording (`isHoverAt`/`HOVER_NEAR_CLICK_RADIUS`). Also
+ *   holds for a full grace window (`HOVER_LINGER_MS`) after any click, even
+ *   once the cursor has moved away from it, rather than snapping straight
+ *   back to idle.
  * - "idle": none of the above -- the plain arrow.
  *
  * `path` should be the same (smoothed) trajectory `sampleCursorPath` draws
@@ -381,30 +519,14 @@ function isDragAt(path: CursorPathPoint[], clickPath: CursorPathPoint[], atMs: n
 export function resolveCursorGesture(
   path: CursorPathPoint[],
   clickPath: CursorPathPoint[],
-  atMs: number
+  resizePath: WindowResizeSample[],
+  atMs: number,
+  handGestureEnabled = true
 ): CursorGesture {
   const now = sampleCursorPath(path, atMs);
   if (!now) return 'idle';
 
-  if (isStillAt(path, atMs)) {
-    // Was this drag-like movement up until just now, rather than a genuine
-    // release? Checked before settling into idle so a momentary pause
-    // mid-drag doesn't drop the hand.
-    for (let t = atMs - HOVER_EXIT_CONFIRM_MS; t < atMs; t += HOVER_EXIT_CONFIRM_STEP_MS) {
-      if (isDragAt(path, clickPath, t)) return 'hover';
-    }
-    return isHoverAt(path, clickPath, atMs) ? 'hover' : 'idle';
-  }
-
-  // Moving right now, but don't leave "hover" over a single frame of
-  // motion -- only once movement has held continuously across the whole
-  // confirm window (checked at several points across it, not just the
-  // ends) does the icon actually switch, damping the flicker a momentary
-  // jitter right at the stillness boundary used to cause.
-  for (let t = atMs - HOVER_EXIT_CONFIRM_MS; t < atMs; t += HOVER_EXIT_CONFIRM_STEP_MS) {
-    if (isHoverAt(path, clickPath, t)) return 'hover';
-  }
-
-  if (isDragAt(path, clickPath, atMs)) return 'hover';
-  return isWithinClickGrace(clickPath, atMs) ? 'hover' : 'idle';
+  if (activeResizeSampleAt(resizePath, atMs) !== null) return 'resize';
+  if (handGestureEnabled && isHoverAt(path, clickPath, atMs)) return 'hover';
+  return 'idle';
 }

@@ -61,7 +61,11 @@ export const CURSOR_SIZE_UNIT_PX = 5;
  */
 export const CURSOR_GESTURE_HOTSPOTS: Record<CursorGesture, { x: number; y: number }> = {
   idle: { x: 5, y: 3 },
-  hover: { x: 7.5, y: 2.03 }
+  hover: { x: 7.5, y: 2.03 },
+  // The glyph's own bounding-box center (found the same way as hover's own
+  // hotspot -- by flattening its source curves, not eyeballed), not (12,12)
+  // -- the artwork isn't a perfectly square silhouette within its box.
+  resize: { x: 12, y: 12.75 }
 };
 
 /**

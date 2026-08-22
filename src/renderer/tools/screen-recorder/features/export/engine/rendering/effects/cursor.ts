@@ -233,6 +233,458 @@ const CURSOR_HOVER_GLYPH: { fill: SubPath[]; lines: [SubPath[number], SubPath[nu
 };
 
 /**
+ * The generic resize (double-headed arrow) glyph -- shown while actively
+ * dragging, see resolveCursorGesture in @shared/cursor-path. Fixed
+ * white/black artwork, same convention as `CURSOR_HOVER_GLYPH` (not
+ * recolored via `drawCursorIconInto`'s `fill`/`stroke` params, unlike the
+ * plain arrow) -- the source art is itself a thin outline shape, which read
+ * as barely-visible against a similarly dark recording when recolored via
+ * the active cursor style's own (often dark) fill. Two subpaths -- not a
+ * single contour like the arrow -- because the source art's shaft is a
+ * hollow outline (an inner cutout, not solid fill); both are drawn via
+ * moveTo/lineTo/closePath before one shared nonzero-rule `fill()` call, same
+ * as everywhere else in this file, so the second subpath renders as a hole
+ * rather than a second solid shape.
+ *
+ * Not hand-authored -- CursorStyleIcon.tsx's source path (RESIZE_PATH_D) uses
+ * curves PixiJS's `Graphics` has no direct equivalent for, so these points
+ * were flattened via PixiJS's own `GraphicsPath`/adaptive-bezier flattener
+ * (the same code Pixi's own `Graphics#svg()` uses internally), not re-derived
+ * by hand, to guarantee the export matches the live preview's glyph exactly.
+ */
+const CURSOR_RESIZE_GLYPH: SubPath[] = [
+  [
+    [7.13, 6],
+    [7.22, 6.1],
+    [7.38, 6.32],
+    [7.55, 6.68],
+    [7.68, 7.21],
+    [7.72, 7.79],
+    [7.66, 8.7],
+    [7.53, 9.92],
+    [7.5, 10.5],
+    [9.73, 10.5],
+    [14.22, 10.5],
+    [16.5, 10.5],
+    [16.5, 9.48],
+    [16.5, 7.42],
+    [16.5, 6.38],
+    [16.72, 6.16],
+    [17.02, 5.98],
+    [17.23, 5.94],
+    [17.4, 5.96],
+    [17.73, 6.09],
+    [18.07, 6.3],
+    [18.39, 6.57],
+    [19.14, 7.36],
+    [19.65, 7.92],
+    [19.75, 8.02],
+    [19.93, 8.2],
+    [20.02, 8.29],
+    [20.21, 8.48],
+    [20.6, 8.87],
+    [20.79, 9.06],
+    [21.04, 9.3],
+    [21.53, 9.8],
+    [21.77, 10.04],
+    [21.96, 10.23],
+    [22.34, 10.61],
+    [22.53, 10.8],
+    [22.62, 10.89],
+    [22.8, 11.07],
+    [22.89, 11.16],
+    [23.02, 11.29],
+    [23.27, 11.54],
+    [23.4, 11.67],
+    [23.44, 11.71],
+    [23.51, 11.78],
+    [23.55, 11.82],
+    [23.75, 12.03],
+    [23.95, 12.32],
+    [24.02, 12.56],
+    [24.05, 12.71],
+    [24.03, 12.89],
+    [23.91, 13.22],
+    [23.7, 13.56],
+    [23.43, 13.89],
+    [22.96, 14.35],
+    [22.34, 14.91],
+    [22.08, 15.15],
+    [21.98, 15.25],
+    [21.8, 15.43],
+    [21.71, 15.52],
+    [21.52, 15.71],
+    [21.13, 16.1],
+    [20.94, 16.29],
+    [20.7, 16.54],
+    [20.2, 17.03],
+    [19.96, 17.27],
+    [19.77, 17.46],
+    [19.39, 17.84],
+    [19.2, 18.03],
+    [19.11, 18.12],
+    [18.93, 18.3],
+    [18.84, 18.39],
+    [18.71, 18.52],
+    [18.46, 18.77],
+    [18.33, 18.9],
+    [18.29, 18.94],
+    [18.22, 19.01],
+    [18.18, 19.05],
+    [18.04, 19.18],
+    [17.8, 19.37],
+    [17.56, 19.47],
+    [17.26, 19.53],
+    [17.07, 19.54],
+    [16.95, 19.51],
+    [16.72, 19.34],
+    [16.5, 19.13],
+    [16.5, 18.1],
+    [16.5, 16.04],
+    [16.5, 15],
+    [14.27, 15],
+    [9.78, 15],
+    [7.5, 15],
+    [7.5, 16.02],
+    [7.5, 18.08],
+    [7.5, 19.13],
+    [7.28, 19.34],
+    [6.98, 19.52],
+    [6.77, 19.56],
+    [6.6, 19.54],
+    [6.27, 19.41],
+    [5.93, 19.2],
+    [5.61, 18.93],
+    [4.86, 18.14],
+    [4.35, 17.58],
+    [4.25, 17.48],
+    [4.07, 17.3],
+    [3.98, 17.21],
+    [3.79, 17.02],
+    [3.4, 16.63],
+    [3.21, 16.44],
+    [2.96, 16.2],
+    [2.47, 15.7],
+    [2.23, 15.46],
+    [2.04, 15.27],
+    [1.66, 14.89],
+    [1.47, 14.7],
+    [1.38, 14.61],
+    [1.2, 14.43],
+    [1.11, 14.34],
+    [0.98, 14.21],
+    [0.73, 13.96],
+    [0.6, 13.83],
+    [0.56, 13.79],
+    [0.49, 13.72],
+    [0.45, 13.68],
+    [0.25, 13.47],
+    [0.05, 13.18],
+    [-0.02, 12.94],
+    [-0.05, 12.79],
+    [-0.03, 12.61],
+    [0.09, 12.28],
+    [0.3, 11.94],
+    [0.57, 11.61],
+    [1.04, 11.15],
+    [1.66, 10.59],
+    [1.92, 10.35],
+    [2.02, 10.25],
+    [2.2, 10.07],
+    [2.29, 9.98],
+    [2.48, 9.79],
+    [2.87, 9.4],
+    [3.06, 9.21],
+    [3.3, 8.96],
+    [3.8, 8.47],
+    [4.04, 8.23],
+    [4.23, 8.04],
+    [4.61, 7.66],
+    [4.8, 7.47],
+    [4.89, 7.38],
+    [5.07, 7.2],
+    [5.16, 7.11],
+    [5.29, 6.98],
+    [5.54, 6.73],
+    [5.67, 6.6],
+    [5.71, 6.56],
+    [5.78, 6.49],
+    [5.82, 6.45],
+    [5.97, 6.31],
+    [6.26, 6.1],
+    [6.56, 5.98],
+    [6.92, 5.97],
+    [7.13, 6]
+  ],
+  [
+    [5.75, 8.87],
+    [5.69, 8.92],
+    [5.59, 9.03],
+    [5.53, 9.08],
+    [5.48, 9.14],
+    [5.36, 9.26],
+    [5.3, 9.32],
+    [5.23, 9.38],
+    [5.1, 9.51],
+    [5.04, 9.58],
+    [4.97, 9.65],
+    [4.84, 9.78],
+    [4.77, 9.84],
+    [4.6, 10.02],
+    [4.25, 10.37],
+    [4.07, 10.54],
+    [3.9, 10.72],
+    [3.54, 11.08],
+    [3.36, 11.26],
+    [3.01, 11.61],
+    [2.32, 12.31],
+    [1.97, 12.66],
+    [2.08, 12.87],
+    [2.35, 13.24],
+    [2.52, 13.42],
+    [2.58, 13.47],
+    [2.69, 13.59],
+    [2.75, 13.65],
+    [2.81, 13.71],
+    [2.93, 13.83],
+    [2.99, 13.89],
+    [3.05, 13.95],
+    [3.18, 14.08],
+    [3.24, 14.14],
+    [3.37, 14.27],
+    [3.64, 14.53],
+    [3.77, 14.66],
+    [3.94, 14.83],
+    [4.27, 15.17],
+    [4.44, 15.33],
+    [4.6, 15.49],
+    [4.92, 15.81],
+    [5.08, 15.97],
+    [5.14, 16.03],
+    [5.27, 16.16],
+    [5.33, 16.22],
+    [5.4, 16.28],
+    [5.49, 16.38],
+    [5.55, 16.44],
+    [5.6, 16.49],
+    [5.7, 16.59],
+    [5.75, 16.64],
+    [5.83, 16.73],
+    [5.93, 16.79],
+    [6, 16.78],
+    [6, 16.72],
+    [6, 16.59],
+    [6, 16.52],
+    [6.01, 16.28],
+    [6.02, 15.8],
+    [6.02, 15.56],
+    [6.03, 15.45],
+    [6.03, 15.24],
+    [6.03, 15.14],
+    [6.04, 14.99],
+    [6.04, 14.69],
+    [6.05, 14.54],
+    [6.05, 14.45],
+    [6.05, 14.27],
+    [6.05, 14.17],
+    [6.08, 14],
+    [6.14, 13.81],
+    [6.21, 13.72],
+    [6.29, 13.66],
+    [6.43, 13.6],
+    [6.65, 13.56],
+    [6.83, 13.56],
+    [6.91, 13.56],
+    [7.05, 13.56],
+    [7.12, 13.56],
+    [7.2, 13.56],
+    [7.36, 13.56],
+    [7.44, 13.56],
+    [7.52, 13.56],
+    [7.68, 13.56],
+    [7.77, 13.56],
+    [8.04, 13.56],
+    [8.58, 13.56],
+    [8.85, 13.56],
+    [9.04, 13.56],
+    [9.42, 13.56],
+    [9.61, 13.56],
+    [10, 13.56],
+    [10.79, 13.56],
+    [11.19, 13.56],
+    [11.64, 13.56],
+    [12.56, 13.56],
+    [13.01, 13.56],
+    [13.41, 13.56],
+    [14.19, 13.56],
+    [14.58, 13.56],
+    [14.82, 13.56],
+    [15.29, 13.56],
+    [15.52, 13.56],
+    [15.78, 13.56],
+    [16.3, 13.56],
+    [16.56, 13.56],
+    [16.64, 13.56],
+    [16.8, 13.56],
+    [16.88, 13.56],
+    [16.95, 13.56],
+    [17.09, 13.56],
+    [17.17, 13.56],
+    [17.23, 13.56],
+    [17.35, 13.56],
+    [17.42, 13.56],
+    [17.58, 13.6],
+    [17.8, 13.74],
+    [17.91, 13.88],
+    [17.93, 14.05],
+    [17.95, 14.32],
+    [17.95, 14.54],
+    [17.96, 14.59],
+    [17.96, 14.68],
+    [17.96, 14.73],
+    [17.96, 14.89],
+    [17.97, 15.19],
+    [17.97, 15.35],
+    [17.97, 15.45],
+    [17.98, 15.66],
+    [17.98, 15.76],
+    [17.99, 16.02],
+    [18, 16.53],
+    [18, 16.78],
+    [18.38, 16.46],
+    [19.1, 15.78],
+    [19.46, 15.43],
+    [19.51, 15.37],
+    [19.63, 15.26],
+    [19.68, 15.2],
+    [19.86, 15.02],
+    [20.21, 14.67],
+    [20.38, 14.5],
+    [20.5, 14.38],
+    [20.74, 14.14],
+    [20.86, 14.02],
+    [21.16, 13.72],
+    [21.74, 13.14],
+    [22.03, 12.84],
+    [21.92, 12.63],
+    [21.65, 12.26],
+    [21.48, 12.08],
+    [21.41, 12.02],
+    [21.32, 11.92],
+    [21.25, 11.85],
+    [21.19, 11.79],
+    [21.07, 11.67],
+    [21.01, 11.61],
+    [20.95, 11.55],
+    [20.82, 11.42],
+    [20.76, 11.36],
+    [20.63, 11.23],
+    [20.36, 10.97],
+    [20.23, 10.84],
+    [20.06, 10.67],
+    [19.73, 10.33],
+    [19.56, 10.17],
+    [19.4, 10.01],
+    [19.08, 9.69],
+    [18.92, 9.53],
+    [18.86, 9.47],
+    [18.73, 9.34],
+    [18.67, 9.28],
+    [18.62, 9.23],
+    [18.5, 9.11],
+    [18.45, 9.06],
+    [18.4, 9.01],
+    [18.3, 8.91],
+    [18.25, 8.86],
+    [18.17, 8.77],
+    [18.07, 8.71],
+    [18, 8.72],
+    [18, 8.78],
+    [18, 8.91],
+    [18, 8.98],
+    [17.99, 9.22],
+    [17.98, 9.7],
+    [17.98, 9.94],
+    [17.97, 10.05],
+    [17.97, 10.26],
+    [17.97, 10.36],
+    [17.96, 10.51],
+    [17.96, 10.81],
+    [17.95, 10.96],
+    [17.95, 11.05],
+    [17.95, 11.23],
+    [17.95, 11.33],
+    [17.92, 11.5],
+    [17.86, 11.69],
+    [17.79, 11.78],
+    [17.71, 11.84],
+    [17.57, 11.9],
+    [17.35, 11.94],
+    [17.17, 11.94],
+    [17.09, 11.94],
+    [16.95, 11.94],
+    [16.88, 11.94],
+    [16.79, 11.94],
+    [16.66, 11.94],
+    [16.56, 11.94],
+    [16.48, 11.94],
+    [16.32, 11.94],
+    [16.23, 11.94],
+    [15.96, 11.94],
+    [15.42, 11.94],
+    [15.15, 11.94],
+    [14.96, 11.94],
+    [14.58, 11.94],
+    [14.39, 11.94],
+    [14, 11.94],
+    [13.21, 11.94],
+    [12.81, 11.94],
+    [12.36, 11.94],
+    [11.44, 11.94],
+    [10.99, 11.94],
+    [10.59, 11.94],
+    [9.81, 11.94],
+    [9.42, 11.94],
+    [9.18, 11.94],
+    [8.71, 11.94],
+    [8.48, 11.94],
+    [8.22, 11.94],
+    [7.7, 11.94],
+    [7.44, 11.94],
+    [7.34, 11.94],
+    [7.22, 11.94],
+    [7.12, 11.94],
+    [7.05, 11.94],
+    [6.91, 11.94],
+    [6.83, 11.94],
+    [6.76, 11.94],
+    [6.66, 11.94],
+    [6.58, 11.94],
+    [6.42, 11.9],
+    [6.2, 11.76],
+    [6.09, 11.63],
+    [6.07, 11.45],
+    [6.05, 11.18],
+    [6.05, 10.96],
+    [6.04, 10.91],
+    [6.04, 10.82],
+    [6.04, 10.77],
+    [6.04, 10.61],
+    [6.03, 10.31],
+    [6.03, 10.15],
+    [6.03, 10.05],
+    [6.02, 9.84],
+    [6.02, 9.74],
+    [6.01, 9.48],
+    [6, 8.97],
+    [6, 8.72],
+    [5.93, 8.72],
+    [5.83, 8.78],
+    [5.75, 8.87]
+  ]
+];
+
+/**
  * Authored stroke width (0.75, in the hand's own 32x32 box), rescaled to the
  * shared 24x24 box and boosted by the same 1.75x `CursorStyleIcon.tsx` uses
  * to size the whole glyph up -- keeps the outline/finger-crease thickness
@@ -2771,18 +3223,38 @@ function drawClickRippleInto(
   g.circle(x, y, radiusPx).stroke({ color, width: Math.max(1.5, radiusPx * 0.08), alpha });
 }
 
-/** Transforms a glyph-space point (in the shared 24x24 box) into screen-space around `(x, y)`, anchored on `hotspot` rather than the box's own (0,0) corner -- shared by both the plain-glyph and custom-icon draw paths below. */
+/**
+ * Transforms a glyph-space point (in the shared 24x24 box) into screen-space
+ * around `(x, y)`, anchored on `hotspot` rather than the box's own (0,0)
+ * corner -- shared by both the plain-glyph and custom-icon draw paths below.
+ * `rotationDeg` (only ever non-zero for the resize glyph -- see
+ * `ResizeRotationDeg`) spins the point around that same hotspot before
+ * translating into place, so the icon rotates in-place at the cursor
+ * position rather than swinging around some other origin. Rotation and the
+ * (uniform) click-bounce scale commute around a shared origin, so it doesn't
+ * matter that rotation is applied before scale here.
+ */
 function toScreenPoint(
   [px, py]: [number, number],
   hotspot: { x: number; y: number },
   x: number,
   y: number,
   s: number,
-  clickScale: number
+  clickScale: number,
+  rotationDeg = 0
 ): [number, number] {
-  const lx = (px - hotspot.x) * clickScale;
-  const ly = (py - hotspot.y) * clickScale;
-  return [x + lx * s, y + ly * s];
+  let lx = px - hotspot.x;
+  let ly = py - hotspot.y;
+  if (rotationDeg !== 0) {
+    const rad = (rotationDeg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const rx = lx * cos - ly * sin;
+    const ry = lx * sin + ly * cos;
+    lx = rx;
+    ly = ry;
+  }
+  return [x + lx * clickScale * s, y + ly * clickScale * s];
 }
 
 function drawCursorIconInto(
@@ -2795,7 +3267,8 @@ function drawCursorIconInto(
   alpha: number,
   clickScale: number,
   gesture: CursorGesture,
-  customIcon: CursorCustomIconId | undefined
+  customIcon: CursorCustomIconId | undefined,
+  resizeRotationDeg: number
 ): void {
   const s = sizePx / 24;
 
@@ -2846,6 +3319,27 @@ function drawCursorIconInto(
       g.lineTo(ex, ey);
       g.stroke({ color: '#000000', width: strokeWidth, alpha });
     }
+    return;
+  }
+
+  if (gesture === 'resize') {
+    // Fixed white/black artwork, same convention as `hover` above (not
+    // recolored via `fill`/`stroke`, unlike the plain arrow below) -- the
+    // source art is itself a thin outline shape (see CURSOR_RESIZE_GLYPH's
+    // own doc on its nonzero-winding hole), so recoloring it via the active
+    // cursor style's own colors (often a dark fill meant for a solid arrow)
+    // read as barely-visible/transparent against a similarly dark recording.
+    const hotspot = CURSOR_GESTURE_HOTSPOTS.resize;
+    for (const subPath of CURSOR_RESIZE_GLYPH) {
+      const pts = subPath.map((p) =>
+        toScreenPoint(p, hotspot, x, y, s, clickScale, resizeRotationDeg)
+      );
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.closePath();
+    }
+    g.fill({ color: '#ffffff', alpha });
+    g.stroke({ color: '#000000', width: s, alpha });
     return;
   }
 
@@ -2918,7 +3412,8 @@ export class CursorEffect {
         ghost.alpha,
         1,
         cursor.gesture,
-        cursor.customIcon
+        cursor.customIcon,
+        cursor.resizeRotationDeg
       );
     }
     drawCursorIconInto(
@@ -2931,7 +3426,8 @@ export class CursorEffect {
       1,
       cursor.clickScale,
       cursor.gesture,
-      cursor.customIcon
+      cursor.customIcon,
+      cursor.resizeRotationDeg
     );
   }
 }

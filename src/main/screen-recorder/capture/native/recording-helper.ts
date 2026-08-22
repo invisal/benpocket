@@ -537,6 +537,15 @@ function queryWindowBounds(
   });
 }
 
+/**
+ * The same macOS helper binary's location, for callers that need to spawn it
+ * directly in a mode this module doesn't otherwise wrap -- see
+ * cursor-shape-tracker.ts's `cursor-shape-stream` mode.
+ */
+export function findMacRecorderHelperPath(): string | null {
+  return findHelperPath(MAC_ADAPTER);
+}
+
 export function getWindowBoundsById(windowId: number): Promise<WindowBoundsResult | null> {
   if (process.platform === 'win32') return getWin32WindowBounds(windowId);
   return queryWindowBounds(windowId, 'window-bounds');

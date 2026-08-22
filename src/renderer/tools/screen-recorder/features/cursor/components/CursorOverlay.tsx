@@ -1,6 +1,10 @@
 import type { JSX } from 'react';
 import { useMemo } from 'react';
-import type { CursorSettings, CursorPathPoint } from '@screen-recorder/types/project';
+import type {
+  CursorSettings,
+  CursorPathPoint,
+  WindowResizeSample
+} from '@screen-recorder/types/project';
 import {
   resolveCursorStyle,
   CURSOR_SIZE_UNIT_PX,
@@ -13,7 +17,8 @@ import {
   sampleCursorPath,
   resolveClickBounceScale,
   resolveClickRipple,
-  resolveCursorGesture
+  resolveCursorGesture,
+  resolveActiveResizeRotationDeg
 } from '../engine/cursor-smoothing-engine';
 import { CursorStyleIcon } from './CursorStyleIcon';
 
@@ -22,6 +27,8 @@ interface CursorOverlayProps {
   rawPath: CursorPathPoint[];
   /** Recorded real mousedown events -- drives `cursor.clickBounce`. */
   clickPath: CursorPathPoint[];
+  /** Real observed window-bounds changes (see window-bounds-poller.ts) -- lets resolveCursorGesture know for a fact when the tracked window is actually being resized. Only ever populated for a window-source recording with live bounds tracking. */
+  resizePath: WindowResizeSample[];
   currentTimeMs: number;
   /** Rendered on-screen width of the whole stage (background + padding + content), i.e. `stageRef`'s rect -- the same reference frame webcam/annotations already scale against, see REFERENCE_CANVAS_WIDTH. */
   stageWidthPx: number;
@@ -50,6 +57,7 @@ export function CursorOverlay({
   cursor,
   rawPath,
   clickPath,
+  resizePath,
   currentTimeMs,
   stageWidthPx,
   cursorHidden = false
@@ -67,10 +75,24 @@ export function CursorOverlay({
   const scale = stageWidthPx / REFERENCE_CANVAS_WIDTH;
   const sizePx = cursor.size * CURSOR_SIZE_UNIT_PX * scale;
   const clickScale = resolveClickBounceScale(clickPath, currentTimeMs, cursor.clickBounce);
+  // resolveCursorGesture can itself return 'hover' (stationary near a click,
+  // gated by handGestureEnabled) or 'resize' (a real resize in progress --
+  // see its own doc; always on, since it's a fact rather than a proxy).
   const gesture =
-    cursor.handGestureEnabled && rawPath.length > 0
-      ? resolveCursorGesture(smoothed, clickPath, currentTimeMs)
+    rawPath.length > 0
+      ? resolveCursorGesture(
+          smoothed,
+          clickPath,
+          resizePath,
+          currentTimeMs,
+          cursor.handGestureEnabled
+        )
       : 'idle';
+  // Points along the cursor's actual recent direction of travel -- never a
+  // fixed default -- only meaningful while `gesture === 'resize'`.
+  const resizeRotationDeg =
+    gesture !== 'resize' ? 0 : resolveActiveResizeRotationDeg(smoothed, resizePath, currentTimeMs);
+
   const hotspot =
     gesture === 'idle' && preset.customIcon
       ? CURSOR_CUSTOM_ICON_HOTSPOTS[preset.customIcon]
@@ -116,9 +138,12 @@ export function CursorOverlay({
           // translate pulls that point onto `point` (the actual recorded
           // position) instead of leaving the box's corner there, which was
           // rendering the glyph visibly offset from the true cursor/click
-          // location. `scale` (applied first, around that same origin) then
-          // handles the click-bounce squash without disturbing the anchor.
-          transform: `translate(-${hotspotXPercent}%, -${hotspotYPercent}%)${clickScale !== 1 ? ` scale(${clickScale})` : ''}`,
+          // location. `rotate`/`scale` (applied second, around that same
+          // origin) then handle the resize orientation and click-bounce
+          // squash without disturbing the anchor -- rotate and a uniform
+          // scale commute around a shared origin, so their relative order
+          // here doesn't matter.
+          transform: `translate(-${hotspotXPercent}%, -${hotspotYPercent}%) rotate(${resizeRotationDeg}deg)${clickScale !== 1 ? ` scale(${clickScale})` : ''}`,
           transformOrigin: `${hotspotXPercent}% ${hotspotYPercent}%`
         }}
       >

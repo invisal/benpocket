@@ -1,4 +1,4 @@
-import { createTabProvider } from './createTabProvider';
+import { createTabProvider, useToolContext } from './createTabProvider';
 import { allTools } from './AllTools';
 
 function createInitialTabs() {
@@ -28,3 +28,4 @@ if (window.api.isE2E) {
   };
 }
 export const registerToolLeaveGuard = tools.registerLeaveGuard;
+export { useToolContext };

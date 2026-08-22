@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { RotateCw } from 'lucide-react';
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ToolLayout } from '@renderer/components/layout/ToolLayout';
 import { ResizablePanel } from '@renderer/components/ui/ResizablePanel';
 import { Toolbar } from '@renderer/components/ui/Toolbar';
 import { Tooltip } from '@renderer/components/ui/Tooltip';
@@ -26,6 +27,7 @@ export function WorkspaceMain({ payload }: ToolComponentProps<Props>) {
 
   return (
     <WorkspaceStoreContext.Provider value={store}>
+      <ToolLayout.Title>{basename(payload.path)}</ToolLayout.Title>
       <WorkspaceLayout />
     </WorkspaceStoreContext.Provider>
   );

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from 'cnfast';
 import { type ToolComponentProps } from '@renderer/components/providers/createTabProvider';
+import { ToolLayout } from '@renderer/components/layout/ToolLayout';
 import { Button } from '@renderer/components/ui/Button';
 import { Menu } from '@renderer/components/ui/Menu';
 import { ScreenRecordingPermissionBanner } from '@screen-recorder/features/recording/components/ScreenRecordingPermissionBanner';
@@ -359,6 +360,7 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface text-text-base">
+      <ToolLayout.Title>{phase === 'result' ? 'Preview' : 'Screen Capture'}</ToolLayout.Title>
       {!isCapturing && (
         <header className="shrink-0 border-b border-border-dark px-6 py-4">
           {phase === 'idle' && !isCapturing ? (

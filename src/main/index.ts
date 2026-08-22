@@ -125,6 +125,15 @@ if (gotSingleInstanceLock) {
       }
     });
 
+    // `titleBarStyle: 'hidden'` keeps the native shadow/rounded corners/resize
+    // behavior `frame: true` gives on macOS, but Electron still draws the native
+    // traffic-light buttons by default -- hide them since the app uses its own
+    // custom minimize/maximize/close controls (AppShell's `TitleBarControl`) on
+    // every platform, not just Windows/Linux.
+    if (process.platform === 'darwin') {
+      mainWindow.setWindowButtonVisibility(false);
+    }
+
     mainWindow.on('ready-to-show', () => {
       mainWindow.show();
     });

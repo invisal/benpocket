@@ -21,7 +21,17 @@ function clampDimension(value: number): number {
  * re-encodes the result to the file's own `mimeType`, so `onCommit` is a drop-in replacement for
  * the current binary just like Resize/Crop's.
  */
-export function GenerativeTool({ imageData, binary, mimeType, onCommit }: ToolPanelProps) {
+export function GenerativeTool({
+  imageData,
+  binary,
+  mimeType,
+  onCommit,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: ToolPanelProps) {
   const { isLoading, configured } = useCloudflareSettings();
   const [prompt, setPrompt] = useState('');
   // Opening this tool always means there's already an image loaded, so default to editing it
@@ -63,7 +73,14 @@ export function GenerativeTool({ imageData, binary, mimeType, onCommit }: ToolPa
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData} />
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+      />
 
       <FloatingToolbar className="w-full max-w-lg flex-col items-stretch">
         <textarea

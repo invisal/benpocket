@@ -16,7 +16,16 @@ import type { ToolPanelProps } from '../types';
  * Resize tool for that. Only one tool is mounted at a time (see index.tsx), so target-size state is
  * plain local state.
  */
-export function ContextResizeTool({ imageData, onCommit, mimeType }: ToolPanelProps) {
+export function ContextResizeTool({
+  imageData,
+  onCommit,
+  mimeType,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: ToolPanelProps) {
   const abortRef = useRef<AbortController | null>(null);
   const [targetWidth, setTargetWidth] = useState(imageData.width);
   const [targetHeight, setTargetHeight] = useState(imageData.height);
@@ -84,7 +93,14 @@ export function ContextResizeTool({ imageData, onCommit, mimeType }: ToolPanelPr
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData} />
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+      />
       <FloatingToolbar>
         <NumberField
           label="W"

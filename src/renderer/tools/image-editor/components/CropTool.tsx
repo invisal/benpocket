@@ -67,7 +67,17 @@ function centeredRectForAspect(
  * Only one tool is mounted at a time (see index.tsx), so the draft rect is plain local state --
  * this component starts fresh (full-frame) every time Crop becomes the active tool.
  */
-export function CropTool({ imageData, onCommit, binary, mimeType }: ToolPanelProps) {
+export function CropTool({
+  imageData,
+  onCommit,
+  binary,
+  mimeType,
+  zoom,
+  onZoomChange,
+  onEffectiveZoomChange,
+  pan,
+  onPanChange
+}: ToolPanelProps) {
   const [rect, setRect] = useState<NormalizedRect>(DEFAULT_RECT);
   const [aspectId, setAspectId] = useState<CropAspectId>('free');
   const [isCropping, setIsCropping] = useState(false);
@@ -152,6 +162,9 @@ export function CropTool({ imageData, onCommit, binary, mimeType }: ToolPanelPro
   const startDragging = useCallback(
     (mode: ResizeHandle | 'move') =>
       (event: React.PointerEvent): void => {
+        // Left button only -- middle/right are reserved for panning (see ImageCanvas), and must be
+        // left alone (no preventDefault/stopPropagation) so that bubbles up to it.
+        if (event.button !== 0) return;
         event.preventDefault();
         event.stopPropagation();
         dragState.current = {
@@ -216,7 +229,14 @@ export function CropTool({ imageData, onCommit, binary, mimeType }: ToolPanelPro
 
   return (
     <div className="relative flex h-full min-h-0 w-full">
-      <ImageCanvas imageData={imageData}>
+      <ImageCanvas
+        imageData={imageData}
+        zoom={zoom}
+        onZoomChange={onZoomChange}
+        onEffectiveZoomChange={onEffectiveZoomChange}
+        pan={pan}
+        onPanChange={onPanChange}
+      >
         <div ref={rootRef} className="absolute inset-0">
           <div
             className="absolute inset-x-0 top-0 bg-black/60"

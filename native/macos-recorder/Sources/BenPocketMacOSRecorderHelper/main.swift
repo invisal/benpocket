@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import CoreGraphics
 import CoreMedia
@@ -755,6 +756,103 @@ private func queryWindowBoundsQuartz(windowId: CGWindowID) -> CGRect? {
 	return bounds
 }
  
+// Reference bitmaps for the public system cursors this helper recognizes --
+// computed once (not per-tick) since `runCursorShapeStream()` compares
+// against these on every poll.
+private let resizeLeftRightImageData = NSCursor.resizeLeftRight.image.tiffRepresentation
+private let resizeUpDownImageData = NSCursor.resizeUpDown.image.tiffRepresentation
+private let crosshairImageData = NSCursor.crosshair.image.tiffRepresentation
+private let iBeamImageData = NSCursor.iBeam.image.tiffRepresentation
+
+// `+[NSCursor currentSystemCursor]` is not part of the public API surface --
+// there is no public class method/property for "what cursor is the OS
+// actually showing system-wide right now." The public `NSCursor.current`
+// sounds similar but only ever reflects a cursor *this process* has pushed
+// via `.set()`, not the system-wide cursor another app/window owns (which is
+// what's needed here, since the recorded window essentially never belongs
+// to this app) -- confirmed empirically: pushing a cursor from an unrelated
+// process never showed up as this process's `currentSystemCursor()`, but a
+// real resize divider elsewhere on screen did. Reading this via Objective-C
+// runtime reflection (not a documented method call, and not `current`) is
+// the same technique long-shipping macOS utilities (window managers, screen
+// recorders) have used for years since there's no documented alternative.
+// Whether this selector exists at all can't change over the process's
+// lifetime, so this is checked once here rather than on every tick
+// `currentSystemCursor()` runs (up to 20x/sec for the whole recording).
+private let currentSystemCursorSelector = NSSelectorFromString("currentSystemCursor")
+private let supportsCurrentSystemCursor = NSCursor.responds(to: currentSystemCursorSelector)
+
+private func currentSystemCursor() -> NSCursor? {
+	guard supportsCurrentSystemCursor else {
+		return nil
+	}
+	return NSCursor.perform(currentSystemCursorSelector)?.takeUnretainedValue() as? NSCursor
+}
+
+// Only distinguishes horizontal/vertical resize -- macOS has no public
+// diagonal resize cursor (`NSCursor` exposes no nwse/nesw equivalent), so a
+// real diagonal drag (a whole window's corner) reads as "other" here and
+// relies instead on WindowBoundsPoller's own bounds-diff signal on the
+// Electron side, which does see that case. Also recognizes the crosshair
+// cursor (spreadsheet fill-handle / column-row range-select) and the
+// text-select ("I-beam") cursor -- all public `NSCursor` class properties,
+// same as the resize cursors above.
+private func cursorShapeKind(for cursor: NSCursor) -> String {
+	let data = cursor.image.tiffRepresentation
+	if data == resizeLeftRightImageData {
+		return "horizontal"
+	}
+	if data == resizeUpDownImageData {
+		return "vertical"
+	}
+	if data == crosshairImageData {
+		return "crosshair"
+	}
+	if data == iBeamImageData {
+		return "text"
+	}
+	return "other"
+}
+
+// Streams the OS's real cursor shape until this process is killed (Node
+// kills it when cursor tracking stops -- see cursor-shape-tracker.ts) --
+// unlike window-bounds-live, which is cheap enough to re-spawn a fresh
+// process every poll, a useful poll rate here (fast enough to catch a brief
+// resize drag) would mean tens of process forks per second, so this instead
+// stays alive and polls internally. Only emits while the cursor is actually
+// showing a recognized shape (resize or crosshair) -- the receiving side
+// infers "that shape has stopped showing" from the *absence* of further
+// samples (see RESIZE_ACTIVE_WINDOW_MS/CROSSHAIR_ACTIVE_WINDOW_MS,
+// @shared/cursor-path.ts), so there's nothing useful to emit the rest of the
+// time.
+private func runCursorShapeStream() {
+	// Some system cursors' backing images (confirmed: `NSCursor.iBeam`,
+	// `NSCursor.arrow` -- not resize/crosshair, which load fine either way)
+	// silently resolve to a completely empty image (0x0, zero
+	// representations) in a bare command-line process that has never
+	// touched `NSApplication`, with no error of any kind -- there's no
+	// `NSApp`/Dock icon/menu bar anywhere in this helper otherwise, since
+	// it's a headless tool. Simply referencing `NSApplication.shared` once
+	// (no `.run()`, no full event loop needed) is enough to make AppKit's
+	// image-loading machinery actually work for every system cursor --
+	// confirmed by reproducing the empty-image bug in isolation and
+	// observing it disappear the instant this line runs first, before
+	// `resizeLeftRightImageData`/etc. (below) get first accessed.
+	// `.prohibited` keeps this invisible (no Dock icon, no app-switcher
+	// entry) -- there's still no real UI here, just cursor image loading.
+	NSApplication.shared.setActivationPolicy(.prohibited)
+
+	let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
+		guard let cursor = currentSystemCursor() else { return }
+		let kind = cursorShapeKind(for: cursor)
+		if kind != "other" {
+			emit(["event": "cursor-shape", "kind": kind])
+		}
+	}
+	RunLoop.main.add(timer, forMode: .common)
+	RunLoop.main.run()
+}
+
 private func resolveWindowOwnerName(windowId: CGWindowID) -> String? {
 	guard
 		let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, windowId)
@@ -815,6 +913,14 @@ struct BenPocketMacOSRecorderHelper {
 				} else {
 					emit(["event": "focus-window", "found": false])
 				}
+				exit(0)
+			}
+
+			if let rawJson = try? JSONSerialization.jsonObject(with: argData) as? [String: Any],
+				let mode = rawJson["mode"] as? String,
+				mode == "cursor-shape-stream"
+			{
+				runCursorShapeStream()
 				exit(0)
 			}
 

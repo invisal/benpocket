@@ -52,11 +52,7 @@ export const IngressClassDetail: React.FC<IngressClassDetailProps> = ({
       const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
 
       const [icRes, ingRes] = await Promise.all([
-        window.kuberneter.getResources(
-          configPathArg,
-          cluster,
-          K8S_RESOURCE_KEYS.INGRESS_CLASSES
-        ),
+        window.kuberneter.getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.INGRESS_CLASSES),
         window.kuberneter
           .getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.INGRESSES)
           .catch(() => ({ items: [] }))
@@ -115,7 +111,8 @@ export const IngressClassDetail: React.FC<IngressClassDetailProps> = ({
 
   const creationTimestamp =
     currentData?.creationTimestamp ||
-    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem?.metadata?.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem
+      ?.metadata?.creationTimestamp ||
     '';
   const createdTime =
     currentData?.createdTime ||
@@ -128,12 +125,8 @@ export const IngressClassDetail: React.FC<IngressClassDetailProps> = ({
       name: 'Created',
       value: (
         <span>
-          {creationTimestamp ? (
-            <Age timestamp={creationTimestamp} />
-          ) : (
-            currentData?.age || '—'
-          )}{' '}
-          ago ({createdTime})
+          {creationTimestamp ? <Age timestamp={creationTimestamp} /> : currentData?.age || '—'} ago
+          ({createdTime})
         </span>
       )
     },

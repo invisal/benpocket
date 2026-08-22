@@ -12,6 +12,5 @@ export * from './useOpenNodeDetail';
 export * from './useOpenWorkloadDetail';
 export * from './useOpenConfigDetail';
 export * from './useOpenStorageDetail';
-export * from './useOpenIngressDetail';
 export * from './useOpenNetworkDetail';
 export * from './useOpenResourceDetail';

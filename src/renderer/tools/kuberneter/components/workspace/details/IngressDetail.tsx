@@ -12,8 +12,7 @@ import { Select } from '@renderer/components/ui/Select';
 import {
   useOpenNamespaceDetail,
   useOpenNetworkDetail,
-  useOpenConfigDetail,
-  useOpenResourceDetail
+  useOpenConfigDetail
 } from '../../../hooks/open-detail';
 import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
 import { type K8sResource } from '../../../types/K8sResource';
@@ -39,7 +38,6 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
   const { openNamespaceDetail } = useOpenNamespaceDetail();
   const { openServiceDetail, openIngressClassDetail } = useOpenNetworkDetail();
   const { openSecretDetail } = useOpenConfigDetail();
-  const { openResourceDetail: _openResourceDetail } = useOpenResourceDetail();
 
   // Live query for Ingress
   const { data: queryData } = useQuery({
@@ -101,7 +99,9 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
 
       // Extract referenced backend service names
       const referencedServiceNames = new Set<string>();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (raw?.spec?.rules || []).forEach((rule: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (rule.http?.paths || []).forEach((p: any) => {
           const sName = p.backend?.service?.name || p.backend?.serviceName;
           if (sName) referencedServiceNames.add(sName);
@@ -111,20 +111,18 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
 
       const matchedServices = allServices.filter(
         (s) =>
-          s.metadata?.namespace === payload.ns &&
-          referencedServiceNames.has(s.metadata?.name || '')
+          s.metadata?.namespace === payload.ns && referencedServiceNames.has(s.metadata?.name || '')
       );
 
       const selectors = matchedServices
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((s) => (s as any)?.spec?.selector)
         .filter((sel): sel is Record<string, string> => !!sel && Object.keys(sel).length > 0);
 
       const matchedPods = allPods.filter((pod) => {
         if (pod.metadata?.namespace !== payload.ns) return false;
         const podLabels = pod.metadata?.labels || {};
-        return selectors.some((sel) =>
-          Object.entries(sel).every(([k, v]) => podLabels[k] === v)
-        );
+        return selectors.some((sel) => Object.entries(sel).every(([k, v]) => podLabels[k] === v));
       });
 
       const podsList = matchedPods.map((pod) => ({
@@ -153,7 +151,8 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
   const defaultBackendSvc = queryData?.defaultBackendSvc;
 
   const [selectedTarget, setSelectedTarget] = useState<string>('all');
-  const pods = queryData?.podsList || [];
+  const podsList = queryData?.podsList;
+  const pods = useMemo(() => podsList || [], [podsList]);
   const allPodNames = useMemo(() => pods.map((p) => p.name), [pods]);
   const targetPodNames = useMemo(() => {
     if (selectedTarget === 'all') return allPodNames;
@@ -198,7 +197,8 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
 
   const creationTimestamp =
     currentData?.creationTimestamp ||
-    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem?.metadata?.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem
+      ?.metadata?.creationTimestamp ||
     '';
   const createdTime =
     currentData?.createdTime ||
@@ -211,12 +211,8 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
       name: 'Created',
       value: (
         <span>
-          {creationTimestamp ? (
-            <Age timestamp={creationTimestamp} />
-          ) : (
-            currentData?.age || '—'
-          )}{' '}
-          ago ({createdTime})
+          {creationTimestamp ? <Age timestamp={creationTimestamp} /> : currentData?.age || '—'} ago
+          ({createdTime})
         </span>
       )
     },
@@ -327,9 +323,10 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
   );
 
   // Map rules into details table rows
+  const rules = currentData?.rules;
   const rulesTableData = useMemo(() => {
-    if (!currentData?.rules) return [];
-    return currentData.rules.map((r, idx) => ({
+    if (!rules) return [];
+    return rules.map((r, idx) => ({
       id: `rule-${idx}`,
       host: r.host,
       path: r.path,
@@ -338,7 +335,7 @@ export const IngressDetail: React.FC<IngressDetailProps> = ({ payload, isTab = f
       servicePort: r.servicePort,
       backends: `${r.serviceName}:${r.servicePort}`
     }));
-  }, [currentData?.rules]);
+  }, [rules]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ruleColumns = useMemo<Column<any>[]>(

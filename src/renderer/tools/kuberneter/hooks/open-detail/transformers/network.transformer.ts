@@ -17,7 +17,11 @@ import {
 } from '../../../types/EndpointData';
 import { type IngressData, type IngressRuleData } from '../../../types/IngressData';
 import { type IngressClassData } from '../../../types/IngressClassData';
-import { type NetworkPolicyData, type RuleData, type PeerData } from '../../../types/NetworkPolicyData';
+import {
+  type NetworkPolicyData,
+  type RuleData,
+  type PeerData
+} from '../../../types/NetworkPolicyData';
 import { type PortForwardData } from '../../../types/PortForwardData';
 import { type K8sResource } from '../../../types/K8sResource';
 
@@ -582,7 +586,9 @@ export function buildNetworkPolicyDetailPayload(
     });
   };
 
-  const parsePorts = (portsArr?: Array<{ port?: number | string; protocol?: string }>): string[] => {
+  const parsePorts = (
+    portsArr?: Array<{ port?: number | string; protocol?: string }>
+  ): string[] => {
     if (!portsArr || portsArr.length === 0) return [];
     return portsArr.map((p) => `${p.port || 'All'}/${p.protocol || 'TCP'}`);
   };

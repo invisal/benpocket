@@ -113,7 +113,8 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
 
   const creationTimestamp =
     currentData?.creationTimestamp ||
-    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem?.metadata?.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem
+      ?.metadata?.creationTimestamp ||
     '';
   const createdTime =
     currentData?.createdTime ||
@@ -126,12 +127,8 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
       name: 'Created',
       value: (
         <span>
-          {creationTimestamp ? (
-            <Age timestamp={creationTimestamp} />
-          ) : (
-            currentData?.age || '—'
-          )}{' '}
-          ago ({createdTime})
+          {creationTimestamp ? <Age timestamp={creationTimestamp} /> : currentData?.age || '—'} ago
+          ({createdTime})
         </span>
       )
     },

@@ -79,6 +79,7 @@ export function buildProjectSnapshot(name: string): Project | null {
     clickPath: lastRecording.clickPath,
     resizePath: lastRecording.resizePath,
     crosshairPath: lastRecording.crosshairPath,
+    textSelectPath: lastRecording.textSelectPath,
     captions: {
       enabled: captionsState.enabled,
       language: captionsState.language,

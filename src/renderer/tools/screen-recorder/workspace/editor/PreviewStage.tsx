@@ -15,7 +15,8 @@ import {
   useScreenRecorderStore,
   EMPTY_CURSOR_PATH,
   EMPTY_RESIZE_PATH,
-  EMPTY_CROSSHAIR_PATH
+  EMPTY_CROSSHAIR_PATH,
+  EMPTY_TEXT_SELECT_PATH
 } from '../../store/screen-recorder-store';
 import { CursorOverlay } from '../../features/cursor/components/CursorOverlay';
 import { useClickSound } from '../../features/cursor/lib/use-click-sound';
@@ -76,6 +77,9 @@ export function PreviewStage({
   );
   const crosshairPath = useScreenRecorderStore(
     (s) => s.lastRecording?.crosshairPath ?? EMPTY_CROSSHAIR_PATH
+  );
+  const textSelectPath = useScreenRecorderStore(
+    (s) => s.lastRecording?.textSelectPath ?? EMPTY_TEXT_SELECT_PATH
   );
   const isImportedProject = useScreenRecorderStore((s) => s.lastRecording?.source === 'imported');
   const webcamPreviewUrl = useScreenRecorderStore((s) => s.lastRecording?.webcamPreviewUrl ?? null);
@@ -309,6 +313,7 @@ export function PreviewStage({
                 clickPath={croppedClickPath}
                 resizePath={resizePath}
                 crosshairPath={crosshairPath}
+                textSelectPath={textSelectPath}
                 currentTimeMs={zoomTimeMs}
                 stageWidthPx={stageWidthPx}
                 cursorHidden={activeSegment?.cursorHidden ?? false}

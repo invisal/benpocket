@@ -3,10 +3,11 @@ import type { WebcamOptions } from './recording';
 import type {
   CursorPathPoint,
   WindowResizeSample,
-  CursorCrosshairSample
+  CursorCrosshairSample,
+  CursorTextSelectSample
 } from '@shared/cursor-path';
 
-export type { CursorPathPoint, WindowResizeSample, CursorCrosshairSample };
+export type { CursorPathPoint, WindowResizeSample, CursorCrosshairSample, CursorTextSelectSample };
 
 export interface BackgroundSettings {
   /** Off means the video fills the frame edge-to-edge at its own native aspect ratio -- no padding, no wallpaper/color/gradient/image layer, no corner radius or shadow. `kind`/`value`/`padding`/`blur`/`cornerRadius`/`shadow` stay in state so re-enabling restores whatever was set before. */
@@ -162,6 +163,8 @@ export interface Project {
   resizePath: WindowResizeSample[];
   /** Real observed OS crosshair-cursor sightings (see cursor-shape-tracker.ts) -- lets `resolveCursorGesture` (@shared/cursor-path) know for a fact when a spreadsheet fill-handle/range-select drag is actually happening. Empty for a recording saved before this field existed. */
   crosshairPath: CursorCrosshairSample[];
+  /** Real observed OS text-select ("I-beam") cursor sightings (see cursor-shape-tracker.ts) -- lets `resolveCursorGesture` (@shared/cursor-path) know for a fact when the cursor is over selectable text. Empty for a recording saved before this field existed. */
+  textSelectPath: CursorTextSelectSample[];
   captions: CaptionSettings;
   annotations: Annotation[];
   blurMasks: BlurMaskRegion[];

@@ -7,7 +7,8 @@ import {
   resolveCursorGesture,
   type CursorPathPoint,
   type WindowResizeSample,
-  type CursorCrosshairSample
+  type CursorCrosshairSample,
+  type CursorTextSelectSample
 } from './cursor-path';
 
 const CLICK_AT: CursorPathPoint[] = [{ atMs: 1000, x: 0.5, y: 0.5 }];
@@ -120,7 +121,7 @@ describe('resolveCursorGesture', () => {
       { atMs: 0, x: 0.1, y: 0.1 },
       { atMs: 5000, x: 0.1, y: 0.1 }
     ];
-    expect(resolveCursorGesture(path, [], [], [], 1000)).toBe('idle');
+    expect(resolveCursorGesture(path, [], [], [], [], 1000)).toBe('idle');
   });
 
   it('is hover when stationary at (or near) a recorded click', () => {
@@ -128,7 +129,7 @@ describe('resolveCursorGesture', () => {
       { atMs: 0, x: 0.5, y: 0.5 },
       { atMs: 5000, x: 0.5, y: 0.5 }
     ];
-    expect(resolveCursorGesture(path, CLICK_AT, [], [], 1200)).toBe('hover');
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 1200)).toBe('hover');
   });
 
   it('is resize while the tracked window is actually observed changing size, regardless of any click/cursor-movement data', () => {
@@ -139,7 +140,7 @@ describe('resolveCursorGesture', () => {
     // all, yet this must still read as resize).
     const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
     const resizePath: WindowResizeSample[] = [{ atMs: 500 }, { atMs: 1000 }, { atMs: 1500 }];
-    expect(resolveCursorGesture(path, [], resizePath, [], 1600)).toBe('resize');
+    expect(resolveCursorGesture(path, [], resizePath, [], [], 1600)).toBe('resize');
   });
 
   it('is never resize -- no matter how far/fast the cursor moves or whether a click was just seen -- without an actual observed window-bounds change', () => {
@@ -154,16 +155,16 @@ describe('resolveCursorGesture', () => {
       { atMs: 1000, x: 0.5, y: 0.5 },
       { atMs: 1050, x: 0.95, y: 0.9 }
     ];
-    expect(resolveCursorGesture(path, CLICK_AT, [], [], 1050)).not.toBe('resize');
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 1050)).not.toBe('resize');
   });
 
   it('stays resize for a short gap right after the last observed bounds change, then falls back once the window has genuinely stopped', () => {
     const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
     const resizePath: WindowResizeSample[] = [{ atMs: 1000 }];
     // Still within RESIZE_ACTIVE_WINDOW_MS of the last observed change.
-    expect(resolveCursorGesture(path, [], resizePath, [], 1200)).toBe('resize');
+    expect(resolveCursorGesture(path, [], resizePath, [], [], 1200)).toBe('resize');
     // Long after: the window has stopped changing, so no longer resize.
-    expect(resolveCursorGesture(path, [], resizePath, [], 3000)).toBe('idle');
+    expect(resolveCursorGesture(path, [], resizePath, [], [], 3000)).toBe('idle');
   });
 
   it('lingers as hover for the full grace window after any click, even resting somewhere unrelated to it, then reverts once the window passes', () => {
@@ -178,10 +179,10 @@ describe('resolveCursorGesture', () => {
     ];
     // Well after moving away, but still within the 3.5s grace window since
     // the click: still holding the hand icon.
-    expect(resolveCursorGesture(path, CLICK_AT, [], [], 3000)).toBe('hover');
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 3000)).toBe('hover');
     // Past the grace window (click was at 1000, window is 3500ms), resting
     // somewhere unrelated to any click: idle.
-    expect(resolveCursorGesture(path, CLICK_AT, [], [], 4600)).toBe('idle');
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 4600)).toBe('idle');
   });
 
   it('does not flip out of hover for a single-frame jitter blip well outside the click grace window', () => {
@@ -200,7 +201,7 @@ describe('resolveCursorGesture', () => {
       { atMs: 4900, x: 0.5, y: 0.5051 }, // the jitter blip
       { atMs: 5100, x: 0.5, y: 0.5 }
     ];
-    expect(resolveCursorGesture(path, clickAtOrigin, [], [], 4900)).toBe('hover');
+    expect(resolveCursorGesture(path, clickAtOrigin, [], [], [], 4900)).toBe('hover');
   });
 });
 
@@ -208,16 +209,16 @@ describe('resolveCursorGesture crosshair', () => {
   it('is crosshair while the OS is actually observed showing a crosshair cursor, regardless of click/movement data', () => {
     const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
     const crosshairPath: CursorCrosshairSample[] = [{ atMs: 500 }, { atMs: 550 }, { atMs: 600 }];
-    expect(resolveCursorGesture(path, [], [], crosshairPath, 620)).toBe('crosshair');
+    expect(resolveCursorGesture(path, [], [], crosshairPath, [], 620)).toBe('crosshair');
   });
 
   it('stays crosshair for a short gap right after the last sighting, then falls back once it has genuinely stopped', () => {
     const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
     const crosshairPath: CursorCrosshairSample[] = [{ atMs: 1000 }];
     // Still within CROSSHAIR_ACTIVE_WINDOW_MS of the last sighting.
-    expect(resolveCursorGesture(path, [], [], crosshairPath, 1200)).toBe('crosshair');
+    expect(resolveCursorGesture(path, [], [], crosshairPath, [], 1200)).toBe('crosshair');
     // Long after: no longer active.
-    expect(resolveCursorGesture(path, [], [], crosshairPath, 3000)).toBe('idle');
+    expect(resolveCursorGesture(path, [], [], crosshairPath, [], 3000)).toBe('idle');
   });
 
   it('is never crosshair without an actual sighting, no matter how the cursor moves or clicks', () => {
@@ -225,7 +226,7 @@ describe('resolveCursorGesture crosshair', () => {
       { atMs: 1000, x: 0.5, y: 0.5 },
       { atMs: 1050, x: 0.95, y: 0.9 }
     ];
-    expect(resolveCursorGesture(path, CLICK_AT, [], [], 1050)).not.toBe('crosshair');
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 1050)).not.toBe('crosshair');
   });
 
   it('takes precedence over hover, same as resize', () => {
@@ -233,20 +234,72 @@ describe('resolveCursorGesture crosshair', () => {
     const crosshairPath: CursorCrosshairSample[] = [{ atMs: 500 }];
     // Stationary near CLICK_AT (hover-eligible) at the same instant a
     // crosshair sighting is active.
-    expect(resolveCursorGesture(path, CLICK_AT, [], crosshairPath, 600)).toBe('crosshair');
+    expect(resolveCursorGesture(path, CLICK_AT, [], crosshairPath, [], 600)).toBe('crosshair');
   });
 
   it('takes second precedence behind resize (both are real facts, but resize is the more structural one)', () => {
     const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
     const resizePath: WindowResizeSample[] = [{ atMs: 500 }];
     const crosshairPath: CursorCrosshairSample[] = [{ atMs: 500 }];
-    expect(resolveCursorGesture(path, [], resizePath, crosshairPath, 600)).toBe('resize');
+    expect(resolveCursorGesture(path, [], resizePath, crosshairPath, [], 600)).toBe('resize');
   });
 
   it('is never gated by handGestureEnabled -- it always shows when active, regardless (there is no "crosshair" toggle)', () => {
     const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
     const crosshairPath: CursorCrosshairSample[] = [{ atMs: 500 }];
-    expect(resolveCursorGesture(path, CLICK_AT, [], crosshairPath, 600, false)).toBe('crosshair');
+    expect(resolveCursorGesture(path, CLICK_AT, [], crosshairPath, [], 600, false)).toBe(
+      'crosshair'
+    );
+  });
+});
+
+describe('resolveCursorGesture textSelect', () => {
+  it('is textSelect while the OS is actually observed showing a text-select cursor, regardless of click/movement data', () => {
+    const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
+    const textSelectPath: CursorTextSelectSample[] = [{ atMs: 500 }, { atMs: 550 }, { atMs: 600 }];
+    expect(resolveCursorGesture(path, [], [], [], textSelectPath, 620)).toBe('textSelect');
+  });
+
+  it('stays textSelect for a short gap right after the last sighting, then falls back once it has genuinely stopped', () => {
+    const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
+    const textSelectPath: CursorTextSelectSample[] = [{ atMs: 1000 }];
+    expect(resolveCursorGesture(path, [], [], [], textSelectPath, 1200)).toBe('textSelect');
+    expect(resolveCursorGesture(path, [], [], [], textSelectPath, 3000)).toBe('idle');
+  });
+
+  it('is never textSelect without an actual sighting, no matter how the cursor moves or clicks', () => {
+    const path: CursorPathPoint[] = [
+      { atMs: 1000, x: 0.5, y: 0.5 },
+      { atMs: 1050, x: 0.95, y: 0.9 }
+    ];
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 1050)).not.toBe('textSelect');
+  });
+
+  it('takes precedence over hover', () => {
+    const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
+    const textSelectPath: CursorTextSelectSample[] = [{ atMs: 500 }];
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], textSelectPath, 600)).toBe('textSelect');
+  });
+
+  it('takes third precedence behind resize and crosshair (all three are real facts, ordered by how structural they are)', () => {
+    const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
+    const resizePath: WindowResizeSample[] = [{ atMs: 500 }];
+    const crosshairPath: CursorCrosshairSample[] = [{ atMs: 500 }];
+    const textSelectPath: CursorTextSelectSample[] = [{ atMs: 500 }];
+    expect(resolveCursorGesture(path, [], resizePath, crosshairPath, textSelectPath, 600)).toBe(
+      'resize'
+    );
+    expect(resolveCursorGesture(path, [], [], crosshairPath, textSelectPath, 600)).toBe(
+      'crosshair'
+    );
+  });
+
+  it('is never gated by handGestureEnabled -- it always shows when active, regardless (there is no "textSelect" toggle)', () => {
+    const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
+    const textSelectPath: CursorTextSelectSample[] = [{ atMs: 500 }];
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], textSelectPath, 600, false)).toBe(
+      'textSelect'
+    );
   });
 });
 
@@ -254,7 +307,7 @@ describe('resolveCursorGesture handGestureEnabled', () => {
   it('never gates resize -- it always shows when active, regardless of handGestureEnabled (there is no "resize" toggle)', () => {
     const path: CursorPathPoint[] = [{ atMs: 0, x: 0.5, y: 0.5 }];
     const resizePath: WindowResizeSample[] = [{ atMs: 500 }];
-    expect(resolveCursorGesture(path, CLICK_AT, resizePath, [], 600, false)).toBe('resize');
+    expect(resolveCursorGesture(path, CLICK_AT, resizePath, [], [], 600, false)).toBe('resize');
   });
 
   it('is idle (not hover) when handGestureEnabled is false, even though the cursor is stationary near a click', () => {
@@ -262,7 +315,7 @@ describe('resolveCursorGesture handGestureEnabled', () => {
       { atMs: 0, x: 0.5, y: 0.5 },
       { atMs: 5000, x: 0.5, y: 0.5 }
     ];
-    expect(resolveCursorGesture(path, CLICK_AT, [], [], 1200, false)).toBe('idle');
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 1200, false)).toBe('idle');
   });
 
   it('defaults to hand gesture enabled when no argument is passed', () => {
@@ -270,7 +323,7 @@ describe('resolveCursorGesture handGestureEnabled', () => {
       { atMs: 0, x: 0.5, y: 0.5 },
       { atMs: 5000, x: 0.5, y: 0.5 }
     ];
-    expect(resolveCursorGesture(path, CLICK_AT, [], [], 1200)).toBe('hover');
+    expect(resolveCursorGesture(path, CLICK_AT, [], [], [], 1200)).toBe('hover');
   });
 });
 

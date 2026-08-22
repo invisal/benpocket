@@ -17,5 +17,6 @@ export type {
   CursorGesture,
   ResizeRotationDeg,
   WindowResizeSample,
-  CursorCrosshairSample
+  CursorCrosshairSample,
+  CursorTextSelectSample
 } from '@shared/cursor-path';

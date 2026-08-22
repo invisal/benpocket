@@ -713,6 +713,27 @@ const CURSOR_CROSSHAIR_LINES: [SubPath[number], SubPath[number]][] = [
 ];
 
 /**
+ * The "I-beam" text-select glyph -- a vertical stem with serif caps, same
+ * hand-authored-lines reasoning as `CURSOR_CROSSHAIR_LINES` (nothing to
+ * flatten off a bezier path), matching CursorStyleIcon.tsx's
+ * `<path d="M12 4 V20 M8.5 4 H15.5 M8.5 20 H15.5">` exactly.
+ */
+const CURSOR_TEXT_SELECT_LINES: [SubPath[number], SubPath[number]][] = [
+  [
+    [12, 4],
+    [12, 20]
+  ],
+  [
+    [8.5, 4],
+    [15.5, 4]
+  ],
+  [
+    [8.5, 20],
+    [15.5, 20]
+  ]
+];
+
+/**
  * Per-`customIcon` glyph outlines for the 5 fully custom, fixed-color
  * illustrations (features/cursor/svg/*.svg) -- unlike `CURSOR_IDLE_GLYPH`,
  * each entry here is a *list of independently-colored subpaths* (one path
@@ -3376,6 +3397,28 @@ function drawCursorIconInto(
       g.stroke({ color: '#ffffff', width: 3 * s, alpha, cap: 'round' });
     }
     for (const [start, end] of CURSOR_CROSSHAIR_LINES) {
+      const [sx, sy] = toScreenPoint(start, hotspot, x, y, s, clickScale);
+      const [ex, ey] = toScreenPoint(end, hotspot, x, y, s, clickScale);
+      g.moveTo(sx, sy);
+      g.lineTo(ex, ey);
+      g.stroke({ color: '#000000', width: 1.4 * s, alpha, cap: 'round' });
+    }
+    return;
+  }
+
+  if (gesture === 'textSelect') {
+    // Fixed white/black artwork, same convention as crosshair above -- a
+    // white halo stroke under the black line keeps it readable against any
+    // background, matching CursorStyleIcon.tsx's textSelect branch exactly.
+    const hotspot = CURSOR_GESTURE_HOTSPOTS.textSelect;
+    for (const [start, end] of CURSOR_TEXT_SELECT_LINES) {
+      const [sx, sy] = toScreenPoint(start, hotspot, x, y, s, clickScale);
+      const [ex, ey] = toScreenPoint(end, hotspot, x, y, s, clickScale);
+      g.moveTo(sx, sy);
+      g.lineTo(ex, ey);
+      g.stroke({ color: '#ffffff', width: 3 * s, alpha, cap: 'round' });
+    }
+    for (const [start, end] of CURSOR_TEXT_SELECT_LINES) {
       const [sx, sy] = toScreenPoint(start, hotspot, x, y, s, clickScale);
       const [ex, ey] = toScreenPoint(end, hotspot, x, y, s, clickScale);
       g.moveTo(sx, sy);

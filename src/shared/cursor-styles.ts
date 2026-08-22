@@ -69,7 +69,10 @@ export const CURSOR_GESTURE_HOTSPOTS: Record<CursorGesture, { x: number; y: numb
   // A crosshair's hotspot is its own dead center -- unlike the arrow/hand,
   // whose hotspot is a corner/fingertip, a real OS crosshair cursor is
   // symmetric around the point it's actually indicating.
-  crosshair: { x: 12, y: 12 }
+  crosshair: { x: 12, y: 12 },
+  // Same reasoning as crosshair -- a real I-beam cursor is symmetric around
+  // its own vertical stem, centered on the text insertion point.
+  textSelect: { x: 12, y: 12 }
 };
 
 /**

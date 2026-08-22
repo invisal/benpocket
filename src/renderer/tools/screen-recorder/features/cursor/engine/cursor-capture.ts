@@ -1,6 +1,10 @@
 import type { CaptureSource } from '@screen-recorder/types/recording';
 import type { CursorPathPoint } from '@screen-recorder/types/project';
-import type { WindowResizeSample, CursorCrosshairSample } from '@shared/cursor-path';
+import type {
+  WindowResizeSample,
+  CursorCrosshairSample,
+  CursorTextSelectSample
+} from '@shared/cursor-path';
 
 export interface CursorCaptureResult {
   cursorPath: CursorPathPoint[];
@@ -10,6 +14,8 @@ export interface CursorCaptureResult {
   resizePath: WindowResizeSample[];
   /** Real observed OS crosshair-cursor sightings (cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know when a spreadsheet fill-handle/range-select drag is actually happening. */
   crosshairPath: CursorCrosshairSample[];
+  /** Real observed OS text-select ("I-beam") cursor sightings (cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know when the cursor is over selectable text. */
+  textSelectPath: CursorTextSelectSample[];
 }
 
 export interface CursorCaptureHandle {
@@ -56,6 +62,7 @@ export async function startCursorCapture(
   const clickPath: CursorPathPoint[] = [];
   const resizePath: WindowResizeSample[] = [];
   const crosshairPath: CursorCrosshairSample[] = [];
+  const textSelectPath: CursorTextSelectSample[] = [];
   const unsubscribeSample = window.screenRecorder.cursor.onSample((sample) => {
     cursorPath.push(sample);
     onUpdate?.({ cursorCount: cursorPath.length, clickCount: clickPath.length });
@@ -74,12 +81,15 @@ export async function startCursorCapture(
   // `WindowResizeSample`'s own doc (@shared/cursor-path) for why an internal
   // panel/split-view resize needs this real-cursor-shape signal instead of
   // (or alongside) a window-bounds diff. Also the sole producer for
-  // `crosshairPath` (spreadsheet fill-handle/range-select).
+  // `crosshairPath` (spreadsheet fill-handle/range-select) and
+  // `textSelectPath` (hovering/selecting text anywhere).
   const unsubscribeShape = window.screenRecorder.cursor.onCursorShapeSample((sample) => {
     if (sample.kind === 'horizontal' || sample.kind === 'vertical') {
       resizePath.push({ atMs: sample.atMs, rotationDeg: sample.kind === 'horizontal' ? 0 : 90 });
     } else if (sample.kind === 'crosshair') {
       crosshairPath.push({ atMs: sample.atMs });
+    } else if (sample.kind === 'text') {
+      textSelectPath.push({ atMs: sample.atMs });
     }
   });
 
@@ -103,9 +113,9 @@ export async function startCursorCapture(
       // @shared/cursor-path) requires.
       resizePath.sort((a, b) => a.atMs - b.atMs);
       console.log(
-        `[cursor-capture] recorded ${cursorPath.length} cursor sample(s), ${clickPath.length} click(s), ${resizePath.length} resize sample(s), ${crosshairPath.length} crosshair sample(s).`
+        `[cursor-capture] recorded ${cursorPath.length} cursor sample(s), ${clickPath.length} click(s), ${resizePath.length} resize sample(s), ${crosshairPath.length} crosshair sample(s), ${textSelectPath.length} text-select sample(s).`
       );
-      return { cursorPath, clickPath, resizePath, crosshairPath };
+      return { cursorPath, clickPath, resizePath, crosshairPath, textSelectPath };
     }
   };
 }

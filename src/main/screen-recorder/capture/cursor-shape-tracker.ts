@@ -9,16 +9,17 @@ type ShapeStreamChild = ChildProcessByStdio<null, Readable, null>;
 
 /**
  * Streams the OS's own real cursor shape during a recording -- specifically,
- * whenever it's showing a horizontal/vertical resize cursor or a crosshair
- * cursor -- and forwards each sighting to the renderer for
- * `resolveCursorGesture` (@shared/cursor-path). This is the only reliable
- * signal for "the user is dragging an internal resize handle" (a split-view
- * divider, a panel splitter) or a spreadsheet fill-handle/range-select
- * drag: unlike `WindowBoundsPoller`, which only sees a recorded window's own
- * *outer* OS rect, none of these change that rect at all, so there's
- * nothing for the bounds poller to observe there -- only the OS's own
- * cursor shape reflects it, since the OS itself decided which cursor to
- * show based on what's under the pointer.
+ * whenever it's showing a horizontal/vertical resize cursor, a crosshair
+ * cursor, or the text-select ("I-beam") cursor -- and forwards each
+ * sighting to the renderer for `resolveCursorGesture` (@shared/cursor-path).
+ * This is the only reliable signal for "the user is dragging an internal
+ * resize handle" (a split-view divider, a panel splitter), a spreadsheet
+ * fill-handle/range-select drag, or hovering/selecting text: unlike
+ * `WindowBoundsPoller`, which only sees a recorded window's own *outer* OS
+ * rect, none of these change that rect at all, so there's nothing for the
+ * bounds poller to observe there -- only the OS's own cursor shape reflects
+ * it, since the OS itself decided which cursor to show based on what's
+ * under the pointer.
  *
  * A single persistent process is spawned once per recording (not re-spawned
  * per poll, unlike the 500ms window-bounds queries) -- see

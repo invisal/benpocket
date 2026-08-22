@@ -252,8 +252,8 @@ export function resolveClickRipple(
   return { pos: { x: click.x, y: click.y }, progress, alpha };
 }
 
-/** Which icon shape the cursor should draw -- the default arrow, a "hand" while hovering something clickable, a "resize" icon (at some `ResizeRotationDeg`) while the recorded window is actually being resized, or a "crosshair" ("+") icon while the OS is showing one -- e.g. a spreadsheet's fill-handle or column/row range-select drag (see `resolveCursorGesture`). */
-export type CursorGesture = 'idle' | 'hover' | 'resize' | 'crosshair';
+/** Which icon shape the cursor should draw -- the default arrow, a "hand" while hovering something clickable, a "resize" icon (at some `ResizeRotationDeg`) while the recorded window is actually being resized, a "crosshair" ("+") icon while the OS is showing one -- e.g. a spreadsheet's fill-handle or column/row range-select drag -- or a "textSelect" ("I-beam") icon while the OS is showing a text-select cursor -- hovering/selecting text anywhere (see `resolveCursorGesture`). */
+export type CursorGesture = 'idle' | 'hover' | 'resize' | 'crosshair' | 'textSelect';
 
 /**
  * The resize glyph is authored as a single horizontal double-headed arrow --
@@ -371,6 +371,31 @@ function isCrosshairActiveAt(crosshairPath: CursorCrosshairSample[], atMs: numbe
   if (!mostRecent) return false;
   const elapsed = atMs - mostRecent.atMs;
   return elapsed >= 0 && elapsed <= CROSSHAIR_ACTIVE_WINDOW_MS;
+}
+
+/**
+ * A timestamp (ms since recording start) at which the OS was observed
+ * showing the text-select ("I-beam") cursor -- hovering/selecting text
+ * anywhere: a text field, a code editor, a document, a web page. Reported
+ * by the same producer as `CursorCrosshairSample` (`CursorShapeTracker`) --
+ * macOS's public `NSCursor.iBeam` / Windows' `IDC_IBEAM`. Both platforms
+ * have a real, fixed system-cursor constant for this one (unlike a
+ * drag-copy badge, which is drawn dynamically per drag on Windows), so
+ * this works cross-platform cleanly.
+ */
+export interface CursorTextSelectSample {
+  atMs: number;
+}
+
+/** Same reasoning/margin as `RESIZE_ACTIVE_WINDOW_MS`/`CROSSHAIR_ACTIVE_WINDOW_MS`. */
+const TEXT_SELECT_ACTIVE_WINDOW_MS = 700;
+
+/** Whether the OS was observed showing the text-select cursor recently enough to still count as active at `atMs` (see `CursorTextSelectSample`). */
+function isTextSelectActiveAt(textSelectPath: CursorTextSelectSample[], atMs: number): boolean {
+  const mostRecent = mostRecentPointAtOrBefore(textSelectPath, atMs);
+  if (!mostRecent) return false;
+  const elapsed = atMs - mostRecent.atMs;
+  return elapsed >= 0 && elapsed <= TEXT_SELECT_ACTIVE_WINDOW_MS;
 }
 
 /**
@@ -534,7 +559,12 @@ export function resolveActiveResizeRotationDeg(
  *   (`isCrosshairActiveAt`) -- the OS was just observed showing a
  *   crosshair/"plus" cursor (a spreadsheet fill-handle, a column/row
  *   range-select drag). Same "real fact, always on" reasoning as resize;
- *   takes precedence over hover for the same reason.
+ *   takes precedence over textSelect/hover for the same reason.
+ * - "textSelect": an active `CursorTextSelectSample` exists
+ *   (`isTextSelectActiveAt`) -- the OS was just observed showing the
+ *   text-select ("I-beam") cursor. Same "real fact, always on" reasoning as
+ *   resize/crosshair; works cross-platform (see `CursorTextSelectSample`'s
+ *   own doc).
  * - "hover": `handGestureEnabled` on, stationary, and resting near some click
  *   anywhere in the recording (`isHoverAt`/`HOVER_NEAR_CLICK_RADIUS`). Also
  *   holds for a full grace window (`HOVER_LINGER_MS`) after any click, even
@@ -551,6 +581,7 @@ export function resolveCursorGesture(
   clickPath: CursorPathPoint[],
   resizePath: WindowResizeSample[],
   crosshairPath: CursorCrosshairSample[],
+  textSelectPath: CursorTextSelectSample[],
   atMs: number,
   handGestureEnabled = true
 ): CursorGesture {
@@ -559,6 +590,7 @@ export function resolveCursorGesture(
 
   if (activeResizeSampleAt(resizePath, atMs) !== null) return 'resize';
   if (isCrosshairActiveAt(crosshairPath, atMs)) return 'crosshair';
+  if (isTextSelectActiveAt(textSelectPath, atMs)) return 'textSelect';
   if (handGestureEnabled && isHoverAt(path, clickPath, atMs)) return 'hover';
   return 'idle';
 }

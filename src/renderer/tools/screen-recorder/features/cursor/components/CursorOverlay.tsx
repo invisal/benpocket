@@ -4,7 +4,8 @@ import type {
   CursorSettings,
   CursorPathPoint,
   WindowResizeSample,
-  CursorCrosshairSample
+  CursorCrosshairSample,
+  CursorTextSelectSample
 } from '@screen-recorder/types/project';
 import {
   resolveCursorStyle,
@@ -32,6 +33,8 @@ interface CursorOverlayProps {
   resizePath: WindowResizeSample[];
   /** Real observed OS crosshair-cursor sightings (see cursor-shape-tracker.ts) -- lets resolveCursorGesture know for a fact when a spreadsheet fill-handle/range-select drag is actually happening. */
   crosshairPath: CursorCrosshairSample[];
+  /** Real observed OS text-select ("I-beam") cursor sightings (see cursor-shape-tracker.ts) -- lets resolveCursorGesture know for a fact when the cursor is over selectable text. */
+  textSelectPath: CursorTextSelectSample[];
   currentTimeMs: number;
   /** Rendered on-screen width of the whole stage (background + padding + content), i.e. `stageRef`'s rect -- the same reference frame webcam/annotations already scale against, see REFERENCE_CANVAS_WIDTH. */
   stageWidthPx: number;
@@ -62,6 +65,7 @@ export function CursorOverlay({
   clickPath,
   resizePath,
   crosshairPath,
+  textSelectPath,
   currentTimeMs,
   stageWidthPx,
   cursorHidden = false
@@ -80,8 +84,9 @@ export function CursorOverlay({
   const sizePx = cursor.size * CURSOR_SIZE_UNIT_PX * scale;
   const clickScale = resolveClickBounceScale(clickPath, currentTimeMs, cursor.clickBounce);
   // resolveCursorGesture can itself return 'hover' (stationary near a click,
-  // gated by handGestureEnabled), 'resize', or 'crosshair' (both real facts
-  // -- see its own doc -- always on, since there's nothing to opt out of).
+  // gated by handGestureEnabled), 'resize', 'crosshair', or 'textSelect' (all
+  // three real facts -- see its own doc -- always on, since there's
+  // nothing to opt out of).
   const gesture =
     rawPath.length > 0
       ? resolveCursorGesture(
@@ -89,6 +94,7 @@ export function CursorOverlay({
           clickPath,
           resizePath,
           crosshairPath,
+          textSelectPath,
           currentTimeMs,
           cursor.handGestureEnabled
         )

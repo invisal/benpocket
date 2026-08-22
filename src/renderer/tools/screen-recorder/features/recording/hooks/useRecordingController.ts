@@ -243,12 +243,13 @@ export function useRecordingController(): RecordingController {
       });
     }
 
-    const { cursorPath, clickPath, resizePath, crosshairPath } =
+    const { cursorPath, clickPath, resizePath, crosshairPath, textSelectPath } =
       (await cursorCaptureRef.current?.stop()) ?? {
         cursorPath: [],
         clickPath: [],
         resizePath: [],
-        crosshairPath: []
+        crosshairPath: [],
+        textSelectPath: []
       };
     cursorCaptureRef.current = null;
 
@@ -344,6 +345,7 @@ export function useRecordingController(): RecordingController {
       clickPath,
       resizePath,
       crosshairPath,
+      textSelectPath,
       webcamPreviewUrl,
       webcamOffsetMs: webcamStartedAt !== null ? webcamStartedAt - capture.startedAt : 0
     };
@@ -363,6 +365,7 @@ export function useRecordingController(): RecordingController {
       clickPath,
       resizePath,
       crosshairPath,
+      textSelectPath,
       previewUrl,
       webcamPreviewUrl,
       webcamOffsetMs
@@ -378,6 +381,7 @@ export function useRecordingController(): RecordingController {
       clickPath,
       resizePath,
       crosshairPath,
+      textSelectPath,
       webcamPreviewUrl,
       webcamFilePath,
       webcamExportSourceFilePath,

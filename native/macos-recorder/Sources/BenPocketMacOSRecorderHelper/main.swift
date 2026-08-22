@@ -762,6 +762,7 @@ private func queryWindowBoundsQuartz(windowId: CGWindowID) -> CGRect? {
 private let resizeLeftRightImageData = NSCursor.resizeLeftRight.image.tiffRepresentation
 private let resizeUpDownImageData = NSCursor.resizeUpDown.image.tiffRepresentation
 private let crosshairImageData = NSCursor.crosshair.image.tiffRepresentation
+private let iBeamImageData = NSCursor.iBeam.image.tiffRepresentation
 
 // `+[NSCursor currentSystemCursor]` is not part of the public API surface --
 // there is no public class method/property for "what cursor is the OS
@@ -793,7 +794,9 @@ private func currentSystemCursor() -> NSCursor? {
 // real diagonal drag (a whole window's corner) reads as "other" here and
 // relies instead on WindowBoundsPoller's own bounds-diff signal on the
 // Electron side, which does see that case. Also recognizes the crosshair
-// cursor (spreadsheet fill-handle / column-row range-select).
+// cursor (spreadsheet fill-handle / column-row range-select) and the
+// text-select ("I-beam") cursor -- all public `NSCursor` class properties,
+// same as the resize cursors above.
 private func cursorShapeKind(for cursor: NSCursor) -> String {
 	let data = cursor.image.tiffRepresentation
 	if data == resizeLeftRightImageData {
@@ -804,6 +807,9 @@ private func cursorShapeKind(for cursor: NSCursor) -> String {
 	}
 	if data == crosshairImageData {
 		return "crosshair"
+	}
+	if data == iBeamImageData {
+		return "text"
 	}
 	return "other"
 }
@@ -820,6 +826,22 @@ private func cursorShapeKind(for cursor: NSCursor) -> String {
 // @shared/cursor-path.ts), so there's nothing useful to emit the rest of the
 // time.
 private func runCursorShapeStream() {
+	// Some system cursors' backing images (confirmed: `NSCursor.iBeam`,
+	// `NSCursor.arrow` -- not resize/crosshair, which load fine either way)
+	// silently resolve to a completely empty image (0x0, zero
+	// representations) in a bare command-line process that has never
+	// touched `NSApplication`, with no error of any kind -- there's no
+	// `NSApp`/Dock icon/menu bar anywhere in this helper otherwise, since
+	// it's a headless tool. Simply referencing `NSApplication.shared` once
+	// (no `.run()`, no full event loop needed) is enough to make AppKit's
+	// image-loading machinery actually work for every system cursor --
+	// confirmed by reproducing the empty-image bug in isolation and
+	// observing it disappear the instant this line runs first, before
+	// `resizeLeftRightImageData`/etc. (below) get first accessed.
+	// `.prohibited` keeps this invisible (no Dock icon, no app-switcher
+	// entry) -- there's still no real UI here, just cursor image loading.
+	NSApplication.shared.setActivationPolicy(.prohibited)
+
 	let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
 		guard let cursor = currentSystemCursor() else { return }
 		let kind = cursorShapeKind(for: cursor)

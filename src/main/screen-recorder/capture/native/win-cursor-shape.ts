@@ -5,13 +5,13 @@ import type { Readable } from 'stream';
  * Spawns a persistent PowerShell loop that polls the real Windows system
  * cursor via `GetCursorInfo`, comparing its handle against a handful of
  * built-in system cursors (`IDC_SIZEWE` = 32644, `IDC_SIZENS` = 32645,
- * `IDC_CROSS` = 32515), writing a `cursor-shape` JSON line to stdout on
- * every tick the cursor is one of those -- same "spawn once, loop
- * internally" reasoning as the macOS helper's own `cursor-shape-stream`
- * mode (see cursor-shape-tracker.ts): a useful poll rate (fast enough to
- * catch a brief resize drag) is far too fast to re-spawn a fresh process
- * per tick the way `getWin32WindowBounds` does for its much slower 500ms
- * poll.
+ * `IDC_CROSS` = 32515, `IDC_IBEAM` = 32513), writing a `cursor-shape` JSON
+ * line to stdout on every tick the cursor is one of those -- same "spawn
+ * once, loop internally" reasoning as the macOS helper's own
+ * `cursor-shape-stream` mode (see cursor-shape-tracker.ts): a useful poll
+ * rate (fast enough to catch a brief resize drag) is far too fast to
+ * re-spawn a fresh process per tick the way `getWin32WindowBounds` does for
+ * its much slower 500ms poll.
  *
  * Same inline `Add-Type`/P-Invoke idiom this codebase already uses for
  * one-shot Win32 queries (win-window-bounds.ts, win-window-focus.ts), just
@@ -43,6 +43,7 @@ public class BpCursorShape {
 $sizeWe = [BpCursorShape]::LoadCursor([IntPtr]::Zero, [IntPtr]32644)
 $sizeNs = [BpCursorShape]::LoadCursor([IntPtr]::Zero, [IntPtr]32645)
 $cross = [BpCursorShape]::LoadCursor([IntPtr]::Zero, [IntPtr]32515)
+$ibeam = [BpCursorShape]::LoadCursor([IntPtr]::Zero, [IntPtr]32513)
 while ($true) {
   $info = New-Object BpCursorShape+CURSORINFO
   $info.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($info)
@@ -53,6 +54,8 @@ while ($true) {
       Write-Output '{"event":"cursor-shape","kind":"vertical"}'
     } elseif ($info.hCursor -eq $cross) {
       Write-Output '{"event":"cursor-shape","kind":"crosshair"}'
+    } elseif ($info.hCursor -eq $ibeam) {
+      Write-Output '{"event":"cursor-shape","kind":"text"}'
     }
   }
   Start-Sleep -Milliseconds 50

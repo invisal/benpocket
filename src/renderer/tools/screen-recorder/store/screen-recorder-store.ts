@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import type {
   CursorPathPoint,
   WindowResizeSample,
-  CursorCrosshairSample
+  CursorCrosshairSample,
+  CursorTextSelectSample
 } from '@screen-recorder/types/project';
 import type { SourceResolution } from '@screen-recorder/types/editor';
 
@@ -25,6 +26,8 @@ export const EMPTY_CURSOR_PATH: CursorPathPoint[] = [];
 export const EMPTY_RESIZE_PATH: WindowResizeSample[] = [];
 /** Same reasoning as `EMPTY_CURSOR_PATH`, for `lastRecording?.crosshairPath ?? []`-style selectors. */
 export const EMPTY_CROSSHAIR_PATH: CursorCrosshairSample[] = [];
+/** Same reasoning as `EMPTY_CURSOR_PATH`, for `lastRecording?.textSelectPath ?? []`-style selectors. */
+export const EMPTY_TEXT_SELECT_PATH: CursorTextSelectSample[] = [];
 
 interface LastRecording {
   previewUrl: string;
@@ -48,6 +51,8 @@ interface LastRecording {
   resizePath: WindowResizeSample[];
   /** Real observed OS crosshair-cursor sightings (see cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know for a fact when a spreadsheet fill-handle/range-select drag is actually happening. */
   crosshairPath: CursorCrosshairSample[];
+  /** Real observed OS text-select ("I-beam") cursor sightings (see cursor-shape-tracker.ts) -- lets `resolveCursorGesture` know for a fact when the cursor is over selectable text. */
+  textSelectPath: CursorTextSelectSample[];
   /** Blob URL for the parallel webcam recording, if the webcam was enabled. Null otherwise, or if saving it failed. */
   webcamPreviewUrl: string | null;
   /** Absolute path to the saved webcam file, for export -- see capture-engine.ts's `CaptureRequest.webcam`. */

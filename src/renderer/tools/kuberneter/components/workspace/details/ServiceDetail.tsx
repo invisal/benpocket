@@ -7,6 +7,7 @@ import {
   type ServiceEndpointSlice,
   type ServiceEndpoint
 } from '../../../types/ServiceData';
+import { type PortForwardTunnelType } from '../../../types/PortForwardData';
 import { type DeployRelatedPod } from '../../../types/DeployData';
 import { KubeTable } from '../../kubeTable';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
@@ -73,8 +74,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
   const { openNamespaceDetail } = useOpenNamespaceDetail();
   const { openPodDetail } = useOpenPodDetail();
   const { openNodeDetail } = useOpenNodeDetail();
-  const { openEndpointSliceDetail, openEndpointDetail, openIngressDetail } =
-    useOpenNetworkDetail();
+  const { openEndpointSliceDetail, openEndpointDetail, openIngressDetail } = useOpenNetworkDetail();
   const { openResourceDetail } = useOpenResourceDetail();
 
   const metricsQuery = useInstantMetrics(true);
@@ -175,15 +175,25 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         let pointsToService = false;
         const rulePaths: string[] = [];
 
-        rules.forEach((r: { host?: string; http?: { paths?: Array<{ path?: string; backend?: { service?: { name?: string }; serviceName?: string } }> } }) => {
-          (r.http?.paths || []).forEach((p) => {
-            const sName = p.backend?.service?.name || p.backend?.serviceName;
-            if (sName === payload.name) {
-              pointsToService = true;
-              rulePaths.push(`${r.host || '*'}${p.path || ''}`);
-            }
-          });
-        });
+        rules.forEach(
+          (r: {
+            host?: string;
+            http?: {
+              paths?: Array<{
+                path?: string;
+                backend?: { service?: { name?: string }; serviceName?: string };
+              }>;
+            };
+          }) => {
+            (r.http?.paths || []).forEach((p) => {
+              const sName = p.backend?.service?.name || p.backend?.serviceName;
+              if (sName === payload.name) {
+                pointsToService = true;
+                rulePaths.push(`${r.host || '*'}${p.path || ''}`);
+              }
+            });
+          }
+        );
 
         if (pointsToService) {
           relatedIngresses.push({
@@ -229,10 +239,14 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
   );
 
   const handleStartPortForward = useCallback(
-    async (localPort: number, isHttps: boolean, openBrowser: boolean) => {
+    async (params: {
+      localPort: number;
+      openBrowser: boolean;
+      tunnelType: PortForwardTunnelType;
+    }) => {
+      const { localPort, openBrowser, tunnelType } = params;
       const port = portForwardModalConfig.containerPort;
-      const proto = isHttps ? 'https' : 'http';
-      const url = `${proto}://localhost:${localPort}`;
+      const localUrl = `http://localhost:${localPort}`;
       const serviceName = currentData?.name || '';
       const serviceNs = currentData?.ns || '';
       const pfId = `pf-service-${serviceName}-${port}-${localPort}-${Date.now()}`;
@@ -248,7 +262,8 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         resourceName: serviceName,
         localPort: localPort,
         targetPort: port,
-        kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined
+        kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined,
+        tunnelType
       });
 
       if (res.error) {
@@ -259,9 +274,10 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
           kind: 'service',
           podPort: port,
           localPort: localPort,
-          protocol: proto,
+          protocol: 'http',
+          tunnelType,
           status: 'Error',
-          url: url
+          url: localUrl
         });
 
         const isKubectlMissing =
@@ -280,6 +296,8 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         return;
       }
 
+      const activeUrl = res.publicUrl || localUrl;
+
       addPortForward({
         id: pfId,
         name: serviceName,
@@ -287,13 +305,15 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         kind: 'service',
         podPort: port,
         localPort: localPort,
-        protocol: proto,
+        protocol: 'http',
+        tunnelType,
+        publicUrl: res.publicUrl,
         status: 'Active',
-        url: url
+        url: activeUrl
       });
 
       if (openBrowser) {
-        window.open(url, '_blank');
+        window.open(activeUrl, '_blank');
       }
     },
     [
@@ -306,9 +326,13 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     ]
   );
 
+  const rawPortsItem = (queryData?.servicePayload?.rawItem || payload?.rawItem) as
+    K8sResource | undefined;
+  const currentPortsString = currentData?.ports;
+
   const servicePorts = useMemo<ServicePortItem[]>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = (queryData?.servicePayload?.rawItem || payload?.rawItem) as any;
+    const raw = rawPortsItem as any;
     if (raw?.spec?.ports && Array.isArray(raw.spec.ports) && raw.spec.ports.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return raw.spec.ports.map((p: any) => {
@@ -330,8 +354,8 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       });
     }
 
-    if (currentData?.ports && currentData.ports !== '—') {
-      return currentData.ports.split(',').map((item) => {
+    if (currentPortsString && currentPortsString !== '—') {
+      return currentPortsString.split(',').map((item) => {
         const trimmed = item.trim();
         const [portPart, protoPart] = trimmed.split('/');
         const firstPortStr = (portPart || '').split(':')[0];
@@ -345,13 +369,14 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     }
 
     return [];
-  }, [queryData?.servicePayload?.rawItem, payload?.rawItem, currentData?.ports]);
+  }, [rawPortsItem, currentPortsString]);
 
+  const currentNs = currentData?.ns;
   const handleNamespaceClick = useCallback(() => {
-    if (currentData?.ns) {
-      openNamespaceDetail(currentData.ns);
+    if (currentNs) {
+      openNamespaceDetail(currentNs);
     }
-  }, [currentData?.ns, openNamespaceDetail]);
+  }, [currentNs, openNamespaceDetail]);
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Service details available.</div>;
@@ -366,7 +391,8 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
 
   const creationTimestamp =
     currentData.creationTimestamp ||
-    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem?.metadata?.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem
+      ?.metadata?.creationTimestamp ||
     '';
   const createdTime =
     currentData.createdTime ||
@@ -379,12 +405,8 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       name: 'Created',
       value: (
         <span>
-          {creationTimestamp ? (
-            <Age timestamp={creationTimestamp} />
-          ) : (
-            currentData.age || '—'
-          )}{' '}
-          ago ({createdTime})
+          {creationTimestamp ? <Age timestamp={creationTimestamp} /> : currentData.age || '—'} ago (
+          {createdTime})
         </span>
       )
     },
@@ -570,15 +592,27 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
                 >
                   <div className="flex items-center gap-1.5 font-mono text-[11px]">
                     {activePf ? (
-                      <a
-                        href={activePf.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-accent hover:underline font-semibold"
-                        title={`Open ${activePf.url}`}
-                      >
-                        {p.displayStr}
-                      </a>
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={activePf.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-accent hover:underline font-semibold flex items-center gap-1"
+                          title={`Open ${activePf.url}`}
+                        >
+                          <span>{p.displayStr}</span>
+                          {activePf.tunnelType === 'cloudflare' && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-normal border border-amber-500/30">
+                              CF Tunnel
+                            </span>
+                          )}
+                          {activePf.tunnelType === 'ngrok' && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-sans font-normal border border-blue-500/30">
+                              ngrok
+                            </span>
+                          )}
+                        </a>
+                      </div>
                     ) : (
                       <span className="text-accent">{p.displayStr}</span>
                     )}
@@ -924,7 +958,6 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         resourceName={currentData.name}
         namespace={currentData.ns}
         containerPort={portForwardModalConfig.containerPort}
-        initialProtocol={portForwardModalConfig.protocol}
         onStart={handleStartPortForward}
       />
     </div>

@@ -80,10 +80,22 @@ export const PodContainersSection: React.FC<PodContainersSectionProps> = ({
                               href={activePf.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-accent hover:underline font-semibold"
+                              className="text-accent hover:underline font-semibold flex items-center gap-1"
                               title={`Open ${activePf.url}`}
                             >
-                              {p.containerPort}/{p.protocol}
+                              <span>
+                                {p.containerPort}/{p.protocol}
+                              </span>
+                              {activePf.tunnelType === 'cloudflare' && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-normal border border-amber-500/30">
+                                  CF Tunnel
+                                </span>
+                              )}
+                              {activePf.tunnelType === 'ngrok' && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-sans font-normal border border-blue-500/30">
+                                  ngrok
+                                </span>
+                              )}
                             </a>
                           ) : (
                             <span className="text-accent">

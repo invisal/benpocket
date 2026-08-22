@@ -9,7 +9,17 @@
   // standalone recording helper subprocesses (see recording-helper.ts).
   // lipo: merges the macOS helper's arm64/x86_64 slices into one universal
   // binary (see package-native-helper.mjs).
-  "ignoreBinaries": ["xclip", "xcrun", "osascript", "helm", "swift", "cmake", "lipo"],
+  "ignoreBinaries": [
+    "xclip",
+    "xcrun",
+    "osascript",
+    "helm",
+    "swift",
+    "cmake",
+    "lipo",
+    "cloudflared",
+    "ngrok"
+  ],
   // Pulled in via @import 'tailwindcss' in main.css and @tailwindcss/vite plugin
   "ignoreDependencies": ["tailwindcss"],
   // Skip exports that are only referenced within the same file

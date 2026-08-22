@@ -15,6 +15,7 @@ import {
   type PodVolume
 } from './types';
 import { type K8sResource } from '../../../../types/K8sResource';
+import { type PortForwardTunnelType } from '../../../../types/PortForwardData';
 import { MetricsSection } from '../metrics';
 import { PodTolerationsSection } from './PodTolerationsSection';
 import { PodVolumesSection } from './PodVolumesSection';
@@ -86,14 +87,14 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
     }
   };
 
-  const handleStartPortForward = async (
-    localPort: number,
-    isHttps: boolean,
-    openBrowser: boolean
-  ) => {
+  const handleStartPortForward = async (params: {
+    localPort: number;
+    openBrowser: boolean;
+    tunnelType: PortForwardTunnelType;
+  }) => {
+    const { localPort, openBrowser, tunnelType } = params;
     const port = portForwardModalConfig.containerPort;
-    const proto = isHttps ? 'https' : 'http';
-    const url = `${proto}://localhost:${localPort}`;
+    const localUrl = `http://localhost:${localPort}`;
 
     const pfId = `pf-${payload.name}-${port}-${localPort}-${Date.now()}`;
 
@@ -106,7 +107,8 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       resourceName: payload.name,
       localPort: localPort,
       targetPort: port,
-      kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined
+      kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined,
+      tunnelType
     });
 
     if (res.error) {
@@ -117,9 +119,10 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
         kind: 'pod',
         podPort: port,
         localPort: localPort,
-        protocol: proto,
+        protocol: 'http',
+        tunnelType,
         status: 'Error',
-        url: url
+        url: localUrl
       });
 
       const isKubectlMissing =
@@ -138,6 +141,8 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       return;
     }
 
+    const activeUrl = res.publicUrl || localUrl;
+
     addPortForward({
       id: pfId,
       name: payload.name,
@@ -145,13 +150,15 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
       kind: 'pod',
       podPort: port,
       localPort: localPort,
-      protocol: proto,
+      protocol: 'http',
+      tunnelType,
+      publicUrl: res.publicUrl,
       status: 'Active',
-      url: url
+      url: activeUrl
     });
 
     if (openBrowser) {
-      window.open(url, '_blank');
+      window.open(activeUrl, '_blank');
     }
   };
 
@@ -463,7 +470,6 @@ export const PodDetail: React.FC<PodDetailProps> = ({ payload, isTab = false }) 
         podName={payload.name}
         namespace={payload.ns}
         containerPort={portForwardModalConfig.containerPort}
-        initialProtocol={portForwardModalConfig.protocol}
         onStart={handleStartPortForward}
       />
     </div>

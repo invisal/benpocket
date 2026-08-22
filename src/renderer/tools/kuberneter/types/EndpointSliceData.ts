@@ -30,5 +30,6 @@ export interface EndpointSliceData {
   annotations?: Record<string, string>;
   controlledByName?: string;
   controlledByKind?: string;
+  creationTimestamp?: string;
   rawItem?: unknown;
 }

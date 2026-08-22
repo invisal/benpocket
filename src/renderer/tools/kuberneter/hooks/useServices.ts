@@ -209,7 +209,9 @@ export function useServices(enabled: boolean) {
           status: 'Active',
           hasWarning,
           endpointSlices: endpointSlicesList,
-          endpoints: endpointsList
+          endpoints: endpointsList,
+          creationTimestamp,
+          rawItem: item
         };
       });
     },

@@ -137,6 +137,7 @@ export const DetailContent: React.FC<DetailContentProps> = ({
     case 'lease':
       return <LeaseDetail payload={payload as LeaseData} isTab={isTab} />;
     case 'service':
+    case 'services':
       return <ServiceDetail payload={payload as ServiceData} isTab={isTab} />;
     case 'persistentvolumeclaim':
       return (
@@ -164,13 +165,18 @@ export const DetailContent: React.FC<DetailContentProps> = ({
     case 'event':
       return <EventDetail payload={payload as EventData} isTab={isTab} />;
     case 'endpointslice':
+    case 'endpointslices':
       return <EndpointSliceDetail payload={payload as EndpointSliceData} isTab={isTab} />;
+    case 'endpoint':
     case 'endpoints':
       return <EndpointDetail payload={payload as EndpointData} isTab={isTab} />;
+    case 'ingress':
     case 'ingresses':
       return <IngressDetail payload={payload as IngressData} isTab={isTab} />;
+    case 'ingressclass':
     case 'ingressclasses':
       return <IngressClassDetail payload={payload as IngressClassData} isTab={isTab} />;
+    case 'networkpolicy':
     case 'networkpolicies':
       return <NetworkPolicyDetail payload={payload as NetworkPolicyData} isTab={isTab} />;
     case 'mutatingwebhook':
@@ -191,6 +197,7 @@ export const DetailContent: React.FC<DetailContentProps> = ({
       );
     case 'serviceaccount':
       return <ServiceAccountDetail payload={payload as ServiceAccountData} isTab={isTab} />;
+    case 'portforward':
     case 'portforwarding':
       return <PortForwardingDetail payload={payload as PortForwardData} isTab={isTab} />;
     case 'helm-chart':

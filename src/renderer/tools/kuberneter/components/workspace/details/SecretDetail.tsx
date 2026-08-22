@@ -490,9 +490,16 @@ export const SecretDetail: FC<SecretDetailProps> = ({ payload, isTab = false }) 
 
   const ownerReferences = rawItem?.metadata?.ownerReferences || [];
 
-  const createdTime = rawItem?.metadata?.creationTimestamp
-    ? new Date(rawItem.metadata.creationTimestamp).toLocaleString()
-    : currentData?.createdTime || '';
+  const creationTimestamp =
+    rawItem?.metadata?.creationTimestamp ||
+    currentData?.creationTimestamp ||
+    payload?.creationTimestamp ||
+    payload?.rawItem?.metadata?.creationTimestamp ||
+    '';
+
+  const createdTime = creationTimestamp
+    ? new Date(creationTimestamp).toLocaleString()
+    : currentData?.createdTime || payload?.createdTime || 'N/A';
 
   if (!payload && !currentData) {
     return <div className="p-4 text-xs text-zinc-500">No secret details available.</div>;
@@ -506,13 +513,12 @@ export const SecretDetail: FC<SecretDetailProps> = ({ payload, isTab = false }) 
       name: 'Created',
       value: (
         <span>
-          <Age
-            timestamp={
-              rawItem?.metadata?.creationTimestamp ||
-              ((payload as unknown as Record<string, unknown>)?.creationTimestamp as string)
-            }
-          />{' '}
-          ago ({createdTime || 'N/A'})
+          {creationTimestamp ? (
+            <Age timestamp={creationTimestamp} />
+          ) : (
+            currentData?.age || payload?.age || '—'
+          )}{' '}
+          ago ({createdTime})
         </span>
       )
     },

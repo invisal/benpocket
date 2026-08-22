@@ -1,13 +1,22 @@
 import { Age } from '../../Age';
 import type React from 'react';
 import { useMemo, useCallback } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type EndpointData } from '../../../types/EndpointData';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
 import { KubeTable, type Column } from '../../kube-table';
-
-import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
+import {
+  useOpenNamespaceDetail,
+  useOpenPodDetail,
+  useOpenNodeDetail,
+  useOpenNetworkDetail,
+  useOpenResourceDetail
+} from '../../../hooks/open-detail';
+import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
+import { type K8sResource } from '../../../types/K8sResource';
+import { buildEndpointDetailPayload } from '../../../hooks/open-detail/transformers/network.transformer';
 
 interface EndpointDetailProps {
   payload: EndpointData;
@@ -16,53 +25,141 @@ interface EndpointDetailProps {
 
 export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab = false }) => {
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
+  const rawConfigPath = useKuberneterStore(
+    (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
+  );
+
   const { openNamespaceDetail } = useOpenNamespaceDetail();
-  const setResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
+  const { openPodDetail } = useOpenPodDetail();
+  const { openNodeDetail } = useOpenNodeDetail();
+  const { openServiceDetail } = useOpenNetworkDetail();
+  const { openResourceDetail } = useOpenResourceDetail();
+
+  // Live query for Endpoints
+  const { data: queryData } = useQuery({
+    queryKey: [
+      'kuberneter',
+      'endpoint-detail-data',
+      rawConfigPath,
+      cluster,
+      payload?.ns,
+      payload?.name
+    ],
+    queryFn: async () => {
+      if (!cluster || !payload?.ns || !payload?.name) return null;
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+
+      const epRes = await window.kuberneter.getResources(
+        configPathArg,
+        cluster,
+        K8S_RESOURCE_KEYS.ENDPOINTS,
+        payload.ns
+      );
+      const epItem = ((epRes?.items || []) as K8sResource[]).find(
+        (i) => i.metadata?.name === payload.name
+      );
+
+      return buildEndpointDetailPayload(
+        payload.name,
+        payload.ns,
+        epItem || (payload.rawItem as K8sResource)
+      );
+    },
+    enabled: !!cluster && !!payload?.ns && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
+  const currentData = queryData || payload;
 
   const handleNamespaceClick = useCallback(() => {
-    if (payload?.ns) {
-      openNamespaceDetail(payload.ns);
+    if (currentData?.ns) {
+      openNamespaceDetail(currentData.ns);
     }
-  }, [payload, openNamespaceDetail]);
+  }, [currentData, openNamespaceDetail]);
 
-  const handlePodClick = useCallback(() => {
-    if (activeInstanceId) {
-      setResource(activeInstanceId, 'pods');
+  const handleServiceClick = useCallback(() => {
+    if (currentData?.ns && currentData?.name) {
+      openServiceDetail(currentData.ns, currentData.name);
     }
-  }, [activeInstanceId, setResource]);
+  }, [currentData, openServiceDetail]);
 
-  const labels = payload?.labels ? Object.entries(payload.labels) : [];
-  const annotations = payload?.annotations ? Object.entries(payload.annotations) : [];
+  const handlePodClick = useCallback(
+    (podName: string, podNs?: string, kind = 'Pod') => {
+      const ns = podNs || currentData?.ns;
+      if (!podName || !ns) return;
+      if (kind === 'Pod') {
+        openPodDetail(ns, podName);
+      } else {
+        openResourceDetail(kind, ns, podName);
+      }
+    },
+    [currentData, openPodDetail, openResourceDetail]
+  );
+
+  const handleNodeClick = useCallback(
+    (nodeName?: string) => {
+      if (nodeName && nodeName !== '—') {
+        openNodeDetail(nodeName);
+      }
+    },
+    [openNodeDetail]
+  );
+
+  const labels = currentData?.labels ? Object.entries(currentData.labels) : [];
+  const annotations = currentData?.annotations ? Object.entries(currentData.annotations) : [];
+
+  const creationTimestamp =
+    currentData?.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem
+      ?.metadata?.creationTimestamp ||
+    '';
+  const createdTime =
+    currentData?.createdTime ||
+    (creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '') ||
+    'N/A';
 
   const propertiesData: PropertyItem[] = [
     {
       id: 'created',
       name: 'Created',
-      value: payload ? (
+      value: (
         <span>
-          <Age
-            timestamp={(payload as unknown as Record<string, unknown>).creationTimestamp as string}
-          />{' '}
-          ago ({((payload as unknown as Record<string, unknown>).createdTime as string) || 'N/A'})
+          {creationTimestamp ? <Age timestamp={creationTimestamp} /> : currentData?.age || '—'} ago
+          ({createdTime})
+        </span>
+      )
+    },
+    {
+      id: 'name',
+      name: 'Name',
+      value: currentData?.name || ''
+    },
+    {
+      id: 'namespace',
+      name: 'Namespace',
+      value: currentData ? (
+        <span
+          onClick={handleNamespaceClick}
+          className="font-mono text-accent hover:underline cursor-pointer"
+        >
+          {currentData.ns}
         </span>
       ) : (
         ''
       )
     },
     {
-      id: 'name',
-      name: 'Name',
-      value: payload?.name || ''
-    },
-    {
-      id: 'namespace',
-      name: 'Namespace',
-      value: payload ? (
+      id: 'service',
+      name: 'Associated Service',
+      value: currentData ? (
         <span
-          onClick={handleNamespaceClick}
+          onClick={handleServiceClick}
           className="font-mono text-accent hover:underline cursor-pointer"
         >
-          {payload.ns}
+          {currentData.name}
         </span>
       ) : (
         ''
@@ -113,7 +210,7 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
   const allAddresses = useMemo<any[]>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const list: any[] = [];
-    payload?.subsets?.forEach((sub, subIdx) => {
+    currentData?.subsets?.forEach((sub, subIdx) => {
       const addrs = sub.addresses || [];
       addrs.forEach((addr, addrIdx) => {
         list.push({
@@ -122,7 +219,8 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
           hostname: addr.hostname || '—',
           targetRefName: addr.targetRefName,
           targetRefNamespace: addr.targetRefNamespace,
-          targetRefKind: addr.targetRefKind
+          targetRefKind: addr.targetRefKind,
+          nodeName: addr.nodeName
         });
       });
       const notReady = sub.notReadyAddresses || [];
@@ -134,18 +232,19 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
           targetRefName: addr.targetRefName,
           targetRefNamespace: addr.targetRefNamespace,
           targetRefKind: addr.targetRefKind,
+          nodeName: addr.nodeName,
           notReady: true
         });
       });
     });
     return list;
-  }, [payload?.subsets]);
+  }, [currentData?.subsets]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allPorts = useMemo<any[]>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const list: any[] = [];
-    payload?.subsets?.forEach((sub, subIdx) => {
+    currentData?.subsets?.forEach((sub, subIdx) => {
       const ports = sub.ports || [];
       ports.forEach((p, pIdx) => {
         list.push({
@@ -157,7 +256,7 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
       });
     });
     return list;
-  }, [payload?.subsets]);
+  }, [currentData?.subsets]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const addressColumns = useMemo<Column<any>[]>(
@@ -185,18 +284,42 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
         render: (row) =>
           row.targetRefName ? (
             <span
-              onClick={handlePodClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePodClick(row.targetRefName, row.targetRefNamespace, row.targetRefKind);
+              }}
               className="font-mono text-accent hover:underline cursor-pointer"
+              title={`${row.targetRefKind || 'Pod'}: ${row.targetRefName}`}
             >
               {row.targetRefName}
             </span>
           ) : (
             <span className="text-zinc-555">—</span>
           ),
-        initialWidth: 280
+        initialWidth: 240
+      },
+      {
+        key: 'node',
+        header: 'Node',
+        render: (row) =>
+          row.nodeName ? (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNodeClick(row.nodeName);
+              }}
+              className="font-mono text-accent hover:underline cursor-pointer"
+              title={row.nodeName}
+            >
+              {row.nodeName}
+            </span>
+          ) : (
+            <span className="text-zinc-555">—</span>
+          ),
+        initialWidth: 140
       }
     ],
-    [handlePodClick]
+    [handlePodClick, handleNodeClick]
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,9 +369,11 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
 
         {/* Addresses Table */}
         <div className="flex flex-col gap-1.5 mt-1">
-          <span className="text-[10px] font-bold text-zinc-400">Addresses</span>
+          <span className="text-[10px] font-bold text-zinc-400">
+            Addresses ({allAddresses.length})
+          </span>
           {allAddresses.length > 0 ? (
-            <div className="flex flex-col border-y border-border/40 bg-surface-2/30 h-auto max-h-[160px]">
+            <div className="flex flex-col border-y border-border/40 bg-surface-2/30 h-auto max-h-[180px]">
               <KubeTable
                 columns={addressColumns}
                 data={allAddresses}
@@ -264,7 +389,7 @@ export const EndpointDetail: React.FC<EndpointDetailProps> = ({ payload, isTab =
 
         {/* Ports Table */}
         <div className="flex flex-col gap-1.5 mt-3">
-          <span className="text-[10px] font-bold text-zinc-400">Ports</span>
+          <span className="text-[10px] font-bold text-zinc-400">Ports ({allPorts.length})</span>
           {allPorts.length > 0 ? (
             <div className="flex flex-col border-y border-border/40 bg-surface-2/30 h-auto max-h-[160px]">
               <KubeTable

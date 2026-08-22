@@ -1,6 +1,8 @@
 import { ipcMain, app } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
 import { resolveKubectlBinaryPath } from './kubectl-settings';
+import { startTunnel, stopTunnel, stopAllTunnels } from './tunnels/tunnel-manager';
+import type { TunnelProvider } from './tunnels/types';
 
 const activePortForwards = new Map<string, ChildProcess>();
 
@@ -61,6 +63,7 @@ export function registerPortForwardHandler(): void {
         localPort: number;
         targetPort: number;
         kubectlPath?: string;
+        tunnelType?: TunnelProvider;
       }
     ) => {
       const {
@@ -72,7 +75,8 @@ export function registerPortForwardHandler(): void {
         resourceName,
         localPort,
         targetPort,
-        kubectlPath
+        kubectlPath,
+        tunnelType = 'none'
       } = params;
 
       // Kill any existing process running for the same ID
@@ -83,6 +87,7 @@ export function registerPortForwardHandler(): void {
         }
         activePortForwards.delete(id);
       }
+      await stopTunnel(id);
 
       try {
         const normalizedKind = resourceKind.toLowerCase();
@@ -133,9 +138,34 @@ export function registerPortForwardHandler(): void {
 
         child.on('exit', () => {
           activePortForwards.delete(id);
+          void stopTunnel(id);
         });
 
-        return { success: true };
+        // If public tunnel requested, start tunnel on top of the local port forward
+        if (tunnelType && tunnelType !== 'none') {
+          const tunnelResult = await startTunnel({
+            id,
+            provider: tunnelType,
+            localPort
+          });
+
+          if (!tunnelResult.success) {
+            // Terminate kubectl if tunnel failed
+            if (!child.killed) {
+              child.kill('SIGTERM');
+            }
+            activePortForwards.delete(id);
+            return { error: tunnelResult.error || `Failed to establish ${tunnelType} tunnel` };
+          }
+
+          return {
+            success: true,
+            publicUrl: tunnelResult.publicUrl,
+            tunnelType: tunnelResult.provider
+          };
+        }
+
+        return { success: true, tunnelType: 'none' };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return { error: message };
@@ -150,6 +180,7 @@ export function registerPortForwardHandler(): void {
         proc.kill('SIGTERM');
         activePortForwards.delete(id);
       }
+      await stopTunnel(id);
       return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -164,5 +195,6 @@ export function registerPortForwardHandler(): void {
       }
     }
     activePortForwards.clear();
+    void stopAllTunnels();
   });
 }

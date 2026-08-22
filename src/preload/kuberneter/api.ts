@@ -201,7 +201,13 @@ export interface KuberneterApi {
     localPort: number;
     targetPort: number;
     kubectlPath?: string;
-  }) => Promise<{ success?: boolean; error?: string }>;
+    tunnelType?: 'none' | 'cloudflare' | 'ngrok';
+  }) => Promise<{
+    success?: boolean;
+    publicUrl?: string;
+    tunnelType?: 'none' | 'cloudflare' | 'ngrok';
+    error?: string;
+  }>;
   stopPortForward: (id: string) => Promise<{ success?: boolean; error?: string }>;
   queryPodMetricsRange: (
     params: PrometheusQueryConfig & {

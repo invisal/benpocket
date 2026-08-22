@@ -37,4 +37,6 @@ export interface ServiceData {
   hasWarning: boolean;
   endpointSlices: ServiceEndpointSlice[];
   endpoints: ServiceEndpoint[];
+  creationTimestamp?: string;
+  rawItem?: unknown;
 }

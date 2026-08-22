@@ -1,9 +1,9 @@
 import type React from 'react';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { type PortForwardData } from '../../../types/PortForwardData';
-import { useLayoutStore } from '../../../../../src/store/layout.store';
-import { useKuberneterStore } from '../../../store/kuberneter.store';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+import { useOpenNamespaceDetail, useOpenResourceDetail } from '../../../hooks/open-detail';
+import { ExternalLink, Copy, Check } from 'lucide-react';
 import { cn } from 'cnfast';
 
 interface PortForwardingDetailProps {
@@ -26,36 +26,89 @@ function StatusValue({ status }: { status: PortForwardData['status'] }) {
   );
 }
 
+function TunnelTypeValue({ type }: { type?: PortForwardData['tunnelType'] }) {
+  if (type === 'cloudflare') {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+        Cloudflare Quick Tunnel
+      </span>
+    );
+  }
+  if (type === 'ngrok') {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
+        ngrok Public Tunnel
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-3 text-muted-foreground border border-border/40">
+      Localhost
+    </span>
+  );
+}
+
+function UrlProperty({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="font-mono text-accent hover:underline flex items-center gap-1 text-[11px]"
+      >
+        <span>{url}</span>
+        <ExternalLink className="size-3" />
+      </a>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-1 text-muted-foreground hover:text-foreground bg-surface-2 hover:bg-surface-3 rounded border border-border/40 cursor-pointer flex items-center gap-1 text-[10px]"
+        title="Copy URL"
+      >
+        {copied ? (
+          <>
+            <Check className="size-3 text-green-400" />
+            <span className="text-green-400">Copied</span>
+          </>
+        ) : (
+          <>
+            <Copy className="size-3" />
+            <span>Copy</span>
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 export const PortForwardingDetail: React.FC<PortForwardingDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
-  const setResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openResourceDetail } = useOpenResourceDetail();
 
   const handleResourceClick = useCallback(() => {
-    if (activeInstanceId && payload?.kind) {
-      // Navigate to the relevant resource list
-      const kindToResource: Record<string, string> = {
-        pod: 'pods',
-        pods: 'pods',
-        deployment: 'deployments',
-        deployments: 'deployments',
-        service: 'services',
-        services: 'services',
-        statefulset: 'statefulsets',
-        statefulsets: 'statefulsets',
-        daemonset: 'daemonsets',
-        daemonsets: 'daemonsets',
-        replicaset: 'replicasets',
-        replicasets: 'replicasets'
-      };
-      const resourceId = kindToResource[payload.kind.toLowerCase()];
-      if (resourceId) {
-        setResource(activeInstanceId, resourceId);
-      }
+    if (payload?.name && payload?.kind) {
+      openResourceDetail(payload.kind, payload.ns, payload.name);
     }
-  }, [payload, activeInstanceId, setResource]);
+  }, [payload, openResourceDetail]);
+
+  const handleNamespaceClick = useCallback(() => {
+    if (payload?.ns) {
+      openNamespaceDetail(payload.ns);
+    }
+  }, [payload, openNamespaceDetail]);
 
   const propertiesData: PropertyItem[] = [
     {
@@ -75,7 +128,16 @@ export const PortForwardingDetail: React.FC<PortForwardingDetailProps> = ({
     {
       id: 'namespace',
       name: 'Namespace',
-      value: payload?.ns || ''
+      value: payload ? (
+        <span
+          onClick={handleNamespaceClick}
+          className="font-mono text-accent hover:underline cursor-pointer"
+        >
+          {payload.ns}
+        </span>
+      ) : (
+        ''
+      )
     },
     {
       id: 'kind',
@@ -91,6 +153,16 @@ export const PortForwardingDetail: React.FC<PortForwardingDetailProps> = ({
       id: 'localPort',
       name: 'Local Port',
       value: payload ? String(payload.localPort) : ''
+    },
+    {
+      id: 'tunnelType',
+      name: 'Exposure Type',
+      value: payload ? <TunnelTypeValue type={payload.tunnelType} /> : ''
+    },
+    {
+      id: 'url',
+      name: 'Active URL',
+      value: payload?.url ? <UrlProperty url={payload.url} /> : ''
     },
     {
       id: 'protocol',

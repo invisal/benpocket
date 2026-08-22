@@ -132,6 +132,7 @@ export function useEndpointSlices(enabled: boolean) {
           annotations: sliceItem.metadata?.annotations,
           controlledByName,
           controlledByKind,
+          creationTimestamp,
           rawItem: sliceItem
         };
       });

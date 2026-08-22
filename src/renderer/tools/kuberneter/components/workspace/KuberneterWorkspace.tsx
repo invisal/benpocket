@@ -1,5 +1,5 @@
 import type React from 'react';
-import { ClusterOverview } from './cluster-overview/ClusterOverview';
+import { lazy, Suspense } from 'react';
 import { Pods } from './pods/Pods';
 import { Deployments } from './deployments/Deployments';
 import { DaemonSets } from './daemonsets/DaemonSets';
@@ -32,7 +32,7 @@ import { Endpoints } from './endpoints/Endpoints';
 import { Ingresses } from './ingresses/Ingresses';
 import { IngressClasses } from './ingressclasses/IngressClasses';
 import { NetworkPolicies } from './networkpolicies/NetworkPolicies';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { useLayoutStore } from '../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../store/kuberneter.store';
 import { KubeWorkspaceLayout } from './KubeWorkspaceLayout';
@@ -51,6 +51,12 @@ import { KuberneterSettings } from './settings/KuberneterSettings';
 import { GenericKubeResourceView } from './GenericKubeResourceView';
 
 export type { ApplicationData } from '../../types/ApplicationData';
+
+const ClusterOverview = lazy(() =>
+  import('./cluster-overview/ClusterOverview').then((m) => ({
+    default: m.ClusterOverview
+  }))
+);
 
 interface KuberneterWorkspaceProps {
   resource: string;
@@ -119,7 +125,18 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
           );
         })()}
 
-      {resource === 'overview' && <ClusterOverview />}
+      {resource === 'overview' && (
+        <Suspense
+          fallback={
+            <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground font-mono gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-accent" />
+              <span>Loading Cluster Overview...</span>
+            </div>
+          }
+        >
+          <ClusterOverview />
+        </Suspense>
+      )}
 
       {resource === 'workloads-overview' && <WorkloadOverview />}
 

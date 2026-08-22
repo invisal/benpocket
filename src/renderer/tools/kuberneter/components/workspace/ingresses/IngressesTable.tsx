@@ -94,16 +94,12 @@ export const IngressesTable: React.FC<IngressesTableProps> = ({
         key: 'rules',
         header: 'Rules',
         render: (row) => (
-          <div className="flex flex-wrap gap-1 max-w-[400px]">
-            {row.rules.map((r, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350"
-              >
-                {r.link} → {r.serviceName}:{r.servicePort}
-              </span>
-            ))}
-          </div>
+          <span
+            className="font-mono text-zinc-400 text-[11px] truncate block max-w-[400px]"
+            title={row.rulesStr}
+          >
+            {row.rulesStr}
+          </span>
         ),
         initialWidth: 320
       },

@@ -1,10 +1,26 @@
 import type React from 'react';
 import { useCallback } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type NetworkPolicyData } from '../../../types/NetworkPolicyData';
+import { type DeployRelatedPod } from '../../../types/DeployData';
 import { KubePropertiesTable, type PropertyItem } from './KubePropertiesTable';
+import { KubeTable } from '../../kubeTable';
 import { Age } from '../../Age';
-
-import { useOpenNamespaceDetail } from '../../../hooks/open-detail';
+import {
+  useInstantMetrics,
+  formatInstantCpu,
+  formatInstantMemory
+} from '../../../hooks/useMetrics';
+import {
+  useOpenNamespaceDetail,
+  useOpenPodDetail,
+  useOpenNodeDetail
+} from '../../../hooks/open-detail';
+import { useLayoutStore } from '../../../../../src/store/layout.store';
+import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
+import { type K8sResource } from '../../../types/K8sResource';
+import { buildNetworkPolicyDetailPayload } from '../../../hooks/open-detail/transformers/network.transformer';
 
 interface NetworkPolicyDetailProps {
   payload: NetworkPolicyData;
@@ -15,24 +31,134 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
   payload,
   isTab = false
 }) => {
-  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
+  const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
+  const rawConfigPath = useKuberneterStore(
+    (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
+  );
 
-  const handleNamespaceClick = useCallback(() => {
-    if (payload?.ns) {
-      openNamespaceDetail(payload.ns);
-    }
-  }, [payload, openNamespaceDetail]);
+  const { openNamespaceDetail } = useOpenNamespaceDetail();
+  const { openPodDetail } = useOpenPodDetail();
+  const { openNodeDetail } = useOpenNodeDetail();
+
+  const metricsQuery = useInstantMetrics(true);
+  const metricItems = metricsQuery.data ?? [];
+
+  // Live query for NetworkPolicy and matching Pods
+  const { data: queryData } = useQuery({
+    queryKey: [
+      'kuberneter',
+      'networkpolicy-detail-data',
+      rawConfigPath,
+      cluster,
+      payload?.ns,
+      payload?.name
+    ],
+    queryFn: async () => {
+      if (!cluster || !payload?.ns || !payload?.name) return null;
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+
+      const [npRes, podsRes] = await Promise.all([
+        window.kuberneter.getResources(
+          configPathArg,
+          cluster,
+          K8S_RESOURCE_KEYS.NETWORK_POLICIES,
+          payload.ns
+        ),
+        window.kuberneter
+          .getResources(configPathArg, cluster, K8S_RESOURCE_KEYS.PODS, payload.ns)
+          .catch(() => ({ items: [] }))
+      ]);
+
+      const npItem = ((npRes?.items || []) as K8sResource[]).find(
+        (i) => i.metadata?.name === payload.name
+      );
+      const allPods = (podsRes?.items || []) as K8sResource[];
+
+      const networkPolicyPayload = buildNetworkPolicyDetailPayload(
+        payload.name,
+        payload.ns,
+        npItem || (payload.rawItem as K8sResource)
+      );
+
+      // Match pods with podSelector
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = (npItem || payload.rawItem) as any;
+      const matchLabels = raw?.spec?.podSelector?.matchLabels || {};
+      const labelEntries = Object.entries(matchLabels);
+
+      const matchedPods = allPods.filter((pod) => {
+        if (pod.metadata?.namespace !== payload.ns) return false;
+        const podLabels = pod.metadata?.labels || {};
+        if (labelEntries.length === 0) return true; // Empty selector matches all pods in namespace
+        return labelEntries.every(([k, v]) => podLabels[k] === v);
+      });
+
+      const podsList: DeployRelatedPod[] = matchedPods.map((pod) => {
+        const podName = pod.metadata?.name || '';
+        const node = (pod.spec?.nodeName as string) || '—';
+        const containerStatuses =
+          (pod.status?.containerStatuses as Array<{ ready?: boolean }>) || [];
+        const readyCount = containerStatuses.filter((c) => c.ready).length;
+        const totalCount = containerStatuses.length;
+        const phase = (pod.status?.phase as string) || 'Unknown';
+        return {
+          name: podName,
+          node,
+          ns: payload.ns,
+          ready: `${readyCount}/${totalCount}`,
+          cpu: 'N/A',
+          memory: 'N/A',
+          status: phase,
+          hasWarning: phase !== 'Running' && phase !== 'Succeeded',
+          rawItem: pod
+        };
+      });
+
+      return {
+        networkPolicyPayload,
+        podsList
+      };
+    },
+    enabled: !!cluster && !!payload?.ns && !!payload?.name,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000
+  });
+
+  const currentData = queryData?.networkPolicyPayload || payload;
+  const pods = queryData?.podsList || [];
+
+  const handleNamespaceClick = useCallback(
+    (ns?: string) => {
+      const targetNs = ns || currentData?.ns;
+      if (targetNs) {
+        openNamespaceDetail(targetNs);
+      }
+    },
+    [currentData, openNamespaceDetail]
+  );
 
   if (!payload) {
     return <div className="p-4 text-xs text-zinc-500">No Network Policy details available.</div>;
   }
 
-  const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
-  const ingressRules = payload.ingressRules || [];
-  const egressRules = payload.egressRules || [];
-  const podSelectors = payload.podSelectorStr
-    ? payload.podSelectorStr.split(', ').filter((s) => s && s !== '{}' && s !== '—')
+  const annotations = currentData.annotations ? Object.entries(currentData.annotations) : [];
+  const ingressRules = currentData.ingressRules || [];
+  const egressRules = currentData.egressRules || [];
+  const podSelectors = currentData.podSelectorStr
+    ? currentData.podSelectorStr.split(', ').filter((s) => s && s !== '{}' && s !== '—')
     : [];
+
+  const creationTimestamp =
+    currentData.creationTimestamp ||
+    (currentData as unknown as { rawItem?: { metadata?: { creationTimestamp?: string } } })?.rawItem
+      ?.metadata?.creationTimestamp ||
+    '';
+  const createdTime =
+    currentData.createdTime ||
+    (creationTimestamp ? new Date(creationTimestamp).toLocaleString() : '') ||
+    'N/A';
 
   const propertiesData: PropertyItem[] = [
     {
@@ -40,24 +166,25 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
       name: 'Created',
       value: (
         <span>
-          <Age timestamp={payload.creationTimestamp} /> ago ({payload.createdTime || 'N/A'})
+          {creationTimestamp ? <Age timestamp={creationTimestamp} /> : currentData.age || '—'} ago (
+          {createdTime})
         </span>
       )
     },
     {
       id: 'name',
       name: 'Name',
-      value: payload.name
+      value: currentData.name
     },
     {
       id: 'namespace',
       name: 'Namespace',
       value: (
         <span
-          onClick={handleNamespaceClick}
+          onClick={() => handleNamespaceClick()}
           className="font-mono text-accent hover:underline cursor-pointer"
         >
-          {payload.ns}
+          {currentData.ns}
         </span>
       )
     },
@@ -101,8 +228,8 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
     }
   ];
 
-  const showsIngress = payload.policyTypes.includes('Ingress');
-  const showsEgress = payload.policyTypes.includes('Egress');
+  const showsIngress = currentData.policyTypes.includes('Ingress');
+  const showsEgress = currentData.policyTypes.includes('Egress');
 
   return (
     <div className={`flex flex-col gap-4 ${isTab ? 'p-6 h-full overflow-y-auto' : 'flex-1'}`}>
@@ -279,6 +406,135 @@ export const NetworkPolicyDetail: React.FC<NetworkPolicyDetailProps> = ({
           )}
         </div>
       )}
+
+      {/* Matching Pods Section */}
+      <div className="flex flex-col gap-2 mt-2 border-t border-border-dark/60 pt-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider">
+            Matching Pods ({pods.length})
+          </span>
+        </div>
+        {pods.length === 0 ? (
+          <div className="text-xs text-zinc-500 italic pl-1">
+            No matching pods found in namespace
+          </div>
+        ) : (
+          <div className="border-y border-border/40 flex flex-col max-h-[220px] h-auto w-full overflow-y-auto">
+            <KubeTable<DeployRelatedPod>
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Name',
+                  className: 'py-2 px-3 text-zinc-200 font-semibold truncate max-w-[180px]',
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPodDetail(
+                          row.ns,
+                          row.name,
+                          (row as unknown as { rawItem?: K8sResource }).rawItem
+                        );
+                      }}
+                      className="text-accent hover:underline cursor-pointer font-sans"
+                      title={row.name}
+                    >
+                      {row.name}
+                    </span>
+                  )
+                },
+                {
+                  key: 'node',
+                  header: 'Node',
+                  className: 'py-2 px-3 text-zinc-300 truncate max-w-[100px]',
+                  render: (row) => (
+                    <span
+                      onClick={(e) => {
+                        if (row.node && row.node !== '—') {
+                          e.stopPropagation();
+                          openNodeDetail(row.node);
+                        }
+                      }}
+                      className={
+                        row.node && row.node !== '—'
+                          ? 'text-accent hover:underline cursor-pointer font-mono'
+                          : 'text-zinc-400'
+                      }
+                      title={row.node}
+                    >
+                      {row.node}
+                    </span>
+                  )
+                },
+                {
+                  key: 'ns',
+                  header: 'Namespace',
+                  className: 'py-2 px-3 text-accent hover:underline cursor-pointer',
+                  render: (row) => (
+                    <span onClick={() => handleNamespaceClick(row.ns)}>{row.ns}</span>
+                  )
+                },
+                {
+                  key: 'ready',
+                  header: 'Ready',
+                  className: 'py-2 px-3 text-zinc-300'
+                },
+                {
+                  key: 'cpu',
+                  header: 'CPU',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  render: (row) => {
+                    const podMetric = metricItems.find(
+                      (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
+                    );
+                    const cpuStr = podMetric?.cpu
+                      ? formatInstantCpu(podMetric.cpu)
+                      : row.cpu && row.cpu !== 'N/A'
+                        ? row.cpu
+                        : 'N/A';
+                    return <span>{cpuStr}</span>;
+                  }
+                },
+                {
+                  key: 'memory',
+                  header: 'Memory',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  render: (row) => {
+                    const podMetric = metricItems.find(
+                      (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
+                    );
+                    const memStr = podMetric?.memory
+                      ? formatInstantMemory(podMetric.memory)
+                      : row.memory && row.memory !== 'N/A'
+                        ? row.memory
+                        : 'N/A';
+                    return <span>{memStr}</span>;
+                  }
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  className: 'py-2 px-3 font-semibold text-xs',
+                  render: (row) => (
+                    <span
+                      className={
+                        row.status === 'Running' || row.status === 'Succeeded'
+                          ? 'text-emerald-400'
+                          : 'text-amber-400'
+                      }
+                    >
+                      {row.status}
+                    </span>
+                  )
+                }
+              ]}
+              data={pods}
+              getRowKey={(row) => row.name}
+              resizable={false}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">

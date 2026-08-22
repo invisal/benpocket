@@ -172,7 +172,7 @@ export const MutatingWebhookDetail: React.FC<MutatingWebhookDetailProps> = ({
               >
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] text-zinc-555 uppercase">Name</span>
-                  <span className="font-mono text-zinc-100 font-bold break-all select-text">
+                  <span className="font-mono text-foreground font-bold break-all select-text">
                     {w.name}
                   </span>
                 </div>

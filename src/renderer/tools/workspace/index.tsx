@@ -99,11 +99,10 @@ function WorkspaceLayout() {
         onResize={setSidebarWidth}
         min={150}
         max={480}
-        className="bg-surface-2 border-r border-border flex flex-col h-full overflow-y-auto"
+        className="bg-surface border-r border-border flex flex-col h-full overflow-y-auto"
       >
         <WorkspaceTree previewFile={previewFile} onSelectFile={handleSelectFile} />
       </ResizablePanel>
-
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
         <Toolbar.Root>
           <div className="flex-1 px-3 text-xs text-text-dim truncate">
@@ -127,7 +126,6 @@ function WorkspaceLayout() {
           onDirtyChange={setDirty}
         />
       </div>
-
       <Dialog.Root
         open={pendingFile !== null}
         onOpenChange={(open) => !open && handleCancelSwitch()}

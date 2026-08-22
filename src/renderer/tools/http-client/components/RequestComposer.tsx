@@ -77,7 +77,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
       {/* URL input, extra actions (Code/Save) and Send all live in one flat, borderless
           group - matching the sidebar header's flat style and reading as a single control
           rather than separate boxed elements. */}
-      <div className="flex items-center flex-1 min-w-0 gap-1 h-7 rounded bg-surface-2 pl-2 pr-1">
+      <div className="flex items-center flex-1 min-w-0 gap-1 h-7 rounded bg-surface-2 border border-border pl-2 pr-1">
         <VariableSuggestInput
           value={url}
           onChange={onUrlChange}

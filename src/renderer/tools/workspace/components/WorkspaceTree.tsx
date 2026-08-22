@@ -20,22 +20,6 @@ function placeholderNode(parentPath: string): WorkspaceTreeNode {
   };
 }
 
-function rootNode(rootPath: string): WorkspaceTreeNode {
-  const base =
-    rootPath
-      .replace(/[\\/]+$/, '')
-      .split(/[\\/]/)
-      .pop() || rootPath;
-  return {
-    name: base,
-    path: rootPath,
-    isDirectory: true,
-    size: 0,
-    modifiedMs: 0,
-    extension: ''
-  };
-}
-
 interface WorkspaceTreeProps {
   previewFile: string | null;
   onSelectFile: (path: string) => void;
@@ -66,9 +50,18 @@ export function WorkspaceTree({ previewFile, onSelectFile }: WorkspaceTreeProps)
     else onSelectFile(node.path);
   };
 
+  // rootPath itself isn't rendered as a row -- the tree starts from its
+  // children, so `expanded` only ever needs rootPath in it to trigger the
+  // initial fetch (see workspace.store's default expanded state).
+  const rootChildren = childrenByPath[rootPath];
+  const data: WorkspaceTreeNode[] =
+    rootChildren === undefined
+      ? [placeholderNode(rootPath)]
+      : [...rootChildren].sort(compareEntries);
+
   return (
     <TreeList
-      data={[rootNode(rootPath)]}
+      data={data}
       getId={(node) => node.path}
       getChildren={getChildren}
       expanded={expanded}

@@ -1,5 +1,6 @@
 import { Age } from '../../Age';
 import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   type ServiceData,
@@ -23,6 +24,9 @@ import {
 } from '../../../hooks/open-detail';
 import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore } from '../../../store/kuberneter.store';
+import { usePortForwardingStore } from '../../../store/portForwarding.store';
+import { PortForwardDialog } from '../portforwarding/PortForwardDialog';
+import { Button } from '@renderer/components/ui/Button';
 import { K8S_RESOURCE_KEYS } from '../../../constants/k8sResources';
 import { type K8sResource } from '../../../types/K8sResource';
 import { buildServiceDetailPayload } from '../../../hooks/open-detail/transformers/network.transformer';
@@ -40,12 +44,31 @@ interface ServiceRelatedIngress {
   creationTimestamp: string;
 }
 
+interface ServicePortItem {
+  name?: string;
+  port: number;
+  protocol: string;
+  nodePort?: number;
+  targetPort?: number | string;
+  displayStr: string;
+}
+
 export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = false }) => {
+  const [portForwardModalConfig, setPortForwardModalConfig] = useState<{
+    isOpen: boolean;
+    containerPort: number;
+    protocol?: string;
+  }>({ isOpen: false, containerPort: 80 });
+
   const activeInstanceId = useLayoutStore((s) => s.activeInstanceId);
   const cluster = useKuberneterStore((s) => s.kuberneterInstanceCluster[activeInstanceId] || '');
   const rawConfigPath = useKuberneterStore(
     (s) => s.kuberneterInstanceConfigPath[activeInstanceId] || 'default'
   );
+
+  const portForwards = usePortForwardingStore((s) => s.portForwards);
+  const addPortForward = usePortForwardingStore((s) => s.addPortForward);
+  const removePortForward = usePortForwardingStore((s) => s.removePortForward);
 
   const { openNamespaceDetail } = useOpenNamespaceDetail();
   const { openPodDetail } = useOpenPodDetail();
@@ -185,19 +208,154 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     gcTime: 5 * 60 * 1000
   });
 
-  if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Service details available.</div>;
-  }
-
   const currentData = queryData?.servicePayload || payload;
   const pods = queryData?.podsList || [];
   const relatedIngresses = queryData?.relatedIngresses || [];
 
-  const handleNamespaceClick = () => {
-    if (currentData.ns) {
+  const handleOpenPortForwardModal = useCallback((port: number, protocol?: string) => {
+    setPortForwardModalConfig({
+      isOpen: true,
+      containerPort: port,
+      protocol
+    });
+  }, []);
+
+  const handleStopPortForward = useCallback(
+    async (id: string) => {
+      await window.kuberneter.stopPortForward(id);
+      removePortForward(id);
+    },
+    [removePortForward]
+  );
+
+  const handleStartPortForward = useCallback(
+    async (localPort: number, isHttps: boolean, openBrowser: boolean) => {
+      const port = portForwardModalConfig.containerPort;
+      const proto = isHttps ? 'https' : 'http';
+      const url = `${proto}://localhost:${localPort}`;
+      const serviceName = currentData?.name || '';
+      const serviceNs = currentData?.ns || '';
+      const pfId = `pf-service-${serviceName}-${port}-${localPort}-${Date.now()}`;
+
+      const configPathArg = rawConfigPath === 'default' ? undefined : rawConfigPath;
+
+      const res = await window.kuberneter.startPortForward({
+        id: pfId,
+        kubeconfigPath: configPathArg,
+        contextName: cluster || undefined,
+        namespace: serviceNs,
+        resourceKind: 'service',
+        resourceName: serviceName,
+        localPort: localPort,
+        targetPort: port,
+        kubectlPath: useKuberneterStore.getState().kuberneterKubectlPath || undefined
+      });
+
+      if (res.error) {
+        addPortForward({
+          id: pfId,
+          name: serviceName,
+          ns: serviceNs,
+          kind: 'service',
+          podPort: port,
+          localPort: localPort,
+          protocol: proto,
+          status: 'Error',
+          url: url
+        });
+
+        const isKubectlMissing =
+          res.error.includes('KUBECTL_NOT_FOUND') ||
+          res.error.toLowerCase().includes('kubectl') ||
+          res.error.toLowerCase().includes('enoent') ||
+          res.error.toLowerCase().includes('not found');
+
+        if (isKubectlMissing) {
+          useKuberneterStore
+            .getState()
+            .showKubectlMissingToast(
+              'Port Forwarding requires the kubectl CLI executable. Please configure kubectl in Settings.'
+            );
+        }
+        return;
+      }
+
+      addPortForward({
+        id: pfId,
+        name: serviceName,
+        ns: serviceNs,
+        kind: 'service',
+        podPort: port,
+        localPort: localPort,
+        protocol: proto,
+        status: 'Active',
+        url: url
+      });
+
+      if (openBrowser) {
+        window.open(url, '_blank');
+      }
+    },
+    [
+      portForwardModalConfig.containerPort,
+      currentData?.name,
+      currentData?.ns,
+      rawConfigPath,
+      cluster,
+      addPortForward
+    ]
+  );
+
+  const servicePorts = useMemo<ServicePortItem[]>(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = (queryData?.servicePayload?.rawItem || payload?.rawItem) as any;
+    if (raw?.spec?.ports && Array.isArray(raw.spec.ports) && raw.spec.ports.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return raw.spec.ports.map((p: any) => {
+        let portStr = `${p.port}`;
+        if (p.nodePort) {
+          portStr += `:${p.nodePort}`;
+        } else if (p.targetPort && String(p.targetPort) !== String(p.port)) {
+          portStr += `:${p.targetPort}`;
+        }
+        const protocol = p.protocol || 'TCP';
+        return {
+          name: p.name,
+          port: p.port,
+          protocol,
+          nodePort: p.nodePort,
+          targetPort: p.targetPort,
+          displayStr: `${portStr}/${protocol}`
+        };
+      });
+    }
+
+    if (currentData?.ports && currentData.ports !== '—') {
+      return currentData.ports.split(',').map((item) => {
+        const trimmed = item.trim();
+        const [portPart, protoPart] = trimmed.split('/');
+        const firstPortStr = (portPart || '').split(':')[0];
+        const parsedPort = parseInt(firstPortStr, 10) || 80;
+        return {
+          port: parsedPort,
+          protocol: protoPart || 'TCP',
+          displayStr: trimmed
+        };
+      });
+    }
+
+    return [];
+  }, [queryData?.servicePayload?.rawItem, payload?.rawItem, currentData?.ports]);
+
+  const handleNamespaceClick = useCallback(() => {
+    if (currentData?.ns) {
       openNamespaceDetail(currentData.ns);
     }
-  };
+  }, [currentData?.ns, openNamespaceDetail]);
+
+  if (!payload) {
+    return <div className="p-4 text-xs text-zinc-500">No Service details available.</div>;
+  }
 
   const annotations = currentData.annotations ? Object.entries(currentData.annotations) : [];
   const labels = currentData.labels ? Object.entries(currentData.labels) : [];
@@ -272,15 +430,14 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
       value: `${annotations.length} Annotations`,
       hasDetail: annotations.length > 0,
       renderDetail: () => (
-        <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1 select-text">
+        <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1 select-text">
           {annotations.map(([k, v]) => (
-            <span
+            <div
               key={k}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-3 border border-border/60 text-zinc-350 truncate max-w-full"
-              title={`${k}=${v}`}
+              className="text-[10px] font-mono bg-surface-3/40 p-1 rounded border border-border/40 text-foreground break-all"
             >
-              {k}={v}
-            </span>
+              <span className="text-zinc-500 font-semibold">{k}:</span> {v}
+            </div>
           ))}
         </div>
       )
@@ -392,14 +549,69 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
     {
       id: 'ports',
       name: 'Ports',
-      value: (
-        <div className="flex items-center justify-between w-full">
-          <span className="font-mono text-accent text-[11px]">{currentData.ports}</span>
-          <button className="px-2.5 py-1 text-[10px] bg-accent hover:bg-accent/80 text-strong font-medium rounded border-none cursor-pointer select-none transition-colors">
-            Forward...
-          </button>
-        </div>
-      )
+      value:
+        servicePorts.length === 0 ? (
+          <span className="font-mono text-zinc-500 text-[11px]">—</span>
+        ) : (
+          <div className="flex flex-col gap-1.5 w-full py-0.5">
+            {servicePorts.map((p, idx) => {
+              const activePf = portForwards.find(
+                (pf) =>
+                  pf.name === currentData.name &&
+                  pf.ns === currentData.ns &&
+                  (pf.kind === 'service' || pf.kind === 'svc') &&
+                  pf.podPort === p.port &&
+                  pf.status === 'Active'
+              );
+              return (
+                <div
+                  key={`${p.port}-${p.protocol}-${idx}`}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                    {activePf ? (
+                      <a
+                        href={activePf.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-accent hover:underline font-semibold"
+                        title={`Open ${activePf.url}`}
+                      >
+                        {p.displayStr}
+                      </a>
+                    ) : (
+                      <span className="text-accent">{p.displayStr}</span>
+                    )}
+                    {p.name && !p.displayStr.includes(`:${p.name}/`) && (
+                      <span className="text-zinc-500 text-[10px]">({p.name})</span>
+                    )}
+                  </div>
+                  <div>
+                    {activePf ? (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleStopPortForward(activePf.id)}
+                        className="h-5 px-2 py-0 text-[10px] font-medium bg-rose-600/80 hover:bg-rose-600 text-white"
+                      >
+                        Stop/Remove
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenPortForwardModal(p.port, p.protocol)}
+                        className="h-5 px-2 py-0 text-[10px] text-zinc-400 hover:text-foreground hover:bg-surface-3"
+                      >
+                        Forward...
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
     }
   );
 
@@ -705,6 +917,16 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ payload, isTab = f
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
         <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
+
+      <PortForwardDialog
+        isOpen={portForwardModalConfig.isOpen}
+        onClose={() => setPortForwardModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        resourceName={currentData.name}
+        namespace={currentData.ns}
+        containerPort={portForwardModalConfig.containerPort}
+        initialProtocol={portForwardModalConfig.protocol}
+        onStart={handleStartPortForward}
+      />
     </div>
   );
 };

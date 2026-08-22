@@ -6,7 +6,8 @@ import { Button } from '@renderer/components/ui/Button';
 interface PortForwardDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  podName: string;
+  podName?: string;
+  resourceName?: string;
   namespace: string;
   containerPort: number;
   initialProtocol?: string;
@@ -17,6 +18,7 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
   isOpen,
   onClose,
   podName,
+  resourceName,
   initialProtocol,
   onStart
 }) => {
@@ -43,7 +45,7 @@ export const PortForwardDialog: React.FC<PortForwardDialogProps> = ({
           {/* Dialog Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-dark">
             <Dialog.Title className="text-xs font-semibold text-text-base truncate max-w-[340px]">
-              Port Forwarding for {podName}
+              Port Forwarding for {resourceName || podName}
             </Dialog.Title>
           </div>
 

@@ -110,7 +110,7 @@ export function ScreenRecorderApp(): JSX.Element {
               ) : (
                 <Save size={12} className="text-muted-foreground" />
               )}
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-sm font-medium text-muted-foreground">
                 {isQuickSaving ? 'Saving…' : 'Save'}
               </span>
             </Button>

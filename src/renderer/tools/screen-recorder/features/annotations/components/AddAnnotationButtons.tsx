@@ -18,21 +18,21 @@ export function AddAnnotationButtons({
       <Button
         variant="secondary"
         onClick={onAddText}
-        className="flex flex-col items-center gap-1 py-2 text-xs"
+        className="flex flex-col items-center gap-1 py-2 text-sm"
       >
         <Type size={14} /> Text
       </Button>
       <Button
         variant="secondary"
         onClick={onAddArrow}
-        className="flex flex-col items-center gap-1 py-2 text-xs"
+        className="flex flex-col items-center gap-1 py-2 text-sm"
       >
         <ArrowUpRight size={14} /> Arrow
       </Button>
       <Button
         variant="secondary"
         onClick={onAddImage}
-        className="flex flex-col items-center gap-1 py-2 text-xs"
+        className="flex flex-col items-center gap-1 py-2 text-sm"
       >
         <ImagePlus size={14} /> Image
       </Button>

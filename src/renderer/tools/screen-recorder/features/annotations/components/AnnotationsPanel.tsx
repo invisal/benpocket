@@ -68,7 +68,7 @@ export function AnnotationsPanel({ currentTimeMs }: AnnotationsPanelProps): JSX.
       {selected && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-sm font-medium text-muted-foreground">
               {annotationLabel(selected)}
             </span>
             <button

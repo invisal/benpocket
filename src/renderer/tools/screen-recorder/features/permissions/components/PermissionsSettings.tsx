@@ -57,7 +57,7 @@ function PermissionRow({
         {needsAction && (
           <button
             onClick={() => void ensure().then((granted) => !granted && openSettings())}
-            className="text-xs font-medium text-accent hover:underline"
+            className="text-sm font-medium text-accent hover:underline"
           >
             Open Settings
           </button>

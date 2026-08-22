@@ -23,8 +23,8 @@ export function ScreenRecordingPermissionBanner(): JSX.Element | null {
     <div className="flex items-start gap-3 rounded-xl border border-amber-500/35 bg-amber-500/15 p-4">
       <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-400" />
       <div className="flex flex-1 flex-col gap-2">
-        <p className="text-sm font-medium text-amber-200">Screen Recording permission needed</p>
-        <p className="text-xs text-amber-200/80">
+        <p className="font-medium text-amber-200">Screen Recording permission needed</p>
+        <p className="text-sm text-amber-200/80">
           Without it, macOS lets the recording start but every frame comes out solid black. Grant it
           in System Settings, then <strong>fully quit and reopen ScreenRecorder</strong> -- Electron
           won&apos;t pick up the change while it&apos;s still running.

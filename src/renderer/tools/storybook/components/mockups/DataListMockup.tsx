@@ -77,7 +77,7 @@ export function DataListMockup() {
             </>
           )}
           emptyState={
-            <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               No members match &quot;{query}&quot;
             </div>
           }

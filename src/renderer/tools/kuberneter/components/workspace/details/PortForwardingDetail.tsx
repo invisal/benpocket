@@ -177,7 +177,7 @@ export const PortForwardingDetail: React.FC<PortForwardingDetailProps> = ({
   ];
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Port Forward details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Port Forward details available.</div>;
   }
 
   return (

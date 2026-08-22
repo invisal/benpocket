@@ -36,9 +36,7 @@ export function ColorTokenGallery() {
       <Section title="Text">
         {TEXT_TOKENS.map((token) => (
           <div key={token} className="flex flex-col items-start gap-1.5">
-            <div
-              className={cn('rounded-md border border-border bg-surface px-3 py-3 text-sm', token)}
-            >
+            <div className={cn('rounded-md border border-border bg-surface px-3 py-3', token)}>
               The quick brown fox
             </div>
             <span className="text-[11px] text-muted-foreground">{token}</span>

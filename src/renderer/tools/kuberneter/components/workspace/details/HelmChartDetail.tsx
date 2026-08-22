@@ -375,7 +375,7 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
                 value={releaseName}
                 onChange={(e) => setReleaseName(e.target.value)}
                 placeholder="release-name"
-                className="w-full bg-surface text-xs"
+                className="w-full bg-surface text-sm"
               />
             </div>
             <div className="space-y-1.5">
@@ -387,7 +387,7 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
                 value={namespace}
                 onChange={(e) => setNamespace(e.target.value)}
                 placeholder="namespace"
-                className="w-full bg-surface text-xs"
+                className="w-full bg-surface text-sm"
               />
             </div>
           </div>
@@ -397,14 +397,14 @@ export const HelmChartDetail: React.FC<HelmChartDetailProps> = ({
               size="sm"
               variant="ghost"
               onClick={() => setShowInstallForm(false)}
-              className="text-xs text-zinc-400 hover:text-zinc-200 cursor-pointer h-7"
+              className="text-sm text-zinc-400 hover:text-zinc-200 cursor-pointer h-7"
             >
               Cancel
             </Button>
             <Button
               size="sm"
               onClick={handleInstall}
-              className="bg-blue-600 hover:bg-blue-500 text-strong font-semibold text-xs px-4 cursor-pointer h-7"
+              className="bg-blue-600 hover:bg-blue-500 text-strong font-semibold text-sm px-4 cursor-pointer h-7"
             >
               Confirm Install
             </Button>

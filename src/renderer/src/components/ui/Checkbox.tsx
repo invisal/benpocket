@@ -25,7 +25,7 @@ export function Checkbox({ label, className, id, ref, ...props }: CheckboxProps)
   return (
     <label
       htmlFor={inputId}
-      className="inline-flex items-center gap-2 text-xs text-foreground select-none cursor-pointer"
+      className="inline-flex items-center gap-2 text-sm text-foreground select-none cursor-pointer"
     >
       {input}
       {label}

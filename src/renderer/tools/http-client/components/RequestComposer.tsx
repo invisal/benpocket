@@ -61,7 +61,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
   return (
     <div className="flex items-center gap-2 border-b border-border px-3 py-1 shrink-0">
       <Menu.Root>
-        <Menu.Trigger className="flex items-center gap-1 h-7 px-2 rounded text-xs font-medium hover:bg-surface-2 cursor-pointer shrink-0">
+        <Menu.Trigger className="flex items-center gap-1 h-7 px-2 rounded text-sm font-medium hover:bg-surface-2 cursor-pointer shrink-0">
           <span className={methodBadgeClass(method)}>{selectedLabel}</span>
           <ChevronDownIcon size={14} />
         </Menu.Trigger>
@@ -97,7 +97,7 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
               onImportCurl(parsed);
             })
           }
-          className="flex-1 min-w-0 outline-none text-xs bg-transparent disabled:opacity-60 w-full"
+          className="flex-1 min-w-0 outline-none text-sm bg-transparent disabled:opacity-60 w-full"
           placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
         />
         <Button

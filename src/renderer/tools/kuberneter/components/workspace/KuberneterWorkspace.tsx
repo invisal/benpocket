@@ -85,7 +85,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-8 select-none">
         <AlertCircle className="size-10 text-zinc-650" />
-        <p className="text-xs font-semibold text-zinc-400">Connection Required</p>
+        <p className="text-sm font-semibold text-zinc-400">Connection Required</p>
         <p className="text-[10px] text-zinc-500 text-center max-w-sm">
           No cluster context is currently connected. Please connect to a cluster context first.
         </p>
@@ -107,7 +107,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
               header={
                 <div className="flex items-center justify-between w-full min-w-0 gap-2">
                   <span
-                    className="text-xs font-bold text-strong uppercase tracking-wider truncate min-w-0 flex-1"
+                    className="text-sm font-bold text-strong uppercase tracking-wider truncate min-w-0 flex-1"
                     title={headerTitle}
                   >
                     {headerTitle}
@@ -128,7 +128,7 @@ export const KuberneterWorkspace: React.FC<KuberneterWorkspaceProps> = ({ resour
       {resource === 'overview' && (
         <Suspense
           fallback={
-            <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground font-mono gap-2">
+            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground font-mono gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-accent" />
               <span>Loading Cluster Overview...</span>
             </div>

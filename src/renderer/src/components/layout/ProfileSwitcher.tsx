@@ -52,7 +52,7 @@ export const ProfileSwitcher: React.FC = () => {
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Positioner side="right" align="end" sideOffset={8} className="z-50">
-            <Popover.Popup className="bg-surface border border-border-dark rounded-lg shadow-xl p-1.5 w-56 flex flex-col gap-0.5 text-xs outline-none">
+            <Popover.Popup className="bg-surface border border-border-dark rounded-lg shadow-xl p-1.5 w-56 flex flex-col gap-0.5 text-sm outline-none">
               <span className="px-2 py-1 font-bold text-zinc-300 uppercase tracking-wider text-[10px]">
                 Profiles
               </span>

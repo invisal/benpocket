@@ -18,17 +18,17 @@ export function KubectlStatus({ loading, checkResult, inputPath, onRunCheck }: K
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           {loading ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
               <Loader2 className="size-4 animate-spin text-accent" />
               <span>Checking executable...</span>
             </div>
           ) : checkResult?.available ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-sm font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <CheckCircle2 className="size-3.5" />
               kubectl {checkResult.version ?? 'Available'}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20">
               <XCircle className="size-3.5" />
               Not Found
             </span>
@@ -40,7 +40,7 @@ export function KubectlStatus({ loading, checkResult, inputPath, onRunCheck }: K
           size="sm"
           onClick={() => onRunCheck(inputPath)}
           disabled={loading}
-          className="h-7 text-xs text-muted-foreground hover:text-foreground"
+          className="h-7 text-sm text-muted-foreground hover:text-foreground"
           title="Re-test executable"
         >
           <RefreshCw className={`size-3 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
@@ -49,7 +49,7 @@ export function KubectlStatus({ loading, checkResult, inputPath, onRunCheck }: K
       </div>
 
       {!loading && !checkResult?.available && (
-        <p className="text-red-400/90 text-xs leading-relaxed pt-1">
+        <p className="text-red-400/90 text-sm leading-relaxed pt-1">
           {checkResult?.error ||
             'The kubectl binary was not found on system $PATH or at the specified location.'}
         </p>

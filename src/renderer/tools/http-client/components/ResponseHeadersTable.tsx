@@ -23,7 +23,7 @@ export const ResponseHeadersTable: React.FC<ResponseHeadersTableProps> = ({ head
   };
 
   if (entries.length === 0) {
-    return <div className="text-xs text-zinc-600 select-none">No headers.</div>;
+    return <div className="text-sm text-zinc-600 select-none">No headers.</div>;
   }
 
   return (
@@ -47,8 +47,8 @@ export const ResponseHeadersTable: React.FC<ResponseHeadersTableProps> = ({ head
           key={key}
           className="grid grid-cols-[1fr_1fr_20px] gap-2 items-start px-1 py-1 rounded border border-transparent hover:border-border-dark"
         >
-          <span className="text-accent font-mono text-xs break-all select-text">{key}</span>
-          <span className="text-zinc-400 font-mono text-xs break-all select-text">{value}</span>
+          <span className="text-accent font-mono text-sm break-all select-text">{key}</span>
+          <span className="text-zinc-400 font-mono text-sm break-all select-text">{value}</span>
           <button
             onClick={() => copyKeyed(value, key)}
             title="Copy value"

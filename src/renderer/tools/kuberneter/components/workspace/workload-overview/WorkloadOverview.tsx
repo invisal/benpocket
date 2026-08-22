@@ -61,7 +61,7 @@ export const WorkloadOverview: React.FC = () => {
   if (errorMsg) {
     return (
       <div className="flex-1 flex flex-col gap-4 p-6">
-        <div className="flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
+        <div className="flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm leading-5">
           <AlertCircle className="size-4.5 shrink-0 mt-0.5" />
           <div className="font-semibold break-all">
             <p>Error loading workloads:</p>
@@ -78,7 +78,7 @@ export const WorkloadOverview: React.FC = () => {
     <KubeWorkspaceLayout
       header={
         <div className="flex items-center justify-between w-full">
-          <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans">
+          <span className="text-sm font-bold text-text-base uppercase tracking-wider font-sans">
             Workloads Overview
           </span>
           <Button onClick={refresh} variant="outline" size="sm" className="gap-1.5 h-7 text-[10px]">
@@ -107,7 +107,7 @@ export const WorkloadOverview: React.FC = () => {
         {/* Events Feed — flex-1 to fill the remaining screen height; scroll inside table */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="px-4 shrink-0 mb-2">
-            <span className="text-xs font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
+            <span className="text-sm font-bold text-text-base uppercase tracking-wider font-sans pb-1.5 border-b border-border/40 truncate shrink-0 block">
               Kubernetes Events
             </span>
           </div>

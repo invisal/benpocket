@@ -66,7 +66,7 @@ export const MultipartBodyEditor: React.FC<MultipartBodyEditorProps> = ({
             placeholder="Key"
             autoCorrect="false"
             spellCheck="false"
-            className="h-8 w-full outline-none px-2 text-xs"
+            className="h-8 w-full outline-none px-2 text-sm"
             onChange={(e) => onUpdate(row.id, { key: e.target.value })}
           />
           <div className="h-8 flex items-center px-1">
@@ -93,7 +93,7 @@ export const MultipartBodyEditor: React.FC<MultipartBodyEditorProps> = ({
                 {row.file ? (
                   <>
                     <FileIcon size={12} className="shrink-0 text-muted-foreground" />
-                    <span className="truncate text-xs text-zinc-200" title={row.file.filePath}>
+                    <span className="truncate text-sm text-zinc-200" title={row.file.filePath}>
                       {row.file.fileName}
                     </span>
                     {row.file.size > 0 && (
@@ -112,7 +112,7 @@ export const MultipartBodyEditor: React.FC<MultipartBodyEditorProps> = ({
                 ) : (
                   <button
                     onClick={() => onPickFile(row.id)}
-                    className="text-xs text-accent hover:underline cursor-pointer"
+                    className="text-sm text-accent hover:underline cursor-pointer"
                   >
                     Select file…
                   </button>
@@ -124,7 +124,7 @@ export const MultipartBodyEditor: React.FC<MultipartBodyEditorProps> = ({
                 onChange={(value) => onUpdate(row.id, { value })}
                 variables={variables}
                 placeholder="Value or {{var}}"
-                className={`w-full h-8 px-2 text-xs outline-none ${row.enabled ? 'text-zinc-200' : 'text-zinc-600'}`}
+                className={`w-full h-8 px-2 text-sm outline-none ${row.enabled ? 'text-zinc-200' : 'text-zinc-600'}`}
               />
             )}
             <div className="h-8 items-center justify-center flex px-2">

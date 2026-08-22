@@ -24,7 +24,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({ error, className = '' 
   if (isKubectlMissing) {
     return (
       <div
-        className={`p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-xs flex items-center justify-between gap-3 ${className}`}
+        className={`p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-sm flex items-center justify-between gap-3 ${className}`}
       >
         <div className="flex items-center gap-2.5">
           <AlertTriangle className="size-4 text-amber-400 shrink-0" />
@@ -35,7 +35,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({ error, className = '' 
           variant="outline"
           size="sm"
           onClick={() => useKuberneterStore.getState().showKubectlMissingToast(error)}
-          className="h-7 text-xs border-amber-500/30 text-amber-300 hover:bg-amber-500/20 shrink-0"
+          className="h-7 text-sm border-amber-500/30 text-amber-300 hover:bg-amber-500/20 shrink-0"
         >
           <Settings className="size-3 mr-1.5" />
           Configure kubectl
@@ -46,7 +46,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({ error, className = '' 
 
   return (
     <div
-      className={`p-3.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-2.5 ${className}`}
+      className={`p-3.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-2.5 ${className}`}
     >
       <AlertTriangle className="size-4 text-red-400 shrink-0 mt-0.5" />
       <span className="leading-relaxed">{error}</span>

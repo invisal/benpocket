@@ -292,7 +292,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
           <Popover.Positioner sideOffset={4} align="start" className="z-50">
             <Popover.Popup
               onClick={(e) => e.stopPropagation()}
-              className="bg-surface border border-border-dark rounded-lg shadow-xl p-1 w-48 max-h-72 overflow-y-auto flex flex-col gap-0.5 text-xs outline-none"
+              className="bg-surface border border-border-dark rounded-lg shadow-xl p-1 w-48 max-h-72 overflow-y-auto flex flex-col gap-0.5 text-sm outline-none"
             >
               {view === 'menu' ? (
                 <>
@@ -713,7 +713,7 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
                 setIsRenaming(false);
               }
             }}
-            className="flex-1 bg-surface-3 border border-accent rounded px-1.5 py-0.5 text-xs text-zinc-200 focus:outline-none"
+            className="flex-1 bg-surface-3 border border-accent rounded px-1.5 py-0.5 text-sm text-zinc-200 focus:outline-none"
           />
         ) : (
           <span
@@ -722,7 +722,7 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
               setIsRenaming(true);
             }}
             title="Double-click to rename"
-            className="flex-1 truncate text-xs text-zinc-300 cursor-default"
+            className="flex-1 truncate text-sm text-zinc-300 cursor-default"
           >
             {collection.name}
             <span className="text-zinc-600 ml-1">({totalCount})</span>
@@ -754,7 +754,7 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
             }
           }}
           style={{ marginLeft: meta.indentPx + 16 }}
-          className="bg-surface-3 border border-accent rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none mt-0.5"
+          className="bg-surface-3 border border-accent rounded px-2 py-1 text-sm text-zinc-200 focus:outline-none mt-0.5"
         />
       )}
     </>
@@ -885,7 +885,7 @@ const FolderRow: React.FC<FolderRowProps> = ({
                 setIsRenaming(false);
               }
             }}
-            className="flex-1 bg-surface-3 border border-accent rounded px-1.5 py-0.5 text-xs text-zinc-200 focus:outline-none"
+            className="flex-1 bg-surface-3 border border-accent rounded px-1.5 py-0.5 text-sm text-zinc-200 focus:outline-none"
           />
         ) : (
           <span
@@ -895,7 +895,7 @@ const FolderRow: React.FC<FolderRowProps> = ({
               setIsRenaming(true);
             }}
             title="Double-click to rename"
-            className="flex-1 truncate text-xs text-zinc-300"
+            className="flex-1 truncate text-sm text-zinc-300"
           >
             {folder.name}
             <span className="text-zinc-600 ml-1">({countRequestsRecursive(folder)})</span>
@@ -927,7 +927,7 @@ const FolderRow: React.FC<FolderRowProps> = ({
             }
           }}
           style={{ marginLeft: meta.indentPx + 16 }}
-          className="bg-surface-3 border border-accent rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none mt-0.5"
+          className="bg-surface-3 border border-accent rounded px-2 py-1 text-sm text-zinc-200 focus:outline-none mt-0.5"
         />
       )}
     </>
@@ -986,7 +986,7 @@ const RequestRow: React.FC<RequestRowProps> = ({
               setIsRenaming(false);
             }
           }}
-          className="flex-1 bg-transparent text-xs text-zinc-200 focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-sm text-zinc-200 focus:outline-none min-w-0"
         />
       </div>
     );
@@ -1003,7 +1003,7 @@ const RequestRow: React.FC<RequestRowProps> = ({
         onOpen({ preview: false });
       }}
       title={`${request.url}\nDouble-click to open in a permanent tab`}
-      className="text-xs text-foreground cursor-grab active:cursor-grabbing"
+      className="text-sm text-foreground cursor-grab active:cursor-grabbing"
       actions={
         <ActionsMenu
           triggerTitle="Request actions"
@@ -1098,7 +1098,7 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
               setIsRenaming(false);
             }
           }}
-          className="flex-1 bg-transparent text-xs text-zinc-200 focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-sm text-zinc-200 focus:outline-none min-w-0"
         />
       </div>
     );
@@ -1115,7 +1115,7 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
         onOpen({ preview: false });
       }}
       title={`${example.response.status === 0 ? 'ERROR' : `${example.response.status} ${example.response.statusText}`}\nDouble-click to open in a permanent tab`}
-      className="text-xs cursor-pointer"
+      className="text-sm cursor-pointer"
       actions={
         <ActionsMenu
           idleContent={

@@ -26,7 +26,7 @@ export const EChartsMetricChart: React.FC<EChartsMetricChartProps> = (props) => 
       fallback={
         <div
           style={{ width: '100%', height }}
-          className="flex items-center justify-center text-xs text-muted-foreground font-mono gap-2 bg-surface-2/30 rounded"
+          className="flex items-center justify-center text-sm text-muted-foreground font-mono gap-2 bg-surface-2/30 rounded"
         >
           <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
           <span>Loading chart...</span>

@@ -199,7 +199,7 @@ export const ContainerEnvEditor: FC<ContainerEnvEditorProps> = ({
         </div>
 
         {filteredLiteralEntries.length === 0 && filteredReferencedEntries.length === 0 ? (
-          <div className="p-4 text-xs text-zinc-500 italic text-center">
+          <div className="p-4 text-sm text-zinc-500 italic text-center">
             {literalEntries.length === 0 && referencedEntries.length === 0
               ? 'No environment variables configured for this container.'
               : 'No variables matching your search.'}
@@ -239,7 +239,7 @@ export const ContainerEnvEditor: FC<ContainerEnvEditorProps> = ({
                 key={ref.id}
                 className="grid grid-cols-[1fr_1.5fr_auto] gap-2 items-center px-3 py-2 border-b border-border/40 hover:bg-surface-2/40 transition-colors"
               >
-                <span className="font-mono text-xs text-foreground truncate" title={ref.name}>
+                <span className="font-mono text-sm text-foreground truncate" title={ref.name}>
                   {ref.name}
                 </span>
                 <div>
@@ -262,7 +262,7 @@ export const ContainerEnvEditor: FC<ContainerEnvEditorProps> = ({
                       <Menu.Content align="end" className="min-w-36">
                         <Menu.Item
                           onClick={() => onDeleteReferenced(ref.id)}
-                          className="flex items-center gap-2 cursor-pointer text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                          className="flex items-center gap-2 cursor-pointer text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                         >
                           <Trash2 className="size-3.5 text-rose-400" />
                           <span>Delete</span>

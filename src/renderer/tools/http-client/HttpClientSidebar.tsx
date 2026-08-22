@@ -107,7 +107,7 @@ const OpenTabItem: React.FC<OpenTabItemProps> = ({
               setIsRenaming(false);
             }
           }}
-          className="flex-1 bg-transparent text-xs text-zinc-200 focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-sm text-zinc-200 focus:outline-none min-w-0"
         />
       </div>
     );
@@ -126,7 +126,7 @@ const OpenTabItem: React.FC<OpenTabItemProps> = ({
                 : 'Double-click to rename · Right-click for more options'
             }
             className={cn(
-              'flex items-center gap-2 p-1.5 rounded text-xs cursor-pointer border transition-all group',
+              'flex items-center gap-2 p-1.5 rounded text-sm cursor-pointer border transition-all group',
               isActive
                 ? 'bg-list-selected border-transparent'
                 : 'border-transparent hover:bg-list-hover hover:border-border-dark'
@@ -668,7 +668,7 @@ export const HttpClientSidebar: React.FC = () => {
                   setDraftCollectionName('');
                 }
               }}
-              className="bg-surface-3 border border-accent rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none"
+              className="bg-surface-3 border border-accent rounded px-2 py-1 text-sm text-zinc-200 focus:outline-none"
             />
           )}
 

@@ -85,7 +85,7 @@ export function BackgroundPicker(): JSX.Element {
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <label className="flex items-center justify-between">
-          <span className="text-xs font-medium">Show background</span>
+          <span className="text-sm font-medium">Show background</span>
           <Switch checked={enabled} onChange={toggleEnabled} label="Show background" />
         </label>
         {!enabled && (
@@ -105,7 +105,7 @@ export function BackgroundPicker(): JSX.Element {
                 key={tab.id}
                 onClick={() => setKind(tab.id)}
                 className={cn(
-                  'flex-1 rounded-md py-1.5 px-1 text-xs font-medium transition-colors',
+                  'flex-1 rounded-md py-1.5 px-1 text-sm font-medium transition-colors',
                   kind === tab.id
                     ? 'dark:bg-surface-3 bg-gray-200 text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
@@ -119,7 +119,7 @@ export function BackgroundPicker(): JSX.Element {
 
         {kind === 'wallpaper' && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Wallpaper</span>
+            <span className="text-sm font-medium text-muted-foreground">Wallpaper</span>
             <div className="grid grid-cols-4 gap-2">
               {WALLPAPER_IMAGE_PRESETS.map((preset) => (
                 <button
@@ -137,7 +137,7 @@ export function BackgroundPicker(): JSX.Element {
 
         {kind === 'gradient' && gradient && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Gradient</span>
+            <span className="text-sm font-medium text-muted-foreground">Gradient</span>
             <div className="grid grid-cols-5 gap-2">
               {GRADIENT_PRESETS.map((preset, i) => {
                 const presetValue = `${preset.angleDeg}|${preset.colors[0]}|${preset.colors[1]}`;
@@ -187,7 +187,7 @@ export function BackgroundPicker(): JSX.Element {
 
         {kind === 'color' && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Color</span>
+            <span className="text-sm font-medium text-muted-foreground">Color</span>
             <div className="grid grid-cols-8 gap-2">
               {COLOR_SWATCHES.map((color) => (
                 <button
@@ -209,7 +209,7 @@ export function BackgroundPicker(): JSX.Element {
 
         {kind === 'image' && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Image</span>
+            <span className="text-sm font-medium text-muted-foreground">Image</span>
             {value && (
               <div className="aspect-video overflow-hidden rounded-lg border border-line">
                 <img src={value} alt="Background" className="h-full w-full object-cover" />
@@ -226,7 +226,7 @@ export function BackgroundPicker(): JSX.Element {
               Choose image…
             </Button>
 
-            <span className="mt-1 text-xs font-medium text-muted-foreground">Photo presets</span>
+            <span className="mt-1 text-sm font-medium text-muted-foreground">Photo presets</span>
             <div className="grid grid-cols-4 gap-2">
               {PHOTO_PRESETS.map((preset) => (
                 <button

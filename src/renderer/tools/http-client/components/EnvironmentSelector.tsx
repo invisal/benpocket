@@ -165,7 +165,7 @@ export const EnvironmentSelector: React.FC = () => {
           if (!next) setError(null);
         }}
       >
-        <Popover.Trigger className="flex items-center gap-1.5 w-full px-3 py-1.5 bg-surface-2 border border-border-dark hover:border-accent text-zinc-300 hover:text-foreground text-xs font-semibold rounded cursor-pointer transition-colors">
+        <Popover.Trigger className="flex items-center gap-1.5 w-full px-3 py-1.5 bg-surface-2 border border-border-dark hover:border-accent text-zinc-300 hover:text-foreground text-sm font-semibold rounded cursor-pointer transition-colors">
           <Globe size={12} className={activeEnvironment ? 'text-accent' : 'text-zinc-500'} />
           <span className="flex-1 min-w-0 truncate text-left">
             {activeEnvironment?.name ?? 'No Environment'}
@@ -174,7 +174,7 @@ export const EnvironmentSelector: React.FC = () => {
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Positioner sideOffset={8} align="start" className="z-50">
-            <Popover.Popup className="bg-surface border border-border-dark rounded-lg shadow-xl p-3 w-80 flex flex-col gap-3 text-xs outline-none">
+            <Popover.Popup className="bg-surface border border-border-dark rounded-lg shadow-xl p-3 w-80 flex flex-col gap-3 text-sm outline-none">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-zinc-300 uppercase tracking-wider text-[10px]">
                   Environment
@@ -311,11 +311,11 @@ export const EnvironmentSelector: React.FC = () => {
         <Dialog.Root open={conflict !== null} onOpenChange={(next) => !next && setConflict(null)}>
           <Dialog.Content className="max-w-sm p-0 overflow-hidden bg-surface border border-border-dark rounded-lg shadow-xl">
             <div className="px-4 py-3 border-b border-border-dark">
-              <Dialog.Title className="text-xs font-semibold text-foreground">
+              <Dialog.Title className="text-sm font-semibold text-foreground">
                 Environment already exists
               </Dialog.Title>
             </div>
-            <div className="p-4 text-xs text-zinc-400 leading-relaxed">
+            <div className="p-4 text-sm text-zinc-400 leading-relaxed">
               An environment named{' '}
               <span className="text-foreground font-semibold">
                 &ldquo;{conflict?.existingName}&rdquo;
@@ -328,7 +328,7 @@ export const EnvironmentSelector: React.FC = () => {
                 variant="secondary"
                 size="sm"
                 onClick={() => handleResolveConflict('copy')}
-                className="text-xs font-medium"
+                className="text-sm font-medium"
               >
                 Keep Both (Copy)
               </Button>
@@ -336,7 +336,7 @@ export const EnvironmentSelector: React.FC = () => {
                 variant="primary"
                 size="sm"
                 onClick={() => handleResolveConflict('replace')}
-                className="text-xs font-medium"
+                className="text-sm font-medium"
               >
                 Replace
               </Button>

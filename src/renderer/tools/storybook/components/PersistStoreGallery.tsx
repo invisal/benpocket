@@ -95,9 +95,9 @@ export function PersistStoreGallery() {
         </form>
 
         <div className="mt-4 flex flex-col gap-2">
-          {isLoading && <p className="text-xs text-muted-foreground">Loading...</p>}
+          {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
           {!isLoading && entries.length === 0 && (
-            <p className="text-xs text-muted-foreground">No items yet.</p>
+            <p className="text-sm text-muted-foreground">No items yet.</p>
           )}
           {entries.map(([id, text]) => (
             <div

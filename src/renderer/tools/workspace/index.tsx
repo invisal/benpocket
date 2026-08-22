@@ -107,7 +107,7 @@ function WorkspaceLayout() {
       </ResizablePanel>
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
         <Toolbar.Root>
-          <div className="flex-1 px-3 text-xs text-text-dim truncate">
+          <div className="flex-1 px-3 text-sm text-text-dim truncate">
             {previewFile ? basename(previewFile) : ''}
           </div>
           <Tooltip.Root>
@@ -138,7 +138,7 @@ function WorkspaceLayout() {
             {previewFile ? basename(previewFile) : 'This file'} has unsaved changes. Save them
             before switching files?
           </Dialog.Description>
-          {dialogError && <p className="mt-2 text-xs text-red-500">{dialogError}</p>}
+          {dialogError && <p className="mt-2 text-sm text-red-500">{dialogError}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={handleCancelSwitch}>
               Cancel

@@ -10,7 +10,7 @@ interface ClusterRoleDetailProps {
 
 export const ClusterRoleDetail: React.FC<ClusterRoleDetailProps> = ({ payload, isTab = false }) => {
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No ClusterRole details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No ClusterRole details available.</div>;
   }
 
   const annotations = payload.annotations ? Object.entries(payload.annotations) : [];
@@ -90,7 +90,7 @@ export const ClusterRoleDetail: React.FC<ClusterRoleDetailProps> = ({ payload, i
           Rules
         </span>
         {!payload.rules || payload.rules.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No rules defined</div>
+          <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No rules defined</div>
         ) : (
           <div className="flex flex-col gap-2.5">
             {payload.rules.map((rule, idx) => {

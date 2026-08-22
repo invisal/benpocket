@@ -60,7 +60,7 @@ export const WebSocketComposer: React.FC<WebSocketComposerProps> = ({
               : 'Type a message... (Enter to send, Shift+Enter for newline)'
           }
           height="100%"
-          className="flex-1 min-h-0 text-xs font-mono [&_.cm-editor]:h-full"
+          className="flex-1 min-h-0 text-sm font-mono [&_.cm-editor]:h-full"
           theme={theme === 'dark' ? vscodeDark : vscodeLight}
           extensions={extensions}
           basicSetup={{

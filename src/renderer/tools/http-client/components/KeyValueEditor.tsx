@@ -55,7 +55,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
               onChange={(key) => onUpdate(row.id, { key })}
               suggestions={keySuggestions}
               placeholder={keyPlaceholder}
-              className="h-8 w-full outline-none px-2 text-xs"
+              className="h-8 w-full outline-none px-2 text-sm"
             />
           ) : (
             <input
@@ -64,7 +64,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
               placeholder={keyPlaceholder}
               autoCorrect="false"
               spellCheck="false"
-              className="h-8 w-full outline-none px-2 text-xs"
+              className="h-8 w-full outline-none px-2 text-sm"
               onChange={(e) => onUpdate(row.id, { key: e.target.value })}
             />
           )}
@@ -74,7 +74,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
               onChange={(value) => onUpdate(row.id, { value })}
               variables={variables}
               placeholder={valuePlaceholder}
-              className={`w-full h-8 px-2 text-xs outline-none ${row.enabled ? 'text-zinc-200' : 'text-zinc-600'}`}
+              className={`w-full h-8 px-2 text-sm outline-none ${row.enabled ? 'text-zinc-200' : 'text-zinc-600'}`}
             />
             <div className="h-8 items-center justify-center flex px-2">
               <button

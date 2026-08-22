@@ -118,7 +118,7 @@ export const KeySuggestInput: React.FC<KeySuggestInputProps> = ({
                   e.preventDefault();
                   selectSuggestion(suggestion);
                 }}
-                className={`px-2.5 py-1 text-xs font-mono cursor-pointer ${
+                className={`px-2.5 py-1 text-sm font-mono cursor-pointer ${
                   index === highlightedIndex
                     ? 'bg-accent/20 text-accent'
                     : 'text-zinc-300 hover:bg-border-dark/60'

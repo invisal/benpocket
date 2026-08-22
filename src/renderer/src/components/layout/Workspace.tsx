@@ -50,8 +50,8 @@ export const Workspace: React.FC = () => {
         <svg className="w-16 h-16 text-border-dark" viewBox="0 0 24 24" fill="currentColor">
           <polygon points="12,2 2,22 22,22" />
         </svg>
-        <div className="text-zinc-550 text-sm font-semibold">CraftBox Workspace</div>
-        <div className="text-zinc-655 text-xs">Open a tool or create a new session to begin.</div>
+        <div className="text-zinc-550 font-semibold">CraftBox Workspace</div>
+        <div className="text-zinc-655 text-sm">Open a tool or create a new session to begin.</div>
       </div>
     );
   }
@@ -142,7 +142,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-2 px-3 border-r border-border-dark text-xs shrink-0 bg-editor-bg text-strong border-t-2 border-t-accent">
+      <div className="flex items-center gap-2 px-3 border-r border-border-dark text-sm shrink-0 bg-editor-bg text-strong border-t-2 border-t-accent">
         <FileText size={12} className="text-accent" />
         <input
           type="text"
@@ -180,7 +180,7 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
               }
             }}
             title={tab.isPreview ? 'Double-click to pin' : 'Double-click to rename'}
-            className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-xs transition-colors shrink-0 group ${
+            className={`flex items-center gap-2 px-3 border-r border-border-dark cursor-pointer text-sm transition-colors shrink-0 group ${
               isActive
                 ? 'bg-editor-bg text-strong border-t-2 border-t-accent'
                 : 'bg-sidebar-bg text-zinc-555 hover:bg-editor-bg/40 hover:text-zinc-300'

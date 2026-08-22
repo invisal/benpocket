@@ -27,7 +27,7 @@ export function HelmPathConfig({
   return (
     <div className="flex flex-col gap-2">
       <SectionLabel>Custom Binary Path</SectionLabel>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Leave blank to automatically detect `helm` from system $PATH or standard installation
         directories.
       </p>
@@ -42,7 +42,7 @@ export function HelmPathConfig({
             if (e.key === 'Enter') onSavePath();
           }}
           placeholder={actualPath || 'Auto-detect from System $PATH'}
-          className="flex-1 font-mono text-xs"
+          className="flex-1 font-mono text-sm"
         />
         <Button variant="outline" size="sm" onClick={onBrowse} title="Browse file system">
           <FolderOpen className="size-3.5" />

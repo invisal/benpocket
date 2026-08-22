@@ -112,7 +112,7 @@ export const CutTimelineToolbar = forwardRef<HTMLDivElement>(
 
             <div className="mx-1 h-4 w-px bg-line" />
 
-            <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="ml-2 flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clapperboard size={12} /> {segmentCount} clip{segmentCount === 1 ? '' : 's'}
             </span>
           </div>

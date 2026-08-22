@@ -234,7 +234,7 @@ export function KubeTable<T>({
             'shrink-0 overflow-hidden select-none bg-surface-2 border-b border-border-dark/60'
           )}
         >
-          <table className="text-left text-xs bg-transparent" style={tableStyle}>
+          <table className="text-left text-sm bg-transparent" style={tableStyle}>
             <colgroup>
               {columns.map((col, idx) => {
                 const isLast = idx === columns.length - 1;
@@ -264,7 +264,7 @@ export function KubeTable<T>({
         onScroll={handleScroll}
         className="overflow-auto flex-1 relative kube-table-container bg-transparent"
       >
-        <table className="text-left text-xs bg-transparent" style={tableStyle}>
+        <table className="text-left text-sm bg-transparent" style={tableStyle}>
           <colgroup>
             {columns.map((col, idx) => {
               const isLast = idx === columns.length - 1;
@@ -286,7 +286,7 @@ export function KubeTable<T>({
                   {emptyState || (
                     <div className="w-full flex flex-col items-center justify-center text-zinc-550 gap-2 py-10 font-sans not-italic">
                       <AlertCircle className="size-8 text-zinc-650" />
-                      <span className="text-xs">{emptyMessage || 'No data available'}</span>
+                      <span className="text-sm">{emptyMessage || 'No data available'}</span>
                     </div>
                   )}
                 </td>

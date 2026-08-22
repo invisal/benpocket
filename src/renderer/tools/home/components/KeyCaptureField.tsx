@@ -36,7 +36,7 @@ export function KeyCaptureField({ value, onChange }: KeyCaptureFieldProps) {
       onBlur={() => setCapturing(false)}
       onKeyDown={handleKeyDown}
       className={cn(
-        'flex h-9 cursor-pointer items-center justify-center rounded-md border px-3 text-xs outline-none',
+        'flex h-9 cursor-pointer items-center justify-center rounded-md border px-3 text-sm outline-none',
         capturing ? 'border-border-dark bg-surface-2' : 'border-border bg-surface'
       )}
     >

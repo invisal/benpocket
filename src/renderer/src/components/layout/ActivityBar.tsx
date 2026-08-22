@@ -74,8 +74,8 @@ export const ActivityBar: React.FC = () => {
   };
 
   return (
-    <div className="w-10 divide-y divide-border-light bg-surface border-r border-border-light flex flex-col items-center">
-      <div className="titlebar-drag size-10 flex items-center justify-center">
+    <div className="w-11 divide-y divide-border-light bg-surface border-r border-border-light flex flex-col items-center">
+      <div className="titlebar-drag size-11 flex items-center justify-center">
         <img src={logoImage} className="size-5" />
       </div>
 
@@ -86,7 +86,7 @@ export const ActivityBar: React.FC = () => {
               render={
                 <button
                   className={cn(
-                    'size-10 flex items-center justify-center cursor-pointer transition-colors relative',
+                    'size-11 flex items-center justify-center cursor-pointer transition-colors relative',
                     tab.id === activeTabId ? 'bg-blue-300 text-blue-900' : 'hover:bg-surface-2'
                   )}
                   onClick={() => handleTabClick(tab)}

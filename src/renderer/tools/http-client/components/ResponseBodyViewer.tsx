@@ -223,7 +223,7 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
         ) : format === 'hex' ? (
           <HexView bytes={bytes} />
         ) : format === 'base64' ? (
-          <pre className="font-mono text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap break-all select-text">
+          <pre className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-all select-text">
             {displayedBase64}
           </pre>
         ) : (
@@ -231,7 +231,7 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
             value={displayedPrettyText}
             editable={false}
             height="100%"
-            className="h-full text-xs"
+            className="h-full text-sm"
             theme={theme === 'dark' ? vscodeDark : vscodeLight}
             extensions={[...prettyExtensions, EditorView.lineWrapping]}
             basicSetup={{

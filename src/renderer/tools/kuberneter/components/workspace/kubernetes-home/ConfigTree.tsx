@@ -223,7 +223,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
         <div className="flex items-center justify-between group/folder hover:bg-surface-3/30 py-1 px-1.5 rounded transition-colors">
           <button
             onClick={() => toggleExpand(configPath)}
-            className="flex-1 flex items-center gap-1.5 text-xs text-left text-zinc-400 font-semibold cursor-pointer min-w-0"
+            className="flex-1 flex items-center gap-1.5 text-sm text-left text-zinc-400 font-semibold cursor-pointer min-w-0"
           >
             {isExpanded ? (
               <ChevronDown className="size-3.5 text-zinc-500 shrink-0" />
@@ -316,7 +316,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
                         }`}
                       />
                       <div className="truncate pr-2">
-                        <span className="text-xs font-semibold">
+                        <span className="text-sm font-semibold">
                           {highlightText(ctx.name, searchTerm)}
                         </span>
                         <span className="text-[9px] text-zinc-500 pl-2 font-mono truncate">
@@ -343,7 +343,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
     <div className="flex-1 flex flex-col gap-4 min-h-0 min-w-0">
       {/* Search & Header Row */}
       <div className="shrink-0 flex items-center justify-between gap-4">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider font-sans">
+        <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider font-sans">
           Clusters
         </h3>
 
@@ -366,7 +366,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
         {totalConfigsCount === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-zinc-550 gap-2 p-8 border border-dashed border-border-dark/60 rounded-lg select-none">
             <Folder className="size-8 text-zinc-650" />
-            <span className="text-xs font-semibold text-zinc-400">
+            <span className="text-sm font-semibold text-zinc-400">
               No Kubeconfig files detected
             </span>
             <p className="text-[11px] text-zinc-550 text-center max-w-xs leading-normal">
@@ -444,7 +444,7 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
 
       {contextMenu && contextMenu.show && (
         <div
-          className="fixed bg-surface-2 border border-border-dark shadow-2xl rounded-lg py-1 z-[9999] text-xs font-sans w-52 text-zinc-300 animate-in fade-in zoom-in-95 duration-105 select-none"
+          className="fixed bg-surface-2 border border-border-dark shadow-2xl rounded-lg py-1 z-[9999] text-sm font-sans w-52 text-zinc-300 animate-in fade-in zoom-in-95 duration-105 select-none"
           style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
           onClick={(e) => e.stopPropagation()}
         >

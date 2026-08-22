@@ -20,7 +20,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({ payload, isTab = false
   const setKuberneterInstanceResource = useKuberneterStore((s) => s.setKuberneterInstanceResource);
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No Event details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Event details available.</div>;
   }
 
   const handleNamespaceClick = () => {

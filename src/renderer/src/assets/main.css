@@ -246,6 +246,7 @@ body,
   color-scheme: dark;
   background-color: var(--color-editor-bg);
   color: var(--color-foreground);
+  font-size: 14px;
   font-family:
     'Inter',
     -apple-system,

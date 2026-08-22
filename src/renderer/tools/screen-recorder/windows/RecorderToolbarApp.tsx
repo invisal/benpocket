@@ -747,9 +747,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
             <span
               className={cn('h-2.5 w-2.5 rounded-full bg-red-500', !isPaused && 'animate-pulse')}
             />
-            <span className="font-mono text-sm text-foreground">
-              {formatElapsed(elapsedSeconds)}
-            </span>
+            <span className="font-mono text-foreground">{formatElapsed(elapsedSeconds)}</span>
           </div>
 
           <Tooltip.Provider delay={200} closeDelay={0}>
@@ -979,7 +977,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 <button
                   onClick={() => pickDevice('simulator', simulatorSource)}
                   disabled={!simulatorSource}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-sm text-foreground hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 >
                   Simulator
                   <span className="text-[10px] text-muted-foreground">
@@ -989,7 +987,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 <button
                   onClick={() => pickDevice('emulator', emulatorSource)}
                   disabled={!emulatorSource}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-sm text-foreground hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 >
                   Emulator
                   <span className="text-[10px] text-muted-foreground">
@@ -1027,7 +1025,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 onMouseEnter={enablePointerEvents}
                 className={cn(NO_DRAG, 'w-48 p-3')}
               >
-                <label className="mb-2 flex items-center gap-2 text-xs text-foreground">
+                <label className="mb-2 flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={webcam.enabled}
@@ -1086,7 +1084,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                         </button>
                       ))}
                     </div>
-                    <label className="flex items-center gap-2 text-xs text-foreground">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
                       <input
                         type="checkbox"
                         checked={webcam.mirrored}
@@ -1138,7 +1136,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
                 onMouseEnter={enablePointerEvents}
                 className={cn(NO_DRAG, 'w-48 p-3')}
               >
-                <label className="mb-2 flex items-center gap-2 text-xs text-foreground">
+                <label className="mb-2 flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={audio.microphoneEnabled}
@@ -1208,7 +1206,7 @@ export function RecorderToolbarApp(): JSX.Element | null {
 
       {error && (
         <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-surface/95 px-4 py-2.5 text-center shadow-[0_0_28px_rgba(0,0,0,0.3)] backdrop-blur">
-          <p className="text-xs text-red-400">{error.message}</p>
+          <p className="text-sm text-red-400">{error.message}</p>
           {error.openSettings && (
             <button
               onClick={error.openSettings}

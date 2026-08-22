@@ -250,7 +250,7 @@ export function ZoomKeyframeEditor({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Zoom mode</span>
+        <span className="text-sm font-medium text-muted-foreground">Zoom mode</span>
         <div className="grid grid-cols-2 gap-2">
           {(['auto', 'manual'] as const).map((option) => (
             <button
@@ -268,7 +268,7 @@ export function ZoomKeyframeEditor({
                 }
               }}
               className={cn(
-                'rounded-lg border py-1.5 text-xs font-medium capitalize transition-colors',
+                'rounded-lg border py-1.5 text-sm font-medium capitalize transition-colors',
                 activeZoomMode === option
                   ? 'border-accent bg-accent/10 text-accent'
                   : 'border-line text-muted-foreground hover:border-accent/40'
@@ -286,7 +286,7 @@ export function ZoomKeyframeEditor({
           const id = addKeyframe(currentTimeMs, sourceDurationMs);
           selectZoomKeyframe(id);
         }}
-        className="flex items-center justify-center gap-1.5 py-1.5 text-xs"
+        className="flex items-center justify-center gap-1.5 py-1.5 text-sm"
       >
         <Plus size={13} /> Add keyframe at {formatTime(currentTimeMs)}
       </Button>
@@ -298,11 +298,11 @@ export function ZoomKeyframeEditor({
       )}
 
       {sorted.length === 0 && (
-        <p className="text-xs text-muted-foreground">No zoom keyframes yet.</p>
+        <p className="text-sm text-muted-foreground">No zoom keyframes yet.</p>
       )}
 
       {sorted.length > 0 && !selected && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Click a keyframe on the timeline below to edit it.
         </p>
       )}

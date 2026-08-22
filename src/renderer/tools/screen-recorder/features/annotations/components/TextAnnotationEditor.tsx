@@ -24,7 +24,7 @@ export function TextAnnotationEditor({
           value={annotation.text}
           onChange={(e) => onUpdate({ text: e.target.value })}
           rows={2}
-          className="resize-none rounded-lg border border-line bg-surface px-2 py-1.5 text-xs outline-none focus:border-accent"
+          className="resize-none rounded-lg border border-line bg-surface px-2 py-1.5 text-sm outline-none focus:border-accent"
         />
       </label>
 

@@ -130,9 +130,7 @@ export function CaptureSourcePickerOverlayApp(): JSX.Element | null {
               </button>
             ))}
             {matching.length === 0 && (
-              <p className="col-span-4 text-center text-sm text-muted-foreground">
-                No windows available.
-              </p>
+              <p className="col-span-4 text-center text-muted-foreground">No windows available.</p>
             )}
           </div>
         </div>
@@ -146,7 +144,7 @@ export function CaptureSourcePickerOverlayApp(): JSX.Element | null {
                 {targetSource.name}
               </h1>
               {targetSource.displayBounds && (
-                <p className="text-sm text-white/60">
+                <p className="text-white/60">
                   {Math.round(targetSource.displayBounds.width)}×
                   {Math.round(targetSource.displayBounds.height)}
                 </p>

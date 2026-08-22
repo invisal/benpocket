@@ -16,11 +16,11 @@ export function ResizablePanelGallery() {
           max={320}
           className="bg-surface-2"
         >
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {Math.round(width)}px
           </div>
         </ResizablePanel>
-        <div className="flex flex-1 items-center justify-center bg-surface text-xs text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center bg-surface text-sm text-muted-foreground">
           Content
         </div>
       </div>

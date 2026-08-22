@@ -50,7 +50,7 @@ export function TabGallery() {
             <UnderlineTab.Panel
               key={pane}
               value={pane}
-              className="pt-2 text-xs text-muted-foreground"
+              className="pt-2 text-sm text-muted-foreground"
             >
               {pane} panel content.
             </UnderlineTab.Panel>

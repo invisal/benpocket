@@ -42,7 +42,7 @@ export const HelmNotInstalled: React.FC = () => {
 
       {/* Heading */}
       <h2 className="text-base font-semibold text-foreground mb-1">Helm is not installed</h2>
-      <p className="text-xs text-muted-foreground text-center max-w-sm mb-6 leading-5">
+      <p className="text-sm text-muted-foreground text-center max-w-sm mb-6 leading-5">
         Helm is required to manage releases and browse chart repositories. Configure its path in
         Settings or install it on your system.
       </p>
@@ -56,7 +56,7 @@ export const HelmNotInstalled: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center gap-2 bg-black/30 border border-border rounded-lg px-3 py-2.5">
-          <code className="flex-1 text-xs font-mono text-foreground break-all">{command}</code>
+          <code className="flex-1 text-sm font-mono text-foreground break-all">{command}</code>
           <button
             className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded border border-border hover:border-border-dark"
             onClick={() => {
@@ -88,7 +88,7 @@ export const HelmNotInstalled: React.FC = () => {
               meta: { resource: 'settings' }
             });
           }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-emphasis-text text-xs font-semibold hover:brightness-105 transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-emphasis-text text-sm font-semibold hover:brightness-105 transition-colors cursor-pointer"
         >
           <Settings className="size-3.5" />
           Configure Helm in Settings
@@ -96,7 +96,7 @@ export const HelmNotInstalled: React.FC = () => {
 
         <button
           onClick={openInstallDocs}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-border hover:border-border-dark text-xs font-medium text-foreground transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-border hover:border-border-dark text-sm font-medium text-foreground transition-colors cursor-pointer"
         >
           <ExternalLink className="size-3.5" />
           View Install Instructions

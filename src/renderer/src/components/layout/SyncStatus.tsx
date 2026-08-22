@@ -59,7 +59,7 @@ export const SyncStatus: React.FC = () => {
     >
       <Popover.Trigger
         className={cn(
-          'flex h-full items-center gap-1.5 px-4 text-xs text-muted-foreground outline-none',
+          'flex h-full items-center gap-1.5 px-4 text-sm text-muted-foreground outline-none',
           'hover:bg-surface-2 hover:text-foreground'
         )}
       >
@@ -67,13 +67,13 @@ export const SyncStatus: React.FC = () => {
         <span>Sync</span>
       </Popover.Trigger>
 
-      <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-xs">
+      <Popover.Content side="top" align="end" className="w-64 flex flex-col gap-2.5 text-sm">
         {statusError && <p className="text-[11px] leading-relaxed text-red-400">{statusError}</p>}
 
         <h2 className="font-medium">
           {isUpToDate ? 'Everything is synced' : 'Changes need to be synced'}
         </h2>
-        <ul className="text-xs mb-2 gap-1 flex flex-col">
+        <ul className="text-sm mb-2 gap-1 flex flex-col">
           <li className="flex items-center gap-2">
             <ArrowUpIcon
               size={14}

@@ -68,7 +68,7 @@ export function ImageTool({
     return (
       <div
         className={cn(
-          'flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground',
+          'flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-muted-foreground',
           className
         )}
       >

@@ -116,7 +116,7 @@ export const ScaleResourceDialog: FC<ScaleResourceDialogProps> = ({
       <Dialog.Content className="max-w-md bg-surface border border-border-dark p-0 overflow-hidden shadow-2xl">
         {/* Header matching provided reference */}
         <div className="px-5 py-3.5 bg-surface-2 border-b border-border-dark pr-10">
-          <Dialog.Title className="text-xs font-normal text-muted-foreground">
+          <Dialog.Title className="text-sm font-normal text-muted-foreground">
             Scale {resourceKind}{' '}
             <span className="font-bold text-foreground font-mono">
               {namespace ? `${namespace}/${name}` : name}
@@ -126,11 +126,11 @@ export const ScaleResourceDialog: FC<ScaleResourceDialogProps> = ({
 
         {/* Content Body */}
         <div className="p-5 flex flex-col gap-4 bg-surface">
-          <div className="text-xs font-bold text-foreground">
+          <div className="text-sm font-bold text-foreground">
             Current replica scale: {currentReplicas ?? 0}
           </div>
 
-          <div className="text-xs text-zinc-300 font-normal">
+          <div className="text-sm text-zinc-300 font-normal">
             Desired number of replicas: {desiredReplicas}
           </div>
 
@@ -170,7 +170,7 @@ export const ScaleResourceDialog: FC<ScaleResourceDialogProps> = ({
           </div>
 
           {error && (
-            <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs rounded leading-relaxed">
+            <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded leading-relaxed">
               {error}
             </div>
           )}
@@ -182,7 +182,7 @@ export const ScaleResourceDialog: FC<ScaleResourceDialogProps> = ({
             type="button"
             onClick={() => onOpenChange(false)}
             disabled={isScaling}
-            className="px-4 py-1.5 rounded text-xs font-medium text-zinc-300 hover:text-white bg-surface-3 hover:bg-surface-4 border border-border-dark transition-colors cursor-pointer disabled:opacity-50"
+            className="px-4 py-1.5 rounded text-sm font-medium text-zinc-300 hover:text-white bg-surface-3 hover:bg-surface-4 border border-border-dark transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -191,7 +191,7 @@ export const ScaleResourceDialog: FC<ScaleResourceDialogProps> = ({
             type="button"
             onClick={handleScale}
             disabled={isScaling}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded text-xs font-medium text-white bg-accent hover:bg-accent/90 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded text-sm font-medium text-white bg-accent hover:bg-accent/90 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
           >
             {isScaling && <Loader2 className="size-3 animate-spin" />}
             <span>Scale</span>

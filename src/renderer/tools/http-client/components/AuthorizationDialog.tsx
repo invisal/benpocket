@@ -61,7 +61,7 @@ export const AuthorizationDialog: React.FC<AuthorizationDialogProps> = ({
         <div className="mt-4">
           <AuthEditor auth={auth} onChange={setAuth} />
         </div>
-        {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+        {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
         <div className="mt-4 flex gap-2">
           <Button variant="primary" size="sm" onClick={() => void handleSave()} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}

@@ -205,7 +205,7 @@ export const HelmReleases: React.FC = () => {
       {helmNotInstalled && !isLoading && <HelmNotInstalled />}
 
       {errorMsg && !isLoading && !helmNotInstalled && (
-        <div className="shrink-0 flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs leading-5">
+        <div className="shrink-0 flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm leading-5">
           <AlertCircle className="size-4.5 shrink-0 mt-0.5" />
           <div className="font-semibold break-all">
             <p>Error running helm command:</p>

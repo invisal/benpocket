@@ -37,7 +37,7 @@ export function ToolbarButton({
         'h-full px-3 gap-1 outline-none select-none',
         'inline-flex items-center justify-center',
         'cursor-pointer',
-        'text-xs',
+        'text-sm',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         toolbarButtonVariantClasses[variant],
         shape === 'square' && 'aspect-square px-0',
@@ -69,7 +69,7 @@ export function ToolbarInput({
   return (
     <ToolbarPrimitive.Input
       className={cn(
-        'h-full bg-surface hover:bg-surface-2 px-3 text-xs outline-none',
+        'h-full bg-surface hover:bg-surface-2 px-3 text-sm outline-none',
         'focus-visible:border-border-dark',
         className
       )}
@@ -82,7 +82,7 @@ export function ToolbarLabel({ className, ...props }: HTMLAttributes<HTMLSpanEle
   return (
     <span
       className={cn(
-        'px-2 h-full flex items-center text-xs text-muted-foreground select-none',
+        'px-2 h-full flex items-center text-sm text-muted-foreground select-none',
         className
       )}
       {...props}

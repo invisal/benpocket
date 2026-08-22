@@ -162,7 +162,7 @@ function BackgroundControls(): JSX.Element {
       {background && (
         <>
           <div className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-xs text-text-dim">Size</span>
+            <span className="w-10 shrink-0 text-sm text-text-dim">Size</span>
             <Select.Root
               value={sizePresetId}
               onValueChange={(value) => {
@@ -189,7 +189,7 @@ function BackgroundControls(): JSX.Element {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-xs text-text-dim">Custom</span>
+            <span className="w-10 shrink-0 text-sm text-text-dim">Custom</span>
             <Input
               type="number"
               size="sm"
@@ -204,7 +204,7 @@ function BackgroundControls(): JSX.Element {
               }}
               className="min-w-0 flex-1"
             />
-            <span className="shrink-0 text-xs text-text-dim">x</span>
+            <span className="shrink-0 text-sm text-text-dim">x</span>
             <Input
               type="number"
               size="sm"
@@ -222,7 +222,7 @@ function BackgroundControls(): JSX.Element {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-xs text-text-dim">Margin</span>
+            <span className="w-10 shrink-0 text-sm text-text-dim">Margin</span>
             <input
               type="range"
               aria-label="Background margin"
@@ -250,11 +250,11 @@ function BackgroundControls(): JSX.Element {
               }}
               className="w-14 shrink-0"
             />
-            <span className="shrink-0 text-xs text-text-dim">%</span>
+            <span className="shrink-0 text-sm text-text-dim">%</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-xs text-text-dim">Radius</span>
+            <span className="w-10 shrink-0 text-sm text-text-dim">Radius</span>
             <input
               type="range"
               aria-label="Background corner radius"
@@ -284,7 +284,7 @@ function BackgroundControls(): JSX.Element {
               }}
               className="w-14 shrink-0"
             />
-            <span className="shrink-0 text-xs text-text-dim">px</span>
+            <span className="shrink-0 text-sm text-text-dim">px</span>
           </div>
         </>
       )}
@@ -344,7 +344,7 @@ export function EditorToolbar(): JSX.Element {
                   ).map(([kind, labelText]) => (
                     <label
                       key={kind}
-                      className="flex cursor-pointer items-center gap-2 text-xs text-text-dim select-none"
+                      className="flex cursor-pointer items-center gap-2 text-sm text-text-dim select-none"
                     >
                       <input
                         type="radio"
@@ -369,7 +369,7 @@ export function EditorToolbar(): JSX.Element {
                 ).map(([kind, labelText]) => (
                   <label
                     key={kind}
-                    className="flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none"
+                    className="flex cursor-pointer items-center gap-2 px-1 py-0.5 text-sm text-text-dim select-none"
                   >
                     <input
                       type="checkbox"
@@ -398,7 +398,7 @@ export function EditorToolbar(): JSX.Element {
                 </Popover.Trigger>
               </RailTooltip>
               <Popover.Content side="right" align="start" className="w-56">
-                <label className="flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none">
+                <label className="flex cursor-pointer items-center gap-2 px-1 py-0.5 text-sm text-text-dim select-none">
                   <input
                     type="checkbox"
                     checked={highlightSquareEnds}
@@ -407,7 +407,7 @@ export function EditorToolbar(): JSX.Element {
                   />
                   Square ends (marker tip)
                 </label>
-                <label className="mt-2 flex cursor-pointer items-center gap-2 px-1 py-0.5 text-xs text-text-dim select-none">
+                <label className="mt-2 flex cursor-pointer items-center gap-2 px-1 py-0.5 text-sm text-text-dim select-none">
                   <input
                     type="checkbox"
                     checked={highlightSnap}
@@ -449,7 +449,7 @@ export function EditorToolbar(): JSX.Element {
           </RailTooltip>
           <Popover.Content side="right" align="start" className="w-64">
             <div className="flex items-center gap-3 px-1 py-0.5">
-              <span className="shrink-0 text-xs text-text-dim">Radius</span>
+              <span className="shrink-0 text-sm text-text-dim">Radius</span>
               <input
                 type="range"
                 aria-label="Corner radius"
@@ -474,7 +474,7 @@ export function EditorToolbar(): JSX.Element {
                 }}
                 className="w-16 shrink-0"
               />
-              <span className="shrink-0 text-xs text-text-dim">px</span>
+              <span className="shrink-0 text-sm text-text-dim">px</span>
             </div>
           </Popover.Content>
         </Popover.Root>

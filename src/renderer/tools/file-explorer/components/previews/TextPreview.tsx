@@ -83,7 +83,7 @@ export const TextPreview = forwardRef<
 
   if (state.status === 'error') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-xs px-4 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-dim text-sm px-4 text-center">
         <AlertCircle size={20} className="text-red-500" />
         <span>{state.message}</span>
       </div>
@@ -92,7 +92,7 @@ export const TextPreview = forwardRef<
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex items-center justify-end gap-2 px-3 py-1.5 border-b border-border-dark text-xs text-text-dim">
+      <div className="flex items-center justify-end gap-2 px-3 py-1.5 border-b border-border-dark text-sm text-text-dim">
         <div className="flex items-center gap-2 shrink-0">
           {saveError && <span className="text-red-500">{saveError}</span>}
           {isDirty && !saveError && <span className="text-amber-500">Unsaved changes</span>}
@@ -102,7 +102,7 @@ export const TextPreview = forwardRef<
             }}
             disabled={!isDirty || isSaving}
             className={cn(
-              'flex items-center gap-1 h-6 px-2 rounded text-xs cursor-pointer transition-colors',
+              'flex items-center gap-1 h-6 px-2 rounded text-sm cursor-pointer transition-colors',
               'border border-border',
               isDirty && !isSaving
                 ? 'bg-surface-4 text-text-base hover:bg-surface-3'
@@ -127,7 +127,7 @@ export const TextPreview = forwardRef<
           }
         }}
         spellCheck={false}
-        className="flex-1 overflow-auto p-3 font-mono text-xs whitespace-pre-wrap text-zinc-200 bg-transparent outline-none resize-none"
+        className="flex-1 overflow-auto p-3 font-mono text-sm whitespace-pre-wrap text-zinc-200 bg-transparent outline-none resize-none"
       />
     </div>
   );

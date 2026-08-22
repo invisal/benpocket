@@ -58,7 +58,7 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
   };
 
   return (
-    <div className="h-8 shrink-0 flex items-center justify-between px-2 border-b border-border-dark bg-surface-2 text-xs select-none">
+    <div className="h-8 shrink-0 flex items-center justify-between px-2 border-b border-border-dark bg-surface-2 text-sm select-none">
       {/* Left Side: Tabs List & + Button */}
       <div className="flex items-center h-full min-w-0 flex-1 overflow-visible">
         {/* Scrollable Tabs */}
@@ -143,14 +143,14 @@ export const KuberneterBottomPanelHeader: React.FC<KuberneterBottomPanelHeaderPr
           <Menu.Content align="start" className="w-44 p-1">
             <Menu.Item
               onClick={() => onAddTab('create-resource')}
-              className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-foreground cursor-pointer rounded hover:bg-surface-2"
+              className="flex items-center gap-2 px-2.5 py-1.5 text-sm text-foreground cursor-pointer rounded hover:bg-surface-2"
             >
               <Pencil className="size-3.5 text-accent" />
               <span>Create resource</span>
             </Menu.Item>
             <Menu.Item
               onClick={() => onAddTab('terminal')}
-              className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-foreground cursor-pointer rounded hover:bg-surface-2"
+              className="flex items-center gap-2 px-2.5 py-1.5 text-sm text-foreground cursor-pointer rounded hover:bg-surface-2"
             >
               <TerminalIcon className="size-3.5 text-accent" />
               <span>Terminal Session</span>

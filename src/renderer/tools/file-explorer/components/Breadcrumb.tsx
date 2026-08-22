@@ -77,7 +77,7 @@ export function BreadcrumbInner({
                 if (e.target === e.currentTarget) setIsEditing(true);
               }}
               className={cn(
-                'flex flex-1 items-center px-1 h-8 text-xs overflow-x-auto shrink-0 select-none gap-2 px-3', // Layout
+                'flex flex-1 items-center px-1 h-8 text-sm overflow-x-auto shrink-0 select-none gap-2 px-3', // Layout
                 'hover:bg-surface-2 cursor-pointer'
               )}
             >
@@ -94,7 +94,7 @@ export function BreadcrumbInner({
                           <button
                             onClick={() => !isLast && onNavigate(segment.path)}
                             className={cn(
-                              'px-0 h-6 rounded max-w-48 truncate text-xs cursor-pointer', // Layout
+                              'px-0 h-6 rounded max-w-48 truncate text-sm cursor-pointer', // Layout
                               'text-text-dim hover:bg-surface hover:border-border hover:px-1.5 hover:-mx-1.5', // Color + hover
                               'data-[popup-open]:bg-surface data-[popup-open]:border-border data-[popup-open]:px-1.5 data-[popup-open]:-mx-1.5' // Keep hover style while menu is open
                             )}
@@ -124,7 +124,7 @@ export function BreadcrumbInner({
         </>
       )}
       {!showPath && (
-        <div className="flex-1 flex items-center px-3 text-xs text-text-dim truncate">
+        <div className="flex-1 flex items-center px-3 text-sm text-text-dim truncate">
           {fileName}
         </div>
       )}
@@ -212,7 +212,7 @@ function BreadcrumbPathInput({
         }
       }}
       className={cn(
-        'flex-1 h-8 px-3 text-xs', // Layout
+        'flex-1 h-8 px-3 text-sm', // Layout
         'bg-surface-2', // Background
         'border-l border-border', // Border
         'text-text-base outline-none' // Text

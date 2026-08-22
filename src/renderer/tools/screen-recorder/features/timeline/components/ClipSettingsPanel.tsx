@@ -61,14 +61,14 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
 
   if (!segment) {
     return (
-      <p className="text-xs text-muted-foreground">Select a clip on the timeline to edit it.</p>
+      <p className="text-sm text-muted-foreground">Select a clip on the timeline to edit it.</p>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Trim</span>
+        <span className="text-sm font-medium text-muted-foreground">Trim</span>
         <div className="grid grid-cols-2 gap-2">
           <TimeField
             label="Start"
@@ -88,7 +88,7 @@ export function ClipSettingsPanel({ segment }: ClipSettingsPanelProps): JSX.Elem
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Speed</span>
+        <span className="text-sm font-medium text-muted-foreground">Speed</span>
         <div className="grid grid-cols-5 gap-1">
           {CLIP_SPEED_OPTIONS.map((speed) => (
             <button

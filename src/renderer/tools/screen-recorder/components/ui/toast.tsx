@@ -16,7 +16,7 @@ export function ToastViewport(): JSX.Element {
           role="status"
           onClick={() => dismissToast(toast.id)}
           className={cn(
-            'pointer-events-auto flex items-center gap-2 rounded-lg border border-line bg-surface-3 px-3 py-2 text-xs shadow-lg',
+            'pointer-events-auto flex items-center gap-2 rounded-lg border border-line bg-surface-3 px-3 py-2 text-sm shadow-lg',
             'animate-in fade-in slide-in-from-bottom-2'
           )}
         >

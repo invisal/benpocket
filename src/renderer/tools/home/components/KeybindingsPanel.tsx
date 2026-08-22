@@ -23,7 +23,7 @@ function KeybindingRow({
       onClick={onClick}
       className="w-full flex flex-col gap-2 p-3 text-left transition-colors hover:bg-list-selected cursor-pointer"
     >
-      <div className="text-xs flex gap-1 items-center">
+      <div className="text-sm flex gap-1 items-center">
         <span>{group}</span> <ChevronRight className="size-3" />
         <strong className="font-medium">{actionName}</strong>
       </div>
@@ -34,7 +34,7 @@ function KeybindingRow({
           .map((part, i) => (
             <kbd
               key={i}
-              className="rounded-sm border border-border bg-surface px-1.5 py-0.5 text-xs font-medium shadow-[0_1px_0_0_var(--color-border)]"
+              className="rounded-sm border border-border bg-surface px-1.5 py-0.5 text-sm font-medium shadow-[0_1px_0_0_var(--color-border)]"
             >
               {part}
             </kbd>

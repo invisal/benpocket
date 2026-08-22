@@ -226,7 +226,7 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
   });
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No HPA details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No HPA details available.</div>;
   }
 
   const rawItem = (queryData?.hpaItem || payload.rawItem) as unknown as HpaRawResource | undefined;
@@ -476,7 +476,7 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
             </div>
             <div className="flex flex-col divide-y divide-border/20 max-h-48 overflow-y-auto">
               {displayMetrics.map((m) => (
-                <div key={m.name} className="flex items-center justify-between px-3 py-2 text-xs">
+                <div key={m.name} className="flex items-center justify-between px-3 py-2 text-sm">
                   <span className="font-sans text-zinc-300 truncate mr-4" title={m.name}>
                     {m.name}
                   </span>
@@ -488,7 +488,7 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
             </div>
           </div>
         ) : (
-          <span className="text-xs text-zinc-500 italic px-1">No metrics configured.</span>
+          <span className="text-sm text-zinc-500 italic px-1">No metrics configured.</span>
         )}
       </div>
 
@@ -561,7 +561,7 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
                 {
                   key: 'cpu',
                   header: 'CPU',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -577,7 +577,7 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
                 {
                   key: 'memory',
                   header: 'Memory',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -626,7 +626,7 @@ export const HorizontalPodAutoscalerDetail: React.FC<HorizontalPodAutoscalerDeta
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

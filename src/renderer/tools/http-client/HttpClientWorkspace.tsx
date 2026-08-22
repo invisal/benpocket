@@ -94,13 +94,13 @@ export const HttpClientWorkspace: React.FC = () => {
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
         {tabs.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 select-none text-center">
-            <div className="text-zinc-550 text-sm font-semibold">No request open</div>
-            <div className="text-zinc-655 text-xs">
+            <div className="text-zinc-550 font-semibold">No request open</div>
+            <div className="text-zinc-655 text-sm">
               Create a request from the sidebar to get started.
             </div>
             <button
               onClick={() => openNewRequestTab()}
-              className="mt-1 px-3 py-1.5 bg-surface-2 border border-border-dark hover:bg-border-dark/50 rounded text-xs text-zinc-300 hover:text-foreground cursor-pointer transition-all"
+              className="mt-1 px-3 py-1.5 bg-surface-2 border border-border-dark hover:bg-border-dark/50 rounded text-sm text-zinc-300 hover:text-foreground cursor-pointer transition-all"
             >
               New Request
             </button>

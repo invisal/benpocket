@@ -11,8 +11,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-7 gap-1.5 px-2.5 text-xs',
-  md: 'h-8 gap-2 px-3.5 text-xs',
+  sm: 'h-7 gap-1.5 px-2.5 text-sm',
+  md: 'h-8 gap-2 px-3.5 text-sm',
   lg: 'h-10 gap-2 px-5 text-base'
 };
 

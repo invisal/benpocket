@@ -71,7 +71,7 @@ function SaveProjectForm({ initialName, onOpenChange }: SaveProjectFormProps): J
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs text-muted-foreground">Project name</span>
+        <span className="text-sm text-muted-foreground">Project name</span>
         <Input
           size="lg"
           autoFocus
@@ -84,7 +84,7 @@ function SaveProjectForm({ initialName, onOpenChange }: SaveProjectFormProps): J
         />
       </label>
 
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={() => onOpenChange(false)}>

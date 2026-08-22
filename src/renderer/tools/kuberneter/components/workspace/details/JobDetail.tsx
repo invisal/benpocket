@@ -139,7 +139,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ payload, isTab = false }) 
   });
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No job details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No job details available.</div>;
   }
 
   const pods = queryData?.podsList || payload?.podsList || [];
@@ -405,7 +405,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ payload, isTab = false }) 
       <div className="flex flex-col gap-2 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-455 uppercase tracking-wider">Pods</span>
         {pods.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No pods found</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No pods found</div>
         ) : (
           <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
             <KubeTable<DeployRelatedPod>
@@ -468,7 +468,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ payload, isTab = false }) 
                 {
                   key: 'cpu',
                   header: 'CPU',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -484,7 +484,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ payload, isTab = false }) 
                 {
                   key: 'memory',
                   header: 'Memory',
-                  className: 'py-2 px-3 font-mono text-zinc-300 text-xs',
+                  className: 'py-2 px-3 font-mono text-zinc-300 text-sm',
                   render: (row) => {
                     const podMetric = metricItems.find(
                       (p) => p.name === row.name && (!p.namespace || p.namespace === row.ns)
@@ -533,7 +533,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ payload, isTab = false }) 
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ export function KubectlInstallGuide() {
           <select
             value={activeGuideOs}
             onChange={(e) => setActiveGuideOs(e.target.value as PlatformOS)}
-            className="bg-surface-2 border border-border text-foreground rounded px-2 py-1 text-xs outline-none cursor-pointer"
+            className="bg-surface-2 border border-border text-foreground rounded px-2 py-1 text-sm outline-none cursor-pointer"
           >
             {(['mac', 'win', 'linux'] as PlatformOS[]).map((osKey) => (
               <option key={osKey} value={osKey}>
@@ -46,7 +46,7 @@ export function KubectlInstallGuide() {
 
       {/* OS Guide Content */}
       <div className="flex flex-col gap-3 bg-surface-2 p-4 rounded-lg border border-border">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <Terminal className="size-3.5 text-accent shrink-0" />
           <span>{guide.title}</span>
         </div>

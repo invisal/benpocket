@@ -118,7 +118,7 @@ export const KubeDetailDrawer: React.FC<KubeDetailDrawerProps> = ({ tabId }) => 
 
       <div className="h-11 shrink-0 flex items-center gap-2 px-4 border-b border-border-dark min-w-0">
         <span
-          className="text-xs font-bold text-strong uppercase tracking-wider truncate min-w-0 flex-1"
+          className="text-sm font-bold text-strong uppercase tracking-wider truncate min-w-0 flex-1"
           title={headerTitle}
         >
           {headerTitle}

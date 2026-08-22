@@ -121,7 +121,7 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
             Deploy Revisions
           </span>
           {revisions.length === 0 ? (
-            <div className="text-xs text-zinc-500 italic pl-1">No revisions found</div>
+            <div className="text-sm text-zinc-500 italic pl-1">No revisions found</div>
           ) : (
             <div className="border-y border-border/40 flex flex-col max-h-[160px] h-auto w-full overflow-y-auto">
               <KubeTable<DeployRevision>
@@ -200,27 +200,27 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
                           <Menu.Content align="end" className="min-w-36">
                             <Menu.Item
                               onClick={() => handleShowDetails(row)}
-                              className="cursor-pointer text-xs"
+                              className="cursor-pointer text-sm"
                             >
                               <span>Show Details</span>
                             </Menu.Item>
                             <Menu.Item
                               onClick={() => handleScale(row)}
-                              className="flex items-center gap-2 cursor-pointer text-xs"
+                              className="flex items-center gap-2 cursor-pointer text-sm"
                             >
                               <Scaling className="size-3.5 text-zinc-400" />
                               <span>Scale</span>
                             </Menu.Item>
                             <Menu.Item
                               onClick={() => handleLogs(row)}
-                              className="flex items-center gap-2 cursor-pointer text-xs"
+                              className="flex items-center gap-2 cursor-pointer text-sm"
                             >
                               <FileText className="size-3.5 text-zinc-400" />
                               <span>Logs</span>
                             </Menu.Item>
                             <Menu.Item
                               onClick={() => handleEdit(row)}
-                              className="flex items-center gap-2 cursor-pointer text-xs"
+                              className="flex items-center gap-2 cursor-pointer text-sm"
                             >
                               <Pencil className="size-3.5 text-zinc-400" />
                               <span>Edit</span>
@@ -228,7 +228,7 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
                             <Menu.Separator />
                             <Menu.Item
                               onClick={() => handleDelete(row)}
-                              className="flex items-center gap-2 cursor-pointer text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
+                              className="flex items-center gap-2 cursor-pointer text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
                             >
                               <Trash2 className="size-3.5 text-rose-400" />
                               <span>Delete</span>
@@ -249,27 +249,27 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
                     <ContextMenu.Content className="min-w-36">
                       <ContextMenu.Item
                         onClick={() => handleShowDetails(row)}
-                        className="cursor-pointer text-xs"
+                        className="cursor-pointer text-sm"
                       >
                         <span>Show Details</span>
                       </ContextMenu.Item>
                       <ContextMenu.Item
                         onClick={() => handleScale(row)}
-                        className="flex items-center gap-2 cursor-pointer text-xs"
+                        className="flex items-center gap-2 cursor-pointer text-sm"
                       >
                         <Scaling className="size-3.5 text-zinc-400" />
                         <span>Scale</span>
                       </ContextMenu.Item>
                       <ContextMenu.Item
                         onClick={() => handleLogs(row)}
-                        className="flex items-center gap-2 cursor-pointer text-xs"
+                        className="flex items-center gap-2 cursor-pointer text-sm"
                       >
                         <FileText className="size-3.5 text-zinc-400" />
                         <span>Logs</span>
                       </ContextMenu.Item>
                       <ContextMenu.Item
                         onClick={() => handleEdit(row)}
-                        className="flex items-center gap-2 cursor-pointer text-xs"
+                        className="flex items-center gap-2 cursor-pointer text-sm"
                       >
                         <Pencil className="size-3.5 text-zinc-400" />
                         <span>Edit</span>
@@ -277,7 +277,7 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
                       <ContextMenu.Separator />
                       <ContextMenu.Item
                         onClick={() => handleDelete(row)}
-                        className="flex items-center gap-2 cursor-pointer text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
+                        className="flex items-center gap-2 cursor-pointer text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 focus:text-rose-300 focus:bg-rose-500/10"
                       >
                         <Trash2 className="size-3.5 text-rose-400" />
                         <span>Delete</span>
@@ -316,7 +316,7 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
               <AlertTriangle className="size-4 text-rose-500 shrink-0" />
               <span>Delete ReplicaSet</span>
             </Dialog.Title>
-            <Dialog.Description className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            <Dialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Are you sure you want to delete ReplicaSet{' '}
               <b className="text-foreground font-mono">{deletingTarget}</b>
               {namespace ? (
@@ -339,7 +339,7 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
                 type="button"
                 onClick={() => setDeletingTarget(null)}
                 disabled={isDeleting}
-                className="px-3 py-1.5 rounded text-xs text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 rounded text-sm text-foreground bg-surface-3 hover:bg-surface-2 border border-border transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -347,7 +347,7 @@ export const DeploymentRevisionsSection: FC<DeploymentRevisionsSectionProps> = m
                 type="button"
                 onClick={executeDelete}
                 disabled={isDeleting}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isDeleting && <Loader2 className="size-3 animate-spin" />}
                 <span>Delete</span>

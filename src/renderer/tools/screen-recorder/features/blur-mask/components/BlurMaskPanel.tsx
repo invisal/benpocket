@@ -50,21 +50,21 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
         <Button
           variant="secondary"
           onClick={() => addBlurRegion(currentTimeMs)}
-          className="flex flex-col items-center gap-1 py-2 text-xs"
+          className="flex flex-col items-center gap-1 py-2 text-sm"
         >
           <Droplets size={14} /> Blur
         </Button>
         <Button
           variant="secondary"
           onClick={() => addMaskRegion(currentTimeMs)}
-          className="flex flex-col items-center gap-1 py-2 text-xs"
+          className="flex flex-col items-center gap-1 py-2 text-sm"
         >
           <Square size={14} /> Mask
         </Button>
       </div>
 
       {sorted.length === 0 && (
-        <p className="text-xs text-muted-foreground">No blur/mask regions yet.</p>
+        <p className="text-sm text-muted-foreground">No blur/mask regions yet.</p>
       )}
 
       {sorted.length > 0 && (
@@ -76,7 +76,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
                 key={region.id}
                 onClick={() => selectBlurMaskRegion(region.id)}
                 className={cn(
-                  'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-xs transition-colors',
+                  'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-sm transition-colors',
                   selectedRegionId === region.id
                     ? 'border-accent bg-accent/10 text-accent'
                     : 'border-line text-muted-foreground hover:border-accent/40'
@@ -96,7 +96,7 @@ export function BlurMaskPanel({ currentTimeMs }: BlurMaskPanelProps): JSX.Elemen
       {selected && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-sm font-medium text-muted-foreground">
               {regionLabel(selected)}
             </span>
             <button

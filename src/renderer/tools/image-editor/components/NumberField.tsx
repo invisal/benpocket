@@ -9,7 +9,7 @@ interface NumberFieldProps {
 export function NumberField({ label, value, onCommit }: NumberFieldProps) {
   const rounded = Math.round(value);
   return (
-    <label className="flex h-full items-center gap-1 px-1.5 text-xs text-muted-foreground select-none">
+    <label className="flex h-full items-center gap-1 px-1.5 text-sm text-muted-foreground select-none">
       {label}
       <input
         type="number"

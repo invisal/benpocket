@@ -12,7 +12,7 @@ export function PopoverGallery() {
             <Popover.Title className="text-[13px] font-medium text-foreground">
               Invite a teammate
             </Popover.Title>
-            <Popover.Description className="mt-1 text-xs text-muted-foreground">
+            <Popover.Description className="mt-1 text-sm text-muted-foreground">
               They&apos;ll get access to every request in this workspace.
             </Popover.Description>
           </Popover.Content>

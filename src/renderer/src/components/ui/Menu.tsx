@@ -32,7 +32,7 @@ export function MenuItem({ className, ...props }: ComponentProps<typeof MenuPrim
   return (
     <MenuPrimitive.Item
       className={cn(
-        'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-2 text-xs outline-none select-none text-foreground',
+        'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-2 text-sm outline-none select-none text-foreground',
         'data-[highlighted]:bg-border-dark/60 data-[highlighted]:text-text-base',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className
@@ -51,7 +51,7 @@ export function MenuRadioItem({
   return (
     <MenuPrimitive.RadioItem
       className={cn(
-        'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-7 text-xs outline-none select-none text-foreground',
+        'relative flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-7 text-sm outline-none select-none text-foreground',
         'data-[highlighted]:bg-border-dark/60 data-[highlighted]:text-text-base',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className

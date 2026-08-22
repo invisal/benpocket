@@ -108,7 +108,7 @@ export const HelmRepoManagement: React.FC = () => {
           size="sm"
           onClick={handleUpdateRepos}
           disabled={updating || loading || addedNames.size === 0}
-          className="h-7 text-xs text-muted-foreground hover:text-foreground"
+          className="h-7 text-sm text-muted-foreground hover:text-foreground"
           title="Update all repository indexes (helm repo update)"
         >
           <RefreshCw className={`size-3 mr-1.5 ${updating ? 'animate-spin' : ''}`} />
@@ -116,7 +116,7 @@ export const HelmRepoManagement: React.FC = () => {
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Enable repositories to make their charts available in the Charts view.
       </p>
 
@@ -171,7 +171,7 @@ export const HelmRepoManagement: React.FC = () => {
               {/* Repo info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-foreground">{repo.label}</span>
+                  <span className="text-sm font-semibold text-foreground">{repo.label}</span>
                   <span className="font-mono text-[10px] text-muted-foreground truncate">
                     {repo.name}
                   </span>
@@ -190,7 +190,7 @@ export const HelmRepoManagement: React.FC = () => {
         })}
       </div>
 
-      {errorMsg && <p className="text-red-400 text-xs leading-relaxed">{errorMsg}</p>}
+      {errorMsg && <p className="text-red-400 text-sm leading-relaxed">{errorMsg}</p>}
     </div>
   );
 };

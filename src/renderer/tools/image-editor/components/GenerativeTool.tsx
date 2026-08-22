@@ -97,7 +97,7 @@ export function GenerativeTool({
             useReference ? 'Describe how to edit this image…' : 'Describe the image to generate…'
           }
           disabled={isRunning || !configured}
-          className="w-full resize-none rounded-md border border-border bg-surface p-2 text-xs text-foreground focus-visible:outline-none disabled:opacity-50"
+          className="w-full resize-none rounded-md border border-border bg-surface p-2 text-sm text-foreground focus-visible:outline-none disabled:opacity-50"
         />
 
         <div className="flex flex-wrap items-center justify-between gap-2">

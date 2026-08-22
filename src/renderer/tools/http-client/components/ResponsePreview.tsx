@@ -41,7 +41,7 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-xs">
+    <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-sm">
       <ImageOff size={20} />
       <span>No preview available for this content type.</span>
     </div>

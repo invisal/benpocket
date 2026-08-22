@@ -60,7 +60,7 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
 
   if (!payload) {
     return (
-      <div className="p-4 text-xs text-zinc-500">
+      <div className="p-4 text-sm text-zinc-500">
         No ValidatingWebhook Configuration details available.
       </div>
     );
@@ -166,13 +166,13 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
           Webhooks ({webhooks.length})
         </span>
         {webhooks.length === 0 ? (
-          <div className="text-xs text-zinc-500 italic pl-1">No webhooks defined.</div>
+          <div className="text-sm text-zinc-500 italic pl-1">No webhooks defined.</div>
         ) : (
           <div className="flex flex-col gap-3">
             {webhooks.map((w, idx) => (
               <div
                 key={w.name + idx}
-                className="flex flex-col gap-2.5 text-xs text-zinc-350 bg-surface-2/40 border border-border/40 rounded-lg p-3"
+                className="flex flex-col gap-2.5 text-sm text-zinc-350 bg-surface-2/40 border border-border/40 rounded-lg p-3"
               >
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] text-zinc-555 uppercase">Name</span>
@@ -312,7 +312,7 @@ export const ValidatingWebhookDetail: React.FC<ValidatingWebhookDetailProps> = (
       {/* Events Section */}
       <div className="flex flex-col gap-1.5 mt-2 border-t border-border-dark/60 pt-3">
         <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Events</span>
-        <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">No events found</div>
+        <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">No events found</div>
       </div>
     </div>
   );

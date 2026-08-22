@@ -9,7 +9,7 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>
 }
 
 const sizeClasses: Record<InputSize, string> = {
-  sm: 'h-7 px-2.5 text-xs',
+  sm: 'h-7 px-2.5 text-sm',
   md: 'h-8 px-3 text-[13px]',
   lg: 'h-10 px-4 text-[15px]'
 };

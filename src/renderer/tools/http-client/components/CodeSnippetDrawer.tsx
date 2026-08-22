@@ -82,7 +82,7 @@ export const CodeSnippetDrawer: React.FC<CodeSnippetDrawerProps> = ({ request, b
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border shrink-0">
             <Menu.Root>
-              <Menu.Trigger className="text-xs font-medium px-2 py-1 flex items-center gap-1 border border-border-dark rounded cursor-pointer">
+              <Menu.Trigger className="text-sm font-medium px-2 py-1 flex items-center gap-1 border border-border-dark rounded cursor-pointer">
                 <span>{selectedLabel}</span>
                 <ChevronDownIcon size={14} />
               </Menu.Trigger>

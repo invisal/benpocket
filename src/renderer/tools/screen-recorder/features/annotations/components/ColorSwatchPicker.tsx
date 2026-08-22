@@ -32,7 +32,7 @@ export function ColorSwatchPicker({
 }: ColorSwatchPickerProps): JSX.Element {
   return (
     <Popover.Root>
-      <Popover.Trigger className="flex w-full items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs transition-colors hover:border-accent/40">
+      <Popover.Trigger className="flex w-full items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm transition-colors hover:border-accent/40">
         <span
           className={cn(
             'size-4 shrink-0 rounded-full border border-line',

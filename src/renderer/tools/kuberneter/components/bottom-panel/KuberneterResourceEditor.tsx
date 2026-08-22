@@ -139,7 +139,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-6 text-xs text-foreground font-sans gap-1.5 px-2 bg-surface hover:bg-surface-2 border-border-dark"
+                    className="h-6 text-sm text-foreground font-sans gap-1.5 px-2 bg-surface hover:bg-surface-2 border-border-dark"
                   >
                     <FileCode className="size-3 text-muted-foreground" />
                     <span>Select Template...</span>
@@ -160,7 +160,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
                       onKeyDown={(e) => e.stopPropagation()}
                       placeholder="Search templates..."
                       autoFocus
-                      className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
+                      className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
                     />
                   </div>
                 </div>
@@ -168,7 +168,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
                 {/* Template list */}
                 <div className="overflow-y-auto overflow-x-hidden flex-1">
                   {filteredCategories.length === 0 ? (
-                    <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                       No templates found
                     </div>
                   ) : (
@@ -182,7 +182,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
                           <Menu.Item
                             key={tmpl.name}
                             onClick={() => handleSelectTemplate(tmpl.name)}
-                            className="text-xs text-foreground hover:bg-surface-2 focus:bg-surface-2 cursor-pointer px-2 py-1 rounded"
+                            className="text-sm text-foreground hover:bg-surface-2 focus:bg-surface-2 cursor-pointer px-2 py-1 rounded"
                           >
                             {tmpl.name}
                           </Menu.Item>
@@ -202,7 +202,7 @@ export const KuberneterResourceEditor: React.FC<KuberneterResourceEditorProps> =
         <CodeMirror
           value={currentContent}
           height="100%"
-          className="h-full text-xs"
+          className="h-full text-sm"
           theme={theme === 'dark' ? vscodeDark : vscodeLight}
           extensions={[yamlLang(), EditorView.lineWrapping]}
           onChange={(value) => onChangeYaml(value)}

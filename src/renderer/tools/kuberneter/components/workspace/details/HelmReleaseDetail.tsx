@@ -76,7 +76,7 @@ export const HelmReleaseDetail: React.FC<HelmReleaseDetailProps> = ({
   }, [fetchValues]);
 
   if (!release) {
-    return <div className="p-4 text-xs text-zinc-500">No Helm Release details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No Helm Release details available.</div>;
   }
 
   const handleNamespaceClick = () => {
@@ -176,7 +176,7 @@ export const HelmReleaseDetail: React.FC<HelmReleaseDetailProps> = ({
             {values.trim()}
           </pre>
         ) : (
-          <div className="text-xs text-zinc-500 italic pl-1 mt-0.5">
+          <div className="text-sm text-zinc-500 italic pl-1 mt-0.5">
             No user-supplied values (using chart defaults)
           </div>
         )}

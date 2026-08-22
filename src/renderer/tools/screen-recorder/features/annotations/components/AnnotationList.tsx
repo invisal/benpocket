@@ -30,7 +30,7 @@ export function AnnotationList({
   onSelect
 }: AnnotationListProps): JSX.Element {
   if (annotations.length === 0) {
-    return <p className="text-xs text-muted-foreground">No annotations yet.</p>;
+    return <p className="text-sm text-muted-foreground">No annotations yet.</p>;
   }
 
   return (
@@ -42,7 +42,7 @@ export function AnnotationList({
             key={annotation.id}
             onClick={() => onSelect(annotation.id)}
             className={cn(
-              'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-xs transition-colors',
+              'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-sm transition-colors',
               selectedId === annotation.id
                 ? 'border-accent bg-accent/10 text-accent'
                 : 'border-line text-muted-foreground hover:border-accent/40'

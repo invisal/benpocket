@@ -35,17 +35,17 @@ export function CursorSettingsPanel(): JSX.Element {
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Show Cursor</span>
+          <span className="text-sm font-medium text-muted-foreground">Show Cursor</span>
           <Switch checked={visible} onChange={setVisible} label="Show cursor" />
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Clip to Canvas</span>
+          <span className="text-sm font-medium text-muted-foreground">Clip to Canvas</span>
           <Switch checked={clipToCanvas} onChange={setClipToCanvas} label="Clip cursor to canvas" />
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Click Ripple</span>
+          <span className="text-sm font-medium text-muted-foreground">Click Ripple</span>
           <Switch
             checked={clickRippleEnabled}
             onChange={setClickRippleEnabled}
@@ -54,7 +54,7 @@ export function CursorSettingsPanel(): JSX.Element {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Click Sound</span>
+          <span className="text-sm font-medium text-muted-foreground">Click Sound</span>
           <Switch
             checked={clickSoundEnabled}
             onChange={setClickSoundEnabled}
@@ -63,7 +63,7 @@ export function CursorSettingsPanel(): JSX.Element {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Hand Gesture</span>
+          <span className="text-sm font-medium text-muted-foreground">Hand Gesture</span>
           <Switch
             checked={handGestureEnabled}
             onChange={setHandGestureEnabled}
@@ -75,7 +75,7 @@ export function CursorSettingsPanel(): JSX.Element {
       <div className="flex flex-col gap-2 border-t border-line pt-3">
         <div className="flex items-center gap-1.5">
           <Palette size={13} className="text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground">Cursor Style</span>
+          <span className="text-sm font-medium text-muted-foreground">Cursor Style</span>
         </div>
         <div className="grid grid-cols-6 gap-2">
           {CURSOR_STYLE_PRESETS.map((preset) => (

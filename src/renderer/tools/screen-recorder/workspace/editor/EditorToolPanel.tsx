@@ -48,7 +48,7 @@ export function EditorToolPanel({
   const label = visibleTools.find((t) => t.id === tool)?.label ?? '';
   return (
     <aside className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-y-auto border-l border-line p-3">
-      <h2 className="text-sm font-semibold text-foreground">{label}</h2>
+      <h2 className="font-semibold text-foreground">{label}</h2>
       {visibleTools.map((t) => {
         const Component = t.component;
         return (

@@ -189,7 +189,7 @@ export const DeploymentDetail: FC<DeploymentDetailProps> = ({ payload, isTab = f
   }, [ns, openNamespaceDetail]);
 
   if (!payload) {
-    return <div className="p-4 text-xs text-zinc-500">No deployment details available.</div>;
+    return <div className="p-4 text-sm text-zinc-500">No deployment details available.</div>;
   }
 
   const pods = queryData?.podsList || payload?.podsList || [];
@@ -327,7 +327,7 @@ export const DeploymentDetail: FC<DeploymentDetailProps> = ({ payload, isTab = f
 
   return (
     <div
-      className={`flex flex-col gap-4 text-xs font-sans select-text ${isTab ? 'p-6 max-w-7xl' : 'p-4'}`}
+      className={`flex flex-col gap-4 text-sm font-sans select-text ${isTab ? 'p-6 max-w-7xl' : 'p-4'}`}
     >
       {/* Top Banner / Summary Card */}
       <div className="flex flex-col gap-3 p-3 bg-surface-2/60 border border-border/60 rounded-lg">
@@ -342,7 +342,7 @@ export const DeploymentDetail: FC<DeploymentDetailProps> = ({ payload, isTab = f
                     : 'bg-rose-500 shadow-sm shadow-rose-500/50'
               }`}
             />
-            <span className="font-semibold text-sm text-foreground">{payload.name}</span>
+            <span className="font-semibold text-foreground">{payload.name}</span>
             <span
               onClick={handleNamespaceClick}
               className="text-[11px] font-mono text-muted-foreground hover:text-accent cursor-pointer transition-colors"

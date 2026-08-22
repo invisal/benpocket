@@ -18,7 +18,7 @@ export function CaptionsPanel(): JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between">
-        <span className="text-xs font-medium">Show captions</span>
+        <span className="text-sm font-medium">Show captions</span>
         <Switch checked={enabled} onChange={toggleEnabled} label="Show captions" />
       </label>
 
@@ -27,13 +27,13 @@ export function CaptionsPanel(): JSX.Element {
           variant="secondary"
           disabled
           title="On-device transcription model isn't bundled yet"
-          className="flex items-center justify-center gap-1.5 py-1.5 text-xs"
+          className="flex items-center justify-center gap-1.5 py-1.5 text-sm"
         >
           <Sparkles size={13} /> Auto-generate from audio (coming soon)
         </Button>
 
         {segments.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             No caption segments yet. Once on-device transcription is available, generated lines will
             show up here to edit and time.
           </p>
@@ -42,7 +42,7 @@ export function CaptionsPanel(): JSX.Element {
             {segments.map((segment) => (
               <div
                 key={segment.id}
-                className="flex items-start gap-2 rounded-lg border border-line p-1.5 text-xs"
+                className="flex items-start gap-2 rounded-lg border border-line p-1.5 text-sm"
               >
                 <span className="mt-0.5 shrink-0 font-mono text-muted-foreground">
                   {formatTime(segment.startMs)}

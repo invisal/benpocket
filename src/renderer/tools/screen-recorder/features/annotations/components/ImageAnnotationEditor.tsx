@@ -18,11 +18,11 @@ export function ImageAnnotationEditor({
       <div className="aspect-video overflow-hidden rounded-lg border border-line bg-surface">
         <img src={annotation.assetPath} alt="" className="h-full w-full object-contain" />
       </div>
-      <Button variant="secondary" onClick={onReplaceClick} className="text-xs">
+      <Button variant="secondary" onClick={onReplaceClick} className="text-sm">
         Replace image…
       </Button>
       {annotation.size && (
-        <Button variant="secondary" onClick={() => onUpdate({ size: null })} className="text-xs">
+        <Button variant="secondary" onClick={() => onUpdate({ size: null })} className="text-sm">
           Reset size
         </Button>
       )}

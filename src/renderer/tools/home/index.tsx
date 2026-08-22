@@ -110,7 +110,7 @@ export function HomeMain({}: ToolComponentProps<Props>) {
   return (
     <div className="bg-surface w-full h-screen flex flex-col">
       <ToolLayout.Title>Benpocket</ToolLayout.Title>
-      <div className="flex flex-col text-sm border-b border-border text-muted-foreground p-4">
+      <div className="flex flex-col border-b border-border text-muted-foreground p-4">
         <strong>benpocket</strong>
         <p>Developer tools, all in one place.</p>
       </div>
@@ -118,7 +118,7 @@ export function HomeMain({}: ToolComponentProps<Props>) {
       <Toolbar.Root>
         <div className="h-9">
           <input
-            className="h-9 outline-none px-4 text-xs w-72"
+            className="h-9 outline-none px-4 text-sm w-72"
             placeholder="Search your tools"
             autoFocus
             value={query}
@@ -135,7 +135,7 @@ export function HomeMain({}: ToolComponentProps<Props>) {
         <div className="p-6 flex-1 bg-surface-2 bg-dotted">
           <div>
             {filtered.length === 0 ? (
-              <div className="text-sm text-text-dim border border-dashed border-border rounded-lg py-10 text-center">
+              <div className="text-text-dim border border-dashed border-border rounded-lg py-10 text-center">
                 No tools match &quot;{query}&quot;
               </div>
             ) : (
@@ -178,8 +178,8 @@ function ToolCard({ tool }: { tool: ToolEntry }) {
         {tool.icon}
       </span>
       <span className="flex flex-col min-w-0">
-        <span className="font-medium text-sm truncate">{tool.name}</span>
-        <span className="text-xs text-text-dim mt-0.5 line-clamp-2">{tool.description}</span>
+        <span className="font-medium truncate">{tool.name}</span>
+        <span className="text-sm text-text-dim mt-0.5 line-clamp-2">{tool.description}</span>
       </span>
     </button>
   );
@@ -200,8 +200,8 @@ function CloudflareBanner({
         <CloudIcon size={20} />
       </span>
       <span className="flex flex-col min-w-0 flex-1">
-        <span className="font-medium text-sm truncate">Cloudflare</span>
-        <span className="text-xs text-text-dim mt-0.5 truncate">
+        <span className="font-medium truncate">Cloudflare</span>
+        <span className="text-sm text-text-dim mt-0.5 truncate">
           Link your Cloudflare account to browse R2 buckets and more.
         </span>
       </span>
@@ -211,7 +211,7 @@ function CloudflareBanner({
           <button
             role="button"
             onClick={onClick}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-surface-2 border border-border hover:bg-surface-3 transition-colors"
+            className="text-sm font-medium px-3 py-1.5 rounded-lg bg-surface-2 border border-border hover:bg-surface-3 transition-colors"
           >
             Disconnect
           </button>

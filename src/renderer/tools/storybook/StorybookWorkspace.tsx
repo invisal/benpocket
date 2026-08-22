@@ -72,8 +72,8 @@ export function StorybookWorkspace() {
     <div className="flex h-full w-full bg-surface">
       <nav className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface-2">
         <div className="border-b border-border p-4">
-          <div className="text-sm font-medium text-foreground">Storybook</div>
-          <div className="text-xs text-muted-foreground">Shared component gallery</div>
+          <div className="font-medium text-foreground">Storybook</div>
+          <div className="text-sm text-muted-foreground">Shared component gallery</div>
         </div>
         {GROUPS.map((group) => (
           <div key={group} className="p-2">

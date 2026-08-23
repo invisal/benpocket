@@ -31,3 +31,4 @@ touching that area of the code:
 
 - [design.md](docs/receipts/design.md) — shared components (prefer reuse) and Tailwind color tokens
 - [tools.md](docs/receipts/tools.md) — folder structure for `renderer/tools/*`
+- [keybindings.md](docs/receipts/keybindings.md) — registering a tool's global keybinding actions

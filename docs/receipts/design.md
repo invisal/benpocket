@@ -32,47 +32,48 @@ picks them up as `bg-*` / `border-*` / `text-*` utilities automatically
 
 ## Surface scale (`bg-surface`, `bg-surface-2` … `bg-surface-5`)
 
-An elevation scale, lowest to highest. Higher numbers sit "on top of" or are
-interactive states of the layer below — do not treat them as unrelated colors.
+An elevation scale, lowest to highest — for **stacking layers** (panels,
+dialogs, dropdowns sitting on top of one another), not for interactive
+row/item states. Higher numbers sit "on top of" the layer below — do not
+treat them as unrelated colors, and do not reach for them to express
+hover/selected.
 
 - `bg-surface` — base background, the lowest layer.
-- `bg-surface-2` — elevation 1. Either a panel sitting on top of the base
-  surface, or the hover state of a row/item on `bg-surface`.
-- `bg-surface-3` — elevation 2. Hover state on top of `bg-surface-2`, or the
-  selected state on top of `bg-surface`.
-- `bg-surface-4` — elevation 3. Selected state on top of `bg-surface-2`.
-- `bg-surface-5` — elevation 4. Selected state on top of `bg-surface-3`.
+- `bg-surface-2` — elevation 1. A panel sitting on top of the base surface.
+- `bg-surface-3` — elevation 2. A layer sitting on top of `bg-surface-2`.
+- `bg-surface-4` — elevation 3.
+- `bg-surface-5` — elevation 4.
 
-General pattern for an interactive row/item:
-
-```
-bg-surface            (base)
-hover:bg-surface-2     (hover)
-selected: bg-surface-3
-```
-
-If the container itself is already `bg-surface-2`, shift the chain up one step:
-hover becomes `bg-surface-3`, selected becomes `bg-surface-4`.
+For hover/selected states on any interactive row or item, use the list
+tokens below instead — regardless of which `bg-surface-*` rung the
+container itself sits on.
 
 ## List tokens: `bg-list-hover`, `bg-list-selected`
 
-For an interactive **list/tree row** specifically (`TreeList.Item`, and anything
-with the same hover/selected shape), reach for these instead of hand-picking a
-rung on the `bg-surface-*` ladder:
+For an interactive **list/tree row or item** (`TreeList.Item`, and anything
+with the same hover/selected shape) — not the `bg-surface-*` elevation
+ladder, which is reserved for stacked layers:
 
 - `bg-list-hover` — row hover background. `TreeList.Item` also uses this for
   keyboard roving-focus (a focused row reads the same as a hovered one, no
   separate focus ring).
 - `bg-list-selected` — row selected/active background.
 
+General pattern for an interactive row/item:
+
+```
+bg-surface            (base, whatever elevation it sits on)
+hover:bg-list-hover
+selected: bg-list-selected
+```
+
 Own dedicated hex values (`src/renderer/src/assets/main.css`) rather than
 aliasing onto `--color-surface-2`/`--color-surface-3` -- still grayscale, matching
 the rest of the app's neutral palette, but their own intermediate steps rather
 than reusing an existing rung, so a row's look can be retuned on its own dial
 without nudging every other `bg-surface-*` consumer (panels, dialogs, dropdowns)
-along with it. Prefer these over `bg-surface-2`/`bg-surface-3` for any new
-list/tree row; the plain surface scale is still right for panels and other
-non-row elevation.
+along with it. Always use these for list/tree row hover/selected, never
+`bg-surface-2`/`bg-surface-3`.
 
 ## Text: `text-foreground` vs `text-muted-foreground` vs `text-strong`
 

@@ -200,7 +200,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
           }
           onImportCurl={client.protocol === 'HTTP' ? client.http.importCurl : undefined}
           extraActions={
-            <>
+            <div className="flex">
               {client.protocol === 'HTTP' && (
                 <CodeSnippetDrawer request={client.http.state} binding={client.binding} />
               )}
@@ -215,7 +215,7 @@ const HttpClientRequestPanel: React.FC<{ tabId: string }> = ({ tabId }) => {
                 onSaved={client.bindTo}
                 onError={setSaveError}
               />
-            </>
+            </div>
           }
           action={
             client.protocol === 'WEBSOCKET'

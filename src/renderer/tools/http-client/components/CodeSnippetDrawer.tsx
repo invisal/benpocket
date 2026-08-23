@@ -71,9 +71,9 @@ export const CodeSnippetDrawer: React.FC<CodeSnippetDrawerProps> = ({ request, b
     <Drawer.Root open={open} onOpenChange={setOpen}>
       <Drawer.Trigger
         title="Generate code snippet"
-        render={<Button variant="ghost" size="sm" className="px-1.5 hover:bg-surface-3" />}
+        render={<Button variant="ghost" className="size-10 p-0 m-0" />}
       >
-        <Code2 size={13} />
+        <Code2 size={14} />
       </Drawer.Trigger>
       <Drawer.Content side="right" className="w-md" showClose={false}>
         {/* Drawer.Content's own wrapper is a plain block div, not a flex container - this

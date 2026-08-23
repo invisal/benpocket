@@ -59,25 +59,24 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
   const selectedLabel = METHODS.find((m) => m.value === method)?.label ?? method;
 
   return (
-    <div className="flex items-center gap-2 border-b border-border px-3 py-1 shrink-0">
-      <Menu.Root>
-        <Menu.Trigger className="flex items-center gap-1 h-7 px-2 rounded text-sm font-medium hover:bg-surface-2 cursor-pointer shrink-0">
-          <span className={methodBadgeClass(method)}>{selectedLabel}</span>
-          <ChevronDownIcon size={14} />
-        </Menu.Trigger>
-        <Menu.Content align="start">
-          {METHODS.map((m) => (
-            <Menu.Item key={m.value} onClick={() => onMethodChange(m.value)}>
-              <span className={methodBadgeClass(m.value)}>{m.label}</span>
-            </Menu.Item>
-          ))}
-        </Menu.Content>
-      </Menu.Root>
-
+    <div className="flex items-center gap-2 px-3 mt-3 shrink-0">
       {/* URL input, extra actions (Code/Save) and Send all live in one flat, borderless
           group - matching the sidebar header's flat style and reading as a single control
           rather than separate boxed elements. */}
-      <div className="flex items-center flex-1 min-w-0 gap-1 h-7 rounded bg-surface-2 border border-border pl-2 pr-1">
+      <div className="flex items-center flex-1 min-w-0 gap-1 h-7 rounded bg-surface-2 border border-border pl-2 pr-1 h-10">
+        <Menu.Root>
+          <Menu.Trigger className="flex items-center gap-1 h-7 px-2 rounded text-sm font-medium hover:bg-surface-2 cursor-pointer shrink-0">
+            <span className={methodBadgeClass(method)}>{selectedLabel}</span>
+            <ChevronDownIcon size={14} />
+          </Menu.Trigger>
+          <Menu.Content align="start">
+            {METHODS.map((m) => (
+              <Menu.Item key={m.value} onClick={() => onMethodChange(m.value)}>
+                <span className={methodBadgeClass(m.value)}>{m.label}</span>
+              </Menu.Item>
+            ))}
+          </Menu.Content>
+        </Menu.Root>
         <VariableSuggestInput
           value={url}
           onChange={onUrlChange}
@@ -97,20 +96,20 @@ export const RequestComposer: React.FC<RequestComposerProps> = ({
               onImportCurl(parsed);
             })
           }
-          className="flex-1 min-w-0 outline-none text-sm bg-transparent disabled:opacity-60 w-full"
+          className="flex-1 h-full min-w-0 outline-none text-sm bg-transparent disabled:opacity-60 w-full border-border border-l px-3"
           placeholder="Enter request URL, e.g. https://api.example.com/v1/resource or {{base_url}}/... - or paste a curl command"
         />
         <Button
           variant="ghost"
-          size="sm"
           onClick={action.onClick}
           disabled={action.disabled}
           title={action.label}
-          className={action.className}
+          className={'hover:bg-list-selected size-8 p-0 m-0'}
         >
           {action.icon}
         </Button>
       </div>
+
       {extraActions}
     </div>
   );

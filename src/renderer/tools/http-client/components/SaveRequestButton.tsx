@@ -128,13 +128,12 @@ export const SaveRequestButton = forwardRef<SaveRequestButtonHandle, SaveRequest
       return (
         <Button
           variant="ghost"
-          size="sm"
+          className="size-10 p-0 m-0"
           onClick={handleSave}
           disabled={isSaving}
           title="Save (Ctrl+S / ⌘S)"
-          className="px-1.5 hover:bg-surface-3"
         >
-          <Save size={13} />
+          <Save size={14} />
         </Button>
       );
     }

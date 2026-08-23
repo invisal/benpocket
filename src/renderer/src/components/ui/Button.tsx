@@ -23,7 +23,9 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: cn(
     'border border-gray-300 dark:border-stone-600 bg-surface-2 hover:bg-surface-3 text-foreground'
   ),
-  ghost: cn('border border-transparent bg-transparent text-text-dim')
+  ghost: cn(
+    'border border-transparent bg-transparent text-text-dim hover:bg-list-hover hover:ring hover:ring-border-light'
+  )
 };
 
 export function Button({

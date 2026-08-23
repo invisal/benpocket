@@ -13,7 +13,10 @@ import { useCaptureResultStore } from './store/capture-result.store';
 async function captureRegionDirectly(): Promise<void> {
   const usesOsPicker = window.api?.usesOsCapturePicker ?? false;
   try {
-    const sources = await window.screenRecorder.recording.getCaptureSources();
+    // No thumbnail rendered here -- skip the expensive per-source encode.
+    const sources = await window.screenRecorder.recording.getCaptureSources({
+      includeThumbnails: false
+    });
     const blob = await selectAndCaptureRegion(sources, usesOsPicker);
     if (blob) useCaptureResultStore.getState().setPending(blob);
   } catch (err) {

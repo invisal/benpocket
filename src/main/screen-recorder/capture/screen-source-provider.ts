@@ -1,10 +1,13 @@
 import { desktopCapturer, screen } from 'electron';
-import type { CaptureSource } from '@screen-recorder/types/recording';
+import type { CaptureSource, GetCaptureSourcesOptions } from '@screen-recorder/types/recording';
 import { getBootedSimulatorName } from './simulator-detection';
 import { getAppWindowBounds } from './window-bounds';
 import { findDisplayForCapturerId } from './display-for-source';
 
-export async function listCaptureSources(): Promise<CaptureSource[]> {
+export async function listCaptureSources(
+  options?: GetCaptureSourcesOptions
+): Promise<CaptureSource[]> {
+  const includeThumbnails = options?.includeThumbnails ?? true;
   const sources = await desktopCapturer.getSources({
     types: ['screen', 'window'],
     thumbnailSize: { width: 320, height: 180 }
@@ -44,7 +47,7 @@ export async function listCaptureSources(): Promise<CaptureSource[]> {
         id: source.id,
         name: source.name,
         type,
-        thumbnailDataUrl: source.thumbnail.toDataURL(),
+        thumbnailDataUrl: includeThumbnails ? source.thumbnail.toDataURL() : undefined,
         displayBounds: isSimulatorWindow ? (simulatorWindowBounds ?? undefined) : undefined
       };
     }
@@ -58,7 +61,7 @@ export async function listCaptureSources(): Promise<CaptureSource[]> {
       id: source.id,
       name: source.name,
       type,
-      thumbnailDataUrl: source.thumbnail.toDataURL(),
+      thumbnailDataUrl: includeThumbnails ? source.thumbnail.toDataURL() : undefined,
       displayId: display ? String(display.id) : undefined,
       displayBounds: display?.bounds,
       isPrimaryDisplay: display ? display.id === primaryDisplayId : undefined

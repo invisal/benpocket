@@ -42,7 +42,10 @@ export function CaptureToolbarBridge(): null {
     const unsubscribeCapture = window.screenRecorder.captureToolbar.onCaptureRequested(
       async (payload) => {
         try {
-          const sources = await window.screenRecorder.recording.getCaptureSources();
+          // No thumbnail rendered here -- skip the expensive per-source encode.
+          const sources = await window.screenRecorder.recording.getCaptureSources({
+            includeThumbnails: false
+          });
           const source = sources.find((s) => s.id === payload.sourceId);
           let blob: Blob | null = null;
           if (payload.cropRegion) {

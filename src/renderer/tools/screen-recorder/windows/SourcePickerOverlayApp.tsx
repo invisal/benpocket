@@ -239,7 +239,7 @@ export function SourcePickerOverlayApp(): JSX.Element | null {
                 )}
               >
                 <img
-                  src={source.thumbnailDataUrl}
+                  src={source.thumbnailDataUrl ?? ''}
                   alt={source.name}
                   className="aspect-video w-full object-cover opacity-80 transition-opacity group-hover:opacity-30"
                 />

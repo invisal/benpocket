@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
-import { formatShortcut } from '@renderer/lib/shortcut';
+import { ShortcutBadge } from '@renderer/components/ui/ShortcutBadge';
 import { keybindingActions } from '@renderer/lib/keybindings';
 import { useKeybindingsStore } from '@renderer/store/keybindings.store';
 import { KeybindingDialog } from './KeybindingDialog';
@@ -28,18 +28,7 @@ function KeybindingRow({
         <strong className="font-medium">{actionName}</strong>
       </div>
 
-      <div className="flex items-center gap-1">
-        {formatShortcut(accelerator)
-          .split('+')
-          .map((part, i) => (
-            <kbd
-              key={i}
-              className="rounded-sm border border-border bg-surface px-1.5 py-0.5 text-sm font-medium shadow-[0_1px_0_0_var(--color-border)]"
-            >
-              {part}
-            </kbd>
-          ))}
-      </div>
+      <ShortcutBadge accelerator={accelerator} />
     </button>
   );
 }

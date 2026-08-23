@@ -1,6 +1,6 @@
 # Adding keybinding actions
 
-A tool doesn't register a *binding* itself — it registers the *action* the
+A tool doesn't register a _binding_ itself — it registers the _action_ the
 user is allowed to bind a key to. The user assigns the accelerator later,
 from Home's Keybindings panel; nothing fires until they do.
 
@@ -10,6 +10,7 @@ from Home's Keybindings panel; nothing fires until they do.
    `KeybindingAction[]` (type from `@renderer/types/keybindings`):
 
    ```ts
+   import { Zap } from 'lucide-react';
    import type { KeybindingAction } from '@renderer/types/keybindings';
    import { someToolLevelFunction } from './lib/actions';
 
@@ -19,6 +20,7 @@ from Home's Keybindings panel; nothing fires until they do.
        group: 'My Tool',
        actionName: 'Do Thing',
        description: 'One sentence a user picks this action by in the binding dialog.',
+       icon: Zap,
        action: () => {
          void someToolLevelFunction();
        }
@@ -34,6 +36,10 @@ from Home's Keybindings panel; nothing fires until they do.
      action list by this.
    - `actionName` — short label shown in the binding list/dialog.
    - `description` — one sentence, shown as help text in the assign-a-key dialog.
+   - `icon` — optional `LucideIcon`, shown next to the action in the binding
+     picker. Pick one per _action_, not one per tool/group — actions in the
+     same tool can (and often should) use different icons. Omit it and the
+     picker falls back to a generic placeholder.
    - `action` — a plain `() => void` closure (wrap an async fn as
      `void someAsyncFn()`). It fires even when the tool's tab isn't
      mounted/focused — these are OS-level global shortcuts — so it must be

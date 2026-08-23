@@ -4,6 +4,7 @@ import { useLayoutStore } from '../../../../../src/store/layout.store';
 import { useKuberneterStore, type LocalKubeconfig } from '../../../store/kuberneter.store';
 import { useToolTabs } from '../../../../../src/components/providers/ToolProvider';
 import { Input } from '../../../../../src/components/ui/Input';
+import { HighlightMatch } from '../../../../../src/components/ui/HighlightMatch';
 import {
   ChevronDown,
   ChevronRight,
@@ -25,25 +26,6 @@ interface K8sContext {
   namespace?: string;
   server?: string;
   isActive: boolean;
-}
-
-function highlightText(text: string, search: string): React.ReactNode {
-  if (!search) return text;
-  const regex = new RegExp(`(${search.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  return (
-    <>
-      {parts.map((part, i) =>
-        regex.test(part) ? (
-          <mark key={i} className="bg-accent/20 text-accent font-semibold px-0.5 rounded-sm">
-            {part}
-          </mark>
-        ) : (
-          part
-        )
-      )}
-    </>
-  );
 }
 
 interface ConfigTreeProps {
@@ -317,10 +299,10 @@ export const ConfigTree: React.FC<ConfigTreeProps> = ({
                       />
                       <div className="truncate pr-2">
                         <span className="text-sm font-semibold">
-                          {highlightText(ctx.name, searchTerm)}
+                          <HighlightMatch text={ctx.name} query={searchTerm} />
                         </span>
                         <span className="text-[9px] text-zinc-500 pl-2 font-mono truncate">
-                          {highlightText(ctx.server || ctx.cluster, searchTerm)}
+                          <HighlightMatch text={ctx.server || ctx.cluster} query={searchTerm} />
                         </span>
                       </div>
                     </div>

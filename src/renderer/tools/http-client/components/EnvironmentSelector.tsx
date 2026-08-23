@@ -157,7 +157,7 @@ export const EnvironmentSelector: React.FC = () => {
   };
 
   return (
-    <div className="p-2 border-t border-border">
+    <div className="p-2">
       <Popover.Root
         open={open}
         onOpenChange={(next) => {

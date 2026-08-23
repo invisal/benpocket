@@ -1,17 +1,16 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { cn } from 'cnfast';
-import CodeMirror, { EditorView, type Extension } from '@uiw/react-codemirror';
+import { EditorView, type Extension } from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { xml as xmlLang } from '@codemirror/lang-xml';
 import { html as htmlLang } from '@codemirror/lang-html';
 import { yaml as yamlLang } from '@codemirror/lang-yaml';
 import { javascript as javascriptLang } from '@codemirror/lang-javascript';
-import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { Select } from '@renderer/components/ui/Select';
+import { Menu } from '@renderer/components/ui/Menu';
 import { PillTab } from '@renderer/components/ui/Tabs';
-import { Check, Copy, Eye, FileText, Filter, Table } from 'lucide-react';
-import { useThemeStore } from '@renderer/store/theme.store';
+import { CodeEditor } from '@renderer/components/ui/CodeEditor';
+import { Check, ChevronDown, Copy, Eye, FileText, Filter, Table } from 'lucide-react';
 import { getPrettyText } from '../lib/formatters/index';
 import { RESPONSE_FORMATS, detectFormat, isImageContentType } from '../lib/responseFormat';
 import type { ResponseFormat } from '../lib/responseFormat';
@@ -24,6 +23,7 @@ import { HexView } from './HexView';
 import { ResponsePreview } from './ResponsePreview';
 import { ResponseTable } from './ResponseTable';
 import { SaveExamplePopover } from './SaveExamplePopover';
+import { Button } from '@renderer/components/ui/Button';
 
 const BASE64_LINE_LENGTH = 76;
 
@@ -83,7 +83,6 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
     isImageContentType(contentType) ? 'preview' : 'formatted'
   );
   const [copied, copy] = useCopyFeedback();
-  const theme = useThemeStore((s) => s.theme);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
 
@@ -116,23 +115,95 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
   };
 
   const copyText = format === 'base64' ? bodyBase64 : prettyText;
+  const formatLabel = RESPONSE_FORMATS.find((f) => f.value === format)?.label ?? format;
 
   return (
     <div className="flex flex-col gap-1.5 h-full min-h-0">
-      <div className="flex items-center justify-between shrink-0">
+      {filterOpen && (
+        <div className="flex flex-col gap-1 shrink-0">
+          <input
+            type="text"
+            autoFocus
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setFilterOpen(false);
+                setFilterQuery('');
+              }
+            }}
+            placeholder="Filter body by text..."
+            className="w-full h-7 px-2 text-[11px] bg-surface-2 border border-border rounded outline-none focus:border-accent"
+          />
+          {!filterable && (
+            <span className="text-[10px] text-zinc-500">
+              Filtering isn&apos;t available for this view.
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="flex-1 min-h-0 overflow-auto">
+        {viewMode === 'preview' && previewEnabled ? (
+          <ResponsePreview
+            format={format}
+            text={text}
+            bodyBase64={bodyBase64}
+            contentType={contentType}
+          />
+        ) : viewMode === 'table' && (format === 'json' || format === 'yaml') ? (
+          <ResponseTable format={format} text={text} />
+        ) : format === 'hex' ? (
+          <HexView bytes={bytes} />
+        ) : format === 'base64' ? (
+          <pre className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-all select-text">
+            {displayedBase64}
+          </pre>
+        ) : (
+          <CodeEditor
+            value={displayedPrettyText}
+            editable={false}
+            height="100%"
+            className="h-full text-sm"
+            extensions={[...prettyExtensions, EditorView.lineWrapping]}
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: true,
+              highlightActiveLine: false,
+              highlightActiveLineGutter: false,
+              bracketMatching: true,
+              autocompletion: false,
+              closeBrackets: false,
+              history: false
+            }}
+          />
+        )}
+      </div>
+
+      <div className="flex items-center justify-between shrink-0 p-2 border-t border-border-light">
         <div className="flex items-center gap-1.5">
-          <Select.Root value={format} onValueChange={(value) => setFormat(value as ResponseFormat)}>
-            <Select.Trigger>
-              <Select.Value />
-            </Select.Trigger>
-            <Select.Content side="bottom" align="start">
-              {RESPONSE_FORMATS.map((f) => (
-                <Select.Item key={f.value} value={f.value}>
-                  <Select.ItemText>{f.label}</Select.ItemText>
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
+          <Menu.Root>
+            <Menu.Trigger
+              render={
+                <Button className="bg-surface-2 rounded-sm font-normal text-strong">
+                  <span>{formatLabel}</span>
+                  <ChevronDown size={11} />
+                </Button>
+              }
+            />
+            <Menu.Content align="start">
+              <Menu.RadioGroup
+                value={format}
+                onValueChange={(value) => setFormat(value as ResponseFormat)}
+              >
+                {RESPONSE_FORMATS.map((f) => (
+                  <Menu.RadioItem key={f.value} value={f.value}>
+                    {f.label}
+                  </Menu.RadioItem>
+                ))}
+              </Menu.RadioGroup>
+            </Menu.Content>
+          </Menu.Root>
 
           {(previewEnabled || tableEnabled) && (
             <PillTab.Root
@@ -184,68 +255,6 @@ export const ResponseBodyViewer: React.FC<ResponseBodyViewerProps> = ({
             {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
           </button>
         </div>
-      </div>
-
-      {filterOpen && (
-        <div className="flex flex-col gap-1 shrink-0">
-          <input
-            type="text"
-            autoFocus
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setFilterOpen(false);
-                setFilterQuery('');
-              }
-            }}
-            placeholder="Filter body by text..."
-            className="w-full h-7 px-2 text-[11px] bg-surface-2 border border-border rounded outline-none focus:border-accent"
-          />
-          {!filterable && (
-            <span className="text-[10px] text-zinc-500">
-              Filtering isn&apos;t available for this view.
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className="flex-1 min-h-0 overflow-auto">
-        {viewMode === 'preview' && previewEnabled ? (
-          <ResponsePreview
-            format={format}
-            text={text}
-            bodyBase64={bodyBase64}
-            contentType={contentType}
-          />
-        ) : viewMode === 'table' && (format === 'json' || format === 'yaml') ? (
-          <ResponseTable format={format} text={text} />
-        ) : format === 'hex' ? (
-          <HexView bytes={bytes} />
-        ) : format === 'base64' ? (
-          <pre className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-all select-text">
-            {displayedBase64}
-          </pre>
-        ) : (
-          <CodeMirror
-            value={displayedPrettyText}
-            editable={false}
-            height="100%"
-            className="h-full text-sm"
-            theme={theme === 'dark' ? vscodeDark : vscodeLight}
-            extensions={[...prettyExtensions, EditorView.lineWrapping]}
-            basicSetup={{
-              lineNumbers: true,
-              foldGutter: true,
-              highlightActiveLine: false,
-              highlightActiveLineGutter: false,
-              bracketMatching: true,
-              autocompletion: false,
-              closeBrackets: false,
-              history: false
-            }}
-          />
-        )}
       </div>
     </div>
   );

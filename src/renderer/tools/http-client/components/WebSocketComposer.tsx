@@ -1,11 +1,10 @@
 import type React from 'react';
 import { useMemo } from 'react';
-import CodeMirror, { EditorView, keymap, Prec } from '@uiw/react-codemirror';
+import { EditorView, keymap, Prec } from '@uiw/react-codemirror';
 import { insertNewlineAndIndent } from '@codemirror/commands';
-import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Send } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
-import { useThemeStore } from '@renderer/store/theme.store';
+import { CodeEditor } from '@renderer/components/ui/CodeEditor';
 
 interface WebSocketComposerProps {
   messageInput: string;
@@ -21,8 +20,6 @@ export const WebSocketComposer: React.FC<WebSocketComposerProps> = ({
   onSendMessage,
   disabled
 }) => {
-  const theme = useThemeStore((s) => s.theme);
-
   // Enter sends the message, Shift+Enter still inserts a newline - same behavior as the
   // textarea this replaced. Prec.highest so it wins over CodeMirror's own Enter binding.
   const extensions = useMemo(
@@ -50,7 +47,7 @@ export const WebSocketComposer: React.FC<WebSocketComposerProps> = ({
       <div
         className={`relative flex flex-1 min-h-14 bg-surface-2 border border-border rounded overflow-hidden focus-within:border-accent ${disabled ? 'opacity-50' : ''}`}
       >
-        <CodeMirror
+        <CodeEditor
           value={messageInput}
           onChange={onMessageInputChange}
           editable={!disabled}
@@ -61,7 +58,6 @@ export const WebSocketComposer: React.FC<WebSocketComposerProps> = ({
           }
           height="100%"
           className="flex-1 min-h-0 text-sm font-mono [&_.cm-editor]:h-full"
-          theme={theme === 'dark' ? vscodeDark : vscodeLight}
           extensions={extensions}
           basicSetup={{
             lineNumbers: false,

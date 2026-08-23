@@ -1,10 +1,9 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import { Tabs } from '@base-ui/react/tabs';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { PillTab } from '@renderer/components/ui/Tabs';
 import type { HttpResponsePayload } from '../../../../preload/http-client/types';
 import { base64ToBytes, bytesToText, formatBytes } from '../lib/bytes';
-import { tabClassName } from '../lib/tabClassName';
 import type { HttpState } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { ResponseBodyViewer } from './ResponseBodyViewer';
@@ -48,19 +47,6 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
 
   return (
     <div className="h-full border-t border-border-light flex flex-col min-h-0">
-      <div className="bg-surface-2 border-b border-border px-3 py-2 flex items-center justify-between text-sm shrink-0 select-none">
-        <span className="font-medium uppercase tracking-wider text-[10px]">Response</span>
-        {response && (
-          <div className="flex gap-3 text-[10px] items-center">
-            <span className={`font-bold ${statusColorClass(response.status, response.ok)}`}>
-              {response.status === 0 ? 'ERROR' : `${response.status} ${response.statusText}`}
-            </span>
-            <span className="text-zinc-500">TIME: {response.durationMs} ms</span>
-            <span className="text-zinc-500">SIZE: {formatBytes(response.sizeBytes)}</span>
-          </div>
-        )}
-      </div>
-
       <div className="flex-1 min-h-0 flex flex-col">
         {isLoading ? (
           <div className="h-full flex flex-col items-center justify-center gap-2 text-zinc-650">
@@ -73,21 +59,28 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
               {response.error}
             </div>
           ) : (
-            <Tabs.Root
+            <PillTab.Root
               value={activeTab}
               onValueChange={(value) => setActiveTab(value as ResponseTabValue)}
               className="flex flex-col min-h-0 flex-1"
             >
-              <Tabs.List className="flex gap-4 border-b border-border px-3 text-sm select-none shrink-0">
-                <Tabs.Tab value="body" className={tabClassName(activeTab === 'body')}>
-                  Body
-                </Tabs.Tab>
-                <Tabs.Tab value="headers" className={tabClassName(activeTab === 'headers')}>
-                  Headers ({headerEntries.length})
-                </Tabs.Tab>
-              </Tabs.List>
+              <div className="mx-3 mt-2 shrink-0 flex items-center justify-between">
+                <PillTab.List>
+                  <PillTab.Item value="body">Body</PillTab.Item>
+                  <PillTab.Item value="headers">Headers ({headerEntries.length})</PillTab.Item>
+                  <PillTab.Indicator />
+                </PillTab.List>
 
-              <Tabs.Panel value="body" className="flex-1 min-h-0 overflow-auto p-4">
+                <div className="flex gap-3 items-center text-sm">
+                  <span className={statusColorClass(response.status, response.ok)}>
+                    {response.status === 0 ? 'ERROR' : `${response.status} ${response.statusText}`}
+                  </span>
+                  <span className="text-zinc-500">{response.durationMs} ms</span>
+                  <span className="text-zinc-500">{formatBytes(response.sizeBytes)}</span>
+                </div>
+              </div>
+
+              <PillTab.Panel value="body" className="flex-1 min-h-0 overflow-auto">
                 <ResponseBodyViewer
                   key={response.bodyBase64}
                   text={text}
@@ -98,12 +91,12 @@ export const ResponseInspector: React.FC<ResponseInspectorProps> = ({
                   binding={binding}
                   request={request}
                 />
-              </Tabs.Panel>
+              </PillTab.Panel>
 
-              <Tabs.Panel value="headers" className="flex-1 min-h-0 overflow-auto p-4">
+              <PillTab.Panel value="headers" className="flex-1 min-h-0 overflow-auto">
                 <ResponseHeadersTable headers={response.headers} />
-              </Tabs.Panel>
-            </Tabs.Root>
+              </PillTab.Panel>
+            </PillTab.Root>
           )
         ) : (
           <div className="h-full flex flex-col items-center justify-center gap-1.5 text-zinc-650 text-sm">

@@ -9,7 +9,7 @@ export function TabPanel({ className, ...props }: ComponentProps<typeof TabsPrim
 export function PillTabList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
-      className={cn('relative h-8 inline-flex items-center gap-1', className)}
+      className={cn('relative h-9 inline-flex items-center gap-1', className)}
       {...props}
     />
   );
@@ -19,7 +19,7 @@ export function PillTabItem({ className, ...props }: ComponentProps<typeof TabsP
   return (
     <TabsPrimitive.Tab
       className={cn(
-        'relative z-10 flex items-center gap-1.5 px-2 h-7 text-sm cursor-pointer outline-none transition-colors',
+        'relative z-10 flex items-center gap-1.5 px-2 h-8 text-sm cursor-pointer outline-none transition-colors',
         'text-muted-foreground hover:text-foreground',
         'data-[active]:text-strong',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',

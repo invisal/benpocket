@@ -27,7 +27,7 @@ export const ResponseHeadersTable: React.FC<ResponseHeadersTableProps> = ({ head
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 p-4">
       <div className="flex items-center justify-between px-1">
         <div className="grid grid-cols-[1fr_1fr] gap-2 flex-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
           <span>Key</span>

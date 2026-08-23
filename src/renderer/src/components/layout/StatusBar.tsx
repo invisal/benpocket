@@ -6,10 +6,10 @@ import { MemoryStatus } from './MemoryStatus';
 
 export const StatusBar: React.FC = () => {
   return (
-    <div className="flex w-full h-7 items-center bg-surface border border-border text-sm select-none shrink-0 divide-x divide-border">
+    <div className="flex w-full h-7 items-center bg-surface border-t border-border-light text-sm select-none shrink-0 divide-x divide-border">
       <MemoryStatus />
 
-      <div className="h-full flex-1 bg-surface-2 bg-diagonal-stripes" />
+      <div className="h-full flex-1 bg-surface-2" />
 
       <SyncStatus />
       <TelemetryStatus />

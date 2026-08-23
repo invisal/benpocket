@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useMemo } from 'react';
-import CodeMirror, { EditorView, keymap, Prec } from '@uiw/react-codemirror';
+import { keymap, Prec, type EditorView } from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import {
   acceptCompletion,
@@ -10,11 +10,10 @@ import {
   type CompletionResult
 } from '@codemirror/autocomplete';
 import { indentWithTab } from '@codemirror/commands';
-import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { AlignLeft, Minimize2 } from 'lucide-react';
+import { CodeEditor } from '@renderer/components/ui/CodeEditor';
 import type { HttpBodyType, KeyValuePair } from '../../../../preload/http-client/types';
 import { findOpenToken } from '../lib/variableToken';
-import { useThemeStore } from '@renderer/store/theme.store';
 
 interface BodyEditorProps {
   value: string;
@@ -67,23 +66,6 @@ const tabAcceptsCompletion = Prec.highest(
   ])
 );
 
-// Drops @codemirror/view's default border-right on .cm-gutters (no divider against the code);
-// swaps the theme's barely-visible active-line tint for the app's row-hover color so the
-// selected line reads the same as a hovered row elsewhere in the UI; and mutes the theme's
-// fairly high-contrast line-number color down to the app's muted-foreground token.
-const editorChromeTheme = EditorView.theme({
-  '.cm-gutters': { borderRight: 'none' },
-  '.cm-activeLine': {
-    backgroundColor: 'color-mix(in srgb, var(--color-border-dark) 25%, transparent)'
-  },
-  '.cm-activeLineGutter': {
-    backgroundColor: 'color-mix(in srgb, var(--color-border-dark) 25%, transparent)'
-  },
-  '.cm-gutterElement': {
-    color: 'color-mix(in srgb, var(--color-muted-foreground) 55%, transparent)'
-  }
-});
-
 // Body editor: CodeMirror with JSON syntax highlighting (JSON bodies only), a
 // Beautify/Minify toolbar, and {{variable}} autocomplete wired in above.
 export const BodyEditor: React.FC<BodyEditorProps> = ({
@@ -93,7 +75,6 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
   variables,
   placeholder
 }) => {
-  const theme = useThemeStore((s) => s.theme);
   const isJson = bodyType === 'json';
 
   const names = useMemo(
@@ -104,7 +85,6 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
   const extensions = useMemo(
     () => [
       ...(isJson ? [jsonLang()] : []),
-      editorChromeTheme,
       tabAcceptsCompletion,
       keymap.of([indentWithTab]),
       autocompletion({ override: [variableCompletionSource(names)] })
@@ -131,13 +111,12 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
   return (
     <div className="flex flex-col gap-1.5 flex-1 min-h-0 pl-2">
       <div className="relative flex flex-1 min-h-24 w-full bg-surface-2 overflow-hidden">
-        <CodeMirror
+        <CodeEditor
           value={value}
           onChange={onChange}
           placeholder={placeholder}
           height="100%"
           className="flex-1 min-h-0 [&_.cm-editor]:h-full"
-          theme={theme === 'dark' ? vscodeDark : vscodeLight}
           extensions={extensions}
           basicSetup={{
             lineNumbers: true,

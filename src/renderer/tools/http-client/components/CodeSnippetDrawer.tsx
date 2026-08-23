@@ -1,16 +1,15 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import CodeMirror, { EditorView, type Extension } from '@uiw/react-codemirror';
+import { EditorView, type Extension } from '@uiw/react-codemirror';
 import { javascript as javascriptLang } from '@codemirror/lang-javascript';
 import { python as pythonLang } from '@codemirror/lang-python';
 import { StreamLanguage } from '@codemirror/language';
 import { shell as shellMode } from '@codemirror/legacy-modes/mode/shell';
-import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { Check, ChevronDownIcon, Code2, Copy, X } from 'lucide-react';
 import { Drawer } from '@renderer/components/ui/Drawer';
 import { Menu } from '@renderer/components/ui/Menu';
 import { Button } from '@renderer/components/ui/Button';
-import { useThemeStore } from '@renderer/store/theme.store';
+import { CodeEditor } from '@renderer/components/ui/CodeEditor';
 import type { HttpState } from '../hooks/useHttp';
 import type { SavedBinding } from '../types';
 import { useActiveEnvironmentVariables } from '../store/environments.store';
@@ -42,7 +41,6 @@ export const CodeSnippetDrawer: React.FC<CodeSnippetDrawerProps> = ({ request, b
   const [open, setOpen] = useState(false);
   const [language, setLanguage] = useState<SnippetLanguage>('javascript-fetch');
   const [copied, copy] = useCopyFeedback();
-  const theme = useThemeStore((s) => s.theme);
   const variables = useActiveEnvironmentVariables();
   const collections = useCollectionsStore((s) => s.collections);
 
@@ -108,12 +106,11 @@ export const CodeSnippetDrawer: React.FC<CodeSnippetDrawerProps> = ({ request, b
             </div>
           </div>
           <div className="flex-1 min-h-0 overflow-auto">
-            <CodeMirror
+            <CodeEditor
               value={snippet}
               editable={false}
               height="100%"
-              className="h-full text-[11px] [&_.cm-line]:break-all"
-              theme={theme === 'dark' ? vscodeDark : vscodeLight}
+              className="h-full [&_.cm-line]:break-all"
               extensions={[SNIPPET_LANGUAGE_EXTENSIONS[language], EditorView.lineWrapping]}
               basicSetup={{
                 lineNumbers: true,

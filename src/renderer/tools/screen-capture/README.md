@@ -72,7 +72,7 @@ The pill/overlay are separate renderer processes (macOS/Windows/X11). A pick sen
 
 ## Source picking (macOS / Windows / Linux X11)
 
-The pill fetches `getCaptureSources()` itself (do not block window open on thumbnails). Display/Window open a single-display overlay (cursor's monitor). Area reuses `screenshot.selectRegion()` and completes on mouse-up (no confirm button). BenPocket is **not** filtered from the window list.
+The pill fetches `getCaptureSources()` itself (do not block window open on thumbnails). Display/Window open an overlay on the cursor's monitor showing a thumbnail grid of **all** matching sources — every display, every window — so multi-monitor users can pick any screen. Area reuses `screenshot.selectRegion()` and completes on mouse-up (no confirm button). BenPocket is **not** filtered from the window list.
 
 ## Cross-platform summary
 

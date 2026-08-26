@@ -1,10 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
-import type {
-  CaptureSourcePickerOverlayInit,
-  CaptureSourcePickerOverlayOpenOptions
-} from '@shared/capture-source-picker-overlay';
+import type { CaptureSourcePickerOverlayOpenOptions } from '@shared/capture-source-picker-overlay';
 import { preloadScriptPath } from '../lib/preload-path';
 import { hideCaptureWindow } from './window-visibility';
 
@@ -16,7 +13,7 @@ function getCurrentDisplay(): Display {
   return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
 }
 
-function loadOverlayPage(win: BrowserWindow, init: CaptureSourcePickerOverlayInit): void {
+function loadOverlayPage(win: BrowserWindow, init: CaptureSourcePickerOverlayOpenOptions): void {
   const query = JSON.stringify(init);
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
@@ -88,11 +85,7 @@ async function openCaptureSourcePickerOverlay(
   const win = overlayWindow;
   win.once('ready-to-show', () => win.showInactive());
 
-  loadOverlayPage(win, {
-    ...options,
-    origin: { x: display.bounds.x, y: display.bounds.y },
-    targetDisplayId: String(display.id)
-  });
+  loadOverlayPage(win, options);
 }
 
 /**

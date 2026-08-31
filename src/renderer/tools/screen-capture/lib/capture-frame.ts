@@ -420,7 +420,10 @@ export async function selectAndCaptureRegion(
     const fullBlob = await captureFromSource(source, { hideApp: false });
     return await cropPngBlob(fullBlob, selection);
   } finally {
-    await showApp({ focus: true });
+    // Every branch above only hides when `hideApp` — opting out means the
+    // window never left, so showing and focusing it here would steal focus
+    // back after a capture the user explicitly asked us to stay visible for.
+    if (hideApp) await showApp({ focus: true });
   }
 }
 

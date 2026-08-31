@@ -46,14 +46,18 @@ function broadcastUnpushedCount(): void {
 }
 
 /**
- * Pushes the docKeys that received new remote patches via sync(), so an
- * already-mounted usePersistStore for one of those keys can merge in the
- * change instead of silently going stale until it happens to remount. No-op
- * if nothing changed.
+ * Pushes the docKeys that received new patches -- pulled from a remote by
+ * sync(), or written locally by another window -- so an already-mounted
+ * usePersistStore for one of those keys can merge in the change instead of
+ * silently going stale until it happens to remount. No-op if nothing changed.
+ *
+ * `exceptWebContentsId` skips the window that authored a local patch: its doc
+ * already holds the change, so reloading there would be pure churn.
  */
-function broadcastDocsChanged(keys: string[]): void {
+function broadcastDocsChanged(keys: string[], exceptWebContentsId?: number): void {
   if (keys.length === 0) return;
   for (const win of BrowserWindow.getAllWindows()) {
+    if (win.webContents.id === exceptWebContentsId) continue;
     win.webContents.send('profiles:docs-changed', keys);
   }
 }
@@ -110,9 +114,12 @@ export function registerProfileHandlers(): void {
 
   ipcMain.handle(
     'profiles:append-patch',
-    async (_event, key: string, patch: Uint8Array): Promise<void> => {
+    async (event, key: string, patch: Uint8Array): Promise<void> => {
       await getProfileManager().appendPatch(key, Buffer.from(patch));
       broadcastUnpushedCount();
+      // Local writes need the same fan-out as pulled ones, or two windows on
+      // the same docKey diverge until one remounts.
+      broadcastDocsChanged([key], event.sender.id);
     }
   );
 

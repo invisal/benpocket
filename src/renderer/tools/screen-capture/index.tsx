@@ -109,8 +109,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   // Profile persist store → editor zustand prefs.
   useEffect(() => {
     if (settingsLoading) return;
-    applyingSettingsRef.current = true;
-    useCaptureEditorStore.getState().applyPersistedPrefs({
+    // Key order matches getPersistedPrefs() so this compares equal on an echo.
+    const incoming = {
       toolStyles: settings.toolStyles,
       penSnapShapes: settings.penSnapShapes,
       highlightSnap: settings.highlightSnap,
@@ -118,7 +118,17 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       watermark: settings.watermark,
       background: settings.background,
       cornerRadiusUnits: settings.cornerRadiusUnits
-    });
+    };
+    const store = useCaptureEditorStore.getState();
+    // The subscription below writes exactly getPersistedPrefs() out to the doc,
+    // whose observer hands it straight back here as a fresh object. Re-applying
+    // it is not a no-op: applyPersistedPrefs resets the working
+    // color/stroke/font/blur from the *active tool*, so restyling a selected
+    // layer of another kind would snap the toolbar back mid-edit. Only apply
+    // changes that didn't originate here.
+    if (JSON.stringify(store.getPersistedPrefs()) === JSON.stringify(incoming)) return;
+    applyingSettingsRef.current = true;
+    store.applyPersistedPrefs(incoming);
     applyingSettingsRef.current = false;
   }, [settingsLoading, settings]);
 

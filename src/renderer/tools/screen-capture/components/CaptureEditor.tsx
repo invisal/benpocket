@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from 'cnfast';
-import { nextLabelValue, useCaptureEditorStore } from '../store/editor.store';
+import { nextLabelValue, snappedShapeStyle, useCaptureEditorStore } from '../store/editor.store';
 import { Check, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/Button';
 import { cssGradient, findWallpaperPreset } from '@shared/wallpaper-presets';
@@ -666,8 +666,7 @@ export function CaptureEditor({ dataUrl }: CaptureEditorProps): JSX.Element {
                 store.getState().addAnnotation({
                   id,
                   ...shape,
-                  color,
-                  strokeWidth
+                  ...snappedShapeStyle(store.getState().toolStyles, shape.kind, unit)
                 });
                 return;
               }

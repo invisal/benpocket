@@ -74,7 +74,7 @@ export const ActivityBar: React.FC = () => {
   };
 
   return (
-    <div className="w-11 divide-y divide-border-light bg-surface border-r border-border-light flex flex-col items-center">
+    <div className="w-11 shrink-0 divide-y divide-border-light bg-surface border-r border-border-light flex flex-col items-center">
       <div className="titlebar-drag size-11 flex items-center justify-center">
         <img src={logoImage} className="size-5" />
       </div>

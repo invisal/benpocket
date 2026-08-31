@@ -76,6 +76,31 @@ function decrypt(blob: Uint8Array): Buffer {
   return Buffer.from(safeStorage.decryptString(Buffer.from(blob)), 'base64');
 }
 
+/**
+ * A stored row stops being readable when the OS keyring's Safe Storage
+ * password no longer matches the one that wrote it -- on Linux a regenerated
+ * `Chromium Safe Storage` secret makes every existing v11 blob fail with "bad
+ * decrypt". Those rows are gone for good, but one of them must not take its
+ * whole doc down with it: readers return the readable subset so the doc still
+ * loads (see usePersistStore, which would otherwise hang in `isLoading`
+ * forever and freeze the UI at its defaults).
+ *
+ * Deliberately does not delete the bad rows -- a merely *locked* keyring fails
+ * identically, and that case fixes itself once it unlocks. Pruning here would
+ * turn a transient lock into permanent data loss.
+ */
+function tryDecrypt(blob: Uint8Array, context: string): Buffer | null {
+  try {
+    return decrypt(blob);
+  } catch (err) {
+    console.warn(
+      `Skipping undecryptable row for "${context}" -- keyring secret likely changed:`,
+      err instanceof Error ? err.message : err
+    );
+    return null;
+  }
+}
+
 function readCursor(db: DatabaseSync): number {
   const row = db.prepare('SELECT last_synced_seq FROM sync_cursor WHERE id = 1').get() as
     { last_synced_seq: number } | undefined;
@@ -134,9 +159,9 @@ const UNPUSHED_COMPACT_THRESHOLD = 5;
 function compactUnpushedStatements(
   db: DatabaseSync,
   key: string,
-  rows: { id: number; patch: Uint8Array }[]
+  rows: { id: number; decrypted: Buffer }[]
 ): void {
-  const merged = Buffer.from(mergeUpdates(rows.map((row) => decrypt(row.patch))));
+  const merged = Buffer.from(mergeUpdates(rows.map((row) => row.decrypted)));
   const del = db.prepare('DELETE FROM patches WHERE id = ?');
   for (const row of rows) del.run(row.id);
   db.prepare('INSERT INTO patches (store_key, patch, created_at) VALUES (?, ?, ?)').run(
@@ -195,11 +220,19 @@ export function createOfflineStore(profileId: ProfileId, dbPath: string): Offlin
         .all(key) as { id: number; patch: Uint8Array; remote_seq: number | null }[];
       if (!snapshot && rows.length === 0) return null;
 
-      const decrypted = rows.map((row) => decrypt(row.patch));
-      if (snapshot) decrypted.unshift(decrypt(snapshot.baseline));
+      const readable = rows.flatMap((row) => {
+        const plain = tryDecrypt(row.patch, key);
+        return plain ? [{ ...row, decrypted: plain }] : [];
+      });
+      const baseline = snapshot ? tryDecrypt(snapshot.baseline, `${key} baseline`) : null;
+
+      const decrypted = readable.map((row) => row.decrypted);
+      if (baseline) decrypted.unshift(baseline);
+      // Everything for this key was unreadable -- same as having no history.
+      if (decrypted.length === 0) return null;
       const merged = decrypted.length === 1 ? decrypted[0] : Buffer.from(mergeUpdates(decrypted));
 
-      const unpushed = rows.filter((row) => row.remote_seq === null);
+      const unpushed = readable.filter((row) => row.remote_seq === null);
       if (unpushed.length > UNPUSHED_COMPACT_THRESHOLD) {
         database.exec('BEGIN');
         try {
@@ -236,12 +269,18 @@ export function createOfflineStore(profileId: ProfileId, dbPath: string): Offlin
       const rows = requireDb()
         .prepare('SELECT id, store_key, patch, created_at FROM patches WHERE remote_seq IS NULL')
         .all() as { id: number; store_key: string; patch: Uint8Array; created_at: number }[];
-      return rows.map((row) => ({
-        localId: row.id,
-        docKey: row.store_key,
-        patch: decrypt(row.patch),
-        createdAt: row.created_at
-      }));
+      return rows.flatMap((row) => {
+        const patch = tryDecrypt(row.patch, row.store_key);
+        if (!patch) return [];
+        return [
+          {
+            localId: row.id,
+            docKey: row.store_key,
+            patch,
+            createdAt: row.created_at
+          }
+        ];
+      });
     },
 
     markPushed(acks: PushAck[]): void {
@@ -296,18 +335,24 @@ export function createOfflineStore(profileId: ProfileId, dbPath: string): Offlin
         )
         .all() as { store_key: string; up_to_seq: number }[];
 
-      return groups.map(({ store_key, up_to_seq }) => {
+      return groups.flatMap(({ store_key, up_to_seq }) => {
         const rows = database
           .prepare(
             'SELECT patch FROM patches WHERE store_key = ? AND remote_seq IS NOT NULL ORDER BY id'
           )
           .all(store_key) as { patch: Uint8Array }[];
-        const decrypted = rows.map((row) => decrypt(row.patch));
-        return {
-          docKey: store_key,
-          baseline: Buffer.from(mergeUpdates(decrypted)),
-          upToSeq: up_to_seq
-        };
+        const decrypted = rows.map((row) => tryDecrypt(row.patch, store_key));
+        // A baseline is only safe to publish if it covers every row it claims
+        // to -- applyCompactStatements deletes patches up to upToSeq, so a
+        // baseline built from a partial read would drop readable history too.
+        if (decrypted.some((patch) => patch === null)) return [];
+        return [
+          {
+            docKey: store_key,
+            baseline: Buffer.from(mergeUpdates(decrypted as Buffer[])),
+            upToSeq: up_to_seq
+          }
+        ];
       });
     },
 

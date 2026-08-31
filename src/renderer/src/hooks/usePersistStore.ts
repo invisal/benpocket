@@ -51,12 +51,24 @@ export function usePersistStore<T extends Y.Doc = Y.Doc>(
 
     setResult({ doc, isLoading: true });
 
-    void window.profiles.loadSnapshot(key).then((snapshot) => {
-      if (cancelled) return;
-      if (snapshot) Y.applyUpdate(doc, snapshot, LOAD_ORIGIN);
-      doc.on('update', handleUpdate);
-      setResult({ doc, isLoading: false });
-    });
+    void window.profiles
+      .loadSnapshot(key)
+      .then((snapshot) => {
+        if (cancelled || !snapshot) return;
+        Y.applyUpdate(doc, snapshot, LOAD_ORIGIN);
+      })
+      // Consumers gate their Yjs observers on isLoading, so leaving it stuck
+      // true silently freezes their UI at whatever defaults it first rendered
+      // -- edits appear to do nothing. Start from an empty doc instead: the
+      // failure is loud in the console and new edits still persist.
+      .catch((err: unknown) => {
+        console.error(`Could not load persisted doc "${key}".`, err);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        doc.on('update', handleUpdate);
+        setResult({ doc, isLoading: false });
+      });
 
     return () => {
       cancelled = true;

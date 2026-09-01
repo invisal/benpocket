@@ -2,14 +2,14 @@ import { useEffect, useRef } from 'react';
 import { openRecorderToolbarFor } from '../../tools/screen-recorder/features/recording/lib/open-recorder-toolbar';
 import { focusRecorderTab } from '../../tools/screen-recorder/lib/actions';
 import { openCaptureToolbarFor } from '../../tools/screen-capture/lib/open-capture-toolbar';
-import { focusOrOpenScreenCapture } from '../../tools/screen-capture/lib/actions';
+import { captureRegionDirectly } from '../../tools/screen-capture/lib/actions';
 import { useScreenCaptureSettings } from '../../tools/screen-capture/lib/use-screen-capture-settings';
 
 /**
  * Bridges the main process tray menu to the renderer. "New Recording" focuses
  * (or opens) the Screen Recorder tab and opens the floating recorder-toolbar.
  * "Screen Capture": pill platforms open the capture toolbar directly; Wayland
- * opens/focuses the tool tab so the user can set a timer before Capture.
+ * fires the OS portal capture immediately. Neither shows the main window first.
  */
 export function TrayBridge(): null {
   const { fields } = useScreenCaptureSettings();
@@ -34,7 +34,10 @@ export function TrayBridge(): null {
     const unsubscribeTool = window.screenRecorder.tray.onOpenTool((tool) => {
       if (tool !== 'screen-capture') return;
       if (window.api?.usesOsCapturePicker) {
-        focusOrOpenScreenCapture();
+        // Wayland has no pill, and the idle screen is pointless here: GNOME's
+        // portal picker is the capture UI. Go straight to it -- the tab only
+        // opens afterwards, with the result.
+        void captureRegionDirectly();
         return;
       }
       void openCaptureToolbarFor(delayRef.current);

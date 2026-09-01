@@ -12,7 +12,7 @@ Take a single PNG screenshot of a screen, window, or screen region. Preview the 
 ```
 App
 ├─ CaptureToolbarBridge     macOS/Windows/X11; runs captureFromSource in the owner renderer
-├─ TrayBridge               tray Screen Capture → pill (or Wayland: focus tool tab)
+├─ TrayBridge               tray Screen Capture → pill (or Wayland: portal capture right away)
 ├─ AppShell
 │  ├─ ActivityBar           camera icon → activates screen-capture tab (opens the pill)
 │  ├─ ToolDialog / Home     shortcuts to openTab('screen-capture', {})
@@ -64,7 +64,7 @@ When `window.api.usesOsCapturePicker` is true (Linux Wayland), the toolbar is sk
 | `capturing` | Hidden header; “Capturing…”                                                                                | Portal / region message      |
 | `result`    | **Preview** + Copy / Save / Capture again                                                                  | same                         |
 
-**Capture again** resets to `idle` with the **Capture** button (Wayland: same). Tray **Screen Capture** opens the pill directly on macOS/Windows/X11; on Wayland it opens this idle screen so a timer can be set before Capture.
+**Capture again** resets to `idle` with the **Capture** button (Wayland: same). Tray **Screen Capture** opens the pill directly on macOS/Windows/X11; on Wayland it calls the portal immediately (`captureRegionDirectly` in `lib/actions.ts`) — the main window is never shown first, and the tab opens only once there's an image. Cancelling the portal picker leaves the app where it was. The in-tool **Capture** button is still the way to use the delay timer.
 
 Errors (clipboard copy, region capture, save) are logged to the console — no notifications. Permission issues are surfaced only via `ScreenRecordingPermissionBanner` — no inline error text.
 

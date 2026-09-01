@@ -154,7 +154,7 @@ export function registerCaptureToolbarHandlers(): void {
   });
 
   ipcMain.on(IpcChannels.CaptureToolbarCancel, () => {
-    closeCaptureToolbar({ restoreOwner: true });
+    closeCaptureToolbar();
   });
 
   ipcMain.on(IpcChannels.CaptureToolbarDelayChanged, (_event, delaySeconds: unknown) => {

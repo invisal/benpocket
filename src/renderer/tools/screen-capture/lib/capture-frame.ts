@@ -356,7 +356,7 @@ export async function selectAndCaptureRegion(
   sources: CaptureSource[],
   usesOsPicker: boolean,
   onStep?: (step: RegionCaptureStep) => void,
-  options?: { hideApp?: boolean }
+  options?: { hideApp?: boolean; delaySeconds?: number }
 ): Promise<Blob | null> {
   const hideApp = options?.hideApp ?? true;
   try {
@@ -388,10 +388,16 @@ export async function selectAndCaptureRegion(
       // removing us during the IPC round-trip; main waits an extra settle
       // before calling the portal (GNOME freezes the backdrop immediately).
       onStep?.('picker');
+      const delaySeconds = options?.delaySeconds ?? 0;
       // The main-process handler hides again with a longer settle; this early
       // hide just lets the compositor start removing us during the IPC trip.
-      if (hideApp) await hideMainWindow();
-      const buffer = await window.screenRecorder!.screenshot.capturePortal({ hideApp });
+      // With a delay it has to wait: main hides only once its countdown ends,
+      // and hiding now would yank the window away mid-count.
+      if (hideApp && delaySeconds <= 0) await hideMainWindow();
+      const buffer = await window.screenRecorder!.screenshot.capturePortal({
+        hideApp,
+        delaySeconds
+      });
       if (!buffer) return null;
       return new Blob([buffer], { type: 'image/png' });
     }
@@ -420,7 +426,10 @@ export async function selectAndCaptureRegion(
     const fullBlob = await captureFromSource(source, { hideApp: false });
     return await cropPngBlob(fullBlob, selection);
   } finally {
-    await showApp({ focus: true });
+    // Every branch above only hides when `hideApp` — opting out means the
+    // window never left, so showing and focusing it here would steal focus
+    // back after a capture the user explicitly asked us to stay visible for.
+    if (hideApp) await showApp({ focus: true });
   }
 }
 

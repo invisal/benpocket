@@ -109,8 +109,8 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   // Profile persist store → editor zustand prefs.
   useEffect(() => {
     if (settingsLoading) return;
-    applyingSettingsRef.current = true;
-    useCaptureEditorStore.getState().applyPersistedPrefs({
+    // Key order matches getPersistedPrefs() so this compares equal on an echo.
+    const incoming = {
       toolStyles: settings.toolStyles,
       penSnapShapes: settings.penSnapShapes,
       highlightSnap: settings.highlightSnap,
@@ -118,7 +118,17 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       watermark: settings.watermark,
       background: settings.background,
       cornerRadiusUnits: settings.cornerRadiusUnits
-    });
+    };
+    const store = useCaptureEditorStore.getState();
+    // The subscription below writes exactly getPersistedPrefs() out to the doc,
+    // whose observer hands it straight back here as a fresh object. Re-applying
+    // it is not a no-op: applyPersistedPrefs resets the working
+    // color/stroke/font/blur from the *active tool*, so restyling a selected
+    // layer of another kind would snap the toolbar back mid-edit. Only apply
+    // changes that didn't originate here.
+    if (JSON.stringify(store.getPersistedPrefs()) === JSON.stringify(incoming)) return;
+    applyingSettingsRef.current = true;
+    store.applyPersistedPrefs(incoming);
     applyingSettingsRef.current = false;
   }, [settingsLoading, settings]);
 
@@ -234,13 +244,20 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
   const cancelCaptureCountdown = (): void => {
     countdownAbortRef.current?.abort();
     countdownAbortRef.current = null;
+    window.screenRecorder?.screenshot.cancelPortalCountdown();
     setCountdownRemaining(null);
   };
 
   const runRegionCapture = async (delaySeconds = 0): Promise<void> => {
-    if (countdownAbortRef.current) return;
+    // countdownAbortRef only covers the local timer, so a main-driven
+    // (Wayland) count needs the state check to block a second entry.
+    if (countdownAbortRef.current || countdownRemaining !== null) return;
 
-    if (delaySeconds > 0) {
+    // On the Wayland/portal path the delay is timed by the main process (see
+    // dialog-handlers.ts) and reported back through onPortalCountdown -- a
+    // renderer timer dies the moment this window is parked on another
+    // workspace. Everywhere else the pill/renderer still owns the count.
+    if (delaySeconds > 0 && !usesOsPicker) {
       const controller = new AbortController();
       countdownAbortRef.current = controller;
       const ok = await runCaptureCountdown(delaySeconds, setCountdownRemaining, {
@@ -265,12 +282,14 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
           setCaptureStep(step);
           setPhase('capturing');
         },
-        { hideApp }
+        { hideApp, delaySeconds: usesOsPicker ? delaySeconds : 0 }
       );
       await finishCapture(blob);
     } catch (err) {
       setPhase('idle');
       console.error('Could not capture region.', err);
+    } finally {
+      setCountdownRemaining(null);
     }
   };
 
@@ -284,6 +303,12 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
       window.removeEventListener('keydown', onKeyDown);
       countdownAbortRef.current?.abort();
     };
+  }, [usesOsPicker]);
+
+  // Wayland/portal only: main owns the delay timer, this just mirrors its ticks.
+  useEffect(() => {
+    if (!usesOsPicker) return;
+    return window.screenRecorder?.screenshot.onPortalCountdown(setCountdownRemaining);
   }, [usesOsPicker]);
 
   const handleCapture = (): void => {
@@ -356,14 +381,19 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
             ? 'Capturing selected region…'
             : 'Capturing…';
 
-  const isCapturing = phase === 'capturing' || (pendingCapture !== null && phase !== 'result');
+  // A running countdown keeps the idle chrome up instead of the "Capturing…"
+  // spinner: on Wayland main drives the count, and `phase` has already moved
+  // to 'capturing' by the time the first tick arrives.
+  const counting = countdownRemaining !== null;
+  const isCapturing =
+    !counting && (phase === 'capturing' || (pendingCapture !== null && phase !== 'result'));
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface text-text-base">
       <ToolLayout.Title>{phase === 'result' ? 'Preview' : 'Screen Capture'}</ToolLayout.Title>
       {!isCapturing && (
         <header className="shrink-0 border-b border-border-dark px-6 py-4">
-          {phase === 'idle' && !isCapturing ? (
+          {phase === 'idle' || counting ? (
             <div>
               <h1 className="text-base font-medium">Screen Capture</h1>
               <p className="mt-0.5 text-sm text-text-dim">Take a screenshot or edit an image.</p>
@@ -391,9 +421,9 @@ export function ScreenCaptureMain({}: ToolComponentProps<Props>): JSX.Element {
         >
           <ScreenRecordingPermissionBanner />
 
-          {phase === 'idle' && !isCapturing && (
+          {(phase === 'idle' || counting) && !isCapturing && (
             <div className="bg-dotted flex min-h-[12rem] flex-1 flex-col items-center justify-center rounded-xl bg-surface select-none">
-              {countdownRemaining !== null ? (
+              {counting ? (
                 <>
                   <span className="font-mono text-5xl font-semibold text-foreground">
                     {countdownRemaining}

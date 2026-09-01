@@ -27,7 +27,12 @@ export const AppShell: React.FC = () => {
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-zinc-900 text-zinc-300 font-sans antialiased">
       <ActivityBar />
-      <div className="w-full flex flex-col">
+      {/* flex-1 min-w-0, not w-full: w-full resolves to 100% of the w-screen
+          root, so next to the rail the row is over-committed by the rail's
+          width. The initial layout shrinks it away, but every later resize
+          leaves the column that much too wide -- clipping the close button,
+          the tool's right-hand panel and the status bar off the window edge. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <div className="h-11 titlebar-drag bg-surface border-b border-border-light items-center flex">
           <TitleBarText />
           <TitleBarControl />

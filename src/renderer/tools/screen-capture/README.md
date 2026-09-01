@@ -12,7 +12,7 @@ Take a single PNG screenshot of a screen, window, or screen region. Preview the 
 ```
 App
 ├─ CaptureToolbarBridge     macOS/Windows/X11; runs captureFromSource in the owner renderer
-├─ TrayBridge               tray Screen Capture → pill (or Wayland: focus tool tab)
+├─ TrayBridge               tray Screen Capture → pill (or Wayland: portal capture right away)
 ├─ AppShell
 │  ├─ ActivityBar           camera icon → activates screen-capture tab (opens the pill)
 │  ├─ ToolDialog / Home     shortcuts to openTab('screen-capture', {})
@@ -64,7 +64,7 @@ When `window.api.usesOsCapturePicker` is true (Linux Wayland), the toolbar is sk
 | `capturing` | Hidden header; “Capturing…”                                                                                | Portal / region message      |
 | `result`    | **Preview** + Copy / Save / Capture again                                                                  | same                         |
 
-**Capture again** resets to `idle` with the **Capture** button (Wayland: same). Tray **Screen Capture** opens the pill directly on macOS/Windows/X11; on Wayland it opens this idle screen so a timer can be set before Capture.
+**Capture again** resets to `idle` with the **Capture** button (Wayland: same). Tray **Screen Capture** opens the pill directly on macOS/Windows/X11; on Wayland it calls the portal immediately (`captureRegionDirectly` in `lib/actions.ts`) — the main window is never shown first, and the tab opens only once there's an image. Cancelling the portal picker leaves the app where it was. The in-tool **Capture** button is still the way to use the delay timer.
 
 Errors (clipboard copy, region capture, save) are logged to the console — no notifications. Permission issues are surfaced only via `ScreenRecordingPermissionBanner` — no inline error text.
 
@@ -72,7 +72,7 @@ The pill/overlay are separate renderer processes (macOS/Windows/X11). A pick sen
 
 ## Source picking (macOS / Windows / Linux X11)
 
-The pill fetches `getCaptureSources()` itself (do not block window open on thumbnails). Display/Window open a single-display overlay (cursor's monitor). Area reuses `screenshot.selectRegion()` and completes on mouse-up (no confirm button). BenPocket is **not** filtered from the window list.
+The pill fetches `getCaptureSources()` itself (do not block window open on thumbnails). Display/Window open an overlay on the cursor's monitor showing a thumbnail grid of **all** matching sources — every display, every window — so multi-monitor users can pick any screen. Area reuses `screenshot.selectRegion()` and completes on mouse-up (no confirm button). BenPocket is **not** filtered from the window list.
 
 ## Cross-platform summary
 
@@ -190,7 +190,14 @@ Other `window.api.*` used (not under `screenRecorder`):
 | --------------------- | --------------------------------------------- |
 | `usesOsCapturePicker` | `@shared/uses-os-capture-picker.ts` (preload) |
 
-IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:capture`, `screenshot:capture-portal`, `screenshot:copy`, `screenshot:save`, `screenshot:select-region`, `region-select:complete`, `region-select:cancel`, `window:hide`, `window:restore`.
+IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:capture`, `screenshot:capture-portal`, `screenshot:capture-portal-tick`, `screenshot:capture-portal-cancel`, `screenshot:copy`, `screenshot:save`, `screenshot:select-region`, `region-select:complete`, `region-select:cancel`, `window:hide`, `window:restore`.
+
+On Wayland the delay timer runs in the **main process**, not the renderer: a
+window parked on another workspace stops getting frame callbacks and Chromium
+freezes the page, which stalls a renderer-side timer so the grab never fires.
+`screenshot:capture-portal` therefore takes `delaySeconds`, counts down in main,
+reports each tick over `screenshot:capture-portal-tick` (`null` = ended), and
+only then hides and calls the portal. The renderer just mirrors those ticks.
 
 ## Impact on other CraftBox tools
 

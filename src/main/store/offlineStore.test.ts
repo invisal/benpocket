@@ -1,17 +1,31 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import { Doc, applyUpdate, mergeUpdates } from 'yjs';
 import { createOfflineStore } from './offlineStore';
 
+// Which keyring secret the fake safeStorage is currently holding. Flipping it
+// mid-test reproduces a rotated OS Safe Storage password: rows written under
+// the old one stop decrypting, exactly like OSCrypt's "bad decrypt".
+const keyEpoch = vi.hoisted(() => ({ current: 'k1' }));
+
 // safeStorage needs a real Electron runtime -- stand in with a reversible
-// no-op so encrypt/decrypt round-trips work the same way in tests.
+// no-op so encrypt/decrypt round-trips work the same way in tests. Base64
+// never contains ':', so it's safe as the epoch separator.
 vi.mock('electron', () => ({
   safeStorage: {
     isEncryptionAvailable: () => true,
-    encryptString: (value: string) => Buffer.from(value, 'utf-8'),
-    decryptString: (value: Buffer) => value.toString('utf-8')
+    encryptString: (value: string) => Buffer.from(`${keyEpoch.current}:${value}`, 'utf-8'),
+    decryptString: (value: Buffer) => {
+      const [epoch, ...rest] = value.toString('utf-8').split(':');
+      if (epoch !== keyEpoch.current) throw new Error('bad decrypt');
+      return rest.join(':');
+    }
   }
 }));
+
+afterEach(() => {
+  keyEpoch.current = 'k1';
+});
 
 function makePatch(counter: number): Buffer {
   const doc = new Doc();
@@ -58,6 +72,41 @@ describe('appendPatch / loadSnapshot', () => {
   it('returns null for a key with no patches', async () => {
     const store = await freshStore();
     expect(await store.loadSnapshot('missing')).toBeNull();
+  });
+
+  // A rotated keyring secret used to throw out of loadSnapshot, which left
+  // usePersistStore stuck in isLoading forever -- consumers then froze at
+  // their defaults and every edit looked like a no-op.
+  it('skips rows the current keyring secret cannot decrypt', async () => {
+    const store = await freshStore();
+    await store.appendPatch('doc', makePatch(1));
+
+    keyEpoch.current = 'k2';
+    await store.appendPatch('doc', makePatch(2));
+
+    const snapshot = await store.loadSnapshot('doc');
+    expect(snapshot).not.toBeNull();
+    const replay = new Doc();
+    applyUpdate(replay, snapshot!);
+    expect(replay.getMap('root').get('counter')).toBe(2);
+  });
+
+  it('returns null when every row for a key is undecryptable', async () => {
+    const store = await freshStore();
+    await store.appendPatch('doc', makePatch(1));
+
+    keyEpoch.current = 'k2';
+    expect(await store.loadSnapshot('doc')).toBeNull();
+  });
+
+  it('still lists only pushable patches when some are undecryptable', async () => {
+    const store = await freshStore();
+    await store.appendPatch('doc', makePatch(1));
+
+    keyEpoch.current = 'k2';
+    await store.appendPatch('doc', makePatch(2));
+
+    expect(store.listUnpushedPatches()).toHaveLength(1);
   });
 
   it('merges multiple patches into one snapshot', async () => {

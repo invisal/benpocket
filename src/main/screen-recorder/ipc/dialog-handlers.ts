@@ -10,6 +10,7 @@ import {
   type ScreenshotCaptureRequest
 } from '../capture/screenshot-capture';
 import { captureViaPortal } from '../capture/portal-screenshot';
+import { normalizeCaptureDelay, runCaptureCountdown } from '@shared/capture-delay';
 import type { ScreenRect } from '@shared/capture-region';
 import { getLastScreenshotSaveDir, setLastScreenshotSaveDir } from '../store/screen-capture-store';
 import { getLastExportSaveDir, setLastExportSaveDir } from '../store/export-save-store';
@@ -22,6 +23,9 @@ const SAVE_FILTERS: Record<string, FileFilter> = {
   webp: { name: 'WebP Image', extensions: ['webp'] },
   avif: { name: 'AVIF Image', extensions: ['avif'] }
 };
+
+/** In-flight portal delay countdown, so Cancel from the renderer can abort it. */
+let portalCountdownAbort: AbortController | null = null;
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(
@@ -77,15 +81,45 @@ export function registerDialogHandlers(): void {
 
   ipcMain.handle(
     IpcChannels.CaptureScreenshotPortal,
-    async (event, options?: { hideApp?: boolean }): Promise<Buffer | null> => {
+    async (
+      event,
+      options?: { hideApp?: boolean; delaySeconds?: number }
+    ): Promise<Buffer | null> => {
       // Screen Capture tool, Linux Wayland only — xdg-desktop-portal Screenshot.
-      // Hide first (unless the user opted to keep the app visible): GNOME
-      // freezes a backdrop the moment the picker opens, so we need the
-      // compositor to finish removing our window before that call. 350ms is
-      // longer than the usual 100ms PipeWire settle — portal backdrop capture
-      // is less forgiving of a late hide.
       const hideApp = options?.hideApp ?? true;
       const win = BrowserWindow.fromWebContents(event.sender);
+
+      // The delay countdown ticks here rather than in the renderer. Parking the
+      // window on another workspace stops the compositor's frame callbacks and
+      // Chromium freezes the page outright, which stalled the renderer's own
+      // timer -- the count stuck mid-way and the grab never fired. A Node timer
+      // in main keeps running no matter what the compositor does to the window.
+      const delaySeconds = normalizeCaptureDelay(options?.delaySeconds);
+      if (delaySeconds > 0) {
+        portalCountdownAbort?.abort();
+        const controller = new AbortController();
+        portalCountdownAbort = controller;
+        const sendTick = (remaining: number | null): void => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send(IpcChannels.CaptureScreenshotPortalTick, remaining);
+          }
+        };
+        try {
+          const completed = await runCaptureCountdown(delaySeconds, sendTick, {
+            signal: controller.signal
+          });
+          if (!completed) return null;
+        } finally {
+          if (portalCountdownAbort === controller) portalCountdownAbort = null;
+          sendTick(null);
+        }
+      }
+
+      // Hide (unless the user opted to keep the app visible): GNOME freezes a
+      // backdrop the moment the picker opens, so we need the compositor to
+      // finish removing our window before that call. 350ms is longer than the
+      // usual 100ms PipeWire settle — portal backdrop capture is less
+      // forgiving of a late hide.
       if (hideApp) await hideCaptureWindow(win, { settleMs: 350 });
       try {
         return await captureViaPortal();
@@ -94,6 +128,11 @@ export function registerDialogHandlers(): void {
       }
     }
   );
+
+  ipcMain.on(IpcChannels.CaptureScreenshotPortalCancel, () => {
+    portalCountdownAbort?.abort();
+    portalCountdownAbort = null;
+  });
 
   ipcMain.handle(
     IpcChannels.SaveScreenshot,

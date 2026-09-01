@@ -458,6 +458,22 @@ function sessionPrefs(
   };
 }
 
+/**
+ * Style for an annotation produced by free-draw snap. The stroke stops being a
+ * pen stroke and becomes a line/arrow/rect/circle, so it takes that kind's
+ * saved style -- identical to drawing it with the shape tool directly, since
+ * setTool() loads the working style from toolStyles[tool]. Using the pen's
+ * working color/stroke here instead would ignore the shape tool's prefs.
+ */
+export function snappedShapeStyle(
+  toolStyles: Record<StyleTool, ToolStyle>,
+  kind: StyleTool,
+  unit: number
+): { color: string; strokeWidth: number } {
+  const style = toolStyles[kind];
+  return { color: style.color, strokeWidth: style.strokeTier * unit };
+}
+
 function workingStyle(
   style: ToolStyle
 ): Pick<EditorState, 'color' | 'strokeTier' | 'fontTier' | 'blurTier'> {

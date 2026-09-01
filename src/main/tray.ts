@@ -7,7 +7,6 @@ import {
   type MenuItemConstructorOptions
 } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
-import { usesOsCapturePicker } from '@shared/uses-os-capture-picker';
 import { showAppLauncherIcon } from './screen-recorder/windows/window-visibility';
 
 /**
@@ -58,18 +57,11 @@ function trayMenuTemplate(): MenuItemConstructorOptions[] {
     },
     {
       label: 'Screen Capture',
-      click: () => {
-        if (usesOsCapturePicker()) {
-          // Wayland: no pill — open the tool so the user can set a timer
-          // before Capture (portal). Showing the window is intentional.
-          showMainWindow();
-          sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
-          return;
-        }
-        // Pill platforms: don't flash the main window — openCaptureToolbarFor
-        // minimizes the owner the same way New Recording does.
-        sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture');
-      }
+      // Never shows the main window first: on pill platforms
+      // openCaptureToolbarFor minimizes the owner the same way New Recording
+      // does, and on Wayland the renderer goes straight to the OS portal. The
+      // window only comes up afterwards, to show the captured image.
+      click: () => sendToMainWindow(IpcChannels.TrayOpenTool, 'screen-capture')
     },
     { type: 'separator' },
     { label: 'Quit benpocket', click: () => app.quit() }

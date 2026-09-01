@@ -190,7 +190,14 @@ Other `window.api.*` used (not under `screenRecorder`):
 | --------------------- | --------------------------------------------- |
 | `usesOsCapturePicker` | `@shared/uses-os-capture-picker.ts` (preload) |
 
-IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:capture`, `screenshot:capture-portal`, `screenshot:copy`, `screenshot:save`, `screenshot:select-region`, `region-select:complete`, `region-select:cancel`, `window:hide`, `window:restore`.
+IPC channels (`src/shared/ipc-channels.ts`): `capture:get-sources`, `screenshot:capture`, `screenshot:capture-portal`, `screenshot:capture-portal-tick`, `screenshot:capture-portal-cancel`, `screenshot:copy`, `screenshot:save`, `screenshot:select-region`, `region-select:complete`, `region-select:cancel`, `window:hide`, `window:restore`.
+
+On Wayland the delay timer runs in the **main process**, not the renderer: a
+window parked on another workspace stops getting frame callbacks and Chromium
+freezes the page, which stalls a renderer-side timer so the grab never fires.
+`screenshot:capture-portal` therefore takes `delaySeconds`, counts down in main,
+reports each tick over `screenshot:capture-portal-tick` (`null` = ended), and
+only then hides and calls the portal. The renderer just mirrors those ticks.
 
 ## Impact on other CraftBox tools
 

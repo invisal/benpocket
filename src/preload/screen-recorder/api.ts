@@ -252,8 +252,19 @@ export const screenRecorderApi = {
       ipcRenderer.invoke(IpcChannels.SaveScreenshot, data, defaultFileName),
     selectRegion: (options?: SelectCaptureRegionOptions): Promise<CaptureRegionSelection | null> =>
       ipcRenderer.invoke(IpcChannels.SelectCaptureRegion, options),
-    capturePortal: (options?: { hideApp?: boolean }): Promise<ArrayBuffer | null> =>
-      ipcRenderer.invoke(IpcChannels.CaptureScreenshotPortal, options)
+    capturePortal: (options?: {
+      hideApp?: boolean;
+      delaySeconds?: number;
+    }): Promise<ArrayBuffer | null> =>
+      ipcRenderer.invoke(IpcChannels.CaptureScreenshotPortal, options),
+    /** Aborts an in-flight portal delay countdown (which main, not this window, is timing). */
+    cancelPortalCountdown: (): void => ipcRenderer.send(IpcChannels.CaptureScreenshotPortalCancel),
+    /** Ticks from main's portal delay countdown. `null` means it ended (finished or cancelled). */
+    onPortalCountdown: (callback: (remaining: number | null) => void): (() => void) => {
+      const listener = (_event: unknown, remaining: number | null): void => callback(remaining);
+      ipcRenderer.on(IpcChannels.CaptureScreenshotPortalTick, listener);
+      return () => ipcRenderer.removeListener(IpcChannels.CaptureScreenshotPortalTick, listener);
+    }
   },
   regionSelect: {
     getContentOrigin: (): Promise<ScreenRect | null> =>

@@ -55,7 +55,8 @@ export function CaptureToolbarApp(): JSX.Element {
 
   useEffect(() => {
     window.screenRecorder.recording
-      .getCaptureSources()
+      // No thumbnail rendered here -- skip the expensive per-source encode.
+      .getCaptureSources({ includeThumbnails: false })
       .then(setSources)
       .catch(() => setSources([]));
   }, []);
@@ -130,7 +131,9 @@ export function CaptureToolbarApp(): JSX.Element {
 
   async function pickArea(): Promise<void> {
     const list =
-      sources.length > 0 ? sources : await window.screenRecorder.recording.getCaptureSources();
+      sources.length > 0
+        ? sources
+        : await window.screenRecorder.recording.getCaptureSources({ includeThumbnails: false });
     const anyScreenSource = list.find((s) => s.type === 'screen') ?? pickDefaultCaptureSource(list);
     if (!anyScreenSource) return;
     const ok = await waitOnPill(delayRef.current);

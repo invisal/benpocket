@@ -2,6 +2,7 @@ import { ipcRenderer } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels';
 import type {
   CaptureSource,
+  GetCaptureSourcesOptions,
   RecordingRequest,
   RecordingSession
 } from '@screen-recorder/types/recording';
@@ -42,8 +43,8 @@ import type {
 
 export const screenRecorderApi = {
   recording: {
-    getCaptureSources: (): Promise<CaptureSource[]> =>
-      ipcRenderer.invoke(IpcChannels.GetCaptureSources),
+    getCaptureSources: (options?: GetCaptureSourcesOptions): Promise<CaptureSource[]> =>
+      ipcRenderer.invoke(IpcChannels.GetCaptureSources, options),
     /** Whether getDisplayMedia() can hand off to the native macOS 15+ ScreenCaptureKit picker. */
     supportsNativeSystemPicker: (): Promise<boolean> =>
       ipcRenderer.invoke(IpcChannels.GetNativePickerSupport),

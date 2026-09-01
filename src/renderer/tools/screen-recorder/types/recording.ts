@@ -4,7 +4,7 @@ export interface CaptureSource {
   id: string;
   name: string;
   type: CaptureTargetType;
-  thumbnailDataUrl: string;
+  thumbnailDataUrl?: string;
   displayId?: string;
   /**
    * Screen/window bounds in OS screen-coordinate space. Lets the main
@@ -35,6 +35,11 @@ export interface CaptureSource {
    * primary one" instead of whichever the OS happened to list first.
    */
   isPrimaryDisplay?: boolean;
+}
+
+export interface GetCaptureSourcesOptions {
+  /** Omit (or leave true) to get thumbnails like before -- only ever an explicit opt-out for a caller that never renders one, since generating them (desktopCapturer's per-source toDataURL()) is the slow part of listing sources. */
+  includeThumbnails?: boolean;
 }
 
 export interface AudioInputOptions {

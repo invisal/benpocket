@@ -2,7 +2,7 @@ import { app, ipcMain, shell } from 'electron';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { IpcChannels } from '@shared/ipc-channels';
-import type { RecordingRequest } from '@screen-recorder/types/recording';
+import type { RecordingRequest, GetCaptureSourcesOptions } from '@screen-recorder/types/recording';
 import type {
   NativeRecordingRequest,
   NativeRecordingStartResult,
@@ -35,7 +35,9 @@ function resolveRecordingOutputPath(extension: string): string {
 }
 
 export function registerRecordingHandlers(): void {
-  ipcMain.handle(IpcChannels.GetCaptureSources, () => listCaptureSources());
+  ipcMain.handle(IpcChannels.GetCaptureSources, (_event, options?: GetCaptureSourcesOptions) =>
+    listCaptureSources(options)
+  );
 
   ipcMain.handle(IpcChannels.GetNativePickerSupport, () => supportsNativeSystemPicker());
 
